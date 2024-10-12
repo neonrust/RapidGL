@@ -24,6 +24,7 @@ CPMAddPackage("gh:glfw/glfw#3.3.8")
 CPMAddPackage("gh:g-truc/glm#0.9.9.8")
 CPMAddPackage("gh:ocornut/imgui@1.88")
 CPMAddPackage("gh:gabime/spdlog@1.10.0")
+CPMAddPackage("gh:martinus/unordered_dense@4.4.0")
 
 CPMAddPackage(
         GITHUB_REPOSITORY benikabocha/tinyddsloader
@@ -50,7 +51,9 @@ set_target_properties(glad
                       glm 
                       imgui 
                       spdlog
-                      tinyddsloader PROPERTIES FOLDER "thirdparty")
+					  tinyddsloader
+					  unordered_dense
+					  PROPERTIES FOLDER "thirdparty")
 
 if (TARGET zlibstatic)
     set_target_properties(zlibstatic PROPERTIES FOLDER "thirdparty")

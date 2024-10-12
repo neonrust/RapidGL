@@ -27,7 +27,8 @@ target_include_directories(${CORE_LIB_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
 												   ${CMAKE_SOURCE_DIR}/configuration
 												   ${glad_SOURCE_DIR}
 												   ${stb_image_SOURCE_DIR}
-												   ${imgui_SOURCE_DIR})
+												   ${imgui_SOURCE_DIR}
+												   ${unordered_dense_SOURCE_DIR}/include)
 
 target_link_libraries(${CORE_LIB_NAME} ${OPENGL_LIBRARIES}
                                        glad
