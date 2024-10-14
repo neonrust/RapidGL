@@ -6,7 +6,7 @@ namespace RGL
     void Camera::update(double dt)
     {
         /* Camera Movement */
-        auto movement_amount = m_move_speed * dt;
+		auto movement_amount = float(m_move_speed * dt);
 
         if (Input::getKey(m_forward_key))
             move(m_position, glm::conjugate(m_orientation) * glm::vec3(0, 0, -1), movement_amount);
