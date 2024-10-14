@@ -4,7 +4,8 @@
 
 #include <glm/mat2x4.hpp>
 #include <glm/mat4x4.hpp>
-#include <map>
+
+#include "container_types.h"
 
 namespace RGL
 {
@@ -122,8 +123,8 @@ namespace RGL
         virtual void LoadMeshPart(uint32_t mesh_index, const aiMesh* mesh, VertexData& vertex_data, std::vector<VertexBoneData>& bones_data);
         virtual void CreateBuffers(VertexData& vertex_data, std::vector<VertexBoneData>& bones_data);
         
-        std::map<std::string, uint32_t> m_bones_mapping;
-        std::vector<BoneInfo>           m_bone_infos;
+		string_map<uint32_t>   m_bones_mapping;
+		std::vector<BoneInfo>  m_bone_infos;
 
         uint32_t  m_bones_count;
         glm::mat4 m_global_inverse_transform;

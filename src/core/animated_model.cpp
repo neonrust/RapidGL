@@ -293,7 +293,7 @@ namespace RGL
 
         if (!m_assimp_scene || m_assimp_scene->mFlags == AI_SCENE_FLAGS_INCOMPLETE || !m_assimp_scene->mRootNode)
         {
-            fprintf(stderr, "Assimp error while loading mesh %s\n Error: %s\n", filepath.generic_string(), m_importer.GetErrorString());
+			fprintf(stderr, "Assimp error while loading mesh %s\n Error: %s\n", filepath.generic_string().c_str(), m_importer.GetErrorString());
             return false;
         }
 
@@ -371,7 +371,7 @@ namespace RGL
         /* Load materials. */
         if (!LoadMaterials(scene, filepath))
         {
-            fprintf(stderr, "Assimp error while loading mesh %s\n Error: Could not load the materials.\n", filepath.generic_string());
+			fprintf(stderr, "Assimp error while loading mesh %s\n Error: Could not load the materials.\n", filepath.generic_string().c_str());
             return false;
         }
 
