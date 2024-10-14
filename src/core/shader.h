@@ -1,7 +1,6 @@
 #pragma once
 
 #include <filesystem>
-#include <map>
 #include <string>
 #include <vector>
 
@@ -10,6 +9,7 @@
 #include <glm/vec3.hpp>
 #include <glm/mat3x3.hpp>
 #include <glm/mat4x4.hpp>
+#include "container_types.h"
 
 namespace RGL
 {
@@ -53,23 +53,23 @@ namespace RGL
         void setTransformFeedbackVaryings(const std::vector<const char*>& output_names, GLenum buffer_mode) const;
         void bind() const;
 
-        void setUniform(const std::string & uniform_name, float value);
-        void setUniform(const std::string & uniform_name, int value);
-        void setUniform(const std::string & uniform_name, GLuint value);
-        void setUniform(const std::string & uniform_name, GLsizei count, float * value);
-        void setUniform(const std::string & uniform_name, GLsizei count, int * value);
-        void setUniform(const std::string & uniform_name, GLsizei count, glm::vec3 * vectors);
-        void setUniform(const std::string & uniform_name, const glm::vec2 & vector);
-        void setUniform(const std::string & uniform_name, const glm::vec3 & vector);
-        void setUniform(const std::string & uniform_name, const glm::vec4 & vector);
-        void setUniform(const std::string & uniform_name, const glm::uvec2 & vector);
-        void setUniform(const std::string & uniform_name, const glm::uvec3 & vector);
-        void setUniform(const std::string & uniform_name, const glm::mat3 & matrix);
-        void setUniform(const std::string & uniform_name, const glm::mat4 & matrix);
-        void setUniform(const std::string & uniform_name, float* values, unsigned count);
-        void setUniform(const std::string & uniform_name, glm::vec2* values, unsigned count);
-        void setUniform(const std::string & uniform_name, glm::mat4 * matrices, unsigned count);
-        void setUniform(const std::string & uniform_name, glm::mat2x4 * matrices, unsigned count);
+		void setUniform(const std::string_view & name, float value);
+		void setUniform(const std::string_view & name, int value);
+		void setUniform(const std::string_view & name, GLuint value);
+		void setUniform(const std::string_view & name, GLsizei count, const float * values);
+		void setUniform(const std::string_view & name, GLsizei count, const int * values);
+		void setUniform(const std::string_view & name, GLsizei count, const glm::vec3 * vectors);
+		void setUniform(const std::string_view & name, const glm::vec2 & vector);
+		void setUniform(const std::string_view & name, const glm::vec3 & vector);
+		void setUniform(const std::string_view & name, const glm::vec4 & vector);
+		void setUniform(const std::string_view &name, const glm::uvec2 & vector);
+		void setUniform(const std::string_view & name, const glm::uvec3 & vector);
+		void setUniform(const std::string_view & name, const glm::mat3 & matrix);
+		void setUniform(const std::string_view & name, const glm::mat4 & matrix);
+		void setUniform(const std::string_view & name, const float* values, GLsizei count);
+		void setUniform(const std::string_view & name, const glm::vec2* values, GLsizei count);
+		void setUniform(const std::string_view & name, const glm::mat4 * matrices, GLsizei count);
+		void setUniform(const std::string_view & name, const glm::mat2x4 * matrices, GLsizei count);
 
         void setSubroutine(ShaderType shader_type, const std::string& subroutine_name);
 
@@ -77,12 +77,12 @@ namespace RGL
         void addAllSubroutines();
 
         void addShader(const std::filesystem::path & filepath, GLuint type) const;
-        bool getUniformLocation(const std::string & uniform_name);
+		GLint getUniformLocation(const std::string_view &name);
 
-        std::map<std::string, GLuint> m_subroutine_indices;
-        std::map<GLenum, GLuint> m_active_subroutine_uniform_locations;
+		string_map<GLuint> m_subroutine_indices;
+		dense_map<GLenum, GLuint> m_active_subroutine_uniform_locations;
 
-        std::map<std::string, GLint> m_uniforms_locations;
+		string_map<GLint> m_uniforms_locations;
 
         GLuint m_program_id;
         bool m_is_linked;

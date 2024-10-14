@@ -10,7 +10,7 @@ namespace RGL
         : m_program_id(0),
           m_is_linked(false)
     {
-        m_program_id = glCreateProgram();
+		m_program_id = glCreateProgram(); // TODO: defer until shader added? (default ctor shouldn't allocate stuff)
 
         if (m_program_id == 0)
         {
@@ -171,7 +171,7 @@ namespace RGL
 
     void Shader::setTransformFeedbackVaryings(const std::vector<const char*>& output_names, GLenum buffer_mode) const
     {
-        glTransformFeedbackVaryings(m_program_id, output_names.size(), output_names.data(), buffer_mode);
+		glTransformFeedbackVaryings(m_program_id, GLsizei(output_names.size()), output_names.data(), buffer_mode);
     }
 
     void Shader::bind() const
@@ -182,277 +182,118 @@ namespace RGL
         }
     }
 
-    bool Shader::getUniformLocation(const std::string & uniform_name)
+	GLint Shader::getUniformLocation(const std::string_view & name)
     {
-        GLint uniform_location = glGetUniformLocation(m_program_id, uniform_name.c_str());
+		GLint location = -1;
 
-        if (uniform_location != -1)
-        {
-            m_uniforms_locations[uniform_name] = uniform_location;
-            return true;
-        }
+		const auto found = m_uniforms_locations.find(name);
+		if(found == m_uniforms_locations.end())
+		{
+			location = glGetUniformLocation(m_program_id, name.data());
+			if(location != -1)
+				m_uniforms_locations[name] = location;
+		}
+		else
+			location = found->second;
 
-        return false;
+		return location;
     }
 
-    void Shader::setUniform(const std::string & uniformName, float value)
+	void Shader::setUniform(const std::string_view & name, float value)
     {
-        if (m_uniforms_locations.count(uniformName))
-        {
-            glProgramUniform1f(m_program_id, m_uniforms_locations[uniformName], value);
-        }
-        else
-        {
-            if (getUniformLocation(uniformName))
-            {
-                glProgramUniform1f(m_program_id, m_uniforms_locations[uniformName], value);
-            }
-        }
+		glProgramUniform1f(m_program_id, getUniformLocation(name), value);
     }
 
-    void Shader::setUniform(const std::string & uniformName, int value)
+	void Shader::setUniform(const std::string_view & name, int value)
     {
-        if (m_uniforms_locations.count(uniformName))
-        {
-            glProgramUniform1i(m_program_id, m_uniforms_locations[uniformName], value);
-        }
-        else
-        {
-            if (getUniformLocation(uniformName))
-            {
-                glProgramUniform1i(m_program_id, m_uniforms_locations[uniformName], value);
-            }
-        }
+		glProgramUniform1i(m_program_id, getUniformLocation(name), value);
     }
 
-    void Shader::setUniform(const std::string & uniformName, GLuint value)
+	void Shader::setUniform(const std::string_view & name, GLuint value)
     {
-        if (m_uniforms_locations.count(uniformName))
-        {
-            glProgramUniform1ui(m_program_id, m_uniforms_locations.at(uniformName), value);
-        }
-        else
-        {
-            if (getUniformLocation(uniformName))
-            {
-                glProgramUniform1ui(m_program_id, m_uniforms_locations[uniformName], value);
-            }
-        }
+		glProgramUniform1ui(m_program_id, getUniformLocation(name), value);
     }
 
-    void Shader::setUniform(const std::string & uniformName, GLsizei count, float * value)
+	void Shader::setUniform(const std::string_view & name, GLsizei count, const float *values)
     {
-        if (m_uniforms_locations.count(uniformName))
-        {
-            glProgramUniform1fv(m_program_id, m_uniforms_locations[uniformName], count, value);
-        }
-        else
-        {
-            if (getUniformLocation(uniformName))
-            {
-                glProgramUniform1fv(m_program_id, m_uniforms_locations[uniformName], count, value);
-            }
-        }
+		assert(values);
+		glProgramUniform1fv(m_program_id, getUniformLocation(name), count, values);
     }
 
-    void Shader::setUniform(const std::string & uniformName, GLsizei count, int * value)
+	void Shader::setUniform(const std::string_view & name, GLsizei count, const int *values)
     {
-        if (m_uniforms_locations.count(uniformName))
-        {
-            glProgramUniform1iv(m_program_id, m_uniforms_locations[uniformName], count, value);
-        }
-        else
-        {
-            if (getUniformLocation(uniformName))
-            {
-                glProgramUniform1iv(m_program_id, m_uniforms_locations[uniformName], count, value);
-            }
-        }
+		assert(values);
+		glProgramUniform1iv(m_program_id, getUniformLocation(name), count, values);
     }
 
-    void Shader::setUniform(const std::string & uniformName, GLsizei count, glm::vec3 * vectors)
+	void Shader::setUniform(const std::string_view & name, GLsizei count, const glm::vec3 *vectors)
     {
-        if (m_uniforms_locations.count(uniformName))
-        {
-            glProgramUniform3fv(m_program_id, m_uniforms_locations[uniformName], count, glm::value_ptr(vectors[0]));
-        }
-        else
-        {
-            if (getUniformLocation(uniformName))
-            {
-                glProgramUniform3fv(m_program_id, m_uniforms_locations[uniformName], count, glm::value_ptr(vectors[0]));
-            }
-        }
+		assert(vectors);
+		glProgramUniform3fv(m_program_id, getUniformLocation(name), count, glm::value_ptr(vectors[0]));
     }
 
-    void Shader::setUniform(const std::string & uniformName, const glm::vec2 & vector)
+	void Shader::setUniform(const std::string_view & name, const glm::vec2 & vector)
     {
-        if (m_uniforms_locations.count(uniformName))
-        {
-            glProgramUniform2fv(m_program_id, m_uniforms_locations[uniformName], 1, glm::value_ptr(vector));
-        }
-        else
-        {
-            if (getUniformLocation(uniformName))
-            {
-                glProgramUniform2fv(m_program_id, m_uniforms_locations[uniformName], 1, glm::value_ptr(vector));
-            }
-        }
+		glProgramUniform2fv(m_program_id, getUniformLocation(name), 1, glm::value_ptr(vector));
     }
 
-    void Shader::setUniform(const std::string & uniformName, const glm::vec3 & vector)
+	void Shader::setUniform(const std::string_view & name, const glm::vec3 & vector)
     {
-        if (m_uniforms_locations.count(uniformName))
-        {
-            glProgramUniform3fv(m_program_id, m_uniforms_locations[uniformName], 1, glm::value_ptr(vector));
-        }
-        else
-        {
-            if (getUniformLocation(uniformName))
-            {
-                glProgramUniform3fv(m_program_id, m_uniforms_locations[uniformName], 1, glm::value_ptr(vector));
-            }
-        }
+		glProgramUniform3fv(m_program_id, getUniformLocation(name), 1, glm::value_ptr(vector));
     }
 
-    void Shader::setUniform(const std::string & uniformName, const glm::vec4 & vector)
+	void Shader::setUniform(const std::string_view & name, const glm::vec4 & vector)
     {
-        if (m_uniforms_locations.count(uniformName))
-        {
-            glProgramUniform4fv(m_program_id, m_uniforms_locations[uniformName], 1, glm::value_ptr(vector));
-        }
-        else
-        {
-            if (getUniformLocation(uniformName))
-            {
-                glProgramUniform4fv(m_program_id, m_uniforms_locations[uniformName], 1, glm::value_ptr(vector));
-            }
-        }
+		glProgramUniform4fv(m_program_id, getUniformLocation(name), 1, glm::value_ptr(vector));
     }
 
-    void Shader::setUniform(const std::string& uniformName, const glm::uvec2& vector)
+	void Shader::setUniform(const std::string_view & name, const glm::uvec2& vector)
     {
-        if (m_uniforms_locations.count(uniformName))
-        {
-            glProgramUniform2uiv(m_program_id, m_uniforms_locations[uniformName], 1, glm::value_ptr(vector));
-        }
-        else
-        {
-            if (getUniformLocation(uniformName))
-            {
-                glProgramUniform2uiv(m_program_id, m_uniforms_locations[uniformName], 1, glm::value_ptr(vector));
-            }
-        }
+		glProgramUniform2uiv(m_program_id, getUniformLocation(name), 1, glm::value_ptr(vector));
     }
 
-    void Shader::setUniform(const std::string& uniformName, const glm::uvec3& vector)
+	void Shader::setUniform(const std::string_view & name, const glm::uvec3& vector)
     {
-        if (m_uniforms_locations.count(uniformName))
-        {
-            glProgramUniform3uiv(m_program_id, m_uniforms_locations[uniformName], 1, glm::value_ptr(vector));
-        }
-        else
-        {
-            if (getUniformLocation(uniformName))
-            {
-                glProgramUniform3uiv(m_program_id, m_uniforms_locations[uniformName], 1, glm::value_ptr(vector));
-            }
-        }
+		glProgramUniform3uiv(m_program_id, getUniformLocation(name), 1, glm::value_ptr(vector));
     }
 
-    void Shader::setUniform(const std::string & uniformName, const glm::mat3 & matrix)
+	void Shader::setUniform(const std::string_view & name, const glm::mat3 & matrix)
     {
-        if (m_uniforms_locations.count(uniformName))
-        {
-            glProgramUniformMatrix3fv(m_program_id, m_uniforms_locations[uniformName], 1, GL_FALSE, glm::value_ptr(matrix));
-        }
-        else
-        {
-            if (getUniformLocation(uniformName))
-            {
-                glProgramUniformMatrix3fv(m_program_id, m_uniforms_locations[uniformName], 1, GL_FALSE, glm::value_ptr(matrix));
-            }
-        }
+		glProgramUniformMatrix3fv(m_program_id, getUniformLocation(name), 1, GL_FALSE, glm::value_ptr(matrix));
     }
 
-    void Shader::setUniform(const std::string & uniformName, const glm::mat4 & matrix)
+	void Shader::setUniform(const std::string_view & name, const glm::mat4 & matrix)
     {
-        if (m_uniforms_locations.count(uniformName))
-        {
-            glProgramUniformMatrix4fv(m_program_id, m_uniforms_locations[uniformName], 1, GL_FALSE, glm::value_ptr(matrix));
-        }
-        else
-        {
-            if (getUniformLocation(uniformName))
-            {
-                glProgramUniformMatrix4fv(m_program_id, m_uniforms_locations[uniformName], 1, GL_FALSE, glm::value_ptr(matrix));
-            }
-        }
+		glProgramUniformMatrix4fv(m_program_id, getUniformLocation(name), 1, GL_FALSE, glm::value_ptr(matrix));
     }
 
-    void Shader::setUniform(const std::string& uniformName, float* values, unsigned count)
+	void Shader::setUniform(const std::string_view & name, const float *values, GLsizei count)
     {
-        if (m_uniforms_locations.count(uniformName))
-        {
-            glProgramUniform1fv(m_program_id, m_uniforms_locations[uniformName], count, &values[0]);
-        }
-        else
-        {
-            if (getUniformLocation(uniformName))
-            {
-                glProgramUniform1fv(m_program_id, m_uniforms_locations[uniformName], count, &values[0]);
-            }
-        }
+		glProgramUniform1fv(m_program_id, getUniformLocation(name), count, &values[0]);
     }
 
-    void Shader::setUniform(const std::string& uniformName, glm::vec2* values, unsigned count)
+	void Shader::setUniform(const std::string_view& name, const glm::vec2 *values, GLsizei count)
     {
-        if (m_uniforms_locations.count(uniformName))
-        {
-            glProgramUniform2fv(m_program_id, m_uniforms_locations[uniformName], count, &values[0][0]);
-        }
-        else
-        {
-            if (getUniformLocation(uniformName))
-            {
-                glProgramUniform2fv(m_program_id, m_uniforms_locations[uniformName], count, &values[0][0]);
-            }
-        }
+		glProgramUniform2fv(m_program_id, getUniformLocation(name), count, &values[0][0]);
     }
 
-    void Shader::setUniform(const std::string & uniformName, glm::mat4 * matrices, unsigned count)
+	void Shader::setUniform(const std::string_view & name, const glm::mat4 *matrices, GLsizei count)
     {
-        if (m_uniforms_locations.count(uniformName))
-        {
-            glProgramUniformMatrix4fv(m_program_id, m_uniforms_locations[uniformName], count, GL_FALSE, &matrices[0][0][0]);
-        }
-        else
-        {
-            if (getUniformLocation(uniformName))
-            {
-                glProgramUniformMatrix4fv(m_program_id, m_uniforms_locations[uniformName], count, GL_FALSE, &matrices[0][0][0]);
-            }
-        }
+		glProgramUniformMatrix4fv(m_program_id, getUniformLocation(name), count, GL_FALSE, &matrices[0][0][0]);
     }
 
-    void Shader::setUniform(const std::string& uniformName, glm::mat2x4* matrices, unsigned count)
+	void Shader::setUniform(const std::string_view &name, const glm::mat2x4 *matrices, GLsizei count)
     {
-        if (m_uniforms_locations.count(uniformName))
-        {
-            glProgramUniformMatrix2x4fv(m_program_id, m_uniforms_locations[uniformName], count, GL_FALSE, &matrices[0][0][0]);
-        }
-        else
-        {
-            if (getUniformLocation(uniformName))
-            {
-                glProgramUniformMatrix2x4fv(m_program_id, m_uniforms_locations[uniformName], count, GL_FALSE, &matrices[0][0][0]);
-            }
-        }
+		glProgramUniformMatrix2x4fv(m_program_id, getUniformLocation(name), count, GL_FALSE, &matrices[0][0][0]);
     }
 
     void Shader::setSubroutine(ShaderType shader_type, const std::string & subroutine_name)
     {
-        glUniformSubroutinesuiv(GLenum(shader_type), m_active_subroutine_uniform_locations[GLenum(shader_type)], &m_subroutine_indices[subroutine_name]);
+		glUniformSubroutinesuiv(
+			GLenum(shader_type),
+			GLsizei(m_active_subroutine_uniform_locations[GLenum(shader_type)]),
+			&m_subroutine_indices[subroutine_name]
+		);
     }
 
     void Shader::addAllSubroutines()
@@ -462,32 +303,32 @@ namespace RGL
 
         GLint interfaces_count = std::size(interfaces);
 
-        for(GLint i = 0; i < interfaces_count; ++i)
+		for(GLint if_idx = 0; if_idx < interfaces_count; ++if_idx)
         {
             /* Get all active subroutines */
-            GLenum program_interface = interfaces[i];
+			GLenum program_interface = interfaces[if_idx];
 
-            GLint num_subroutines = 0;
-            glGetProgramInterfaceiv(m_program_id, program_interface, GL_ACTIVE_RESOURCES, &num_subroutines);
+			GLuint num_subroutines = 0;
+			glGetProgramInterfaceiv(m_program_id, program_interface, GL_ACTIVE_RESOURCES, (GLint *)&num_subroutines);
 
             const GLenum properties[] = { GL_NAME_LENGTH };
             const GLint properties_size = sizeof(properties) / sizeof(properties[0]);
 
             GLint count_subroutine_locations = 0;
-            glGetProgramStageiv(m_program_id, shader_stages[i], GL_ACTIVE_SUBROUTINE_UNIFORM_LOCATIONS, &count_subroutine_locations);
-            m_active_subroutine_uniform_locations[shader_stages[i]] = count_subroutine_locations;
+			glGetProgramStageiv(m_program_id, shader_stages[if_idx], GL_ACTIVE_SUBROUTINE_UNIFORM_LOCATIONS, &count_subroutine_locations);
+			m_active_subroutine_uniform_locations[shader_stages[if_idx]] = GLuint(count_subroutine_locations);
 
-            for (GLint j = 0; j < num_subroutines; ++j)
+			for (GLuint sub_idx = 0; sub_idx < num_subroutines; ++sub_idx)
             {
                 GLint values[properties_size];
                 GLint length = 0;
-                glGetProgramResourceiv(m_program_id, program_interface, j, properties_size, properties, properties_size, &length, values);
+				glGetProgramResourceiv(m_program_id, program_interface, sub_idx, properties_size, properties, properties_size, &length, values);
 
-                std::vector<char> name_data(values[0]);
-                glGetProgramResourceName(m_program_id, program_interface, j, name_data.size(), nullptr, &name_data[0]);
+				std::vector<char> name_data(static_cast<unsigned int>(values[0]));
+				glGetProgramResourceName(m_program_id, program_interface, sub_idx, name_data.size(), nullptr, &name_data[0]);
                 std::string subroutine_name(name_data.begin(), name_data.end() - 1);
 
-                GLuint subroutine_index = glGetSubroutineIndex(m_program_id, shader_stages[i], subroutine_name.c_str());
+				GLuint subroutine_index = glGetSubroutineIndex(m_program_id, shader_stages[if_idx], subroutine_name.c_str());
 
                 m_subroutine_indices[subroutine_name] = subroutine_index;
             }
