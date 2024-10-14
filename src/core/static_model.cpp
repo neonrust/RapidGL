@@ -363,12 +363,18 @@ namespace RGL
                 }
             }
 
-            if (texture_type == Material::TextureType::ALBEDO)    m_materials[material_index]->AddBool("u_has_albedo_map",    true);
-            if (texture_type == Material::TextureType::NORMAL)    m_materials[material_index]->AddBool("u_has_normal_map",    true);
-            if (texture_type == Material::TextureType::EMISSIVE)  m_materials[material_index]->AddBool("u_has_emissive_map",  true);
-            if (texture_type == Material::TextureType::AO)        m_materials[material_index]->AddBool("u_has_ao_map",        true);
-            if (texture_type == Material::TextureType::METALLIC)  m_materials[material_index]->AddBool("u_has_metallic_map",  true);
-            if (texture_type == Material::TextureType::ROUGHNESS) m_materials[material_index]->AddBool("u_has_roughness_map", true);
+			static const dense_map<Material::TextureType, std::string_view> s_texture_flag_uniform_name {
+				{ Material::TextureType::ALBEDO,    "u_has_albedo_map"sv },
+				{ Material::TextureType::NORMAL,    "u_has_normal_map"sv },
+				{ Material::TextureType::EMISSIVE,  "u_has_emissive_map"sv },
+				{ Material::TextureType::AO,        "u_has_ao_map"sv },
+				{ Material::TextureType::METALLIC,  "u_has_metallic_map"sv },
+				{ Material::TextureType::ROUGHNESS, "u_has_roughness_map"sv },
+			};
+
+			auto uniform_found = s_texture_flag_uniform_name.find(texture_type);
+			if(uniform_found != s_texture_flag_uniform_name.end())
+				m_materials[material_index]->setBool(uniform_found->second, true);
         }
 
         return true;
