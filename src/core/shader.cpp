@@ -1,5 +1,4 @@
 #include <glm/gtc/type_ptr.hpp>
-#include <memory>
 
 #include "filesystem.h"
 #include "shader.h"
@@ -119,13 +118,13 @@ namespace RGL
 
             if (logLen > 0)
             {
-                char * log = static_cast<char *>(malloc(logLen));
+				std::string log;
+				log.resize(size_t(logLen));
 
                 GLsizei written;
-                glGetShaderInfoLog(shaderObject, logLen, &written, log);
+				glGetShaderInfoLog(shaderObject, logLen, &written, log.data());
 
-                fprintf(stderr, "Shader log: \n%s", log);
-                free(log);
+				fprintf(stderr, "Shader log: \n%s", log.c_str());
             }
             getchar();
             return;
@@ -151,12 +150,13 @@ namespace RGL
 
             if (logLen > 0)
             {
-                char* log = (char*)malloc(logLen);
-                GLsizei written;
-                glGetProgramInfoLog(m_program_id, logLen, &written, log);
+				std::string log;
+				log.resize(size_t(logLen));
 
-                fprintf(stderr, "Program log: \n%s", log);
-                free(log);
+				GLsizei written;
+				glGetProgramInfoLog(m_program_id, logLen, &written, log.data());
+
+				fprintf(stderr, "Program log: \n%s", log.c_str());
             }
         }
         else
