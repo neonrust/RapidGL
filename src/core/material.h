@@ -1,5 +1,5 @@
 #pragma once
-#include <map>
+#include "container_types.h"
 #include "texture.h"
 
 namespace RGL
@@ -14,21 +14,21 @@ namespace RGL
         Material();
         ~Material();
 
-        void AddTexture(TextureType texture_type, const std::shared_ptr<Texture2D>& texture);
-        void AddVector3(const std::string& uniform_name, const glm::vec3& vector3);
-        void AddFloat  (const std::string& uniform_name, float value);
-        void AddBool   (const std::string& uniform_name, bool value);
+		void setTexture(TextureType texture_type, const std::shared_ptr<Texture2D>& texture);
+		void setVector3(const std::string_view& uniform_name, const glm::vec3& vector3);
+		void setFloat  (const std::string_view& uniform_name, float value);
+		void setBool   (const std::string_view& uniform_name, bool value);
 
-        std::shared_ptr<Texture2D> GetTexture(TextureType texture_type);
-        glm::vec3                  GetVector3(const std::string& uniform_name);
-        float                      GetFloat  (const std::string& uniform_name);
-        bool                       GetBool   (const std::string& uniform_name);
+		std::shared_ptr<Texture2D> getTexture(TextureType texture_type);
+		glm::vec3                  getVector3(const std::string_view& uniform_name);
+		float                      getFloat  (const std::string_view& uniform_name);
+		bool                       getBool   (const std::string_view& uniform_name);
 
     private:
-        std::map<TextureType, std::shared_ptr<Texture2D>> m_texture_map;
-        std::map<std::string, glm::vec3>                  m_vec3_map;
-        std::map<std::string, float>                      m_float_map;
-        std::map<std::string, bool>                       m_bool_map;
+		dense_map<TextureType, std::shared_ptr<Texture2D>> m_texture_map;
+		string_map<glm::vec3>                  m_vec3_map;
+		string_map<float>                      m_float_map;
+		string_map<bool>                       m_bool_map;
 
         friend class StaticModel;
     };
