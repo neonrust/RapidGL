@@ -22,24 +22,30 @@ add_library(${CORE_LIB_NAME} STATIC ${HEADER_FILES_CORE} ${SOURCE_FILES_CORE})
 target_compile_definitions(${CORE_LIB_NAME} PRIVATE GLFW_INCLUDE_NONE)
 target_compile_definitions(${CORE_LIB_NAME} PRIVATE LIBRARY_SUFFIX="")
 
-target_include_directories(${CORE_LIB_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
-												   ${CMAKE_SOURCE_DIR}/thirdparty
-												   ${CMAKE_SOURCE_DIR}/configuration
-												   ${glad_SOURCE_DIR}
-												   ${stb_image_SOURCE_DIR}
-												   ${imgui_SOURCE_DIR}
-												   ${unordered_dense_SOURCE_DIR}/include)
+target_include_directories(${CORE_LIB_NAME}
+	PUBLIC
+	${CMAKE_CURRENT_SOURCE_DIR}
+	${CMAKE_SOURCE_DIR}/thirdparty
+	${CMAKE_SOURCE_DIR}/configuration
+	${glad_SOURCE_DIR}
+	${stb_image_SOURCE_DIR}
+	${imgui_SOURCE_DIR}
+	${unordered_dense_SOURCE_DIR}/include
+)
 
-target_link_libraries(${CORE_LIB_NAME} ${OPENGL_LIBRARIES}
-                                       glad
-                                       stb_image
-                                       assimp
-                                       glfw
-                                       imgui
-                                       spdlog
-                                       glm::glm
-                                       tinyddsloader)
-
+target_link_libraries(${CORE_LIB_NAME}
+	${OPENGL_LIBRARIES}
+	glad
+	stb_image
+	jxl
+	jxl_threads
+	assimp
+	glfw
+	imgui
+	spdlog
+	glm::glm
+	tinyddsloader
+)
 if(MinGW)
     target_link_libraries(${CORE_LIB_NAME} bz2)
 endif()

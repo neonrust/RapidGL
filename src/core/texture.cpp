@@ -247,7 +247,7 @@ namespace RGL
         SetWraping  (TextureWrapingCoordinate::S, TextureWrapingParam::CLAMP_TO_EDGE);
         SetWraping  (TextureWrapingCoordinate::T, TextureWrapingParam::CLAMP_TO_EDGE);
 
-        Util::ReleaseTextureData(data);
+		Util::ReleaseTextureData(filepath, data);
 
         return true;
     }
@@ -295,7 +295,7 @@ namespace RGL
         SetWraping  (TextureWrapingCoordinate::S, TextureWrapingParam::CLAMP_TO_EDGE);
         SetWraping  (TextureWrapingCoordinate::T, TextureWrapingParam::CLAMP_TO_EDGE);
 
-        Util::ReleaseTextureData(data);
+		Util::ReleaseTextureData({}, data);
 
         return true;
     }
@@ -332,7 +332,7 @@ namespace RGL
         SetWraping  (TextureWrapingCoordinate::S, TextureWrapingParam::CLAMP_TO_EDGE);
         SetWraping  (TextureWrapingCoordinate::T, TextureWrapingParam::CLAMP_TO_EDGE);
 
-        Util::ReleaseTextureData(data);
+		Util::ReleaseTextureData(data);
 
         return true;
     }
@@ -459,7 +459,7 @@ namespace RGL
         for (int i = 0; i < NUM_FACES; ++i)
         {
             /* Release images' data */
-            Util::ReleaseTextureData(images_data[i]);
+			Util::ReleaseTextureData(filepaths[i], images_data[i]);
         }
 
         return true;

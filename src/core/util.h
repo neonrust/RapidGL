@@ -59,7 +59,7 @@ namespace RGL
         static unsigned char* LoadTextureData    (unsigned char*               memory_data, uint32_t data_size, ImageData& image_data, int desired_number_of_channels = 0);
         static float        * LoadTextureDataHdr (const std::filesystem::path& filepath,                        ImageData& image_data, int desired_number_of_channels = 0);
         
-        static void ReleaseTextureData (unsigned char* data);
+        static void ReleaseTextureData (const std::filesystem::path &filepath, unsigned char* data);
         static void ReleaseTextureData (float*         data);
 
         static double RandomDouble()
