@@ -1,6 +1,7 @@
 #pragma once
 #include "common.h"
 #include <string>
+#include <cstdint>
 
 namespace RGL
 {
