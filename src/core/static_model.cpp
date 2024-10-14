@@ -340,6 +340,8 @@ namespace RGL
                         p = p.substr(2, p.size() - 2);
                     }
 
+					const auto T0 = steady_clock::now();
+
                     std::string full_path = directory + "/" + p;
                     if (!texture->Load(full_path, is_srgb))
                     {
@@ -348,7 +350,8 @@ namespace RGL
                     }
                     else
                     {
-                        printf("Loaded texture '%s'\n", full_path.c_str());
+						const auto T1 = steady_clock::now();
+						printf("Loaded texture '%s'  (%ld ms)\n", full_path.c_str(), duration_cast<milliseconds>(T1 - T0).count());
 						m_materials[material_index]->setTexture(texture_type, texture);
 
                         if (texture_map_mode[0] == aiTextureMapMode_Wrap)
