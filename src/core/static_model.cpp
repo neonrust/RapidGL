@@ -6,6 +6,13 @@
 #include <assimp/postprocess.h>
 
 #include "util.h"
+#include "container_types.h"
+
+#include <string_view>
+using namespace std::literals;
+
+#include <chrono>
+using namespace std::chrono;
 
 namespace RGL
 {
@@ -13,11 +20,11 @@ namespace RGL
     {
         glBindVertexArray(m_vao_name);
 
-        for (unsigned int i = 0; i < m_mesh_parts.size(); i++)
+		for (unsigned int idx = 0; idx < m_mesh_parts.size(); idx++)
         {
             if (!m_materials.empty())
             {
-                const unsigned int material_index = m_mesh_parts[i].m_material_index;
+				const unsigned int material_index = m_mesh_parts[idx].m_material_index;
 
                 assert(material_index < m_materials.size());
 
@@ -30,19 +37,19 @@ namespace RGL
             if (num_instances == 0)
             {
                 glDrawElementsBaseVertex(GLenum(m_draw_mode),
-                                         m_mesh_parts[i].m_indices_count,
+										 int(m_mesh_parts[idx].m_indices_count),
                                          GL_UNSIGNED_INT,
-                                         (void*)(sizeof(unsigned int) * m_mesh_parts[i].m_base_index),
-                                         m_mesh_parts[i].m_base_vertex);
+										 (void*)(sizeof(unsigned int) * m_mesh_parts[idx].m_base_index),
+										 int(m_mesh_parts[idx].m_base_vertex));
             }
             else
             {
                 glDrawElementsInstancedBaseVertex(GLenum(m_draw_mode),
-                                                  m_mesh_parts[i].m_indices_count,
+												  int(m_mesh_parts[idx].m_indices_count),
                                                   GL_UNSIGNED_INT,
-                                                  (void*)(sizeof(unsigned int) * m_mesh_parts[i].m_base_index),
-                                                  num_instances,
-                                                  m_mesh_parts[i].m_base_vertex);
+												  (void*)(sizeof(unsigned int) * m_mesh_parts[idx].m_base_index),
+												  int(num_instances),
+												  int(m_mesh_parts[idx].m_base_vertex));
             }
         }
 
@@ -53,11 +60,11 @@ namespace RGL
     {
         glBindVertexArray(m_vao_name);
     
-        for (unsigned int i = 0 ; i < m_mesh_parts.size() ; i++) 
+		for (unsigned int idx = 0 ; idx < m_mesh_parts.size() ; idx++)
         {
             if (!m_materials.empty())
             {
-                const unsigned int material_index = m_mesh_parts[i].m_material_index;
+				const unsigned int material_index = m_mesh_parts[idx].m_material_index;
 
                 assert(material_index < m_materials.size());
 
@@ -85,20 +92,20 @@ namespace RGL
 
             if(num_instances == 0 )
             {
-                glDrawElementsBaseVertex(GLenum(m_draw_mode), 
-                                         m_mesh_parts[i].m_indices_count,
+				glDrawElementsBaseVertex(GLenum(m_draw_mode),
+										 int(m_mesh_parts[idx].m_indices_count),
                                          GL_UNSIGNED_INT,
-                                         (void*)(sizeof(unsigned int) * m_mesh_parts[i].m_base_index),
-                                         m_mesh_parts[i].m_base_vertex);
+										 (void*)(sizeof(unsigned int) * m_mesh_parts[idx].m_base_index),
+										 int(m_mesh_parts[idx].m_base_vertex));
             }
             else
             {
                 glDrawElementsInstancedBaseVertex(GLenum(m_draw_mode),
-                                                  m_mesh_parts[i].m_indices_count,
+												  int(m_mesh_parts[idx].m_indices_count),
                                                   GL_UNSIGNED_INT,
-                                                  (void*)(sizeof(unsigned int) * m_mesh_parts[i].m_base_index),
+												  (void*)(sizeof(unsigned int) * m_mesh_parts[idx].m_base_index),
                                                   num_instances,
-                                                  m_mesh_parts[i].m_base_vertex);
+												  int(m_mesh_parts[idx].m_base_vertex));
             }
         }
 
@@ -126,7 +133,7 @@ namespace RGL
 
         if (!scene || scene->mFlags == AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
         {
-            fprintf(stderr, "Assimp error while loading mesh %s\n Error: %s\n", filepath.generic_string(), importer.GetErrorString());
+			fprintf(stderr, "Assimp error while loading mesh %s\n Error: %s\n", filepath.generic_string().c_str(), importer.GetErrorString());
             return false;
         }
 
@@ -138,9 +145,9 @@ namespace RGL
         m_mesh_parts.resize(scene->mNumMeshes);
         m_materials.resize(scene->mNumMaterials);
 
-        for (uint32_t i = 0; i < m_materials.size(); ++i)
+		for (uint32_t idx = 0; idx < m_materials.size(); ++idx)
         {
-            m_materials[i] = std::make_shared<Material>();
+			m_materials[idx] = std::make_shared<Material>();
         }
 
         VertexData vertex_data;
@@ -149,18 +156,18 @@ namespace RGL
         uint32_t indices_count  = 0;
 
         /* Count the number of vertices and indices. */
-        for (uint32_t i = 0; i < m_mesh_parts.size(); ++i)
+		for (uint32_t idx = 0; idx < m_mesh_parts.size(); ++idx)
         {
-            m_mesh_parts[i].m_material_index = scene->mNumMaterials > 0 ? scene->mMeshes[i]->mMaterialIndex : INVALID_MATERIAL;
-            m_mesh_parts[i].m_indices_count  = scene->mMeshes[i]->mNumFaces * 3;
-            m_mesh_parts[i].m_base_vertex    = vertices_count;
-            m_mesh_parts[i].m_base_index     = indices_count;
+			m_mesh_parts[idx].m_material_index = scene->mNumMaterials > 0 ? scene->mMeshes[idx]->mMaterialIndex : INVALID_MATERIAL;
+			m_mesh_parts[idx].m_indices_count  = scene->mMeshes[idx]->mNumFaces * 3;
+			m_mesh_parts[idx].m_base_vertex    = vertices_count;
+			m_mesh_parts[idx].m_base_index     = indices_count;
 
-            vertices_count += scene->mMeshes[i]->mNumVertices;
-            indices_count  += m_mesh_parts[i].m_indices_count;
+			vertices_count += scene->mMeshes[idx]->mNumVertices;
+			indices_count  += m_mesh_parts[idx].m_indices_count;
         }
 
-        /* Reserve space in the vectors for the vertex attributes and indices. */
+		// Reserve space for the vertex attributes and indices
         vertex_data.positions.reserve(vertices_count);
         vertex_data.texcoords.reserve(vertices_count);
         vertex_data.normals.reserve(vertices_count);
@@ -171,9 +178,9 @@ namespace RGL
         glm::vec3 min = glm::vec3(std::numeric_limits<float>::max());
         glm::vec3 max = -min;
 
-        for (uint32_t i = 0; i < m_mesh_parts.size(); ++i)
+		for (uint32_t idx = 0; idx < m_mesh_parts.size(); ++idx)
         {
-            auto mesh = scene->mMeshes[i];
+			auto mesh = scene->mMeshes[idx];
             LoadMeshPart(mesh, vertex_data);
 
             min = glm::min(min, vec3_cast(mesh->mAABB.mMin));
@@ -185,7 +192,7 @@ namespace RGL
         /* Load materials. */
         if (!LoadMaterials(scene, filepath))
         {
-            fprintf(stderr, "Assimp error while loading mesh %s\n Error: Could not load the materials.\n", filepath.generic_string());
+			fprintf(stderr, "Assimp error while loading mesh %s\n Error: Could not load the materials.\n", filepath.generic_string().c_str());
             return false;
         }
 
@@ -199,12 +206,12 @@ namespace RGL
     {
         const glm::vec3 zero_vec3(0.0f, 0.0f, 0.0f);
 
-        for (uint32_t i = 0; i < mesh->mNumVertices; ++i)
+		for (uint32_t idx = 0; idx < mesh->mNumVertices; ++idx)
         {
-            auto pos      = vec3_cast(mesh->mVertices[i]);
-            auto texcoord = mesh->HasTextureCoords(0)        ? vec3_cast(mesh->mTextureCoords[0][i]) : zero_vec3;
-            auto normal   = mesh->HasNormals()               ? vec3_cast(mesh->mNormals[i])          : zero_vec3;
-            auto tangent  = mesh->HasTangentsAndBitangents() ? vec3_cast(mesh->mTangents[i])         : zero_vec3;
+			auto pos      = vec3_cast(mesh->mVertices[idx]);
+			auto texcoord = mesh->HasTextureCoords(0)        ? vec3_cast(mesh->mTextureCoords[0][idx]) : zero_vec3;
+			auto normal   = mesh->HasNormals()               ? vec3_cast(mesh->mNormals[idx])          : zero_vec3;
+			auto tangent  = mesh->HasTangentsAndBitangents() ? vec3_cast(mesh->mTangents[idx])         : zero_vec3;
 
             vertex_data.positions.push_back(pos);
             vertex_data.texcoords.push_back(glm::vec2(texcoord.x, texcoord.y));
@@ -212,14 +219,14 @@ namespace RGL
             vertex_data.tangents.push_back(tangent);
         }
 
-        for (uint32_t i = 0; i < mesh->mNumFaces; ++i)
+		for (uint32_t idx = 0; idx < mesh->mNumFaces; ++idx)
         {
-            const aiFace& face = mesh->mFaces[i];
+			const aiFace& face = mesh->mFaces[idx];
             assert(face.mNumIndices == 3);
 
-            for (char i = 0; i < face.mNumIndices; ++i)
+			for (auto idx = 0u; idx < face.mNumIndices; ++idx)
             {
-                vertex_data.indices.push_back(face.mIndices[i]);
+				vertex_data.indices.push_back(face.mIndices[idx]);
             }
         }
     }
@@ -245,43 +252,43 @@ namespace RGL
 
         bool ret = true;
 
-        for (uint32_t i = 0; i < scene->mNumMaterials; ++i)
+		for (uint32_t idx = 0; idx < scene->mNumMaterials; ++idx)
         {
-            auto pMaterial = scene->mMaterials[i];
+			auto *material = scene->mMaterials[idx];
 
-            ret |= LoadMaterialTextures(scene, pMaterial, i, aiTextureType_BASE_COLOR,        Material::TextureType::ALBEDO,    dir);
-            ret |= LoadMaterialTextures(scene, pMaterial, i, aiTextureType_NORMALS,           Material::TextureType::NORMAL,    dir);
-            ret |= LoadMaterialTextures(scene, pMaterial, i, aiTextureType_EMISSIVE,          Material::TextureType::EMISSIVE,  dir);
-            ret |= LoadMaterialTextures(scene, pMaterial, i, aiTextureType_AMBIENT_OCCLUSION, Material::TextureType::AO,        dir);
-            ret |= LoadMaterialTextures(scene, pMaterial, i, aiTextureType_DIFFUSE_ROUGHNESS, Material::TextureType::ROUGHNESS, dir);
-            ret |= LoadMaterialTextures(scene, pMaterial, i, aiTextureType_METALNESS,         Material::TextureType::METALLIC,  dir);
+			ret |= LoadMaterialTextures(scene, material, idx, aiTextureType_BASE_COLOR,        Material::TextureType::ALBEDO,    dir);
+			ret |= LoadMaterialTextures(scene, material, idx, aiTextureType_NORMALS,           Material::TextureType::NORMAL,    dir);
+			ret |= LoadMaterialTextures(scene, material, idx, aiTextureType_EMISSIVE,          Material::TextureType::EMISSIVE,  dir);
+			ret |= LoadMaterialTextures(scene, material, idx, aiTextureType_AMBIENT_OCCLUSION, Material::TextureType::AO,        dir);
+			ret |= LoadMaterialTextures(scene, material, idx, aiTextureType_DIFFUSE_ROUGHNESS, Material::TextureType::ROUGHNESS, dir);
+			ret |= LoadMaterialTextures(scene, material, idx, aiTextureType_METALNESS,         Material::TextureType::METALLIC,  dir);
 
             /* Load material parameters */
             aiColor3D color_rgb;
             aiColor4D color_rgba;
             float value;
 
-            if (AI_SUCCESS == pMaterial->Get(AI_MATKEY_BASE_COLOR, color_rgba))
-            {
-                m_materials[i]->AddVector3("u_albedo", glm::vec3(color_rgba.r, color_rgba.g, color_rgba.b));
-            }
-            if (AI_SUCCESS == pMaterial->Get(AI_MATKEY_COLOR_EMISSIVE, color_rgb))
-            {
-                m_materials[i]->AddVector3("u_emission", glm::vec3(color_rgb.r, color_rgb.g, color_rgb.b));
-            }
-            if (AI_SUCCESS == pMaterial->Get(AI_MATKEY_COLOR_AMBIENT, color_rgb))
-            {
-                m_materials[i]->AddFloat("u_ao", (color_rgb.r + color_rgb.g + color_rgb.b) / 3.0f);
-            }
-            if (AI_SUCCESS == pMaterial->Get(AI_MATKEY_ROUGHNESS_FACTOR, value))
-            {
-                m_materials[i]->AddFloat("u_roughness", value);
-            }
-            if (AI_SUCCESS == pMaterial->Get(AI_MATKEY_METALLIC_FACTOR, value))
-            {
-                m_materials[i]->AddFloat("u_metallic", value);
-            }
-        }
+			if (AI_SUCCESS == material->Get(AI_MATKEY_BASE_COLOR, color_rgba))
+			{
+				m_materials[idx]->setVector3("u_albedo"sv, glm::vec3(color_rgba.r, color_rgba.g, color_rgba.b));
+			}
+			if (AI_SUCCESS == material->Get(AI_MATKEY_COLOR_EMISSIVE, color_rgb))
+			{
+				m_materials[idx]->setVector3("u_emission"sv, glm::vec3(color_rgb.r, color_rgb.g, color_rgb.b));
+			}
+			if (AI_SUCCESS == material->Get(AI_MATKEY_COLOR_AMBIENT, color_rgb))
+			{
+				m_materials[idx]->setFloat("u_ao"sv, (color_rgb.r + color_rgb.g + color_rgb.b) / 3.0f);
+			}
+			if (AI_SUCCESS == material->Get(AI_MATKEY_ROUGHNESS_FACTOR, value))
+			{
+				m_materials[idx]->setFloat("u_roughness"sv, value);
+			}
+			if (AI_SUCCESS == material->Get(AI_MATKEY_METALLIC_FACTOR, value))
+			{
+				m_materials[idx]->setFloat("u_metallic"sv, value);
+			}
+		}
 
         return ret;
     }
@@ -309,7 +316,7 @@ namespace RGL
                     if (texture->Load(reinterpret_cast<unsigned char*>(paiTexture->pcData), data_size, is_srgb))
                     {
                         printf("Loaded embedded texture for the model '%s'\n", path.C_Str());
-                        m_materials[material_index]->AddTexture(texture_type, texture);
+						m_materials[material_index]->setTexture(texture_type, texture);
 
                         if (texture_map_mode[0] == aiTextureMapMode_Wrap)
                         {
@@ -342,7 +349,7 @@ namespace RGL
                     else
                     {
                         printf("Loaded texture '%s'\n", full_path.c_str());
-                        m_materials[material_index]->AddTexture(texture_type, texture);
+						m_materials[material_index]->setTexture(texture_type, texture);
 
                         if (texture_map_mode[0] == aiTextureMapMode_Wrap)
                         {
@@ -368,16 +375,16 @@ namespace RGL
     {
         bool has_tangents = !vertex_data.tangents.empty();
 
-        const GLsizei positions_size_bytes = vertex_data.positions.size() * sizeof(vertex_data.positions[0]);
-        const GLsizei texcoords_size_bytes = vertex_data.texcoords.size() * sizeof(vertex_data.texcoords[0]);
-        const GLsizei normals_size_bytes   = vertex_data.normals  .size() * sizeof(vertex_data.normals  [0]);
-        const GLsizei tangents_size_bytes  = has_tangents ? vertex_data.tangents .size() * sizeof(vertex_data.tangents [0]) : 0;
+		const GLsizei positions_size_bytes = GLsizei(vertex_data.positions.size() * sizeof(vertex_data.positions[0]));
+		const GLsizei texcoords_size_bytes = GLsizei(vertex_data.texcoords.size() * sizeof(vertex_data.texcoords[0]));
+		const GLsizei normals_size_bytes   = GLsizei(vertex_data.normals  .size() * sizeof(vertex_data.normals  [0]));
+		const GLsizei tangents_size_bytes  = GLsizei(has_tangents ? vertex_data.tangents .size() * sizeof(vertex_data.tangents [0]) : 0);
         const GLsizei total_size_bytes     = positions_size_bytes + texcoords_size_bytes + normals_size_bytes + tangents_size_bytes;
 
         glCreateBuffers     (1, &m_vbo_name);
         glNamedBufferStorage(m_vbo_name, total_size_bytes, nullptr, GL_DYNAMIC_STORAGE_BIT);
 
-        uint64_t offset = 0;
+		GLintptr offset = 0;
         glNamedBufferSubData(m_vbo_name, offset, positions_size_bytes, vertex_data.positions.data());
 
         offset += positions_size_bytes;
@@ -393,7 +400,7 @@ namespace RGL
         }
 
         glCreateBuffers     (1, &m_ibo_name);
-        glNamedBufferStorage(m_ibo_name, sizeof(vertex_data.indices[0]) * vertex_data.indices.size(), vertex_data.indices.data(), GL_DYNAMIC_STORAGE_BIT);
+		glNamedBufferStorage(m_ibo_name, GLsizeiptr(sizeof(vertex_data.indices[0]) * vertex_data.indices.size()), vertex_data.indices.data(), GL_DYNAMIC_STORAGE_BIT);
 
         glCreateVertexArrays(1, &m_vao_name);
 
@@ -451,7 +458,7 @@ namespace RGL
         if (m_mesh_parts[mesh_id].m_material_index == INVALID_MATERIAL)
         {
             std::shared_ptr<Material> new_material = std::make_shared<Material>();
-            new_material->AddTexture(texture_type, texture);
+			new_material->setTexture(texture_type, texture);
 
             m_materials.push_back(new_material);
             m_mesh_parts[mesh_id].m_material_index = m_materials.size() - 1;
@@ -459,7 +466,7 @@ namespace RGL
         else
         {
             auto material_index = m_mesh_parts[mesh_id].m_material_index;
-            m_materials[material_index]->AddTexture(texture_type, texture);
+			m_materials[material_index]->setTexture(texture_type, texture);
         }
     }
 
@@ -468,11 +475,11 @@ namespace RGL
         vertex_data.tangents.resize(vertex_data.positions.size());
         std::fill(std::begin(vertex_data.tangents), std::end(vertex_data.tangents), glm::vec3(0.0f));
 
-        for(unsigned i = 0; i < vertex_data.indices.size(); i += 3)
+		for(unsigned idx = 0; idx < vertex_data.indices.size(); idx += 3)
         {
-            auto i0 = vertex_data.indices[i];
-            auto i1 = vertex_data.indices[i + 1];
-            auto i2 = vertex_data.indices[i + 2];
+			auto i0 = vertex_data.indices[idx];
+			auto i1 = vertex_data.indices[idx + 1];
+			auto i2 = vertex_data.indices[idx + 2];
 
             auto edge1 = vertex_data.positions[i1] - vertex_data.positions[i0];
             auto edge2 = vertex_data.positions[i2] - vertex_data.positions[i0];
@@ -493,9 +500,9 @@ namespace RGL
             vertex_data.tangents[i2] += tangent;
         }
 
-        for (unsigned i = 0; i < vertex_data.positions.size(); ++i)
+		for (unsigned idx = 0; idx < vertex_data.positions.size(); ++idx)
         {
-            vertex_data.tangents[i] = glm::normalize(vertex_data.tangents[i]);
+			vertex_data.tangents[idx] = glm::normalize(vertex_data.tangents[idx]);
         }
     }
 
@@ -811,7 +818,7 @@ namespace RGL
         {
             sign = -1.0f;
 
-            for (int i = 0; i < 2; ++i)
+			for (int idx = 0; idx < 2; ++idx)
             {
                 vertex_data.positions.push_back(glm::vec3(glm::cos(theta) * radius, halfHeight * sign, -glm::sin(theta) * radius));
                 vertex_data.normals  .push_back(glm::vec3(glm::cos(theta), 0.0f, -glm::sin(theta)));
@@ -876,22 +883,22 @@ namespace RGL
         float w = -width * 0.5f;
         float h = -height * 0.5f;
 
-        for (uint32_t j = 0; j <= stacks; ++j, h += heightInc)
+		for (uint32_t stack_idx = 0; stack_idx <= stacks; ++stack_idx, h += heightInc)
         {
-            for (uint32_t i = 0; i <= slices; ++i, w += widthInc)
+			for (uint32_t slice_idx = 0; slice_idx <= slices; ++slice_idx, w += widthInc)
             {
                 vertex_data.positions.push_back(glm::vec3(w, 0.0f, h));
                 vertex_data.normals  .push_back(glm::vec3(0.0f, 1.0f, 0.0f));
-                vertex_data.texcoords.push_back(glm::vec2(i, j));
+				vertex_data.texcoords.push_back(glm::vec2(slice_idx, stack_idx));
             }
             w = -width * 0.5f;
         }
 
         uint32_t idx = 0;
 
-        for (uint32_t j = 0; j < stacks; ++j)
+		for (uint32_t stack_idx = 0; stack_idx < stacks; ++stack_idx)
         {
-            for (uint32_t i = 0; i < slices; ++i)
+			for (uint32_t slice_idx = 0; slice_idx < slices; ++slice_idx)
             {
                 vertex_data.indices.push_back(idx);
                 vertex_data.indices.push_back(idx + slices + 1);
@@ -907,7 +914,8 @@ namespace RGL
             ++idx;
         }
 
-        GenPrimitive(vertex_data);    }
+		GenPrimitive(vertex_data);
+	}
 
     void StaticModel::GenPlaneGrid(float width, float height, uint32_t slices, uint32_t stacks)
     {
@@ -921,22 +929,22 @@ namespace RGL
         float w = -width * 0.5f;
         float h = -height * 0.5f;
 
-        for (uint32_t j = 0; j <= stacks; ++j, h += heightInc)
+		for (uint32_t stack_idx = 0; stack_idx <= stacks; ++stack_idx, h += heightInc)
         {
-            for (uint32_t i = 0; i <= slices; ++i, w += widthInc)
+			for (uint32_t slice_idx = 0; slice_idx <= slices; ++slice_idx, w += widthInc)
             {
                 vertex_data.positions.push_back(glm::vec3(w   , 0.0f, h   ));
                 vertex_data.normals  .push_back(glm::vec3(0.0f, 1.0f, 0.0f));
-                vertex_data.texcoords.push_back(glm::vec2(i, j));
+				vertex_data.texcoords.push_back(glm::vec2(slice_idx, stack_idx));
             }
             w = -width * 0.5f;
         }
 
         uint32_t idx = 0;
 
-        for (uint32_t j = 0; j < stacks; ++j)
+		for (uint32_t stack_idx = 0; stack_idx < stacks; ++stack_idx)
         {
-            for (uint32_t i = 0; i < slices; ++i)
+			for (uint32_t slice_idx = 0; slice_idx < slices; ++slice_idx)
             {
                 vertex_data.indices.push_back(idx);
                 vertex_data.indices.push_back(idx + 1);
@@ -966,32 +974,32 @@ namespace RGL
 
         uint32_t parallels = static_cast<uint32_t>(slices * 0.5f);
 
-        for (uint32_t i = 0; i <= parallels; ++i)
+		for (uint32_t par_idx = 0; par_idx <= parallels; ++par_idx)
         {
-            for (uint32_t j = 0; j <= slices; ++j)
+			for (uint32_t slice_idx = 0; slice_idx <= slices; ++slice_idx)
             {
-                vertex_data.positions.push_back(glm::vec3(radius * glm::sin(deltaPhi * i) * glm::sin(deltaPhi * j),
-                                                          radius * glm::cos(deltaPhi * i),
-                                                          radius * glm::sin(deltaPhi * i) * glm::cos(deltaPhi * j)));
-                vertex_data.normals  .push_back(glm::vec3(radius * glm::sin(deltaPhi * i) * glm::sin(deltaPhi * j) / radius,
-                                                          radius * glm::cos(deltaPhi * i) / radius,
-                                                          radius * glm::sin(deltaPhi * i) * glm::cos(deltaPhi * j) / radius));
-                vertex_data.texcoords.push_back(glm::vec2(       j / static_cast<float>(slices),
-                                                          1.0f - i / static_cast<float>(parallels)));
+				vertex_data.positions.push_back(glm::vec3(radius * glm::sin(deltaPhi * par_idx) * glm::sin(deltaPhi * slice_idx),
+														  radius * glm::cos(deltaPhi * par_idx),
+														  radius * glm::sin(deltaPhi * par_idx) * glm::cos(deltaPhi * slice_idx)));
+				vertex_data.normals  .push_back(glm::vec3(radius * glm::sin(deltaPhi * par_idx) * glm::sin(deltaPhi * slice_idx) / radius,
+														  radius * glm::cos(deltaPhi * par_idx) / radius,
+														  radius * glm::sin(deltaPhi * par_idx) * glm::cos(deltaPhi * slice_idx) / radius));
+				vertex_data.texcoords.push_back(glm::vec2(       slice_idx / static_cast<float>(slices),
+														  1.0f - par_idx / static_cast<float>(parallels)));
             }
         }
 
-        for (uint32_t i = 0; i < parallels; ++i)
+		for (uint32_t par_idx = 0; par_idx < parallels; ++par_idx)
         {
-            for (uint32_t j = 0; j < slices; ++j)
+			for (uint32_t slice_idx = 0; slice_idx < slices; ++slice_idx)
             {
-                vertex_data.indices.push_back(i       * (slices + 1) + j);
-                vertex_data.indices.push_back((i + 1) * (slices + 1) + j);
-                vertex_data.indices.push_back((i + 1) * (slices + 1) + (j + 1));
+				vertex_data.indices.push_back(par_idx       * (slices + 1) + slice_idx);
+				vertex_data.indices.push_back((par_idx + 1) * (slices + 1) + slice_idx);
+				vertex_data.indices.push_back((par_idx + 1) * (slices + 1) + (slice_idx + 1));
 
-                vertex_data.indices.push_back(i       * (slices + 1) + j);
-                vertex_data.indices.push_back((i + 1) * (slices + 1) + (j + 1));
-                vertex_data.indices.push_back(i       * (slices + 1) + (j + 1));
+				vertex_data.indices.push_back(par_idx       * (slices + 1) + slice_idx);
+				vertex_data.indices.push_back((par_idx + 1) * (slices + 1) + (slice_idx + 1));
+				vertex_data.indices.push_back(par_idx       * (slices + 1) + (slice_idx + 1));
             }
         }
 
@@ -1130,17 +1138,17 @@ namespace RGL
         uint32_t n            = 0;
         uint32_t vertex_count = vertex_data.positions.size();
 
-        for (uint32_t i = 0; i < slices; ++i)
+		for (uint32_t slice_idx = 0; slice_idx < slices; ++slice_idx)
         {
-            for (uint32_t j = 0; j < stacks; ++j)
+			for (uint32_t stack_idx = 0; stack_idx < stacks; ++stack_idx)
             {
-                vertex_data.indices.push_back(n + j);
-                vertex_data.indices.push_back(n + (j + 1) % stacks);
-                vertex_data.indices.push_back((n + j + stacks) % vertex_count);
+				vertex_data.indices.push_back(n + stack_idx);
+				vertex_data.indices.push_back(n + (stack_idx + 1) % stacks);
+				vertex_data.indices.push_back((n + stack_idx + stacks) % vertex_count);
 
-                vertex_data.indices.push_back((n + j + stacks) % vertex_count);
-                vertex_data.indices.push_back((n + (j + 1) % stacks) % vertex_count);
-                vertex_data.indices.push_back((n + (j + 1) % stacks + stacks) % vertex_count);
+				vertex_data.indices.push_back((n + stack_idx + stacks) % vertex_count);
+				vertex_data.indices.push_back((n + (stack_idx + 1) % stacks) % vertex_count);
+				vertex_data.indices.push_back((n + (stack_idx + 1) % stacks + stacks) % vertex_count);
             }
 
             n += stacks;
