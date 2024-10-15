@@ -184,8 +184,8 @@ void CascadedPCSS::init_app()
     m_shadow_map_pcf_sampler.Create();
     m_shadow_map_pcf_sampler.SetFiltering(RGL::TextureFiltering::MIN, RGL::TextureFilteringParam::LINEAR);
     m_shadow_map_pcf_sampler.SetFiltering(RGL::TextureFiltering::MIN, RGL::TextureFilteringParam::LINEAR);
-    m_shadow_map_pcf_sampler.SetWraping(RGL::TextureWrapingCoordinate::S, RGL::TextureWrapingParam::CLAMP_TO_BORDER);
-    m_shadow_map_pcf_sampler.SetWraping(RGL::TextureWrapingCoordinate::T, RGL::TextureWrapingParam::CLAMP_TO_BORDER);
+    m_shadow_map_pcf_sampler.SetWrapping(RGL::TextureWrappingCoordinate::S, RGL::TextureWrappingParam::CLAMP_TO_BORDER);
+    m_shadow_map_pcf_sampler.SetWrapping(RGL::TextureWrappingCoordinate::T, RGL::TextureWrappingParam::CLAMP_TO_BORDER);
     m_shadow_map_pcf_sampler.SetBorderColor(1, 0, 0, 0);
     m_shadow_map_pcf_sampler.SetCompareMode(RGL::TextureCompareMode::REF);
     m_shadow_map_pcf_sampler.SetCompareFunc(RGL::TextureCompareFunc::LEQUAL);

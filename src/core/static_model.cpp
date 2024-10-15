@@ -320,8 +320,8 @@ namespace RGL
 
                         if (texture_map_mode[0] == aiTextureMapMode_Wrap)
                         {
-                            texture->SetWraping(RGL::TextureWrapingCoordinate::S, RGL::TextureWrapingParam::REPEAT);
-                            texture->SetWraping(RGL::TextureWrapingCoordinate::T, RGL::TextureWrapingParam::REPEAT);
+                            texture->SetWrapping(RGL::TextureWrappingCoordinate::S, RGL::TextureWrappingParam::REPEAT);
+                            texture->SetWrapping(RGL::TextureWrappingCoordinate::T, RGL::TextureWrappingParam::REPEAT);
                         }
                     }
                     else
@@ -356,8 +356,8 @@ namespace RGL
 
                         if (texture_map_mode[0] == aiTextureMapMode_Wrap)
                         {
-                            texture->SetWraping(RGL::TextureWrapingCoordinate::S, RGL::TextureWrapingParam::REPEAT);
-                            texture->SetWraping(RGL::TextureWrapingCoordinate::T, RGL::TextureWrapingParam::REPEAT);
+                            texture->SetWrapping(RGL::TextureWrappingCoordinate::S, RGL::TextureWrappingParam::REPEAT);
+                            texture->SetWrapping(RGL::TextureWrappingCoordinate::T, RGL::TextureWrappingParam::REPEAT);
                         }
                     }
                 }

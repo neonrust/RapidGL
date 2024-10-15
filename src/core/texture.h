@@ -16,10 +16,10 @@ namespace RGL
                                           LINEAR_MIP_NEAREST   = GL_LINEAR_MIPMAP_NEAREST,
                                           NEAREST_MIP_LINEAR   = GL_NEAREST_MIPMAP_LINEAR,
                                           LINEAR_MIP_LINEAR    = GL_LINEAR_MIPMAP_LINEAR };
-    enum class TextureWrapingCoordinate { S                    = GL_TEXTURE_WRAP_S,
-                                          T                    = GL_TEXTURE_WRAP_T,
-                                          R                    = GL_TEXTURE_WRAP_R };
-    enum class TextureWrapingParam      { REPEAT               = GL_REPEAT,
+	enum class TextureWrappingCoordinate { S                   = GL_TEXTURE_WRAP_S,
+										   T                   = GL_TEXTURE_WRAP_T,
+										   R                   = GL_TEXTURE_WRAP_R };
+	enum class TextureWrappingParam      { REPEAT              = GL_REPEAT,
                                           MIRRORED_REPEAT      = GL_MIRRORED_REPEAT,
                                           CLAMP_TO_EDGE        = GL_CLAMP_TO_EDGE,
                                           CLAMP_TO_BORDER      = GL_CLAMP_TO_BORDER,
@@ -65,7 +65,7 @@ namespace RGL
         void SetFiltering(TextureFiltering type, TextureFilteringParam param);
         void SetMinLod(float min);
         void SetMaxLod(float max);
-        void SetWraping(TextureWrapingCoordinate coord, TextureWrapingParam param);
+        void SetWrapping(TextureWrappingCoordinate coord, TextureWrappingParam param);
         void SetBorderColor(float r, float g, float b, float a);
         void SetCompareMode(TextureCompareMode mode);
         void SetCompareFunc(TextureCompareFunc func);
@@ -115,7 +115,7 @@ namespace RGL
         virtual void SetFiltering(TextureFiltering type, TextureFilteringParam param);
         virtual void SetMinLod(float min);
         virtual void SetMaxLod(float max);
-        virtual void SetWraping(TextureWrapingCoordinate coord, TextureWrapingParam param);
+        virtual void SetWrapping(TextureWrappingCoordinate coord, TextureWrappingParam param);
         virtual void SetBorderColor(float r, float g, float b, float a);
         virtual void SetCompareMode(TextureCompareMode mode);
         virtual void SetCompareFunc(TextureCompareFunc func);

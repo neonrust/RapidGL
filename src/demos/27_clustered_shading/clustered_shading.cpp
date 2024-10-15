@@ -206,8 +206,8 @@ void ClusteredShading::init_app()
     m_ltc_mat_lut = std::make_shared<Texture2D>();
     if (m_ltc_mat_lut->LoadDds(ltc_lut_mat_path))
     {
-        m_ltc_mat_lut->SetWraping  (TextureWrapingCoordinate::S, TextureWrapingParam::CLAMP_TO_EDGE);
-        m_ltc_mat_lut->SetWraping  (TextureWrapingCoordinate::T, TextureWrapingParam::CLAMP_TO_EDGE);
+		m_ltc_mat_lut->SetWrapping  (TextureWrappingCoordinate::S, TextureWrappingParam::CLAMP_TO_EDGE);
+		m_ltc_mat_lut->SetWrapping  (TextureWrappingCoordinate::T, TextureWrappingParam::CLAMP_TO_EDGE);
         m_ltc_mat_lut->SetFiltering(TextureFiltering::MIN,       TextureFilteringParam::NEAREST);
         m_ltc_mat_lut->SetFiltering(TextureFiltering::MAG,       TextureFilteringParam::LINEAR);
     }
@@ -219,8 +219,8 @@ void ClusteredShading::init_app()
     m_ltc_amp_lut = std::make_shared<Texture2D>();
     if (m_ltc_amp_lut->LoadDds(ltc_lut_amp_path))
     {
-        m_ltc_amp_lut->SetWraping  (TextureWrapingCoordinate::S, TextureWrapingParam::CLAMP_TO_EDGE);
-        m_ltc_amp_lut->SetWraping  (TextureWrapingCoordinate::T, TextureWrapingParam::CLAMP_TO_EDGE);
+		m_ltc_amp_lut->SetWrapping  (TextureWrappingCoordinate::S, TextureWrappingParam::CLAMP_TO_EDGE);
+		m_ltc_amp_lut->SetWrapping  (TextureWrappingCoordinate::T, TextureWrappingParam::CLAMP_TO_EDGE);
         m_ltc_amp_lut->SetFiltering(TextureFiltering::MIN,       TextureFilteringParam::NEAREST);
         m_ltc_amp_lut->SetFiltering(TextureFiltering::MAG,       TextureFilteringParam::LINEAR);
     }

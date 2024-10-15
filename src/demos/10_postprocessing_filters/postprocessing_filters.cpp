@@ -65,8 +65,8 @@ void PostprocessingFilters::init_app()
 
     auto ground_texture = std::make_shared<RGL::Texture2D>();
     ground_texture->Load(RGL::FileSystem::getResourcesPath() / "textures/ground.png", true);
-    ground_texture->SetWraping(RGL::TextureWrapingCoordinate::S, RGL::TextureWrapingParam::REPEAT);
-    ground_texture->SetWraping(RGL::TextureWrapingCoordinate::T, RGL::TextureWrapingParam::REPEAT);
+    ground_texture->SetWrapping(RGL::TextureWrappingCoordinate::S, RGL::TextureWrappingParam::REPEAT);
+    ground_texture->SetWrapping(RGL::TextureWrappingCoordinate::T, RGL::TextureWrappingParam::REPEAT);
     ground_texture->SetAnisotropy(16);
 
     m_objects[0]->AddTexture(crate_texture);

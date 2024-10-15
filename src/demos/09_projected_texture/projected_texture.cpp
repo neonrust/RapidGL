@@ -97,8 +97,8 @@ void ProjectedTexture::init_app()
 
     /* Load texture to be projected and adjust its parameters */
     m_projector.m_texture.Load(RGL::FileSystem::getResourcesPath() / "textures/circles" / m_current_projector_texture_name, true);
-    m_projector.m_texture.SetWraping(RGL::TextureWrapingCoordinate::S, RGL::TextureWrapingParam::CLAMP_TO_BORDER);
-    m_projector.m_texture.SetWraping(RGL::TextureWrapingCoordinate::T, RGL::TextureWrapingParam::CLAMP_TO_BORDER);
+    m_projector.m_texture.SetWrapping(RGL::TextureWrappingCoordinate::S, RGL::TextureWrappingParam::CLAMP_TO_BORDER);
+    m_projector.m_texture.SetWrapping(RGL::TextureWrappingCoordinate::T, RGL::TextureWrappingParam::CLAMP_TO_BORDER);
 
     /* Set up the projectors' matrix */
     m_projector.m_view_matrix       = glm::lookAt(m_spot_light_properties.position, m_spot_light_properties.position + m_spot_light_properties.direction, glm::cross(m_spot_light_properties.direction, glm::vec3(1.0, 0.0, 0.0)));
@@ -304,8 +304,8 @@ void ProjectedTexture::render_gui()
                                 m_current_projector_texture_name = sf;
 
                                 m_projector.m_texture.Load(RGL::FileSystem::getResourcesPath() / "textures/circles" / m_current_projector_texture_name, true);
-                                m_projector.m_texture.SetWraping(RGL::TextureWrapingCoordinate::S, RGL::TextureWrapingParam::CLAMP_TO_BORDER);
-                                m_projector.m_texture.SetWraping(RGL::TextureWrapingCoordinate::T, RGL::TextureWrapingParam::CLAMP_TO_BORDER);
+                                m_projector.m_texture.SetWrapping(RGL::TextureWrappingCoordinate::S, RGL::TextureWrappingParam::CLAMP_TO_BORDER);
+                                m_projector.m_texture.SetWrapping(RGL::TextureWrappingCoordinate::T, RGL::TextureWrappingParam::CLAMP_TO_BORDER);
                             }
 
                             if (is_selected)

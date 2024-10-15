@@ -8,17 +8,17 @@
 #include <glm/gtc/random.hpp>
 
 EnvironmentMapping::EnvironmentMapping()
-    : m_specular_power               (120.0f),
-      m_specular_intenstiy           (0.0f),
-      m_ambient_factor               (0.18f),
-      m_gamma                        (2.2),
+	: m_ior                          (1.52f),
+	  m_dynamic_enviro_mapping_toggle(false),
+	  m_specular_power               (120.0f),
+	  m_specular_intenstiy           (0.0f),
       m_dir_light_angles             (45.0f, 50.0f),
-      m_ior                          (1.52f),
-      m_dynamic_enviro_mapping_toggle(false)
+	  m_ambient_factor               (0.18f),
+	  m_gamma                        (2.2f)
 {
     m_enviro_cubemap_size = glm::vec2(2048);
 
-    float half_size = m_enviro_cubemap_size.x * 0.5f;
+	float half_size = float(m_enviro_cubemap_size.x) * 0.5f;
     m_enviro_projection = glm::perspective(2.0f * glm::atan(half_size / (half_size - 0.5f)), 1.0f, 0.01f, 200.0f);
 }
 
@@ -33,7 +33,7 @@ EnvironmentMapping::~EnvironmentMapping()
 void EnvironmentMapping::init_app()
 {
     /* Initialize all the variables, buffers, etc. here. */
-    glClearColor(0.76, 0.913, 1.0, 1.0);
+	glClearColor(0.76f, 0.913f, 1, 1);
     glEnable(GL_DEPTH_TEST);
 
     glEnable(GL_MULTISAMPLE);
@@ -61,25 +61,25 @@ void EnvironmentMapping::init_app()
     constexpr float area_size = 15.0f;
 
     m_objects.emplace_back(std::make_shared<RGL::StaticModel>());
-    m_objects[2]->GenPlane(area_size * 2.0 + kRadius, area_size * 2.0 + kRadius, area_size * 2.0, area_size * 2.0);
+	m_objects[2]->GenPlane(area_size * 2 + kRadius, area_size * 2 + kRadius, uint32_t(area_size * 2), uint32_t(area_size * 2));
     m_ground_plane = m_objects[2];
 
     /* Set model matrices for each model. */
     /* xyzrgb dragon */
     glm::vec3 xyzrgb_dragon_position = glm::vec3(-4.0f, 1.11f, -1.0f);
-    m_objects_model_matrices.emplace_back(glm::translate(glm::mat4(1.0), xyzrgb_dragon_position) * glm::rotate(glm::mat4(1.0f), glm::radians(-45.0f), glm::vec3(0.0, 1.0, 0.0)) * glm::scale(glm::mat4(1.0), glm::vec3(0.04)));
+	m_objects_model_matrices.emplace_back(glm::translate(glm::mat4(1), xyzrgb_dragon_position) * glm::rotate(glm::mat4(1), glm::radians(-45.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::mat4(1), glm::vec3(0.04f)));
 
     /* lucy */
     glm::vec3 lucy_position = glm::vec3(4.0f, 1.81f, 0.0f);
-    m_objects_model_matrices.emplace_back(glm::translate(glm::mat4(1.0), lucy_position) * glm::rotate(glm::mat4(1.0f), glm::radians(135.0f), glm::vec3(0.0, 1.0, 0.0)) * glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0, 0.0, 0.0)) * glm::scale(glm::mat4(1.0), glm::vec3(0.004)));
+	m_objects_model_matrices.emplace_back(glm::translate(glm::mat4(1), lucy_position) * glm::rotate(glm::mat4(1), glm::radians(135.0f), glm::vec3(0, 1, 0)) * glm::rotate(glm::mat4(1), glm::radians(-90.0f), glm::vec3(1, 0, 0)) * glm::scale(glm::mat4(1), glm::vec3(0.004f)));
 
     /* plane */
-    m_objects_model_matrices.emplace_back(glm::translate(glm::mat4(1.0), glm::vec3(0.0, -0.5, 0.0)));
+	m_objects_model_matrices.emplace_back(glm::translate(glm::mat4(1), glm::vec3(0, -0.5f, 0)));
 
     /* Set the color tints for xyzrgb dragon, lucy and the plane respectively. */
-    m_color_tints.emplace_back(glm::vec3(1.0));
-    m_color_tints.emplace_back(glm::vec3(1.0));
-    m_color_tints.emplace_back(glm::vec3(1.0));
+	m_color_tints.emplace_back(glm::vec3(1));
+	m_color_tints.emplace_back(glm::vec3(1));
+	m_color_tints.emplace_back(glm::vec3(1));
 
     /* Add textures to the objects. */
     auto default_diffuse_texture = std::make_shared<RGL::Texture2D>();
@@ -90,18 +90,18 @@ void EnvironmentMapping::init_app()
 
     auto ground_texture = std::make_shared<RGL::Texture2D>();
     ground_texture->Load(RGL::FileSystem::getResourcesPath() / "textures/grass_green_d.jpg", true);
-    ground_texture->SetWraping(RGL::TextureWrapingCoordinate::S, RGL::TextureWrapingParam::REPEAT);
-    ground_texture->SetWraping(RGL::TextureWrapingCoordinate::T, RGL::TextureWrapingParam::REPEAT);
+    ground_texture->SetWrapping(RGL::TextureWrappingCoordinate::S, RGL::TextureWrappingParam::REPEAT);
+    ground_texture->SetWrapping(RGL::TextureWrappingCoordinate::T, RGL::TextureWrappingParam::REPEAT);
     ground_texture->SetAnisotropy(16);
 
     m_ground_plane->AddTexture(ground_texture);
 
-    constexpr uint8_t no_spheres = 1000;
+	constexpr auto no_spheres = 1000u;
     constexpr float max_sphere_radius = 0.4f;
 
-    for (int i = 0; i < no_spheres; ++i)
+	for (auto i = 0u; i < no_spheres; ++i)
     {
-        float rand_radius = RGL::Util::RandomDouble(0.1, max_sphere_radius);
+		float rand_radius = float(RGL::Util::RandomDouble(0.1, double(max_sphere_radius)));
         m_objects.emplace_back(std::make_shared<RGL::StaticModel>());
         m_objects[3 + i]->GenSphere(rand_radius, 20);
         m_objects[3 + i]->AddTexture(default_diffuse_texture);
@@ -180,7 +180,7 @@ void EnvironmentMapping::input()
     {
         /* Specify filename of the screenshot. */
         std::string filename = "08_enviro_mapping";
-        if (take_screenshot_png(filename, RGL::Window::getWidth() / 2.0, RGL::Window::getHeight() / 2.0))
+		if (take_screenshot_png(filename, size_t(RGL::Window::getWidth()/2), size_t(RGL::Window::getHeight()/2)))
         {
             /* If specified folders in the path are not already created, they'll be created automagically. */
             std::cout << "Saved " << filename << ".png to " << RGL::FileSystem::getRootPath() / "screenshots/" << std::endl;
@@ -198,11 +198,11 @@ void EnvironmentMapping::update(double delta_time)
     m_camera->update(delta_time);
 
     /* Update model matrices of the spheres */
-    static float rotation_angle = 0.0f;
+	static float rotation_angle = 0;
 
-    rotation_angle += delta_time;
+	rotation_angle += float(delta_time);
 
-    for (int i = 3; i < m_objects_model_matrices.size(); ++i)
+	for (auto i = 3u; i < m_objects_model_matrices.size(); ++i)
     {
         auto translate     = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f));
         auto inv_translate = glm::inverse(translate);
@@ -303,7 +303,7 @@ void EnvironmentMapping::render_gui()
     CoreApp::render_gui();
 
     /* Create your own GUI using ImGUI here. */
-    ImVec2 window_pos       = ImVec2(RGL::Window::getWidth() - 10.0, 10.0);
+	ImVec2 window_pos       = ImVec2(float(RGL::Window::getWidth() - 10), 10);
     ImVec2 window_pos_pivot = ImVec2(1.0f, 0.0f);
 
     ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
@@ -353,7 +353,7 @@ void EnvironmentMapping::render_gui()
             ImGui::EndCombo();
         }
 
-        ImGui::SliderFloat("Index of Refraction", &m_ior, 1.0, 2.417, "%.3f");
+		ImGui::SliderFloat("Index of Refraction", &m_ior, 1, 2.417f, "%.3f");
         ImGui::Checkbox("Dynamic Environment Mapping", &m_dynamic_enviro_mapping_toggle);
 
         ImGui::PopItemWidth();

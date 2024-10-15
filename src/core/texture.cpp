@@ -97,8 +97,8 @@ namespace RGL
 
         SetFiltering(TextureFiltering::MIN,       TextureFilteringParam::LINEAR_MIP_LINEAR);
         SetFiltering(TextureFiltering::MAG,       TextureFilteringParam::LINEAR);
-        SetWraping  (TextureWrapingCoordinate::S, TextureWrapingParam::CLAMP_TO_EDGE);
-        SetWraping  (TextureWrapingCoordinate::T, TextureWrapingParam::CLAMP_TO_EDGE);
+		SetWrapping  (TextureWrappingCoordinate::S, TextureWrappingParam::CLAMP_TO_EDGE);
+		SetWrapping  (TextureWrappingCoordinate::T, TextureWrappingParam::CLAMP_TO_EDGE);
     }
 
     void TextureSampler::SetFiltering(TextureFiltering type, TextureFilteringParam param)
@@ -121,7 +121,7 @@ namespace RGL
         glSamplerParameterf(m_so_id, GL_TEXTURE_MAX_LOD, max);
     }
 
-    void TextureSampler::SetWraping(TextureWrapingCoordinate coord, TextureWrapingParam param)
+	void TextureSampler::SetWrapping(TextureWrappingCoordinate coord, TextureWrappingParam param)
     {
         glSamplerParameteri(m_so_id, GLenum(coord), GLint(param));
     }
@@ -173,7 +173,7 @@ namespace RGL
         glTextureParameterf(m_obj_name, GL_TEXTURE_MAX_LOD, max);
     }
 
-    void Texture::SetWraping(TextureWrapingCoordinate coord, TextureWrapingParam param)
+	void Texture::SetWrapping(TextureWrappingCoordinate coord, TextureWrappingParam param)
     {
         glTextureParameteri(m_obj_name, GLenum(coord), GLint(param));
     }
@@ -244,8 +244,8 @@ namespace RGL
 
         SetFiltering(TextureFiltering::MIN,       TextureFilteringParam::LINEAR_MIP_LINEAR);
         SetFiltering(TextureFiltering::MAG,       TextureFilteringParam::LINEAR);
-        SetWraping  (TextureWrapingCoordinate::S, TextureWrapingParam::CLAMP_TO_EDGE);
-        SetWraping  (TextureWrapingCoordinate::T, TextureWrapingParam::CLAMP_TO_EDGE);
+		SetWrapping  (TextureWrappingCoordinate::S, TextureWrappingParam::CLAMP_TO_EDGE);
+		SetWrapping  (TextureWrappingCoordinate::T, TextureWrappingParam::CLAMP_TO_EDGE);
 
 		Util::ReleaseTextureData(filepath, data);
 
@@ -292,8 +292,8 @@ namespace RGL
 
         SetFiltering(TextureFiltering::MIN,       TextureFilteringParam::LINEAR_MIP_LINEAR);
         SetFiltering(TextureFiltering::MAG,       TextureFilteringParam::LINEAR);
-        SetWraping  (TextureWrapingCoordinate::S, TextureWrapingParam::CLAMP_TO_EDGE);
-        SetWraping  (TextureWrapingCoordinate::T, TextureWrapingParam::CLAMP_TO_EDGE);
+		SetWrapping  (TextureWrappingCoordinate::S, TextureWrappingParam::CLAMP_TO_EDGE);
+		SetWrapping  (TextureWrappingCoordinate::T, TextureWrappingParam::CLAMP_TO_EDGE);
 
 		Util::ReleaseTextureData({}, data);
 
@@ -329,8 +329,8 @@ namespace RGL
 
         SetFiltering(TextureFiltering::MIN,       TextureFilteringParam::LINEAR);
         SetFiltering(TextureFiltering::MAG,       TextureFilteringParam::LINEAR);
-        SetWraping  (TextureWrapingCoordinate::S, TextureWrapingParam::CLAMP_TO_EDGE);
-        SetWraping  (TextureWrapingCoordinate::T, TextureWrapingParam::CLAMP_TO_EDGE);
+		SetWrapping  (TextureWrappingCoordinate::S, TextureWrappingParam::CLAMP_TO_EDGE);
+		SetWrapping  (TextureWrappingCoordinate::T, TextureWrappingParam::CLAMP_TO_EDGE);
 
 		Util::ReleaseTextureData(data);
 
@@ -452,9 +452,9 @@ namespace RGL
 
         SetFiltering(TextureFiltering::MIN,       TextureFilteringParam::LINEAR_MIP_LINEAR);
         SetFiltering(TextureFiltering::MAG,       TextureFilteringParam::LINEAR);
-        SetWraping  (TextureWrapingCoordinate::S, TextureWrapingParam::CLAMP_TO_EDGE);
-        SetWraping  (TextureWrapingCoordinate::T, TextureWrapingParam::CLAMP_TO_EDGE);
-        SetWraping  (TextureWrapingCoordinate::R, TextureWrapingParam::CLAMP_TO_EDGE);
+		SetWrapping  (TextureWrappingCoordinate::S, TextureWrappingParam::CLAMP_TO_EDGE);
+		SetWrapping  (TextureWrappingCoordinate::T, TextureWrappingParam::CLAMP_TO_EDGE);
+		SetWrapping  (TextureWrappingCoordinate::R, TextureWrappingParam::CLAMP_TO_EDGE);
 
 		for (int idx = 0; idx < NUM_FACES; ++idx)
         {
