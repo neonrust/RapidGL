@@ -12,11 +12,11 @@ namespace RGL
     class AnimatedModel : public StaticModel
     {
     public:
-        AnimatedModel() : m_bones_count             (0), 
-                          m_global_inverse_transform(glm::mat4(1.0)), 
+        AnimatedModel() : m_bones_count             (0),
+						  m_global_inverse_transform(glm::mat4(1)),
                           m_assimp_scene            (nullptr), 
-                          m_animation_speed         (1.0),
-                          m_current_animation_time  (0.0), 
+						  m_animation_speed         (1),
+						  m_current_animation_time  (0),
                           m_current_animation       (0), 
                           m_animations_count        (0) {}
 
@@ -37,12 +37,12 @@ namespace RGL
         void SetAnimation(uint32_t animation_index) 
         { 
             m_current_animation      = std::max(0u, std::min(animation_index, m_animations_count - 1)); 
-            m_current_animation_time = 0.0f; 
+			m_current_animation_time = 0.f;
         }
 
         void SetAnimationSpeed(float speed)
         {
-            m_animation_speed = std::max(speed, 0.0f);
+			m_animation_speed = std::max(speed, 0.f);
         }
 
     protected:
@@ -55,8 +55,8 @@ namespace RGL
 
             BoneInfo()
             {
-                m_bone_offset     = glm::mat4(0.0);
-                m_final_transform = glm::mat4(0.0);
+				m_bone_offset     = glm::mat4(0);
+				m_final_transform = glm::mat4(0);
             }
         };
 

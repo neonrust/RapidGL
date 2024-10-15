@@ -5,6 +5,8 @@
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/dual_quaternion.hpp>
 
+#include <cmath>
+
 namespace RGL
 {
     void AnimatedModel::BoneTransform(float dt, std::vector<glm::mat4>& transforms)
@@ -16,15 +18,15 @@ namespace RGL
             float animation_duration = (float)m_assimp_scene->mAnimations[m_current_animation]->mDuration;
 
             m_current_animation_time += ticks_per_second * dt * m_animation_speed;
-            m_current_animation_time = fmod(m_current_animation_time, animation_duration);
+			m_current_animation_time = std::fmod(m_current_animation_time, animation_duration);
 
-            ReadNodeHierarchy(m_current_animation_time, m_assimp_scene->mRootNode, glm::mat4(1.0f));
+			ReadNodeHierarchy(m_current_animation_time, m_assimp_scene->mRootNode, glm::mat4(1));
 
             transforms.resize(m_bones_count);
 
-            for (uint32_t i = 0; i < m_bones_count; ++i)
+			for (uint32_t idx = 0; idx < m_bones_count; ++idx)
             {
-                transforms[i] = m_bone_infos[i].m_final_transform;
+				transforms[idx] = m_bone_infos[idx].m_final_transform;
             }
         }
     }
@@ -38,21 +40,21 @@ namespace RGL
             float animation_duration = (float)m_assimp_scene->mAnimations[m_current_animation]->mDuration;
 
             m_current_animation_time += ticks_per_second * dt * m_animation_speed;
-            m_current_animation_time = fmod(m_current_animation_time, animation_duration);
+			m_current_animation_time = std::fmod(m_current_animation_time, animation_duration);
 
             ReadNodeHierarchy(m_current_animation_time, m_assimp_scene->mRootNode, glm::mat4(1.0f));
 
             transforms.resize(m_bones_count);
 
-            for (uint32_t i = 0; i < m_bones_count; ++i)
+			for (uint32_t idx = 0; idx < m_bones_count; ++idx)
             {
-                 glm::quat rotation(m_bone_infos[i].m_final_transform);
-                 glm::fdualquat dq (rotation, m_bone_infos[i].m_final_transform[3]);
+				 glm::quat rotation(m_bone_infos[idx].m_final_transform);
+				 glm::fdualquat dq (rotation, m_bone_infos[idx].m_final_transform[3]);
 
                  glm::mat2x4 dq_mat(glm::vec4(dq.real.w, dq.real.x, dq.real.y, dq.real.z), 
                                     glm::vec4(dq.dual.w, dq.dual.x, dq.dual.y, dq.dual.z));
 
-                 transforms[i] = dq_mat;
+				 transforms[idx] = dq_mat;
             }
         }
     }

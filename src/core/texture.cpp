@@ -238,8 +238,8 @@ namespace RGL
                      num_mipmaps     = num_mipmaps == 0 ? max_num_mipmaps : glm::clamp(num_mipmaps, 1u, max_num_mipmaps);
 
         glCreateTextures       (GLenum(TextureType::Texture2D), 1, &m_obj_name);
-        glTextureStorage2D     (m_obj_name, num_mipmaps /* levels */, internal_format, m_metadata.width, m_metadata.height);
-        glTextureSubImage2D    (m_obj_name, 0 /* level */, 0 /* xoffset */, 0 /* yoffset */, m_metadata.width, m_metadata.height, format, GL_UNSIGNED_BYTE, data);
+		glTextureStorage2D     (m_obj_name, GLsizei(num_mipmaps) /* levels */, internal_format, GLsizei(m_metadata.width), GLsizei(m_metadata.height));
+		glTextureSubImage2D    (m_obj_name, 0 /* level */, 0 /* xoffset */, 0 /* yoffset */, GLsizei(m_metadata.width), GLsizei(m_metadata.height), format, GL_UNSIGNED_BYTE, data);
         glGenerateTextureMipmap(m_obj_name);
 
         SetFiltering(TextureFiltering::MIN,       TextureFilteringParam::LINEAR_MIP_LINEAR);
@@ -286,8 +286,8 @@ namespace RGL
 
 
         glCreateTextures       (GLenum(TextureType::Texture2D), 1, &m_obj_name);
-        glTextureStorage2D     (m_obj_name, num_mipmaps /* levels */, internal_format, m_metadata.width, m_metadata.height);
-        glTextureSubImage2D    (m_obj_name, 0 /* level */, 0 /* xoffset */, 0 /* yoffset */, m_metadata.width, m_metadata.height, format, GL_UNSIGNED_BYTE, data);
+					 glTextureStorage2D     (m_obj_name, GLsizei(num_mipmaps) /* levels */, internal_format, GLsizei(m_metadata.width), GLsizei(m_metadata.height));
+		glTextureSubImage2D    (m_obj_name, 0 /* level */, 0 /* xoffset */, 0 /* yoffset */, GLsizei(m_metadata.width), GLsizei(m_metadata.height), format, GL_UNSIGNED_BYTE, data);
         glGenerateTextureMipmap(m_obj_name);
 
         SetFiltering(TextureFiltering::MIN,       TextureFilteringParam::LINEAR_MIP_LINEAR);
@@ -323,8 +323,8 @@ namespace RGL
                      num_mipmaps     = num_mipmaps == 0 ? max_num_mipmaps : glm::clamp(num_mipmaps, 1u, max_num_mipmaps);
 
         glCreateTextures       (GLenum(TextureType::Texture2D), 1, &m_obj_name);
-        glTextureStorage2D     (m_obj_name, 1 /* levels */, internal_format, m_metadata.width, m_metadata.height);
-        glTextureSubImage2D    (m_obj_name, 0 /* level */, 0 /* xoffset */, 0 /* yoffset */, m_metadata.width, m_metadata.height, format, GL_FLOAT, data);
+		glTextureStorage2D     (m_obj_name, 1 /* levels */, internal_format, GLsizei(m_metadata.width), GLsizei(m_metadata.height));
+		glTextureSubImage2D    (m_obj_name, 0 /* level */, 0 /* xoffset */, 0 /* yoffset */, GLsizei(m_metadata.width), GLsizei(m_metadata.height), format, GL_FLOAT, data);
         glGenerateTextureMipmap(m_obj_name);
 
         SetFiltering(TextureFiltering::MIN,       TextureFilteringParam::LINEAR);
@@ -365,16 +365,16 @@ namespace RGL
 
         glCreateTextures   (GLenum(m_type), 1, &m_obj_name);
         glTextureParameteri(m_obj_name, GL_TEXTURE_BASE_LEVEL, 0);
-        glTextureParameteri(m_obj_name, GL_TEXTURE_MAX_LEVEL, dds.GetMipCount() - 1);
-        glTextureParameteri(m_obj_name, GL_TEXTURE_SWIZZLE_R, format.m_swizzle.m_r);
-        glTextureParameteri(m_obj_name, GL_TEXTURE_SWIZZLE_G, format.m_swizzle.m_g);
-        glTextureParameteri(m_obj_name, GL_TEXTURE_SWIZZLE_B, format.m_swizzle.m_b);
-        glTextureParameteri(m_obj_name, GL_TEXTURE_SWIZZLE_A, format.m_swizzle.m_a);
+		glTextureParameteri(m_obj_name, GL_TEXTURE_MAX_LEVEL, GLint(dds.GetMipCount() - 1));
+		glTextureParameteri(m_obj_name, GL_TEXTURE_SWIZZLE_R, GLint(format.m_swizzle.m_r));
+		glTextureParameteri(m_obj_name, GL_TEXTURE_SWIZZLE_G, GLint(format.m_swizzle.m_g));
+		glTextureParameteri(m_obj_name, GL_TEXTURE_SWIZZLE_B, GLint(format.m_swizzle.m_b));
+		glTextureParameteri(m_obj_name, GL_TEXTURE_SWIZZLE_A, GLint(format.m_swizzle.m_a));
 
         m_metadata.width  = dds.GetWidth();
         m_metadata.height = dds.GetHeight();
 
-        glTextureStorage2D(m_obj_name, dds.GetMipCount(), format.m_internal_format, m_metadata.width, m_metadata.height);
+		glTextureStorage2D(m_obj_name, GLsizei(dds.GetMipCount()), format.m_internal_format, GLsizei(m_metadata.width), GLsizei(m_metadata.height));
         dds.Flip();
 
         for (uint32_t level = 0; level < dds.GetMipCount(); level++)
@@ -389,11 +389,11 @@ namespace RGL
 
                     if (isDdsCompressed(format.m_format))
                     {
-                        glCompressedTextureSubImage2D(m_obj_name, level, 0, 0, w, h, format.m_format, imageData->m_memSlicePitch, imageData->m_mem);
+						glCompressedTextureSubImage2D(m_obj_name, GLint(level), 0, 0, GLsizei(w), GLsizei(h), format.m_format, GLsizei(imageData->m_memSlicePitch), imageData->m_mem);
                     }
                     else
                     {
-                        glTextureSubImage2D(m_obj_name, level, 0, 0, w, h, format.m_format, format.m_type, imageData->m_mem);
+						glTextureSubImage2D(m_obj_name, GLint(level), 0, 0, GLsizei(w), GLsizei(h), format.m_format, format.m_type, imageData->m_mem);
                     }
                     break;
                 }
@@ -413,13 +413,13 @@ namespace RGL
 
         unsigned char* images_data[NUM_FACES];
 
-        for (int i = 0; i < NUM_FACES; ++i)
+		for (int idx = 0; idx < NUM_FACES; ++idx)
         {
-            images_data[i] = Util::LoadTextureData(filepaths[i], m_metadata);
+			images_data[idx] = Util::LoadTextureData(filepaths[idx], m_metadata);
 
-            if (!images_data[i])
+			if (!images_data[idx])
             {
-                fprintf(stderr, "Texture failed to load at path: %s\n", filepaths[i].string().c_str());
+				fprintf(stderr, "Texture failed to load at path: %s\n", filepaths[idx].string().c_str());
                 return false;
             }
         }
@@ -431,21 +431,21 @@ namespace RGL
                      num_mipmaps     = num_mipmaps == 0 ? max_num_mipmaps : glm::clamp(num_mipmaps, 1u, max_num_mipmaps);
 
         glCreateTextures  (GLenum(TextureType::TextureCubeMap), 1, &m_obj_name);
-        glTextureStorage2D(m_obj_name, num_mipmaps, m_internal_format, m_metadata.width, m_metadata.height);
+		glTextureStorage2D(m_obj_name, GLsizei(num_mipmaps), m_internal_format, GLsizei(m_metadata.width), GLsizei(m_metadata.height));
 
-        for (int i = 0; i < NUM_FACES; ++i)
+		for (int idx = 0; idx < NUM_FACES; ++idx)
         {
             glTextureSubImage3D(m_obj_name, 
                                 0 /*level*/, 
                                 0 /*xoffset*/, 
                                 0 /*yoffset*/,
-                                i /*zoffset*/,
-                                m_metadata.width,
-                                m_metadata.height,
+								idx /*zoffset*/,
+								GLsizei(m_metadata.width),
+								GLsizei(m_metadata.height),
                                 1 /*depth*/,
                                 m_format,
                                 GL_UNSIGNED_BYTE,
-                                images_data[i]);
+								images_data[idx]);
         }
 
         glGenerateTextureMipmap(m_obj_name);
@@ -456,10 +456,10 @@ namespace RGL
         SetWraping  (TextureWrapingCoordinate::T, TextureWrapingParam::CLAMP_TO_EDGE);
         SetWraping  (TextureWrapingCoordinate::R, TextureWrapingParam::CLAMP_TO_EDGE);
 
-        for (int i = 0; i < NUM_FACES; ++i)
+		for (int idx = 0; idx < NUM_FACES; ++idx)
         {
             /* Release images' data */
-			Util::ReleaseTextureData(filepaths[i], images_data[i]);
+			Util::ReleaseTextureData(filepaths[idx], images_data[idx]);
         }
 
         return true;
