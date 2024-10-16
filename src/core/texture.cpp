@@ -89,10 +89,15 @@ namespace
 namespace RGL
 {
     // --------------------- Texture Sampler -------------------------
-    TextureSampler::TextureSampler() : m_so_id(0), m_max_anisotropy(1.0f) {}
+	TextureSampler::TextureSampler() :
+		m_so_id(0),
+		m_max_anisotropy(1.0f)
+	{
+	}
 
     void TextureSampler::Create()
     {
+		assert(m_so_id == 0);
         glCreateSamplers(1, &m_so_id);
 
         SetFiltering(TextureFiltering::MIN,       TextureFilteringParam::LINEAR_MIP_LINEAR);
@@ -435,14 +440,14 @@ namespace RGL
 
 		for (int idx = 0; idx < NUM_FACES; ++idx)
         {
-            glTextureSubImage3D(m_obj_name, 
-                                0 /*level*/, 
-                                0 /*xoffset*/, 
-                                0 /*yoffset*/,
-								idx /*zoffset*/,
+			glTextureSubImage3D(m_obj_name,
+								0,   // level
+								0,   // xoffset
+								0,   // yoffset
+								idx, // zoffset
 								GLsizei(m_metadata.width),
 								GLsizei(m_metadata.height),
-                                1 /*depth*/,
+								1,   // depth
                                 m_format,
                                 GL_UNSIGNED_BYTE,
 								images_data[idx]);
