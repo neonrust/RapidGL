@@ -1,3 +1,5 @@
+// Type definitions shared between C++ and GLSL
+
 #ifdef __cplusplus
 #pragma once
 #define vec3 alignas(16) glm::vec3
@@ -26,7 +28,7 @@
 struct BaseLight
 {
     vec3 color;
-    float intensity;
+	float intensity; // TODO: =0 means end of light list?
 };
 
 struct DirectionalLight
