@@ -89,15 +89,18 @@ namespace RGL
     public:
         virtual ~Texture() { Release(); };
 
-        Texture           (const Texture&) = delete;
-        Texture& operator=(const Texture&) = delete;
+		Texture             (const Texture&) = delete;
+		Texture& operator = (const Texture&) = delete;
 
-        Texture(Texture&& other) noexcept : m_metadata(other.m_metadata), m_type(other.m_type), m_obj_name(other.m_obj_name)
+		Texture(Texture&& other) noexcept :
+			m_metadata(other.m_metadata),
+			m_type(other.m_type),
+			m_obj_name(other.m_obj_name)
         {
             other.m_obj_name = 0;
         }
 
-        Texture& operator=(Texture&& other) noexcept
+		Texture& operator = (Texture&& other) noexcept
         {
             if (this != &other)
             {
@@ -125,8 +128,7 @@ namespace RGL
 
         static uint8_t GetMaxMipMapsLevels(uint32_t width, uint32_t height, uint32_t depth)
         {
-            uint8_t num_levels = 1 + std::floor(std::log2(std::max(width, std::max(height, depth))));
-            return  num_levels;
+			return uint8_t(1.f + std::floor(std::log2(float(std::max(width, std::max(height, depth))))));
         }
 
     protected:
@@ -147,6 +149,8 @@ namespace RGL
     {
     public:
         Texture2D() = default;
+
+		// TODO: convert to factory functions
         bool Load(const std::filesystem::path & filepath, bool is_srgb = false, uint32_t num_mipmaps = 0);
         bool Load(unsigned char* memory_data, uint32_t data_size, bool is_srgb = false, uint32_t num_mipmaps = 0);
         bool LoadHdr(const std::filesystem::path& filepath, uint32_t num_mipmaps = 0);
@@ -157,6 +161,8 @@ namespace RGL
     {
     public:
         TextureCubeMap() = default;
-        bool Load(const std::filesystem::path * filepaths, bool is_srgb = false, uint32_t num_mipmaps = 0);
+
+		// TODO: convert to factory function
+		bool Load(const std::filesystem::path * filepaths, bool is_srgb = false, uint32_t num_mipmaps = 0);
     };
 }
