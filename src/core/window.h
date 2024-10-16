@@ -43,7 +43,7 @@ namespace RGL
 
         static void setViewportMatrix(int width, int height);
 
-        static void error_callback(int error, const char* description)
+		static void error_callback([[maybe_unused]] int error, const char* description)
         {
             std::cerr << description << std::endl;
         }
