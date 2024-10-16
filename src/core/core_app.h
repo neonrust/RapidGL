@@ -2,6 +2,7 @@
 #include "common.h"
 #include <string>
 #include <cstdint>
+#include <chrono>
 
 namespace RGL
 {
@@ -35,5 +36,6 @@ namespace RGL
         double   m_frame_time;
         uint32_t m_fps;
         bool     m_is_running;
-    };
+		std::chrono::microseconds _render_time;
+	};
 }

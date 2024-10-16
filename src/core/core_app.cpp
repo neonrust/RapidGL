@@ -1,6 +1,8 @@
 #include "core_app.h"
 
 #include <vector>
+#include <chrono>
+using namespace std::chrono;
 
 #include "stb_image_write.h"
 #include "stb_image_resize.h"
@@ -53,7 +55,8 @@ namespace RGL
         {
             ImGui::Text("Performance info\n");
             ImGui::Separator();
-            ImGui::Text("%.1f FPS (%.3f ms/frame)", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
+			ImGui::Text("%.1f FPS (%.3f ms/frame)",	ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
+			ImGui::Text("r-time: %ld us (~%ld FPS)", _render_time.count(), 1'000'000 / _render_time.count());
         }
         ImGui::End();
         /* Overlay end */
@@ -152,6 +155,7 @@ namespace RGL
             unprocessed_time += passed_time;
             frame_counter += passed_time;
 
+			// don't render until we've accumulated enough "processing debt"  (as requested to init())
             while (unprocessed_time > m_frame_time)
             {
                 should_render = true;
@@ -170,7 +174,7 @@ namespace RGL
 
                 if (frame_counter >= 1.0)
                 {
-                    m_fps = 1000.0 / (double)frames;
+					m_fps = uint32_t(1000.0 / double(frames));
 
                     frames = 0;
                     frame_counter = 0;
@@ -180,7 +184,9 @@ namespace RGL
             if (should_render)
             {
                 /* Render */
-                render();
+				const auto T0 = steady_clock::now();
+				render();
+				_render_time = duration_cast<microseconds>(steady_clock::now() - T0);
 
                 GUI::prepare();
                 {
