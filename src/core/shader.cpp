@@ -190,8 +190,9 @@ namespace RGL
 		if(found == m_uniforms_locations.end())
 		{
 			location = glGetUniformLocation(m_program_id, name.data());
-			if(location != -1)
-				m_uniforms_locations[name] = location;
+			m_uniforms_locations[name] = location; // also remember failures
+			if(location == -1)
+				fprintf(stderr, "Shader: Uniform '%s' not found\n", name.data());
 		}
 		else
 			location = found->second;
