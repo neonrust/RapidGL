@@ -56,7 +56,7 @@ namespace RGL
         glBindTextureUnit(0, 0);
     }
 
-    void StaticModel::Render(std::shared_ptr<Shader>& shader, uint32_t num_instances)
+	void StaticModel::Render(Shader& shader, uint32_t num_instances)
     {
         glBindVertexArray(m_vao_name);
     
@@ -76,17 +76,17 @@ namespace RGL
                 // Set uniforms based on the data in the material
                 for (auto& [uniform_name, value] : m_materials[material_index]->m_bool_map)
                 {
-                    shader->setUniform(uniform_name, value);
+					shader.setUniform(uniform_name, value);
                 }
 
                 for (auto& [uniform_name, value] : m_materials[material_index]->m_float_map)
                 {
-                    shader->setUniform(uniform_name, value);
+					shader.setUniform(uniform_name, value);
                 }
 
                 for (auto& [uniform_name, value] : m_materials[material_index]->m_vec3_map)
                 {
-                    shader->setUniform(uniform_name, value);
+					shader.setUniform(uniform_name, value);
                 }
             }
 

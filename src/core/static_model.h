@@ -90,7 +90,7 @@ namespace RGL
 
         virtual bool Load(const std::filesystem::path& filepath);
         virtual void Render(uint32_t num_instances = 0);
-        virtual void Render(std::shared_ptr<Shader> & shader, uint32_t num_instances = 0);
+        virtual void Render(Shader &shader, uint32_t num_instances = 0);
 
         /* Primitives */
         virtual void GenCone       (float    height      = 3.0f, float radius         = 1.5f, uint32_t slices = 10, uint32_t stacks = 10);
