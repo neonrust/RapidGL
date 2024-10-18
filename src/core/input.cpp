@@ -4,7 +4,7 @@ namespace RGL
 {
     GLFWwindow * Input::m_window = nullptr;
 
-    std::unordered_map<KeyCode, bool> Input::m_last_keys_states = {
+	dense_map<KeyCode, bool> Input::m_last_keys_states = {
         { KeyCode::Backspace,      false },
         { KeyCode::Delete,         false },
         { KeyCode::Tab,            false },
@@ -111,7 +111,7 @@ namespace RGL
         { KeyCode::Menu,           false }
     };
 
-    std::unordered_map<KeyCode, bool> Input::m_last_mouse_states = {
+	dense_map<KeyCode, bool> Input::m_last_mouse_states = {
         { KeyCode::Mouse1,      false},
         { KeyCode::Mouse2,      false},
         { KeyCode::Mouse3,      false}

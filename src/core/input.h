@@ -1,8 +1,9 @@
 #pragma once
 
-#include <unordered_map>
 #include <GLFW/glfw3.h>
 #include <glm/vec2.hpp>
+
+#include "container_types.h"
 
 namespace RGL
 {
@@ -193,7 +194,7 @@ namespace RGL
          * false -> key was not pressed
          * true  -> key was pressed
          */
-        static std::unordered_map<KeyCode, bool> m_last_keys_states;
-        static std::unordered_map<KeyCode, bool> m_last_mouse_states;
+		static dense_map<KeyCode, bool> m_last_keys_states;
+		static dense_map<KeyCode, bool> m_last_mouse_states;
     };
 }
