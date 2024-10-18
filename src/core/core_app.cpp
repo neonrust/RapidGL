@@ -89,8 +89,8 @@ namespace RGL
 
     bool CoreApp::take_screenshot_png(const std::string & filename, size_t dst_width, size_t dst_height)
     {
-        size_t width  = Window::getWidth();
-        size_t height = Window::getHeight();
+		auto width  = Window::getWidth();
+		auto height = Window::getHeight();
         bool   resize = true;
 
         if (dst_width == 0 || dst_height == 0)
@@ -155,7 +155,7 @@ namespace RGL
             unprocessed_time += passed_time;
             frame_counter += passed_time;
 
-			// don't render until we've accumulated enough "processing debt"  (as requested to init())
+			// don't render until we've accumulated enough "frame time debt"  (as requested to init())
             while (unprocessed_time > m_frame_time)
             {
                 should_render = true;
