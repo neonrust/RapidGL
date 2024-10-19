@@ -15,17 +15,17 @@ namespace RGL
         /*
          * Perspective camera
          */
-        Camera(float fov,
+		Camera(float fovy,
                float aspect_ratio,
                float z_near,
                float z_far)
                : Camera()
         {
-            m_projection   = glm::perspective(glm::radians(fov), aspect_ratio, z_near, z_far);
+			m_projection   = glm::perspective(glm::radians(fovy), aspect_ratio, z_near, z_far);
             m_aspect_ratio = aspect_ratio;
             m_near         = z_near;
             m_far          = z_far;
-            m_fov          = fov;
+			m_fovy         = fovy;
         }
 
         /*
@@ -40,10 +40,10 @@ namespace RGL
                : Camera(true)
         {
             m_projection   = glm::ortho(left, right, bottom, top, z_near, z_far);
-            m_aspect_ratio = 1.0f;
+			m_aspect_ratio = 1.f;
             m_near         = z_near;
             m_far          = z_far;
-            m_fov          = 1.0f;
+			m_fovy         = 1.f;
         }
 
         void setPosition(float x, float y, float z)
@@ -63,11 +63,11 @@ namespace RGL
          */
         void setOrientation(float x, float y, float z)
         {
-            m_orientation = glm::angleAxis(glm::radians(x), glm::vec3(1.0f, 0.0f, 0.0f)) *
-                            glm::angleAxis(glm::radians(y), glm::vec3(0.0f, 1.0f, 0.0f)) *
-                            glm::angleAxis(glm::radians(z), glm::vec3(0.0f, 0.0f, 1.0f));
+			m_orientation = glm::angleAxis(glm::radians(x), glm::vec3(1, 0, 0)) *
+							glm::angleAxis(glm::radians(y), glm::vec3(0, 1, 0)) *
+							glm::angleAxis(glm::radians(z), glm::vec3(0, 0, 1));
             
-            m_direction = glm::normalize(glm::conjugate(m_orientation) * glm::vec3(0.0f, 0.0f, 1.0f));
+			m_direction = glm::normalize(glm::conjugate(m_orientation) * glm::vec3(0, 0, 1));
             m_is_dirty  = true;
         }
 
@@ -76,8 +76,8 @@ namespace RGL
          */
         void setOrientation(const glm::vec3 & direction)
         {
-            m_orientation = glm::quatLookAt(glm::normalize(direction), glm::vec3(0.0, 1.0, 0.0));
-            m_direction = glm::normalize(glm::conjugate(m_orientation) * glm::vec3(0.0f, 0.0f, 1.0f));
+			m_orientation = glm::quatLookAt(glm::normalize(direction), glm::vec3(0, 1, 0));
+			m_direction = glm::normalize(glm::conjugate(m_orientation) * glm::vec3(0, 0, 1));
             m_is_dirty  = true;
         }
 
@@ -87,14 +87,14 @@ namespace RGL
         void setOrientation(const glm::vec3& axis, float angle)
         {
             m_orientation = glm::angleAxis(glm::radians(angle), glm::normalize(axis));
-            m_direction   = glm::normalize(glm::conjugate(m_orientation) * glm::vec3(0.0f, 0.0f, 1.0f));
+			m_direction   = glm::normalize(glm::conjugate(m_orientation) * glm::vec3(0, 0, 1));
             m_is_dirty    = true;
         }
 
         void setOrientation(const glm::quat& quat)
         {
             m_orientation = quat;
-            m_direction   = glm::normalize(glm::conjugate(m_orientation) * glm::vec3(0.0f, 0.0f, 1.0f));
+			m_direction   = glm::normalize(glm::conjugate(m_orientation) * glm::vec3(0, 0, 1));
             m_is_dirty    = true;
         }
 
@@ -104,8 +104,9 @@ namespace RGL
         float AspectRatio()     const { return m_aspect_ratio; }
         float NearPlane()       const { return m_near; }
         float FarPlane()        const { return m_far; }
-        float FOV()             const { return m_fov; }
+		float FOV()             const { return m_fovy; }
 
+		// TODO: this shouldn't be here (better in a controller-type thing)
         void update(double dt);
 
         glm::mat4 m_view;
@@ -124,29 +125,7 @@ namespace RGL
         KeyCode m_down_key;
     
     private:
-		Camera(bool is_ortho = false)
-			: m_view                  (1),
-			  m_projection            (1),
-			  m_is_ortho              (is_ortho),
-			  m_sensitivity           (0.2f),
-			  m_move_speed            (10.0),
-			  m_unlock_mouse_key      (KeyCode::MouseRight),
-			  m_forward_key           (KeyCode::W),
-			  m_backward_key          (KeyCode::S),
-			  m_left_key              (KeyCode::A),
-			  m_right_key             (KeyCode::D),
-			  m_up_key                (KeyCode::E),
-			  m_down_key              (KeyCode::Q),
-			  m_orientation           (glm::vec3(0)),
-			  m_position              (glm::vec3(0)),
-			  m_direction             (glm::vec3(0, 0, -1)),
-			  m_near                  (0.01f),
-			  m_far                   (100.0f),
-			  m_aspect_ratio          (1),
-			  m_fov                   (60.0f),
-			  m_mouse_pressed_position(glm::vec2(0)),
-			  m_is_dirty              (true),
-			  m_is_mouse_move         (false) {}
+		Camera(bool is_ortho=false);
 
         glm::quat m_orientation;
         glm::vec3 m_position;
@@ -154,7 +133,7 @@ namespace RGL
         float m_near;
         float m_far;
         float m_aspect_ratio;
-        float m_fov; // in degrees
+		float m_fovy; // in degrees
 
 
         glm::vec2 m_mouse_pressed_position;

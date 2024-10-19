@@ -78,6 +78,32 @@ namespace RGL
         }
     }
 
+	Camera::Camera(bool is_ortho)
+	  : m_view                  (1),
+		m_projection            (1),
+		m_is_ortho              (is_ortho),
+		m_sensitivity           (0.2f),
+		m_move_speed            (10),
+		m_unlock_mouse_key      (KeyCode::MouseRight),
+		m_forward_key           (KeyCode::W),
+		m_backward_key          (KeyCode::S),
+		m_left_key              (KeyCode::A),
+		m_right_key             (KeyCode::D),
+		m_up_key                (KeyCode::E),
+		m_down_key              (KeyCode::Q),
+		m_orientation           (glm::vec3(0)),
+		m_position              (glm::vec3(0)),
+		m_direction             (glm::vec3(0, 0, -1)),
+		m_near                  (0.01f),
+		m_far                   (100),
+		m_aspect_ratio          (1),
+		m_fovy                  (60),
+		m_mouse_pressed_position(glm::vec2(0)),
+		m_is_dirty              (true),
+		m_is_mouse_move         (false)
+	{
+	}
+
     void Camera::move(const glm::vec3& position, const glm::vec3& dir, float amount)
     {
         setPosition(position + (dir * amount));
