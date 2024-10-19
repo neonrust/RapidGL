@@ -52,6 +52,7 @@ namespace RGL
         bool link();
         void setTransformFeedbackVaryings(const std::vector<const char*>& output_names, GLenum buffer_mode) const;
         void bind() const;
+		std::string_view name() const { return _name; }
 
 		void setUniform(const std::string_view & name, float value);
 		void setUniform(const std::string_view & name, int value);
@@ -62,7 +63,7 @@ namespace RGL
 		void setUniform(const std::string_view & name, const glm::vec2 & vector);
 		void setUniform(const std::string_view & name, const glm::vec3 & vector);
 		void setUniform(const std::string_view & name, const glm::vec4 & vector);
-		void setUniform(const std::string_view &name, const glm::uvec2 & vector);
+		void setUniform(const std::string_view & name, const glm::uvec2 & vector);
 		void setUniform(const std::string_view & name, const glm::uvec3 & vector);
 		void setUniform(const std::string_view & name, const glm::mat3 & matrix);
 		void setUniform(const std::string_view & name, const glm::mat4 & matrix);
@@ -76,7 +77,8 @@ namespace RGL
     private:
         void addAllSubroutines();
 
-        void addShader(const std::filesystem::path & filepath, GLuint type) const;
+		void addShader(const std::filesystem::path & filepath, GLuint type);
+		void add_name(const std::filesystem::path &filepath);
 		GLint getUniformLocation(const std::string_view &name);
 
 		string_map<GLuint> m_subroutine_indices;
@@ -86,5 +88,6 @@ namespace RGL
 
         GLuint m_program_id;
         bool m_is_linked;
-    };
+		std::string _name;
+	};
 }

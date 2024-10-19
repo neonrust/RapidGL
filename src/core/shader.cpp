@@ -72,7 +72,7 @@ namespace RGL
         }
     }
 
-    void Shader::addShader(const std::filesystem::path & filepath, GLuint type) const
+	void Shader::addShader(const std::filesystem::path & filepath, GLuint type)
     {
         if (m_program_id == 0)
         {
@@ -94,7 +94,6 @@ namespace RGL
 
             return;
         }
-
 
         std::string           code = Util::LoadFile(filepath);
         std::filesystem::path dir  = FileSystem::getRootPath() / filepath.parent_path();
@@ -130,9 +129,18 @@ namespace RGL
             return;
         }
 
+		add_name(filepath);
         glAttachShader(m_program_id, shaderObject);
         glDeleteShader(shaderObject);
     }
+
+	void Shader::add_name(const std::filesystem::path & filepath)
+	{
+		if(not _name.empty())
+			_name.append("+");
+
+		_name += filepath.filename().string();
+	}
 
     bool Shader::link()
     {
@@ -190,9 +198,9 @@ namespace RGL
 		if(found == m_uniforms_locations.end())
 		{
 			location = glGetUniformLocation(m_program_id, name.data());
-			m_uniforms_locations[name] = location; // also remember failures
+			m_uniforms_locations[name] = location; // also remember failures (calls will be ignored)
 			if(location == -1)
-				fprintf(stderr, "Shader: Uniform '%s' not found\n", name.data());
+				fprintf(stderr, "Shader[%s]: Uniform '%s' not found\n", _name.c_str(), name.data());
 		}
 		else
 			location = found->second;
