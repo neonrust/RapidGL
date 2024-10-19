@@ -137,7 +137,7 @@ namespace RGL
 	void Shader::add_name(const std::filesystem::path & filepath)
 	{
 		if(not _name.empty())
-			_name.append("+");
+			_name.append(";");
 
 		_name += filepath.filename().string();
 	}
