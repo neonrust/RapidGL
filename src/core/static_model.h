@@ -92,15 +92,15 @@ public:
 	virtual void SetDrawMode(DrawMode mode) { m_draw_mode = mode; }
 	virtual float GetUnitScaleFactor() const { return m_unit_scale; }
 
-		   // TODO: convert to factory function
+	// TODO: convert to factory function
 	virtual bool Load(const std::filesystem::path& filepath);
 
-		   // TODO: move to a MeshRenderer class?
-		   //   _meshRenderer->submit(mesh);
+	// TODO: move to a Renderer-thingy class
+	//   _renderer->submit(mesh);
 	virtual void Render(uint32_t num_instances = 0);
 	virtual void Render(Shader &shader, uint32_t num_instances = 0);
 
-		   // TODO: convert these to a "mesh primitive factory"
+	// TODO: convert these to a "mesh primitive factory"
 	virtual void GenCone       (float    height      = 3.0f, float radius         = 1.5f, uint32_t slices = 10, uint32_t stacks = 10);
 	virtual void GenCube       (float    radius      = 1.0f, float texcoord_scale = 1.0f);
 	virtual void GenCubeMap    (float    radius      = 1.0f);
