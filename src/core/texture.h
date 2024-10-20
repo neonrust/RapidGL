@@ -150,8 +150,10 @@ namespace RGL
     public:
         Texture2D() = default;
 
-		// TODO: convert to factory functions
-        bool Load(const std::filesystem::path & filepath, bool is_srgb = false, uint32_t num_mipmaps = 0);
+		// TODO: convert to factory function
+		//   also, these should access a shared storage,
+		//   if the texture is already loaded, return the existing (a shread_ptr)
+		bool Load(const std::filesystem::path & filepath, bool is_srgb = false, uint32_t num_mipmaps = 0);
         bool Load(unsigned char* memory_data, uint32_t data_size, bool is_srgb = false, uint32_t num_mipmaps = 0);
         bool LoadHdr(const std::filesystem::path& filepath, uint32_t num_mipmaps = 0);
         bool LoadDds(const std::filesystem::path& filepath);
