@@ -7,164 +7,195 @@
 
 namespace RGL
 {
-    enum class TextureType              { NONE = 0, Texture2D = GL_TEXTURE_2D, TextureCubeMap = GL_TEXTURE_CUBE_MAP };
-    enum class TextureFiltering         { MAG                  = GL_TEXTURE_MAG_FILTER,
-                                          MIN                  = GL_TEXTURE_MIN_FILTER };
-    enum class TextureFilteringParam    { NEAREST              = GL_NEAREST,
-                                          LINEAR               = GL_LINEAR, 
-                                          NEAREST_MIP_NEAREST  = GL_NEAREST_MIPMAP_NEAREST, 
-                                          LINEAR_MIP_NEAREST   = GL_LINEAR_MIPMAP_NEAREST,
-                                          NEAREST_MIP_LINEAR   = GL_NEAREST_MIPMAP_LINEAR,
-                                          LINEAR_MIP_LINEAR    = GL_LINEAR_MIPMAP_LINEAR };
-	enum class TextureWrappingCoordinate { S                   = GL_TEXTURE_WRAP_S,
-										   T                   = GL_TEXTURE_WRAP_T,
-										   R                   = GL_TEXTURE_WRAP_R };
-	enum class TextureWrappingParam      { REPEAT              = GL_REPEAT,
-                                          MIRRORED_REPEAT      = GL_MIRRORED_REPEAT,
-                                          CLAMP_TO_EDGE        = GL_CLAMP_TO_EDGE,
-                                          CLAMP_TO_BORDER      = GL_CLAMP_TO_BORDER,
-                                          MIRROR_CLAMP_TO_EDGE = GL_MIRROR_CLAMP_TO_EDGE };
-    enum class TextureCompareMode       { NONE                 = GL_NONE,
-                                          REF                  = GL_COMPARE_REF_TO_TEXTURE };
-    enum class TextureCompareFunc       { NEVER                = GL_NEVER,
-                                          ALWAYS               = GL_ALWAYS, 
-                                          LEQUAL               = GL_LEQUAL, 
-                                          GEQUAL               = GL_GEQUAL, 
-                                          LESS                 = GL_LESS, 
-                                          GREATER              = GL_GREATER, 
-                                          EQUAL                = GL_EQUAL, 
-                                          NOTEQUAL             = GL_NOTEQUAL };
 
-    class TextureSampler final
-    {
-    public:
-        TextureSampler();
-        ~TextureSampler() { Release(); };
+enum class TextureType
+{
+	NONE = 0,
+	Texture2D = GL_TEXTURE_2D,
+	TextureCubeMap = GL_TEXTURE_CUBE_MAP
+};
 
-        TextureSampler(const TextureSampler&) = delete;
-        TextureSampler& operator=(const TextureSampler&) = delete;
+enum class TextureFiltering
+{
+	MAG  = GL_TEXTURE_MAG_FILTER,
+	MIN  = GL_TEXTURE_MIN_FILTER
+};
 
-        TextureSampler(TextureSampler&& other) noexcept : m_so_id(other.m_so_id), m_max_anisotropy(other.m_max_anisotropy)
-        {
-            other.m_so_id = 0;
-        }
+enum class TextureFilteringParam
+{
+	NEAREST              = GL_NEAREST,
+	LINEAR               = GL_LINEAR,
+	NEAREST_MIP_NEAREST  = GL_NEAREST_MIPMAP_NEAREST,
+	LINEAR_MIP_NEAREST   = GL_LINEAR_MIPMAP_NEAREST,
+	NEAREST_MIP_LINEAR   = GL_NEAREST_MIPMAP_LINEAR,
+	LINEAR_MIP_LINEAR    = GL_LINEAR_MIPMAP_LINEAR
+};
 
-        TextureSampler& operator=(TextureSampler&& other) noexcept
-        {
-            if (this != &other)
-            {
-                Release();
-                std::swap(m_so_id, other.m_so_id);
-                std::swap(m_max_anisotropy, other.m_max_anisotropy);
-            }
+enum class TextureWrappingCoordinate
+{
+	S = GL_TEXTURE_WRAP_S,
+	T = GL_TEXTURE_WRAP_T,
+	R = GL_TEXTURE_WRAP_R
+};
 
-            return *this;
-        }
-        
-        void Create();
-        void SetFiltering(TextureFiltering type, TextureFilteringParam param);
-        void SetMinLod(float min);
-        void SetMaxLod(float max);
-        void SetWrapping(TextureWrappingCoordinate coord, TextureWrappingParam param);
-        void SetBorderColor(float r, float g, float b, float a);
-        void SetCompareMode(TextureCompareMode mode);
-        void SetCompareFunc(TextureCompareFunc func);
-        void SetAnisotropy(float anisotropy);
+enum class TextureWrappingParam
+{
+	REPEAT              = GL_REPEAT,
+	MIRRORED_REPEAT      = GL_MIRRORED_REPEAT,
+	CLAMP_TO_EDGE        = GL_CLAMP_TO_EDGE,
+	CLAMP_TO_BORDER      = GL_CLAMP_TO_BORDER,
+	MIRROR_CLAMP_TO_EDGE = GL_MIRROR_CLAMP_TO_EDGE
+};
 
-        void Bind(uint32_t texture_unit) { glBindSampler(texture_unit, m_so_id); }
+enum class TextureCompareMode
+{
+	NONE = GL_NONE,
+	REF  = GL_COMPARE_REF_TO_TEXTURE }
+;
 
-    private:
-        void Release()
-        {
-            glDeleteSamplers(1, &m_so_id);
-            m_so_id = 0;
-        }
+enum class TextureCompareFunc
+{
+	NEVER    = GL_NEVER,
+	ALWAYS   = GL_ALWAYS,
+	LEQUAL   = GL_LEQUAL,
+	GEQUAL   = GL_GEQUAL,
+	LESS     = GL_LESS,
+	GREATER  = GL_GREATER,
+	EQUAL    = GL_EQUAL,
+	NOTEQUAL = GL_NOTEQUAL
+};
 
-        GLuint m_so_id;
-        float m_max_anisotropy;
-    };
+class TextureSampler final
+{
+public:
+	TextureSampler();
+	~TextureSampler() { Release(); };
 
-    class Texture
-    {
-    public:
-        virtual ~Texture() { Release(); };
+	TextureSampler(const TextureSampler&) = delete;
+	TextureSampler& operator = (const TextureSampler&) = delete;
 
-		Texture             (const Texture&) = delete;
-		Texture& operator = (const Texture&) = delete;
+	TextureSampler(TextureSampler&& other) noexcept : m_so_id(other.m_so_id), m_max_anisotropy(other.m_max_anisotropy)
+	{
+		other.m_so_id = 0;
+	}
 
-		Texture(Texture&& other) noexcept :
-			m_metadata(other.m_metadata),
-			m_type(other.m_type),
-			m_obj_name(other.m_obj_name)
-        {
-            other.m_obj_name = 0;
-        }
+	TextureSampler& operator = (TextureSampler&& other) noexcept
+	{
+		if (this != &other)
+		{
+			Release();
+			std::swap(m_so_id, other.m_so_id);
+			std::swap(m_max_anisotropy, other.m_max_anisotropy);
+		}
 
-		Texture& operator = (Texture&& other) noexcept
-        {
-            if (this != &other)
-            {
-                Release();
+		return *this;
+	}
 
-                std::swap(m_metadata, other.m_metadata);
-                std::swap(m_type,     other.m_type);
-                std::swap(m_obj_name, other.m_obj_name);
-            }
+	void Create();
+	void SetFiltering(TextureFiltering type, TextureFilteringParam param);
+	void SetMinLod(float min);
+	void SetMaxLod(float max);
+	void SetWrapping(TextureWrappingCoordinate coord, TextureWrappingParam param);
+	void SetBorderColor(float r, float g, float b, float a);
+	void SetCompareMode(TextureCompareMode mode);
+	void SetCompareFunc(TextureCompareFunc func);
+	void SetAnisotropy(float anisotropy);
 
-            return *this;
-        }
+	void Bind(uint32_t texture_unit) { glBindSampler(texture_unit, m_so_id); }
 
-        virtual void Bind(uint32_t unit) { glBindTextureUnit(unit, m_obj_name); }
-        virtual void SetFiltering(TextureFiltering type, TextureFilteringParam param);
-        virtual void SetMinLod(float min);
-        virtual void SetMaxLod(float max);
-        virtual void SetWrapping(TextureWrappingCoordinate coord, TextureWrappingParam param);
-        virtual void SetBorderColor(float r, float g, float b, float a);
-        virtual void SetCompareMode(TextureCompareMode mode);
-        virtual void SetCompareFunc(TextureCompareFunc func);
-        virtual void SetAnisotropy(float anisotropy);
-        
-        virtual ImageData GetMetadata() const { return m_metadata; };
+private:
+	void Release()
+	{
+		glDeleteSamplers(1, &m_so_id);
+		m_so_id = 0;
+	}
 
-        static uint8_t GetMaxMipMapsLevels(uint32_t width, uint32_t height, uint32_t depth)
-        {
-			return uint8_t(1.f + std::floor(std::log2(float(std::max(width, std::max(height, depth))))));
-        }
+	GLuint m_so_id;
+	float m_max_anisotropy;
+};
 
-    protected:
-        Texture() : m_type(TextureType::NONE), m_obj_name(0) {}
+class Texture
+{
+public:
+	virtual ~Texture() { Release(); };
 
-        void Release()
-        {
-            glDeleteTextures(1, &m_obj_name);
-            m_obj_name = 0;
-        }
+	Texture             (const Texture&) = delete;
+	Texture& operator = (const Texture&) = delete;
 
-        ImageData   m_metadata;
-        TextureType m_type;
-        GLuint      m_obj_name;
-    };
+	Texture(Texture&& other) noexcept :
+		m_metadata(other.m_metadata),
+		m_type(other.m_type),
+		m_obj_name(other.m_obj_name)
+	{
+		other.m_obj_name = 0;
+	}
 
-    class Texture2D : public Texture
-    {
-    public:
-        Texture2D() = default;
+	Texture& operator = (Texture&& other) noexcept
+	{
+		if (this != &other)
+		{
+			Release();
 
-		// TODO: convert to factory function
-		//   also, these should access a shared storage,
-		//   if the texture is already loaded, return the existing (a shread_ptr)
-		bool Load(const std::filesystem::path & filepath, bool is_srgb = false, uint32_t num_mipmaps = 0);
-        bool Load(unsigned char* memory_data, uint32_t data_size, bool is_srgb = false, uint32_t num_mipmaps = 0);
-        bool LoadHdr(const std::filesystem::path& filepath, uint32_t num_mipmaps = 0);
-        bool LoadDds(const std::filesystem::path& filepath);
-    };
+			std::swap(m_metadata, other.m_metadata);
+			std::swap(m_type,     other.m_type);
+			std::swap(m_obj_name, other.m_obj_name);
+		}
 
-    class TextureCubeMap : public Texture
-    {
-    public:
-        TextureCubeMap() = default;
+		return *this;
+	}
 
-		// TODO: convert to factory function
-		bool Load(const std::filesystem::path * filepaths, bool is_srgb = false, uint32_t num_mipmaps = 0);
-    };
+	virtual void Bind(uint32_t unit) { glBindTextureUnit(unit, m_obj_name); }
+	virtual void SetFiltering(TextureFiltering type, TextureFilteringParam param);
+	virtual void SetMinLod(float min);
+	virtual void SetMaxLod(float max);
+	virtual void SetWrapping(TextureWrappingCoordinate coord, TextureWrappingParam param);
+	virtual void SetBorderColor(float r, float g, float b, float a);
+	virtual void SetCompareMode(TextureCompareMode mode);
+	virtual void SetCompareFunc(TextureCompareFunc func);
+	virtual void SetAnisotropy(float anisotropy);
+
+	virtual ImageData GetMetadata() const { return m_metadata; };
+
+	static uint8_t GetMaxMipMapsLevels(uint32_t width, uint32_t height, uint32_t depth)
+	{
+		return uint8_t(1.f + std::floor(std::log2(float(std::max(width, std::max(height, depth))))));
+	}
+
+protected:
+	Texture() : m_type(TextureType::NONE), m_obj_name(0) {}
+
+	void Release()
+	{
+		glDeleteTextures(1, &m_obj_name);
+		m_obj_name = 0;
+	}
+
+	ImageData   m_metadata;
+	TextureType m_type;
+	GLuint      m_obj_name;
+};
+
+class Texture2D : public Texture
+{
+public:
+	Texture2D() = default;
+
+	// TODO: convert to factory function
+	//   also, these should access a shared storage,
+	//   if the texture is already loaded, return the existing (a shread_ptr)
+	bool Load(const std::filesystem::path & filepath, bool is_srgb = false, uint32_t num_mipmaps = 0);
+	bool Load(unsigned char* memory_data, uint32_t data_size, bool is_srgb = false, uint32_t num_mipmaps = 0);
+	bool LoadHdr(const std::filesystem::path& filepath, uint32_t num_mipmaps = 0);
+	bool LoadDds(const std::filesystem::path& filepath);
+};
+
+class TextureCubeMap : public Texture
+{
+public:
+	TextureCubeMap() = default;
+
+	// TODO: convert to factory function
+	bool Load(const std::filesystem::path * filepaths, bool is_srgb = false, uint32_t num_mipmaps = 0);
+};
+
 }
