@@ -7,6 +7,10 @@ namespace RGL
 {
     Material::Material()
     {
+		m_vec3_map.reserve(4);
+		m_float_map.reserve(4);
+		m_bool_map.reserve(8);
+
 		setVector3("u_albedo"sv,            glm::vec3(1.0f));
 		setVector3("u_emission"sv,          glm::vec3(0.0f));
 		setFloat  ("u_ao"sv,                1.0f);
