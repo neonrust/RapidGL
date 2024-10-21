@@ -230,7 +230,7 @@ void ClusteredShading::init_app()
     }
 
     /// Create shaders.
-    std::string dir = "src/demos/27_clustered_shading/";
+	const std::string dir = "src/demos/27_clustered_shading/";
     m_depth_prepass_shader = std::make_shared<Shader>(dir + "depth_pass.vert", dir + "depth_pass.frag");
     m_depth_prepass_shader->link();
 
@@ -258,7 +258,6 @@ void ClusteredShading::init_app()
     m_draw_area_lights_geometry_shader = std::make_shared<Shader>(dir + "area_light_geom.vert", dir + "area_light_geom.frag");
     m_draw_area_lights_geometry_shader->link();
 
-    dir = "src/demos/22_pbr/";
     m_equirectangular_to_cubemap_shader = std::make_shared<Shader>(dir + "cubemap.vert", dir + "equirectangular_to_cubemap.frag");
     m_equirectangular_to_cubemap_shader->link();
 
@@ -268,7 +267,7 @@ void ClusteredShading::init_app()
     m_prefilter_env_map_shader = std::make_shared<Shader>(dir + "cubemap.vert", dir + "prefilter_cubemap.frag");
     m_prefilter_env_map_shader->link();
 
-    m_precompute_brdf = std::make_shared<Shader>("src/demos/10_postprocessing_filters/FSQ.vert", dir + "precompute_brdf.frag");
+	m_precompute_brdf = std::make_shared<Shader>(dir + "FSQ.vert", dir + "precompute_brdf.frag");
     m_precompute_brdf->link();
 
     m_background_shader = std::make_shared<Shader>(dir + "background.vert", dir + "background.frag");
@@ -277,7 +276,6 @@ void ClusteredShading::init_app()
     m_tmo_ps = std::make_shared<PostprocessFilter>(Window::getWidth(), Window::getHeight());
 
     // Bloom shaders.
-    dir = "src/demos/26_bloom/";
     m_downscale_shader = std::make_shared<Shader>(dir + "downscale.comp");
     m_downscale_shader->link();
 
