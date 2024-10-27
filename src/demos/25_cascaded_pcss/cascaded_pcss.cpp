@@ -70,7 +70,7 @@ void CascadedPCSS::init_app()
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
     /* Create virtual camera. */
-    m_camera = std::make_shared<RGL::Camera>(60.0, RGL::Window::getAspectRatio(), 0.1, 100.0);
+    m_camera = std::make_shared<RGL::Camera>(60.0, RGL::Window::aspectRatio(), 0.1, 100.0);
     m_camera->setPosition(-10.3, 7.6, -5.42);
     m_camera->setOrientation(glm::quat(-0.3, -0.052, -0.931, -0.165));
 
@@ -525,8 +525,8 @@ GLuint CascadedPCSS::GenerateRandomAnglesTexture3D(uint32_t size)
 
 void CascadedPCSS::update_csm_splits()
 {
-    float near_clip  = m_camera->NearPlane();
-    float far_clip   = m_camera->FarPlane();
+    float near_clip  = m_camera->nearPlane();
+    float far_clip   = m_camera->farPlane();
     float clip_range = far_clip - near_clip;
     float ratio      = far_clip / near_clip;
 
@@ -570,8 +570,8 @@ void CascadedPCSS::update_csm_splits()
 
 void CascadedPCSS::update_csm_frusta()
 {
-    float near_clip     = m_camera->NearPlane();
-    float far_clip      = m_camera->FarPlane();
+    float near_clip     = m_camera->nearPlane();
+    float far_clip      = m_camera->farPlane();
     float clip_range    = far_clip - near_clip;
     glm::vec3 light_dir = m_dir_light_properties.direction;
 
@@ -631,7 +631,7 @@ void CascadedPCSS::update_csm_frusta()
         glm::mat4 light_view_matrix  = glm::lookAt(frustum_center - light_dir * -min_extents.z, frustum_center, glm::vec3(0.0f, 1.0f, 0.0f));
         glm::mat4 light_ortho_matrix = glm::ortho(min_extents.x, max_extents.x, min_extents.y, max_extents.y, 0.0f, max_extents.z - min_extents.z);
 
-        float split_depth = (m_camera->NearPlane() + split_dist * clip_range) * -1.0f;
+        float split_depth = (m_camera->nearPlane() + split_dist * clip_range) * -1.0f;
         m_directional_light_shader->setUniform("u_cascade_splits[" + std::to_string(i) + "]", split_depth);
 
         avg_frustum_size = glm::max(avg_frustum_size, max_extents.x - min_extents.x);

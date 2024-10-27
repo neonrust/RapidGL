@@ -28,7 +28,7 @@ void MeshSkinning::init_app()
     glEnable(GL_MULTISAMPLE);
 
     /* Create virtual camera. */
-    m_camera = std::make_shared<RGL::Camera>(60.0, RGL::Window::getAspectRatio(), 0.01, 100.0);
+    m_camera = std::make_shared<RGL::Camera>(60.0, RGL::Window::aspectRatio(), 0.01, 100.0);
     m_camera->setPosition(-1.0, 0.5, 1.0);
     m_camera->setOrientation(10.0, 45.0, 0.0);
 

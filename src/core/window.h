@@ -25,7 +25,7 @@ namespace RGL
         static int       getHeight();
         static glm::vec2 getCenter();
         static glm::vec2 getSize();
-        static float     getAspectRatio();
+        static float     aspectRatio();
         static glm::mat4 getViewportMatrix();
 
         static const std::string & getTitle();

@@ -28,7 +28,7 @@ void PostprocessingFilters::init_app()
     glEnable(GL_MULTISAMPLE);
 
     /* Create virtual camera. */
-    m_camera = std::make_shared<RGL::Camera>(60.0, RGL::Window::getAspectRatio(), 0.01, 100.0);
+    m_camera = std::make_shared<RGL::Camera>(60.0, RGL::Window::aspectRatio(), 0.01, 100.0);
     m_camera->setPosition(-6, 5.0, 10.0);
     m_camera->setOrientation(20.0f, 30.0f, 0.0f);
 

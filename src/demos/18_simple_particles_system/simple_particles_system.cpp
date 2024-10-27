@@ -62,7 +62,7 @@ void SimpleParticlesSystem::init_app()
     m_file_dialog.SetPwd(RGL::FileSystem::getResourcesPath() / "textures/particles");
 
     /* Create virtual camera. */
-    m_camera = std::make_shared<RGL::Camera>(60.0, RGL::Window::getAspectRatio(), 0.01, 100.0);
+    m_camera = std::make_shared<RGL::Camera>(60.0, RGL::Window::aspectRatio(), 0.01, 100.0);
     m_camera->setPosition(4.0, 1.5, -4.0);
     m_camera->setOrientation(5.0f, 225.0f, 0.0f);
     m_camera->update(0.0);

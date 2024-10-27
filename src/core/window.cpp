@@ -134,7 +134,7 @@ namespace RGL
         return m_viewport_size;
     }
 
-    float Window::getAspectRatio()
+    float Window::aspectRatio()
     {
         return float(m_viewport_size.x) / float(m_viewport_size.y);
     }
