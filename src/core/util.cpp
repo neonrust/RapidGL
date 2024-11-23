@@ -141,7 +141,7 @@ namespace RGL
 			JxlBasicInfo info;
 			JxlPixelFormat format = {
 				.num_channels = 0, // set by JXL_DEC_BASIC_INFO message below
-				.data_type = JXL_TYPE_UINT8, // budated by JXL_DEC_BASIC_INFO message below
+				.data_type = JXL_TYPE_UINT8, // updated by JXL_DEC_BASIC_INFO message below
 				.endianness = JXL_NATIVE_ENDIAN,
 				.align = 0,
 			};
@@ -154,7 +154,7 @@ namespace RGL
 			// std::vector<uint8_t> icc_profile;
 			int channel_size { 0 };
 
-			std::vector<uint8_t> pixels; // TODO: might use the same (static) buffers for all textures (can't upload in parallel anyway)
+			uint8_t *pixels = nullptr; // TODO: might use the same (static) buffers for all textures (can't upload in parallel anyway)
 
 			bool decodingDone = false;
 
@@ -229,13 +229,9 @@ namespace RGL
 							fprintf(stderr, "Jxl: Invalid out buffer size %ld: %ld\n", buffer_size, expected_size);
 							return {};
 						}
-						pixels.resize(buffer_size);
+						pixels = (uint8_t *)malloc(buffer_size);
 					}
-					void *pixels_buffer;
-					pixels_buffer = static_cast<void*>(pixels.data());
-					size_t pixels_buffer_size;
-					pixels_buffer_size = pixels.size() * size_t(channel_size); // don't need format.num_channels ?
-					res = JxlDecoderSetImageOutBuffer(dec, &format, pixels_buffer, pixels_buffer_size);
+					res = JxlDecoderSetImageOutBuffer(dec, &format, pixels, buffer_size);
 					if(res != JXL_DEC_SUCCESS)
 					{
 						fprintf(stderr, "Jxl: JxlDecoderSetImageOutBuffer failed\n");
@@ -254,8 +250,9 @@ namespace RGL
 					// the decoder will be destroyed.
 
 					channels_in_file = int(format.num_channels);
-					data = (unsigned char *)malloc(pixels.size());
-					std::memcpy(data, pixels.data(), pixels.size());
+					// data = (unsigned char *)malloc(pixels.size());
+					// std::memcpy(data, pixels.data(), pixels.size());
+					data = pixels;
 					decodingDone = true;
 					break;
 
@@ -293,7 +290,7 @@ namespace RGL
         return data;
     }
 
-    float* Util::LoadTextureDataHdr(const std::filesystem::path& filepath, ImageData& image_data, int desired_number_of_channels)
+	float* Util::LoadTextureDataHdr(const std::filesystem::path &filepath, ImageData &image_data, int desired_number_of_channels)
     {
 		// TODO: add support for JPEG XL
 
