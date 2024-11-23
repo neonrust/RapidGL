@@ -187,10 +187,17 @@ bool StaticModel::ParseScene(const aiScene* scene, const std::filesystem::path& 
 		auto *mesh = scene->mMeshes[idx];
 		LoadMeshPart(mesh, vertex_data);
 
-			   // min = glm::min(min, vec3_cast(mesh->mAABB.mMin));
-			   // max = glm::max(max, vec3_cast(mesh->mAABB.mMax));
+		// min = glm::min(min, vec3_cast(mesh->mAABB.mMin));
+		// max = glm::max(max, vec3_cast(mesh->mAABB.mMax));
 		_aabb.expand(vec3_cast(mesh->mAABB.mMin));
 		_aabb.expand(vec3_cast(mesh->mAABB.mMax));
+		printf("  added mesh part %d; %d vertices; AABB: %.1f, %.1f, %.1f  ->  %.1f, %.1f, %.1f   (%.1f x %.1f x %.1f)\n",
+			   idx,
+			   mesh->mNumVertices,
+			   mesh->mAABB.mMin.x, mesh->mAABB.mMin.y, mesh->mAABB.mMin.z,
+			   mesh->mAABB.mMax.x, mesh->mAABB.mMax.y, mesh->mAABB.mMax.z,
+			   mesh->mAABB.mMax.x - mesh->mAABB.mMin.x, mesh->mAABB.mMax.y - mesh->mAABB.mMin.y, mesh->mAABB.mMax.z- mesh->mAABB.mMin.z
+			   );
 	}
 
 	m_unit_scale = 1.0f / glm::compMax(_aabb.max() - _aabb.min());
@@ -207,7 +214,7 @@ bool StaticModel::ParseScene(const aiScene* scene, const std::filesystem::path& 
 
 	const auto T1 = steady_clock::now();
 
-	std::printf("Loaded mesh: %s  (%.1f x %.1f %.1f)  (%ld ms)\n", filepath.string().c_str(), _aabb.width(), _aabb.height(), _aabb.depth(), duration_cast<milliseconds>(T1 - T0).count());
+	std::printf("Loaded mesh: %s  (%.1f x %.1f %.1f) (%ld ms)\n", filepath.string().c_str(), _aabb.width(), _aabb.height(), _aabb.depth(), duration_cast<milliseconds>(T1 - T0).count());
 
 	return true;
 }

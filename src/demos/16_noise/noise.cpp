@@ -105,7 +105,7 @@ void ProceduralNoise::init_app()
 
     /* Create virtual camera. */
     m_camera = std::make_shared<RGL::Camera>(60.0, RGL::Window::aspectRatio(), 0.01, 100.0);
-    m_camera->setPosition(0.0, 0.5, 3.0);
+	m_camera->setPosition({ 0.0, 0.5, 3.0 });
 
     /* Create models. */
     for (unsigned i = 0; i < 3; ++i)

@@ -186,7 +186,10 @@ namespace RGL
 
         static void setMouseCursorPosition(const glm::vec2 & cursor_position);
 
-    private:
+		static float getGamepadAxis(int gamepad, int axis);
+		static bool getGamepadButton(int gamepad, int button);
+
+	private:
         static GLFWwindow * m_window;
 
         /**

@@ -173,20 +173,36 @@ namespace RGL
         return glm::vec2(x_pos, y_pos);
     }
 
+	void Input::setMouseCursorPosition(const glm::vec2 & cursor_position)
+	{
+		glfwSetCursorPos(m_window, cursor_position.x, cursor_position.y);
+	}
+
     void Input::setMouseCursorVisibility(bool is_visible)
     {
-        if (is_visible)
-        {
-            glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-        }
-        else
-        {
-            glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-        }
+		glfwSetInputMode(m_window, GLFW_CURSOR, is_visible? GLFW_CURSOR_NORMAL: GLFW_CURSOR_DISABLED);
     }
 
-    void Input::setMouseCursorPosition(const glm::vec2 & cursor_position)
-    {
-        glfwSetCursorPos(m_window, cursor_position.x, cursor_position.y);
-    }
+	float Input::getGamepadAxis(int gamepad, int axis)
+	{
+		assert(gamepad >= GLFW_JOYSTICK_1 and gamepad <= GLFW_JOYSTICK_LAST);
+
+		GLFWgamepadstate state;
+		if(glfwGetGamepadState(gamepad, &state))
+			return state.axes[axis];
+
+		return 0;
+	}
+
+	bool Input::getGamepadButton(int gamepad, int button)
+	{
+		assert(gamepad >= GLFW_JOYSTICK_1 and gamepad <= GLFW_JOYSTICK_LAST);
+
+		GLFWgamepadstate state;
+		if(glfwGetGamepadState(gamepad, &state))
+			return state.buttons[button] == GLFW_PRESS;
+
+		return false;
+	}
+
 }

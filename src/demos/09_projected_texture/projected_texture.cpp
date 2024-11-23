@@ -31,7 +31,7 @@ void ProjectedTexture::init_app()
 
     /* Create virtual camera. */
     m_camera = std::make_shared<RGL::Camera>(60.0, RGL::Window::aspectRatio(), 0.01, 100.0);
-    m_camera->setPosition(1.5, 0.0, 10.0);
+	m_camera->setPosition({ 1.5, 0.0, 10.0 });
 
     /* Initialize lights' properties */
     m_spot_light_properties.color       = glm::vec3(0.8);

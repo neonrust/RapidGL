@@ -40,8 +40,8 @@ void OIT::init_app()
 
     /* Create virtual camera. */
     m_camera = std::make_shared<RGL::Camera>(60.0, RGL::Window::aspectRatio(), 0.01, 100.0);
-    m_camera->setPosition(-15.0, 0.0, 20.0);
-    m_camera->setOrientation(0, 37.0, 0.0);
+	m_camera->setPosition({ -15.0, 0.0, 20.0 });
+	m_camera->setOrientationEuler({ 0, 37.0, 0.0 });
 
     /* Create models. */
     float radius = 1.5f;

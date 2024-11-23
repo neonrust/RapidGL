@@ -295,6 +295,8 @@ namespace RGL
 
     float* Util::LoadTextureDataHdr(const std::filesystem::path& filepath, ImageData& image_data, int desired_number_of_channels)
     {
+		// TODO: add support for JPEG XL
+
         stbi_set_flip_vertically_on_load(true);
             int width, height, channels_in_file;
             float* data = stbi_loadf(filepath.generic_string().c_str(), &width, &height, &channels_in_file, desired_number_of_channels);

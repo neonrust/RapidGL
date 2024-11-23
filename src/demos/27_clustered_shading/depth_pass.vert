@@ -4,10 +4,10 @@ layout (location = 1) in vec2 in_texcoord;
 
 layout(location = 0) out vec2 texcoord;
 
-uniform mat4 mvp;
+uniform mat4 u_mvp;
 
 void main()
 {
 	texcoord    = in_texcoord;
-	gl_Position = mvp * vec4(in_pos, 1.0);
+	gl_Position = u_mvp * vec4(in_pos, 1.0);
 }

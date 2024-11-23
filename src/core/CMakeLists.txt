@@ -46,6 +46,29 @@ target_link_libraries(${CORE_LIB_NAME}
 	glm::glm
 	tinyddsloader
 )
+
+# target_compile_options(${CORE_LIB_NAME}
+# 	PRIVATE
+# 	-Wextra
+# 	-Wall
+# 	-Wpedantic
+# 	-Werror
+# 	--pedantic-errors
+# 	-Wconversion
+# 	-Wmissing-declarations
+# 	-Wold-style-cast
+# 	-Wno-padded
+# )
+
+set_source_files_properties(
+	gui/imgui_impl_glfw.cpp
+	gui/imgui_impl_glfw.h
+	gui/imgui_impl_opengl3.cpp
+	gui/imgui_impl_opengl3.h
+	gui/imgui_impl_opengl3_loader.h
+	PROPERTIES
+	COMPILE_FLAGS " -Wno-old-style-cast -Wno-conversion "
+)
 if(MinGW)
     target_link_libraries(${CORE_LIB_NAME} bz2)
 endif()

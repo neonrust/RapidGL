@@ -48,7 +48,7 @@ void Tessellation1D::init_app()
     /* Create virtual camera. */
     const float c = 3.5f;
     m_camera = std::make_shared<RGL::Camera>(-0.5f * c, 0.5f * c, -0.3f * c, 0.45f * c, 0.1f, 100.0f);
-    m_camera->setPosition(0.0, 0.0, 1.5);
+	m_camera->setPosition({ 0.0, 0.0, 1.5 });
 
     /* Create shader. */
     std::string dir  = "src/demos/13_ts_curve/";

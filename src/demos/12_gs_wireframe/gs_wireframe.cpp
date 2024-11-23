@@ -30,8 +30,8 @@ void GSWireframe::init_app()
 
     /* Create virtual camera. */
     m_camera = std::make_shared<RGL::Camera>(60.0, RGL::Window::aspectRatio(), 0.01, 100.0);
-    m_camera->setPosition(-1, 1.0, 2.0);
-    m_camera->setOrientation(0.0f, 35.0f, 0.0f);
+	m_camera->setPosition({ -1, 1.0, 2.0 });
+	m_camera->setOrientationEuler({ 0.0f, 35.0f, 0.0f });
 
     /* Initialize lights' properties */
     m_dir_light_properties.color     = glm::vec3(1.0f);

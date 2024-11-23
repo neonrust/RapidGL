@@ -1,6 +1,9 @@
 ﻿#pragma once
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
 #include <imgui.h>
+#pragma GCC diagnostic pop
 #include "imgui_impl_glfw.h"
 
 #include "window.h"

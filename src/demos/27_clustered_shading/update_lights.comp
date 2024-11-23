@@ -16,19 +16,19 @@ layout(std430, binding = AREA_LIGHTS_SSBO_BINDING_INDEX) buffer AreaLightsSSBO
     AreaLight area_lights[];
 };
 
-layout(std430, binding = POINT_LIGHTS_ELLIPSES_RADII_SSBO_BINDING_INDEX) buffer PointEllipsesRadii
+layout(std430, binding = POINT_LIGHTS_ORBIT_SSBO_BINDING_INDEX) buffer PointEllipsesRadii
 {
     vec4 point_ellipses_radii[]; // [x, y, z] => [ellipse a radius, ellipse b radius, light move speed]
 };
 
-layout(std430, binding = SPOT_LIGHTS_ELLIPSES_RADII_SSBO_BINDING_INDEX) buffer SpotEllipsesRadii
+layout(std430, binding = SPOT_LIGHTS_ORBIT_SSBO_BINDING_INDEX) buffer SpotEllipsesRadii
 {
     vec4 spot_ellipses_radii[]; // [x, y, z] => [ellipse a radius, ellipse b radius, light move speed]
 };
 
 uniform float u_time;
-uniform bool  u_two_sided;
-uniform mat4  u_rotation_matrix;
+uniform bool u_area_two_sided;
+uniform mat4 u_area_rotation_matrix;
 
 mat4 translate(vec3 p)
 {
@@ -62,8 +62,8 @@ void main()
 
         for (uint i = 0; i < 4; ++i)
         {
-            area_lights[thread_ID].points[i] = translate(center.xyz) * u_rotation_matrix * translate(-center.xyz) * area_lights[thread_ID].points[i];
+            area_lights[thread_ID].points[i] = translate(center.xyz) * u_area_rotation_matrix * translate(-center.xyz) * area_lights[thread_ID].points[i];
         }
-        area_lights[thread_ID].two_sided = u_two_sided;
+        area_lights[thread_ID].two_sided = u_area_two_sided;
     }
 }

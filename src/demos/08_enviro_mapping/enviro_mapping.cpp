@@ -40,7 +40,7 @@ void EnvironmentMapping::init_app()
 
     /* Create virtual camera. */
     m_camera = std::make_shared<RGL::Camera>(60.0, RGL::Window::aspectRatio(), 0.01, 100.0);
-    m_camera->setPosition(0.0, 5.0, 9.0);
+	m_camera->setPosition({ 0.0, 5.0, 9.0 });
     m_camera->setOrientation(glm::vec3(0.0, 3.0, -9.0));
 
     /* Initialize lights' properties */

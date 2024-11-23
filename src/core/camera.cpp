@@ -3,7 +3,14 @@
 
 namespace RGL
 {
-    void Camera::update(double dt)
+const Frustum &Camera::frustum()
+{
+	if(m_is_dirty)
+		updateFrustum();
+	return _frustum;
+}
+
+void Camera::update(double dt)
     {
         /* Camera Movement */
 		auto movement_amount = float(m_move_speed * dt);
@@ -69,14 +76,29 @@ namespace RGL
 
         if (m_is_dirty)
         {
+			static auto printed = false;
             glm::mat4 R = glm::mat4_cast(m_orientation);
-            glm::mat4 T = glm::translate(glm::mat4(1.0f), -m_position);
+			glm::mat4 T = glm::translate(glm::mat4(1), -m_position);
+			if(not printed)
+			{
+				std::printf("  position:  { %.2f; %.2f; %.2f }\n", m_position.x, m_position.y, m_position.z);
+				std::printf("  direction: { %.2f; %.2f; %.2f }\n", m_direction.x, m_direction.y, m_direction.z);
+				printed = true;
+			}
+
 
             m_view = R * T;
+
+			updateFrustum();
 
             m_is_dirty = false;
         }
     }
+
+	void Camera::updateFrustum()
+	{
+		_frustum.setFromView(m_projection, m_view);
+	}
 
 	Camera::Camera(bool is_ortho)
 	  : m_view                  (1),

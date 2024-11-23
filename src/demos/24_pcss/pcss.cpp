@@ -67,7 +67,7 @@ void PCSS::init_app()
 
     /* Create virtual camera. */
     m_camera = std::make_shared<RGL::Camera>(60.0, RGL::Window::aspectRatio(), 0.01, 100.0);
-    m_camera->setPosition(-10.3, 7.6, -5.42);
+	m_camera->setPosition({ -10.3, 7.6, -5.42 });
     m_camera->setOrientation(glm::quat(-0.3, -0.052, -0.931, -0.165));
    
     /* Initialize lights' properties */

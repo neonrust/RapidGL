@@ -90,7 +90,7 @@ void ToonOutline::init_app()
 
     /* Create virtual camera. */
     m_camera = std::make_shared<RGL::Camera>(60.0, RGL::Window::aspectRatio(), 0.01, 100.0);
-    m_camera->setPosition(1.5, 0.0, 10.0);
+	m_camera->setPosition({ 1.5, 0.0, 10.0 });
 
     /* Create models. */
     for (unsigned i = 0; i < 9; ++i)

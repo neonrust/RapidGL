@@ -6,33 +6,33 @@ layout(std430, binding = CLUSTERS_SSBO_BINDING_INDEX) buffer ClustersSSBO
     ClusterAABB clusters[];
 };
 
-layout (std430, binding = POINT_LIGHTS_SSBO_BINDING_INDEX) buffer PointLightsSSBO
+layout(std430, binding = POINT_LIGHTS_SSBO_BINDING_INDEX) buffer PointLightsSSBO
 {
     PointLight point_lights[];
 };
 
-layout (std430, binding = POINT_LIGHT_INDEX_LIST_SSBO_BINDING_INDEX) buffer PointLightIndexListSSBO
+layout(std430, binding = POINT_LIGHT_INDEX_LIST_SSBO_BINDING_INDEX) buffer PointLightIndexListSSBO
 {
     uint point_light_index_list[];
 };
 
-layout (std430, binding = POINT_LIGHT_GRID_SSBO_BINDING_INDEX) buffer PointLightGridSSBO
+layout(std430, binding = POINT_LIGHT_GRID_SSBO_BINDING_INDEX) buffer PointLightGridSSBO
 {
     uint point_light_index_counter;
     LightGrid point_light_grid[];
 };
 
-layout (std430, binding = SPOT_LIGHTS_SSBO_BINDING_INDEX) buffer SpotLightsSSBO
+layout(std430, binding = SPOT_LIGHTS_SSBO_BINDING_INDEX) buffer SpotLightsSSBO
 {
     SpotLight spot_lights[];
 };
 
-layout (std430, binding = SPOT_LIGHT_INDEX_LIST_SSBO_BINDING_INDEX) buffer SpotLightIndexListSSBO
+layout(std430, binding = SPOT_LIGHT_INDEX_LIST_SSBO_BINDING_INDEX) buffer SpotLightIndexListSSBO
 {
     uint spot_light_index_list[];
 };
 
-layout (std430, binding = SPOT_LIGHT_GRID_SSBO_BINDING_INDEX) buffer SpotLightGridSSBO
+layout(std430, binding = SPOT_LIGHT_GRID_SSBO_BINDING_INDEX) buffer SpotLightGridSSBO
 {
     uint spot_light_index_counter;
     LightGrid spot_light_grid[];
@@ -43,12 +43,12 @@ layout(std430, binding = AREA_LIGHTS_SSBO_BINDING_INDEX) buffer AreaLightsSSBO
     AreaLight area_lights[];
 };
 
-layout (std430, binding = AREA_LIGHT_INDEX_LIST_SSBO_BINDING_INDEX) buffer AreaLightIndexListSSBO
+layout(std430, binding = AREA_LIGHT_INDEX_LIST_SSBO_BINDING_INDEX) buffer AreaLightIndexListSSBO
 {
     uint area_light_index_list[];
 };
 
-layout (std430, binding = AREA_LIGHT_GRID_SSBO_BINDING_INDEX) buffer AreaLightGridSSBO
+layout(std430, binding = AREA_LIGHT_GRID_SSBO_BINDING_INDEX) buffer AreaLightGridSSBO
 {
     uint area_light_index_counter;
     LightGrid area_light_grid[];
@@ -88,11 +88,11 @@ void main()
     if (gl_LocalInvocationIndex == 0)
     {
         s_point_lights_count = 0;
-        s_spot_lights_count  = 0;
-        s_area_lights_count  = 0;
+        s_spot_lights_count = 0;
+        s_area_lights_count = 0;
 
         s_cluster_index_1D = unique_clusters[gl_WorkGroupID.x];
-        s_cluster_aabb     = clusters[s_cluster_index_1D];
+        s_cluster_aabb = clusters[s_cluster_index_1D];
     }
     barrier();
 
@@ -103,7 +103,7 @@ void main()
     {
         PointLight light = point_lights[i];
 
-        if (sphereInsideAABB(light.position, light.radius, s_cluster_aabb))
+        if (light.base.intensity > 0 && sphereInsideAABB(light.position, light.radius, s_cluster_aabb))
         {
             index = atomicAdd(s_point_lights_count, 1);
 
@@ -121,7 +121,7 @@ void main()
     {
         SpotLight light = spot_lights[i];
 
-        if (sphereInsideAABB(light.point.position, light.point.radius, s_cluster_aabb))
+        if (light.point.base.intensity > 0 && sphereInsideAABB(light.point.position, light.point.radius, s_cluster_aabb))
         {
             index = atomicAdd(s_spot_lights_count, 1);
 
@@ -138,16 +138,19 @@ void main()
     {
         AreaLight light = area_lights[i];
 
-        vec3  center = (light.points[1].xyz + light.points[2].xyz) / 2.0;
-        float radius = 50.0 * light.base.intensity * distance(center, light.points[1].xyz);
-
-        if (sphereInsideAABB(center, radius, s_cluster_aabb))
+        if (light.base.intensity > 0)
         {
-            index = atomicAdd(s_area_lights_count, 1);
+            vec3 center = (light.points[1].xyz + light.points[2].xyz) / 2.0;
+            float radius = 50.0 * light.base.intensity * distance(center, light.points[1].xyz);
 
-            if (index < 1024)
+            if (sphereInsideAABB(center, radius, s_cluster_aabb))
             {
-                s_area_lights_list[index] = i;
+                index = atomicAdd(s_area_lights_count, 1);
+
+                if (index < 1024)
+                {
+                    s_area_lights_list[index] = i;
+                }
             }
         }
     }
@@ -161,18 +164,17 @@ void main()
         // Update light grid for point lights.
         s_point_lights_start_offset = atomicAdd(point_light_index_counter, s_point_lights_count);
         point_light_grid[s_cluster_index_1D].offset = s_point_lights_start_offset;
-        point_light_grid[s_cluster_index_1D].count  = s_point_lights_count;
+        point_light_grid[s_cluster_index_1D].count = s_point_lights_count;
 
         // Update light grid for spot lights.
         s_spot_lights_start_offset = atomicAdd(spot_light_index_counter, s_spot_lights_count);
         spot_light_grid[s_cluster_index_1D].offset = s_spot_lights_start_offset;
-        spot_light_grid[s_cluster_index_1D].count  = s_spot_lights_count;
+        spot_light_grid[s_cluster_index_1D].count = s_spot_lights_count;
 
         // Update light grid for area lights.
         s_area_lights_start_offset = atomicAdd(area_light_index_counter, s_area_lights_count);
         area_light_grid[s_cluster_index_1D].offset = s_area_lights_start_offset;
-        area_light_grid[s_cluster_index_1D].count  = s_area_lights_count;
-
+        area_light_grid[s_cluster_index_1D].count = s_area_lights_count;
     }
     barrier();
 
@@ -204,11 +206,11 @@ bool sphereInsideAABB(vec3 center, float radius, ClusterAABB aabb)
 float sqDistancePointAABB(vec3 point, ClusterAABB aabb)
 {
     float sq_dist = 0.0;
-    
+
     for (int i = 0; i < 3; ++i)
     {
         float v = point[i];
-        
+
         if (v < aabb.min[i]) sq_dist += pow(aabb.min[i] - v, 2);
         if (v > aabb.max[i]) sq_dist += pow(v - aabb.max[i], 2);
     }

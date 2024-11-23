@@ -44,6 +44,10 @@ void ShaderStorageBuffer<T>::set(const std::vector<T> &data, GLenum usage)
 
 	glNamedBufferData(_id, GLsizeiptr(sizeof(T) * data.size()), data.data(), usage? usage: _default_usage);
 
+	// TODO: should use glNamedBufferSubData for updates
+	//   if so, the array data needs to have a "terminator" (so shader code can tell the size)
+	// glNamedBufferSubData(_id, 0,  GLsizeiptr(sizeof(T) * data.size()), data.data());
+
 	if(create)
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, _bind_index, _id);
 }

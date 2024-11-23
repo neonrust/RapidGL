@@ -41,8 +41,8 @@ void GSPointSprites::init_app()
 
     /* Create virtual camera. */
     m_camera = std::make_shared<RGL::Camera>(60.0, RGL::Window::aspectRatio(), 0.01, 100.0);
-    m_camera->setPosition(-6, 5.0, 10.0);
-    m_camera->setOrientation(20.0f, 30.0f, 0.0f);
+	m_camera->setPosition({ -6, 5.0, 10.0 });
+	m_camera->setOrientationEuler({ 20.0f, 30.0f, 0.0f });
 
     /* Add textures to the objects. */
     m_sprite_tex = std::make_shared<RGL::Texture2D>();

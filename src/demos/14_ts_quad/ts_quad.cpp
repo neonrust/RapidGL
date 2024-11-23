@@ -49,7 +49,7 @@ void Tessellation2D::init_app()
     /* Create virtual camera. */
     const float c = 3.5f;
     m_camera = std::make_shared<RGL::Camera>(-0.4f * c, 0.7f * c, -0.35f * c, 0.4f * c, 0.1f, 100.0f);
-    m_camera->setPosition(0.0, 0.0, 1.5);
+	m_camera->setPosition({ 0.0, 0.0, 1.5 });
 
     /* Create shader. */
     std::string dir  = "src/demos/14_ts_quad/";
