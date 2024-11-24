@@ -314,6 +314,8 @@ namespace intersect
 
 frustum_cull_result check(const Frustum &f, const bounds::AABB &box, const glm::mat4 &box_transform)
 {
+	// https://iquilezles.org/articles/frustumcorrect/
+
 	frustum_cull_result result;
 
 	// check if any of the *transformed* 8 corners of the box is contained by the frustum
