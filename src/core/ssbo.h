@@ -1,6 +1,7 @@
 #pragma once
 
 #include "glad/glad.h"
+#include <cassert>
 #include <vector>
 
 
@@ -24,6 +25,9 @@ public:
 	}
 
 	void set(const std::vector<T> &data, GLenum usage=0);
+	size_t size() const { return _size; }
+
+	bool set(size_t index, const T &item);
 
 private:
 	inline bool created() const { return _id != GLuint(-1); }
@@ -32,6 +36,7 @@ private:
 	GLuint _id { GLuint(-1) };
 	GLuint _bind_index { 0 };
 	GLenum _default_usage;
+	size_t _size;
 };
 
 
@@ -43,6 +48,7 @@ void ShaderStorageBuffer<T>::set(const std::vector<T> &data, GLenum usage)
 		glCreateBuffers  (1, &_id);
 
 	glNamedBufferData(_id, GLsizeiptr(sizeof(T) * data.size()), data.data(), usage? usage: _default_usage);
+	_size = data.size();
 
 	// TODO: should use glNamedBufferSubData for updates
 	//   if so, the array data needs to have a "terminator" (so shader code can tell the size)
@@ -50,4 +56,13 @@ void ShaderStorageBuffer<T>::set(const std::vector<T> &data, GLenum usage)
 
 	if(create)
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, _bind_index, _id);
+}
+
+template<typename T>
+inline bool ShaderStorageBuffer<T>::set(size_t index, const T &item)
+{
+	if(index < _size)
+		glNamedBufferSubData(_id, index*sizeof(T), sizeof(T), &item);
+
+	return index < _size;
 }
