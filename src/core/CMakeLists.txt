@@ -42,7 +42,6 @@ target_link_libraries(${CORE_LIB_NAME}
 	assimp
 	glfw
 	imgui
-	spdlog
 	glm::glm
 	tinyddsloader
 )
