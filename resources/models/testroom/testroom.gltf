@@ -69,12 +69,12 @@
 		{
 			"mimeType":"image/png",
 			"name":"rocks-1k-normal",
-			"uri":"rocks-1k-normal.png"
+			"uri":"rocks-1k-normal.jxl"
 		},
 		{
 			"mimeType":"image/png",
 			"name":"rocks-1k-diffuse",
-			"uri":"rocks-1k-diffuse.png"
+			"uri":"rocks-1k-diffuse.jxl"
 		}
 	],
 	"accessors":[
