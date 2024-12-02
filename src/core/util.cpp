@@ -273,7 +273,7 @@ namespace RGL
 				case 4: format.data_type = JXL_TYPE_FLOAT;   channel_size = 4; image_data.channel_type = GL_FLOAT; break;
 				}
 
-				std::fprintf(stderr, "[%s] Jxl: %u x %u  channel size: %zu\n", short_name.c_str(), image_data.width, image_data.height, channel_size);
+				// std::fprintf(stderr, "[%s] Jxl: %u x %u  channel size: %zu\n", short_name.c_str(), image_data.width, image_data.height, channel_size);
 
 				const auto num_threads = JxlResizableParallelRunnerSuggestThreads(info.xsize, info.ysize);
 				JxlResizableParallelRunnerSetThreads(runner.get(), num_threads);
@@ -314,7 +314,7 @@ namespace RGL
 						return {};
 					}
 				}
-				std::fprintf(stderr, "[%s] Jxl: buffer size: %lu\n", short_name.c_str(), buffer_size);
+				// std::fprintf(stderr, "[%s] Jxl: buffer size: %lu\n", short_name.c_str(), buffer_size);
 				data = ::malloc(buffer_size);
 				res = JxlDecoderSetImageOutBuffer(dec.get(), &format, data, buffer_size);
 				if(res != JXL_DEC_SUCCESS)

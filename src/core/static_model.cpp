@@ -145,6 +145,8 @@ bool StaticModel::ParseScene(const aiScene* scene, const std::filesystem::path& 
 {
 	const auto T0 = steady_clock::now();
 
+	auto filename = filepath.filename();
+
 	m_mesh_parts.resize(scene->mNumMeshes);
 	m_materials.resize(scene->mNumMaterials);
 
@@ -191,7 +193,8 @@ bool StaticModel::ParseScene(const aiScene* scene, const std::filesystem::path& 
 		// max = glm::max(max, vec3_cast(mesh->mAABB.mMax));
 		_aabb.expand(vec3_cast(mesh->mAABB.mMin));
 		_aabb.expand(vec3_cast(mesh->mAABB.mMax));
-		printf("  added mesh part %d; %d vertices; AABB: %.1f, %.1f, %.1f  ->  %.1f, %.1f, %.1f   (%.1f x %.1f x %.1f)\n",
+		printf("[%s]  added mesh part %d; %d vertices; AABB: %.1f, %.1f, %.1f  ->  %.1f, %.1f, %.1f   (%.1f x %.1f x %.1f)\n",
+			   filename.c_str(),
 			   idx,
 			   mesh->mNumVertices,
 			   mesh->mAABB.mMin.x, mesh->mAABB.mMin.y, mesh->mAABB.mMin.z,
@@ -214,7 +217,7 @@ bool StaticModel::ParseScene(const aiScene* scene, const std::filesystem::path& 
 
 	const auto T1 = steady_clock::now();
 
-	std::printf("Loaded mesh: %s  (%.1f x %.1f %.1f) (%ld ms)\n", filepath.string().c_str(), _aabb.width(), _aabb.height(), _aabb.depth(), duration_cast<milliseconds>(T1 - T0).count());
+	std::printf("Loaded mesh %s  (%.1f x %.1f x %.1f)  (%ld ms)\n", filepath.string().c_str(), _aabb.width(), _aabb.height(), _aabb.depth(), duration_cast<milliseconds>(T1 - T0).count());
 
 	return true;
 }
