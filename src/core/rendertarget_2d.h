@@ -2,16 +2,23 @@
 
 #include "glad/glad.h"
 
+#include <cstddef>
 #include <cstdint>
 
 
 struct Texture2DRenderTarget
 {
-	void create(uint32_t width, uint32_t height, GLenum internalformat);
+	void create(size_t width, size_t height, GLenum internalformat);
 
 	~Texture2DRenderTarget() { cleanup(); }
 
 	void cleanup();
+
+	inline GLuint texture_id() const { return _texture_id; }
+	inline GLuint framebuffer_id() const { return _fbo_id; }
+	inline GLsizei width() const { return _width; }
+	inline GLsizei height() const { return _height; }
+	inline uint8_t mip_levels() const { return _mip_levels; }
 
 	void bindTexture(GLuint unit = 0);
 	void bindRenderTarget(GLbitfield clear_mask = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -22,14 +29,16 @@ struct Texture2DRenderTarget
 
 	uint8_t calculateMipmapLevels();
 
-	GLuint m_texture_id = 0;
-	GLuint m_fbo_id = 0;
-	GLuint m_rbo_id = 0;
-	GLsizei m_width = 0;
-	GLsizei m_height = 0;
-	GLenum m_internalformat;
 
-	const uint8_t m_downscale_limit = 10;
-	const uint8_t m_max_iterations = 16; // max mipmap levels
-	uint8_t m_mip_levels = 1;
+private:
+	GLuint _texture_id = 0;
+	GLuint _fbo_id = 0;
+	GLuint _rbo_id = 0;
+	GLsizei _width = 0;
+	GLsizei _height = 0;
+	GLenum _internal_format;
+
+	const uint8_t _downscale_limit = 10;
+	const uint8_t _max_iterations = 16; // max mipmap levels
+	uint8_t _mip_levels = 1;
 };

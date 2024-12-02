@@ -2,95 +2,105 @@
 
 #include <cstdio>
 
-void Texture2DRenderTarget::create(uint32_t width, uint32_t height, GLenum internalformat)
+void Texture2DRenderTarget::create(size_t width, size_t height, GLenum internalformat)
 {
-	m_width          = GLsizei(width);
-	m_height         = GLsizei(height);
-	m_internalformat = internalformat;
+	if(_texture_id)
+		cleanup();
 
-	m_mip_levels = calculateMipmapLevels();
+	_width           = GLsizei(width);
+	_height          = GLsizei(height);
+	_internal_format = internalformat;
 
-	glCreateFramebuffers(1, &m_fbo_id);
+	const auto isDepth = internalformat == GL_DEPTH_COMPONENT32F
+		or internalformat == GL_DEPTH_COMPONENT24
+		or internalformat == GL_DEPTH_COMPONENT16;
 
-	glCreateTextures(GL_TEXTURE_2D, 1, &m_texture_id);
-	glTextureStorage2D(m_texture_id, m_mip_levels, internalformat, m_width, m_height); // internalformat = GL_RGB32F
+	_mip_levels = isDepth? 1: calculateMipmapLevels();
 
-	glTextureParameteri(m_texture_id, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTextureParameteri(m_texture_id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTextureParameteri(m_texture_id, GL_TEXTURE_WRAP_S,     GL_CLAMP_TO_EDGE);
-	glTextureParameteri(m_texture_id, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);
+	glCreateFramebuffers(1, &_fbo_id);
 
-	glCreateRenderbuffers(1, &m_rbo_id);
-	glNamedRenderbufferStorage(m_rbo_id, GL_DEPTH_COMPONENT32F, m_width, m_height);
+	glCreateTextures(GL_TEXTURE_2D, 1, &_texture_id);
+	glTextureStorage2D(_texture_id, _mip_levels, internalformat, _width, _height); // internalformat = GL_RGB32F
 
-	glNamedFramebufferTexture(m_fbo_id, GL_COLOR_ATTACHMENT0, m_texture_id, 0);
-	glNamedFramebufferRenderbuffer(m_fbo_id, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_rbo_id);
+	glTextureParameteri(_texture_id, GL_TEXTURE_MIN_FILTER, isDepth? GL_NEAREST: GL_LINEAR);
+	glTextureParameteri(_texture_id, GL_TEXTURE_MAG_FILTER, isDepth? GL_NEAREST: GL_LINEAR);
+	glTextureParameteri(_texture_id, GL_TEXTURE_WRAP_S,     GL_CLAMP_TO_EDGE);
+	glTextureParameteri(_texture_id, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);
+
+	glCreateRenderbuffers(1, &_rbo_id);
+
+	glNamedRenderbufferStorage(_rbo_id, GL_DEPTH_COMPONENT32F, _width, _height);
+
+	if(isDepth)
+	{
+		glNamedFramebufferTexture(_fbo_id, GL_DEPTH_ATTACHMENT, _texture_id, 0);
+		// render no colors
+		GLenum draw_buffers[] = { GL_NONE };
+		glNamedFramebufferDrawBuffers(_fbo_id, 1, draw_buffers);
+	}
+	else
+	{
+		glNamedFramebufferTexture(_fbo_id, GL_COLOR_ATTACHMENT0, _texture_id, 0);
+		glNamedFramebufferRenderbuffer(_fbo_id, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _rbo_id);
+	}
 }
 
 void Texture2DRenderTarget::cleanup()
 {
-	if (m_texture_id != 0)
-	{
-		glDeleteTextures(1, &m_texture_id);
-	}
+	if(_texture_id)
+		glDeleteTextures(1, &_texture_id);
+	_texture_id = 0;
 
-	if (m_fbo_id != 0)
-	{
-		glDeleteFramebuffers(1, &m_fbo_id);
-	}
+	if(_fbo_id)
+		glDeleteFramebuffers(1, &_fbo_id);
+	_fbo_id = 0;
 
-	if (m_rbo_id != 0)
-	{
-		glDeleteRenderbuffers(1, &m_rbo_id);
-	}
+	if(_rbo_id)
+		glDeleteRenderbuffers(1, &_rbo_id);
+	_rbo_id = 0;
 }
 
 void Texture2DRenderTarget::bindTexture(GLuint unit)
 {
-	glBindTextureUnit(unit, m_texture_id);
+	glBindTextureUnit(unit, _texture_id);
 }
 
 void Texture2DRenderTarget::bindRenderTarget(GLbitfield clear_mask)
 {
-	glBindFramebuffer(GL_FRAMEBUFFER, m_fbo_id);
-	glViewport(0, 0, m_width, m_height);
+	glBindFramebuffer(GL_FRAMEBUFFER, _fbo_id);
+	glViewport(0, 0, _width, _height);
 	glClear(clear_mask);
 }
 
 void Texture2DRenderTarget::bindImageForRead(GLuint image_unit, GLint mip_level)
 {
-	glBindImageTexture(image_unit, m_texture_id, mip_level, GL_FALSE, 0, GL_READ_ONLY, m_internalformat);
+	glBindImageTexture(image_unit, _texture_id, mip_level, GL_FALSE, 0, GL_READ_ONLY, _internal_format);
 }
 
 void Texture2DRenderTarget::bindImageForWrite(GLuint image_unit, GLint mip_level)
 {
-	glBindImageTexture(image_unit, m_texture_id, mip_level, GL_FALSE, 0, GL_WRITE_ONLY, m_internalformat);
+	glBindImageTexture(image_unit, _texture_id, mip_level, GL_FALSE, 0, GL_WRITE_ONLY, _internal_format);
 }
 
 void Texture2DRenderTarget::bindImageForReadWrite(GLuint image_unit, GLint mip_level)
 {
-	glBindImageTexture(image_unit, m_texture_id, mip_level, GL_FALSE, 0, GL_READ_WRITE, m_internalformat);
+	glBindImageTexture(image_unit, _texture_id, mip_level, GL_FALSE, 0, GL_READ_WRITE, _internal_format);
 }
 
 uint8_t Texture2DRenderTarget::calculateMipmapLevels()
 {
-	uint32_t width      = uint32_t(m_width  / 2);
-	uint32_t height     = uint32_t(m_height / 2);
+	auto width      = _width  / 2;
+	auto height     = _height / 2;
 	uint8_t  mip_levels = 1;
 
-	std::printf("Mip level %d: %d x %d\n", 0, m_width, m_height);
-	std::printf("Mip level %d: %d x %d\n", mip_levels, width, height);
-
-	for (uint8_t i = 0; i < m_max_iterations; ++i)
+	for (uint8_t i = 0; i < _max_iterations; ++i)
 	{
 		width  = width  / 2;
 		height = height / 2;
 
-		if (width < m_downscale_limit || height < m_downscale_limit) break;
+		if (width < _downscale_limit || height < _downscale_limit) break;
 
 		++mip_levels;
-
-		std::printf("Mip level %d: %d x %d\n", mip_levels, width, height);
 	}
 
 	return mip_levels + 1;
