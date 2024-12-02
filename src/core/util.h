@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include <functional>
 #include <stb_image.h>
 #include <glad/glad.h>
 #include <glm/vec3.hpp>
@@ -21,6 +22,8 @@ namespace RGL
         GLuint width;
         GLuint height;
         GLuint channels;
+		GLuint channel_format = GL_RGB;
+		GLuint channel_type = GL_UNSIGNED_INT;
     };
 
     class Util
@@ -42,7 +45,7 @@ namespace RGL
         *                                needs to be loaded.
         * @returns std::vector<unsigned char> that contains the loaded data.
         */
-        static std::vector<unsigned char> LoadFileBinary(const std::filesystem::path& filename);
+        static std::vector<uint8_t> LoadFileBinary(const std::filesystem::path& filename);
 
         static std::string LoadShaderIncludes(const std::string & shader_code, const std::filesystem::path& dir = "shaders");
         /**
@@ -55,12 +58,22 @@ namespace RGL
         * @returns Pointer to unsigned char that contains image's data.
         *          Has to be freed with stbi_image_free(data)!
         */
-        static unsigned char* LoadTextureData    (const std::filesystem::path& filepath,                        ImageData& image_data, int desired_number_of_channels = 0);
-        static unsigned char* LoadTextureData    (unsigned char*               memory_data, uint32_t data_size, ImageData& image_data, int desired_number_of_channels = 0);
-        static float        * LoadTextureDataHdr (const std::filesystem::path& filepath,                        ImageData& image_data, int desired_number_of_channels = 0);
-        
-        static void ReleaseTextureData (const std::filesystem::path &filepath, unsigned char* data);
+		using TextureData = std::unique_ptr<void, std::function<void(void *)>>;
+
+		static TextureData LoadTextureData(const std::filesystem::path& filepath,                        ImageData& image_data, int desired_number_of_channels = 0);
+        static TextureData LoadTextureData(unsigned char*               memory_data, uint32_t data_size, ImageData& image_data, int desired_number_of_channels = 0);
+		static TextureData LoadTextureDataHdr(const std::filesystem::path& filepath,                     ImageData& image_data, int desired_number_of_channels = 0);
+
+
+		using ImageOptions = uint32_t;
+		static constexpr ImageOptions ImageOptionsDefault = 0;
+		static constexpr ImageOptions ImageFlipVertical = 0x0001;
+
+		static TextureData jxl_load(const std::filesystem::path &filepath, ImageData &image_data, ImageOptions opts=ImageOptionsDefault);
+
+		// static void ReleaseTextureData (const std::filesystem::path &filepath, unsigned char* data);
         static void ReleaseTextureData (float*         data);
+		static void ReleaseTextureData (TextureData &data);
 
         static double RandomDouble()
         {
@@ -87,5 +100,5 @@ namespace RGL
             // Returns a random vec3 in [min, max).
             return glm::vec3(RandomDouble(min, max), RandomDouble(min, max), RandomDouble(min, max));
         }
-    };
+	};
 }

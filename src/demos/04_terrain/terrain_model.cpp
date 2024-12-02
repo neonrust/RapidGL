@@ -82,12 +82,12 @@ void TerrainModel::genTerrainVertices(const std::filesystem::path & heightmap_fi
         {
             for (unsigned int i = 0; i < vertex_count_width; ++i)
             {
-                m_heights[j][i] = getHeight(i, j, heightmap_image, heightmap_metadata);
+				m_heights[j][i] = getHeight(i, j, static_cast<uint8_t *>(heightmap_image.get()), heightmap_metadata);
 
                 vertex_data.positions.push_back( glm::vec3(-float(i) / float(vertex_count_width - 1) * M_SIZE * aspect_ratio,
                                                  m_heights[j][i], 
                                                 -float(j) / float(vertex_count_height - 1) * M_SIZE));
-                vertex_data.normals.push_back(calculateNormal(i, j, heightmap_image, heightmap_metadata));
+				vertex_data.normals.push_back(calculateNormal(i, j, static_cast<uint8_t *>(heightmap_image.get()), heightmap_metadata));
                 vertex_data.texcoords.push_back(glm::vec3((1.0 - float(i) / float(vertex_count_width - 1)),
                                                            1.0 - float(j) / float(vertex_count_height - 1),
                                                            0.0f));
@@ -120,7 +120,8 @@ void TerrainModel::genTerrainVertices(const std::filesystem::path & heightmap_fi
         std::cout << "Failed during loading heightmap\n";
     }
 
-    stbi_image_free(heightmap_image);
+	// TODO: should actually call: stbi_image_free(heightmap_image.get());
+	heightmap_image.reset();
 }
 
 float TerrainModel::getHeight(int x, int z, unsigned char* heightmap_data, RGL::ImageData & heightmap_metadata)

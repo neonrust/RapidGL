@@ -5,6 +5,9 @@
 #define TINYDDSLOADER_IMPLEMENTATION
 #include <tinyddsloader.h>
 
+#include <chrono>
+using namespace std::chrono;
+
 using namespace tinyddsloader;
 
 namespace
@@ -247,15 +250,15 @@ bool Texture2D::Load(const std::filesystem::path& filepath, bool is_srgb, uint32
 
 	glCreateTextures       (GLenum(TextureType::Texture2D), 1, &m_obj_name);
 	glTextureStorage2D     (m_obj_name, GLsizei(num_mipmaps) /* levels */, internal_format, GLsizei(m_metadata.width), GLsizei(m_metadata.height));
-	glTextureSubImage2D    (m_obj_name, 0 /* level */, 0 /* xoffset */, 0 /* yoffset */, GLsizei(m_metadata.width), GLsizei(m_metadata.height), format, GL_UNSIGNED_BYTE, data);
+	glTextureSubImage2D    (m_obj_name, 0 /* level */, 0 /* xoffset */, 0 /* yoffset */, GLsizei(m_metadata.width), GLsizei(m_metadata.height), format, GL_UNSIGNED_BYTE, data.get());
 	glGenerateTextureMipmap(m_obj_name);
 
 	SetFiltering(TextureFiltering::MIN,       TextureFilteringParam::LINEAR_MIP_LINEAR);
 	SetFiltering(TextureFiltering::MAG,       TextureFilteringParam::LINEAR);
-	SetWrapping  (TextureWrappingCoordinate::S, TextureWrappingParam::CLAMP_TO_EDGE);
-	SetWrapping  (TextureWrappingCoordinate::T, TextureWrappingParam::CLAMP_TO_EDGE);
+	SetWrapping (TextureWrappingCoordinate::S, TextureWrappingParam::CLAMP_TO_EDGE);
+	SetWrapping (TextureWrappingCoordinate::T, TextureWrappingParam::CLAMP_TO_EDGE);
 
-	Util::ReleaseTextureData(filepath, data);
+	Util::ReleaseTextureData(data);
 
 	return true;
 }
@@ -264,7 +267,7 @@ bool Texture2D::Load(unsigned char* memory_data, uint32_t data_size, bool is_srg
 {
 	auto data = Util::LoadTextureData(memory_data, data_size, m_metadata);
 
-	if (!data)
+	if (not data)
 	{
 		fprintf(stderr, "Texture failed to load from the memory.\n");
 		return false;
@@ -295,36 +298,38 @@ bool Texture2D::Load(unsigned char* memory_data, uint32_t data_size, bool is_srg
 
 	glCreateTextures       (GLenum(TextureType::Texture2D), 1, &m_obj_name);
 	glTextureStorage2D     (m_obj_name, GLsizei(num_mipmaps) /* levels */, internal_format, GLsizei(m_metadata.width), GLsizei(m_metadata.height));
-	glTextureSubImage2D    (m_obj_name, 0 /* level */, 0 /* xoffset */, 0 /* yoffset */, GLsizei(m_metadata.width), GLsizei(m_metadata.height), format, GL_UNSIGNED_BYTE, data);
+	glTextureSubImage2D    (m_obj_name, 0 /* level */, 0 /* xoffset */, 0 /* yoffset */, GLsizei(m_metadata.width), GLsizei(m_metadata.height), format, GL_UNSIGNED_BYTE, data.get());
 	glGenerateTextureMipmap(m_obj_name);
 
 	SetFiltering(TextureFiltering::MIN,       TextureFilteringParam::LINEAR_MIP_LINEAR);
 	SetFiltering(TextureFiltering::MAG,       TextureFilteringParam::LINEAR);
-	SetWrapping  (TextureWrappingCoordinate::S, TextureWrappingParam::CLAMP_TO_EDGE);
-	SetWrapping  (TextureWrappingCoordinate::T, TextureWrappingParam::CLAMP_TO_EDGE);
+	SetWrapping (TextureWrappingCoordinate::S, TextureWrappingParam::CLAMP_TO_EDGE);
+	SetWrapping (TextureWrappingCoordinate::T, TextureWrappingParam::CLAMP_TO_EDGE);
 
-	Util::ReleaseTextureData({}, data);
+	Util::ReleaseTextureData(data);
 
 	return true;
 }
 
 bool Texture2D::LoadHdr(const std::filesystem::path & filepath, uint32_t num_mipmaps)
 {
-	if (filepath.extension() != ".hdr")
-	{
-		fprintf(stderr, "This function is meant for loading HDR images only.\n");
-		return false;
-	}
+	const auto T0 = steady_clock::now();
+	// if (filepath.extension() != ".hdr")
+	// {
+	// 	fprintf(stderr, "This function is meant for loading HDR images only.\n");
+	// 	return false;
+	// }
 
 	auto data = Util::LoadTextureDataHdr(filepath, m_metadata);
 
-	if (!data)
+	if (not data)
 	{
 		fprintf(stderr, "Texture failed to load at path: %s\n", filepath.generic_string().c_str());
 		return false;
 	}
 
-	GLenum format          = GL_RGB;
+	GLenum format          = m_metadata.channel_format;
+	GLenum type            = m_metadata.channel_type;
 	GLenum internal_format = GL_RGB16F;
 
 	const GLuint max_num_mipmaps = GetMaxMipMapsLevels(m_metadata.width, m_metadata.height, 0);
@@ -332,15 +337,17 @@ bool Texture2D::LoadHdr(const std::filesystem::path & filepath, uint32_t num_mip
 
 	glCreateTextures       (GLenum(TextureType::Texture2D), 1, &m_obj_name);
 	glTextureStorage2D     (m_obj_name, 1 /* levels */, internal_format, GLsizei(m_metadata.width), GLsizei(m_metadata.height));
-	glTextureSubImage2D    (m_obj_name, 0 /* level */, 0 /* xoffset */, 0 /* yoffset */, GLsizei(m_metadata.width), GLsizei(m_metadata.height), format, GL_FLOAT, data);
+	glTextureSubImage2D    (m_obj_name, 0 /* level */, 0 /* xoffset */, 0 /* yoffset */, GLsizei(m_metadata.width), GLsizei(m_metadata.height), format, type, data.get());
 	glGenerateTextureMipmap(m_obj_name);
 
 	SetFiltering(TextureFiltering::MIN,       TextureFilteringParam::LINEAR);
 	SetFiltering(TextureFiltering::MAG,       TextureFilteringParam::LINEAR);
-	SetWrapping  (TextureWrappingCoordinate::S, TextureWrappingParam::CLAMP_TO_EDGE);
-	SetWrapping  (TextureWrappingCoordinate::T, TextureWrappingParam::CLAMP_TO_EDGE);
+	SetWrapping (TextureWrappingCoordinate::S, TextureWrappingParam::CLAMP_TO_EDGE);
+	SetWrapping (TextureWrappingCoordinate::T, TextureWrappingParam::CLAMP_TO_EDGE);
 
 	Util::ReleaseTextureData(data);
+
+	std::printf("Loaded HDR texture %s  (%ld ms)\n", filepath.c_str(), duration_cast<milliseconds>(steady_clock::now() - T0).count());
 
 	return true;
 }
@@ -419,13 +426,13 @@ bool TextureCubeMap::Load(const std::filesystem::path* filepaths, bool is_srgb, 
 {
 	constexpr int NUM_FACES = 6;
 
-	unsigned char* images_data[NUM_FACES];
+	Util::TextureData images_data[NUM_FACES];
 
 	for (int idx = 0; idx < NUM_FACES; ++idx)
 	{
 		images_data[idx] = Util::LoadTextureData(filepaths[idx], m_metadata);
 
-		if (!images_data[idx])
+		if (not images_data[idx])
 		{
 			fprintf(stderr, "Texture failed to load at path: %s\n", filepaths[idx].string().c_str());
 			return false;
@@ -453,7 +460,7 @@ bool TextureCubeMap::Load(const std::filesystem::path* filepaths, bool is_srgb, 
 							1,   // depth
 							m_format,
 							GL_UNSIGNED_BYTE,
-							images_data[idx]);
+							images_data[idx].get());
 	}
 
 	glGenerateTextureMipmap(m_obj_name);
@@ -467,7 +474,7 @@ bool TextureCubeMap::Load(const std::filesystem::path* filepaths, bool is_srgb, 
 	for (int idx = 0; idx < NUM_FACES; ++idx)
 	{
 		/* Release images' data */
-		Util::ReleaseTextureData(filepaths[idx], images_data[idx]);
+		Util::ReleaseTextureData(images_data[idx]);
 	}
 
 	return true;

@@ -7,8 +7,8 @@
 #include <glm/common.hpp>
 #include <glm/exponential.hpp>
 
-#include <jxl/decode.h>
-#include <jxl/resizable_parallel_runner.h>
+#include <jxl/decode_cxx.h>
+#include <jxl/resizable_parallel_runner_cxx.h>
 
 #include "filesystem.h"
 
@@ -45,7 +45,7 @@ namespace RGL
         return filetext;
     }
 
-    std::vector<unsigned char> Util::LoadFileBinary(const std::filesystem::path& filename)
+	std::vector<uint8_t> Util::LoadFileBinary(const std::filesystem::path& filename)
     {
         std::filesystem::path filepath = FileSystem::getRootPath() / filename;
         std::ifstream file(filepath, std::ios::binary);
@@ -60,11 +60,11 @@ namespace RGL
 
         // Determine the file size.
         file.seekg(0, std::ios_base::end);
-        size_t file_size = file.tellg();
+		auto file_size = file.tellg();
         file.seekg(0, std::ios_base::beg);
 
         // Allocate storage.
-        std::vector<unsigned char> data(file_size / sizeof(unsigned char));
+		std::vector<uint8_t> data(size_t(file_size) / sizeof(unsigned char));
 
         // Read the file contents into the allocated storage.
         file.read((char*)&data[0], file_size);
@@ -103,221 +103,279 @@ namespace RGL
         return new_shader_code;
     }
 
+	static Util::TextureData mk_tx_data(void *data);
 
-    unsigned char* Util::LoadTextureData(const std::filesystem::path& filepath, ImageData & image_data, int desired_number_of_channels)
+	Util::TextureData Util::LoadTextureData(const std::filesystem::path& filepath, ImageData & image_data, int desired_number_of_channels)
     {
-        int width, height, channels_in_file;
+		// TODO: always try to load .jxl (instead) ?
 
-		unsigned char* data = nullptr;
+		void *data = nullptr;
+
 
 		if(filepath.extension() == ".jxl")
 		{
-			// see https://github.com/libjxl/libjxl/blob/main/examples/decode_oneshot.cc
-
-			static const auto initJxl = true;
-			static JxlDecoder *dec;
-			static void *runner;
-
-			JxlDecoderStatus res;
-
-			if(initJxl)
-			{
-				runner = JxlResizableParallelRunnerCreate(nullptr);
-				dec = JxlDecoderCreate(nullptr);;
-
-				res = JxlDecoderSubscribeEvents(dec, JXL_DEC_BASIC_INFO | JXL_DEC_COLOR_ENCODING | JXL_DEC_FULL_IMAGE);
-				if(res != JXL_DEC_SUCCESS)
-				{
-					fprintf(stderr, "JxlDecoderSubscribeEvents failed\n");
-					return {};
-				}
-				res = JxlDecoderSetParallelRunner(dec, JxlResizableParallelRunner, runner);
-				if(res != JXL_DEC_SUCCESS)
-				{
-					fprintf(stderr, "JxlDecoderSetParallelRunner failed\n");
-					return {};
-				}
-			}
-			JxlBasicInfo info;
-			JxlPixelFormat format = {
-				.num_channels = 0, // set by JXL_DEC_BASIC_INFO message below
-				.data_type = JXL_TYPE_UINT8, // updated by JXL_DEC_BASIC_INFO message below
-				.endianness = JXL_NATIVE_ENDIAN,
-				.align = 0,
-			};
-
-			auto jxlData = LoadFileBinary(filepath);
-
-			JxlDecoderSetInput(dec, jxlData.data(), jxlData.size());
-			JxlDecoderCloseInput(dec);
-
-			// std::vector<uint8_t> icc_profile;
-			int channel_size { 0 };
-
-			uint8_t *pixels = nullptr; // TODO: might use the same (static) buffers for all textures (can't upload in parallel anyway)
-
-			bool decodingDone = false;
-
-			while(not decodingDone)
-			{
-				const auto status = JxlDecoderProcessInput(dec);
-
-				switch(status)
-				{
-				case JXL_DEC_ERROR:
-					fprintf(stderr, "Jxl: Decoder error\n");
-					return {};
-				case JXL_DEC_NEED_MORE_INPUT:
-					fprintf(stderr, "Jxl: Error, already provided all input\n");
-					return {};
-				case JXL_DEC_BASIC_INFO:
-					// std::cout << "JXL_DEC_BASIC_INFO\n";
-					res = JxlDecoderGetBasicInfo(dec, &info);
-					if(res != JXL_DEC_SUCCESS)
-					{
-						fprintf(stderr, "Jxl: JxlDecoderGetBasicInfo failed\n");
-						return {};
-					}
-					width = int(info.xsize);
-					height = int(info.ysize);
-					// update our initial guesses regarding format
-					format.num_channels = info.num_color_channels + info.num_extra_channels;
-					channel_size = info.bits_per_sample >> 3;
-					if(channel_size == sizeof(float) and info.exponent_bits_per_sample > 0)
-						format.data_type = JXL_TYPE_FLOAT;
-					else if(channel_size == 2)
-					{
-						if(info.exponent_bits_per_sample > 0)
-							format.data_type = JXL_TYPE_FLOAT16;
-						else
-							format.data_type = JXL_TYPE_UINT16;
-					}
-
-					JxlResizableParallelRunnerSetThreads(runner, JxlResizableParallelRunnerSuggestThreads(info.xsize, info.ysize));
-					break;
-				case JXL_DEC_COLOR_ENCODING:
-					// std::cout << "JXL_DEC_COLOR_ENCODING\n";
-					// Get the ICC color profile of the pixel data
-					// size_t icc_size;
-					// res = JxlDecoderGetICCProfileSize(dec, JXL_COLOR_PROFILE_TARGET_DATA, &icc_size);
-					// if(res != JXL_DEC_SUCCESS)
-					// {
-					// 	std::cerr << "Jxl: JxlDecoderGetICCProfileSize failed\n";
-					// 	return {};
-					// }
-					// icc_profile.resize(icc_size);
-					// res = JxlDecoderGetColorAsICCProfile(dec, JXL_COLOR_PROFILE_TARGET_DATA, icc_profile.data(), icc_profile.size());
-					// if(res != JXL_DEC_SUCCESS)
-					// {
-					// 	std::cerr << "Jxl: JxlDecoderGetColorAsICCProfile failed\n";
-					// 	return {};
-					// }
-					break;
-				case JXL_DEC_NEED_IMAGE_OUT_BUFFER:
-					// std::cout << "JXL_DEC_NEED_IMAGE_OUT_BUFFER\n";
-					size_t buffer_size;
-					res = JxlDecoderImageOutBufferSize(dec, &format, &buffer_size);
-					if(res != JXL_DEC_SUCCESS)
-					{
-						fprintf(stderr, "Jxl: JxlDecoderImageOutBufferSize failed\n");
-						return {};
-					}
-					{
-						const auto expected_size = (size_t(width * height * channel_size) * format.num_channels);
-						if(buffer_size != expected_size)
-						{
-							fprintf(stderr, "Jxl: Invalid out buffer size %ld: %ld\n", buffer_size, expected_size);
-							return {};
-						}
-						pixels = (uint8_t *)malloc(buffer_size);
-					}
-					res = JxlDecoderSetImageOutBuffer(dec, &format, pixels, buffer_size);
-					if(res != JXL_DEC_SUCCESS)
-					{
-						fprintf(stderr, "Jxl: JxlDecoderSetImageOutBuffer failed\n");
-						return {};
-					}
-					break;
-				case JXL_DEC_FULL_IMAGE:
-					// std::cout << "JXL_DEC_FULL_IMAGE\n";
-					// Nothing to do. Do not yet return. If the image is an animation, more
-					// full frames may be decoded. This example only keeps the last one.
-					break;
-				case JXL_DEC_SUCCESS:
-					// std::cout << "JXL_DEC_SUCCESS\n";
-					// All decoding successfully finished.
-					// It's not required to call JxlDecoderReleaseInput(dec.get()) here since
-					// the decoder will be destroyed.
-
-					channels_in_file = int(format.num_channels);
-					// data = (unsigned char *)malloc(pixels.size());
-					// std::memcpy(data, pixels.data(), pixels.size());
-					data = pixels;
-					decodingDone = true;
-					break;
-
-				default:
-					fprintf(stderr, "Jxl: unhandled decoder status: %d", status);
-					break;
-				}
-			}
+			return jxl_load(filepath, image_data);
 		}
 		else
-			data = stbi_load(filepath.generic_string().c_str(), &width, &height, &channels_in_file, desired_number_of_channels);
+		{
+			int channels_in_file = desired_number_of_channels;
+			data = stbi_load(filepath.generic_string().c_str(), (int *)&image_data.width, (int *)&image_data.height, (int *)&channels_in_file, desired_number_of_channels);
+			if (data)
+				image_data.channels = desired_number_of_channels == 0 ? GLuint(channels_in_file) : GLuint(desired_number_of_channels);
+			// data.size = image_data.width * image_data.height * image_data.channels;
+		}
 
-        if (data)
-        {
-            image_data.width    = width;
-            image_data.height   = height;
-            image_data.channels = desired_number_of_channels == 0 ? channels_in_file : desired_number_of_channels;
-        }
-
-        return data;
+		return mk_tx_data(data);
     }
 
-    unsigned char* Util::LoadTextureData(unsigned char* memory_data, uint32_t data_size, ImageData& image_data, int desired_number_of_channels)
+	Util::TextureData Util::LoadTextureData(unsigned char* memory_data, uint32_t data_size, ImageData& image_data, int desired_number_of_channels)
     {
-        int width, height, channels_in_file;
-        unsigned char* data = stbi_load_from_memory(memory_data, data_size, &width, &height, &channels_in_file, desired_number_of_channels);
+		int channels_in_file = desired_number_of_channels;
+		void* data = stbi_load_from_memory(memory_data, int(data_size), (int *)&image_data.width, (int *)&image_data.height, &channels_in_file, desired_number_of_channels);
         
         if (data)
-        {
-            image_data.width    = width;
-            image_data.height   = height;
-            image_data.channels = desired_number_of_channels == 0 ? channels_in_file : desired_number_of_channels;
-        }
+			image_data.channels = desired_number_of_channels == 0 ? GLuint(channels_in_file) : GLuint(desired_number_of_channels);
 
-        return data;
+		return mk_tx_data(data);
     }
 
-	float* Util::LoadTextureDataHdr(const std::filesystem::path &filepath, ImageData &image_data, int desired_number_of_channels)
+	Util::TextureData Util::LoadTextureDataHdr(const std::filesystem::path &filepath, ImageData &image_data, int desired_number_of_channels)
     {
-		// TODO: add support for JPEG XL
+		void *data = nullptr;
 
-        stbi_set_flip_vertically_on_load(true);
-            int width, height, channels_in_file;
-            float* data = stbi_loadf(filepath.generic_string().c_str(), &width, &height, &channels_in_file, desired_number_of_channels);
-        stbi_set_flip_vertically_on_load(false);
-        if (data)
-        {
-            image_data.width    = width;
-            image_data.height   = height;
-            image_data.channels = desired_number_of_channels == 0 ? channels_in_file : desired_number_of_channels;
-        }
-
-        return data;
-    }
-
-	void Util::ReleaseTextureData(const std::filesystem::path& filepath, unsigned char* data)
-    {
 		if(filepath.extension() == ".jxl")
-			::free(data);
+		{
+			return jxl_load(filepath, image_data, ImageFlipVertical);
+		}
 		else
-			stbi_image_free(data);
-    }
+		{
+			stbi_set_flip_vertically_on_load(true);
+			int channels_in_file = desired_number_of_channels;
+			data = stbi_loadf(filepath.generic_string().c_str(), (int *)&image_data.width, (int *)&image_data.height, &channels_in_file, desired_number_of_channels);
+			stbi_set_flip_vertically_on_load(false);
+			if (data)
+				image_data.channels = desired_number_of_channels == 0 ? GLuint(channels_in_file) : GLuint(desired_number_of_channels);
+			// data.size = image_data.width * image_data.height * image_data.channels;
+			image_data.channel_format = GL_RGB;
+			image_data.channel_type = GL_FLOAT;
+		}
+
+		return mk_tx_data(data);
+	}
+
+	void Util::ReleaseTextureData(TextureData &data)
+	{
+		data.reset();
+	}
+
+	// void Util::ReleaseTextureData(const std::filesystem::path& filepath, unsigned char* data)
+ //    {
+	// 	if(filepath.extension() == ".jxl")
+	// 		::free(data);
+	// 	else
+	// 		stbi_image_free(data);
+ //    }
 
     void Util::ReleaseTextureData(float* data)
     {
         stbi_image_free(data);
     }
+
+	Util::TextureData Util::jxl_load(const fs::path &filepath, ImageData &image_data, ImageOptions options)
+	{
+		// see https://github.com/libjxl/libjxl/blob/main/examples/decode_oneshot.cc
+
+		// for logging
+		auto short_name = filepath.filename();
+
+		JxlDecoderStatus res;
+
+		auto runner = JxlResizableParallelRunnerMake(nullptr);
+
+		auto dec = JxlDecoderMake(nullptr);
+
+		res = JxlDecoderSubscribeEvents(dec.get(), JXL_DEC_BASIC_INFO /*| JXL_DEC_COLOR_ENCODING*/ | JXL_DEC_FULL_IMAGE);
+		if(res != JXL_DEC_SUCCESS)
+		{
+			fprintf(stderr, "[%s] JxlDecoderSubscribeEvents failed: %d\n", short_name.c_str(), res);
+			return {};
+		}
+		res = JxlDecoderSetParallelRunner(dec.get(), JxlResizableParallelRunner, runner.get());
+		if(res != JXL_DEC_SUCCESS)
+		{
+			fprintf(stderr, "[%s] JxlDecoderSetParallelRunner failed: %d\n", short_name.c_str(), res);
+			return {};
+		}
+
+		JxlBasicInfo info;
+		JxlPixelFormat format = {
+			.num_channels = 0, // set by JXL_DEC_BASIC_INFO message below
+			.data_type = JXL_TYPE_UINT8, // updated by JXL_DEC_BASIC_INFO message below
+			.endianness = JXL_NATIVE_ENDIAN,
+			.align = 0,
+		};
+
+		auto jxlData = LoadFileBinary(filepath);
+
+		res = JxlDecoderSetInput(dec.get(), jxlData.data(), jxlData.size());
+		if(res != JXL_DEC_SUCCESS)
+		{
+			fprintf(stderr, "[%s] JxlDecoderSetInput failed: %d\n", short_name.c_str(), res);
+			return {};
+		}
+		JxlDecoderCloseInput(dec.get());
+
+		void *data = nullptr;
+
+		std::vector<uint8_t> icc_profile;
+		size_t channel_size = 1;
+
+		bool decodingDone = false;
+
+		while(not decodingDone)
+		{
+			const auto status = JxlDecoderProcessInput(dec.get());
+
+			switch(status)
+			{
+			case JXL_DEC_ERROR:
+				std::fprintf(stderr, "[%s] Jxl: Decoder error\n", short_name.c_str());
+				return {};
+			case JXL_DEC_NEED_MORE_INPUT:
+				std::fprintf(stderr, "[%s] Jxl: Error, already provided all input\n", short_name.c_str());
+				return {};
+			case JXL_DEC_BASIC_INFO:
+			{
+				// std::printf("[%s] JXL_DEC_BASIC_INFO\n", short_name.c_str());
+				res = JxlDecoderGetBasicInfo(dec.get(), &info);
+				if(res != JXL_DEC_SUCCESS)
+				{
+					fprintf(stderr, "[%s] Jxl: JxlDecoderGetBasicInfo failed: %d\n", short_name.c_str(), res);
+					return {};
+				}
+				// update our initial guesses regarding format
+				image_data.width = info.xsize;
+				image_data.height = info.ysize;
+				image_data.channels = info.num_color_channels + info.num_extra_channels;
+
+				format.num_channels = image_data.channels;
+				if(image_data.channels == 4)
+					image_data.channel_format = GL_RGBA;
+				else
+					image_data.channel_format = GL_RGB;
+				channel_size = info.bits_per_sample >> 3;
+				// TODO: how to discern between FLOAT and UINT types ?  (2 and 4 bytes)
+				//   exponent_bits_per_sample can be 0 in both cases
+				switch(channel_size)
+				{
+				case 1: format.data_type = JXL_TYPE_UINT8;   channel_size = 1; image_data.channel_type = GL_UNSIGNED_INT; break;
+				case 2: format.data_type = JXL_TYPE_FLOAT; channel_size = 4; image_data.channel_type = GL_FLOAT; break;
+				case 4: format.data_type = JXL_TYPE_FLOAT;   channel_size = 4; image_data.channel_type = GL_FLOAT; break;
+				}
+
+				std::fprintf(stderr, "[%s] Jxl: %u x %u  channel size: %zu\n", short_name.c_str(), image_data.width, image_data.height, channel_size);
+
+				const auto num_threads = JxlResizableParallelRunnerSuggestThreads(info.xsize, info.ysize);
+				JxlResizableParallelRunnerSetThreads(runner.get(), num_threads);
+				break;
+			}
+			case JXL_DEC_COLOR_ENCODING:
+				// std::printf("[%s] JXL_DEC_COLOR_ENCODING\n", short_name.c_str());
+				// // Get the ICC color profile of the pixel data
+				// size_t icc_size;
+				// res = JxlDecoderGetICCProfileSize(dec.get(), nullptr, JXL_COLOR_PROFILE_TARGET_DATA, &icc_size);
+				// if(res != JXL_DEC_SUCCESS)
+				// {
+				// 	std::fprintf(stderr, "[%s] Jxl: JxlDecoderGetICCProfileSize failed\n", short_name.c_str());
+				// 	return {};
+				// }
+				// icc_profile.resize(icc_size);
+				// res = JxlDecoderGetColorAsICCProfile(dec.get(), nullptr, JXL_COLOR_PROFILE_TARGET_DATA, icc_profile.data(), icc_profile.size());
+				// if(res != JXL_DEC_SUCCESS)
+				// {
+				// 	std::fprintf(stderr, "[%s] Jxl: JxlDecoderGetColorAsICCProfile failed\n", short_name.c_str());
+				// 	return {};
+				// }
+				break;
+			case JXL_DEC_NEED_IMAGE_OUT_BUFFER:
+				// std::printf("[%s] JXL_DEC_NEED_IMAGE_OUT_BUFFER\n", short_name.c_str());
+				size_t buffer_size;
+				res = JxlDecoderImageOutBufferSize(dec.get(), &format, &buffer_size);
+				if(res != JXL_DEC_SUCCESS)
+				{
+					std::fprintf(stderr, "[%s] Jxl: JxlDecoderImageOutBufferSize failed: %d\n", short_name.c_str(), res);
+					return {};
+				}
+				{
+					const auto expected_size = image_data.width * image_data.height * channel_size * format.num_channels;
+					if(buffer_size != expected_size)
+					{
+						std::fprintf(stderr, "[%s] Jxl: Invalid out buffer size %ld, expected %ld\n", short_name.c_str(), buffer_size, expected_size);
+						return {};
+					}
+				}
+				std::fprintf(stderr, "[%s] Jxl: buffer size: %lu\n", short_name.c_str(), buffer_size);
+				data = ::malloc(buffer_size);
+				res = JxlDecoderSetImageOutBuffer(dec.get(), &format, data, buffer_size);
+				if(res != JXL_DEC_SUCCESS)
+				{
+					std::fprintf(stderr, "[%s] Jxl: JxlDecoderSetImageOutBuffer failed: %d\n", short_name.c_str(), res);
+					return {};
+				}
+				break;
+			case JXL_DEC_FULL_IMAGE:
+				// std::printf("[%s] JXL_DEC_FULL_IMAGE\n", short_name.c_str());
+				// Nothing to do. Do not yet return. If the image is an animation, more
+				// full frames may be decoded. This example only keeps the last one.
+				break;
+			case JXL_DEC_SUCCESS:
+				// std::printf("[%s] JXL_DEC_SUCCESS\n", short_name.c_str());
+				// All decoding successfully finished.
+				// It's not required to call JxlDecoderReleaseInput(dec.get()) here since
+				// the decoder will be destroyed.
+
+				// data = (unsigned char *)malloc(pixels.size());
+				// std::memcpy(data, pixels.data(), pixels.size());
+				decodingDone = true;
+				break;
+
+			default:
+				std::fprintf(stderr, "[%s] Jxl: unhandled decoder status: %d", short_name.c_str(), status);
+				break;
+			}
+		}
+
+		if(not decodingDone and data)
+			return {};
+
+		if(options & ImageFlipVertical)
+		{
+			// TODO: swap pixel rows
+			size_t row_stride = image_data.width * image_data.channels * channel_size;
+
+			void *temp_row = ::malloc(row_stride);
+
+			auto *rows = static_cast<uint8_t *>(data);
+			for(auto row = 0u; row < image_data.height >> 1; ++row)
+			{
+				auto *row0_start = &rows[row * row_stride];
+				auto *row1_start = &rows[(image_data.height - row - 1) * row_stride];
+				std::memcpy(temp_row, row0_start, row_stride);
+				std::memcpy(row0_start, row1_start, row_stride);
+				std::memcpy(row1_start, temp_row, row_stride);
+			}
+		}
+
+		return mk_tx_data(data);
+	}
+
+	static void _tx_data_deleter(void *data)
+	{
+		::free(data);
+	}
+	Util::TextureData mk_tx_data(void *data)
+	{
+		return Util::TextureData(data, _tx_data_deleter);
+	}
+
 }
