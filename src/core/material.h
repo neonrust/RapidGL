@@ -14,10 +14,10 @@ namespace RGL
         Material();
         ~Material();
 
-		void setTexture(TextureType texture_type, const std::shared_ptr<Texture2D>& texture);
-		void setVector3(const std::string_view& uniform_name, const glm::vec3& vector3);
-		void setFloat  (const std::string_view& uniform_name, float value);
-		void setBool   (const std::string_view& uniform_name, bool value);
+		void set(TextureType texture_type, const std::shared_ptr<Texture2D>& texture);
+		void set(const std::string_view& uniform_name, const glm::vec3& vector3);
+		void set(const std::string_view& uniform_name, float value);
+		void set(const std::string_view& uniform_name, bool value);
 
 		std::shared_ptr<Texture2D> getTexture(TextureType texture_type);
 		glm::vec3                  getVector3(const std::string_view& uniform_name);

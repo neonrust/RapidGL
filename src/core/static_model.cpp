@@ -150,11 +150,6 @@ bool StaticModel::ParseScene(const aiScene* scene, const std::filesystem::path& 
 	m_mesh_parts.resize(scene->mNumMeshes);
 	m_materials.resize(scene->mNumMaterials);
 
-		   // for (uint32_t idx = 0; idx < m_materials.size(); ++idx)
-	//       {
-	// 	m_materials[idx] = std::make_shared<Material>();
-	//       }
-
 	VertexData vertex_data;
 
 	uint32_t vertices_count = 0;
@@ -290,23 +285,23 @@ bool StaticModel::LoadMaterials(const aiScene* scene, const std::filesystem::pat
 
 		if (AI_SUCCESS == material->Get(AI_MATKEY_BASE_COLOR, color_rgba))
 		{
-			m_materials[idx].setVector3("u_albedo"sv, glm::vec3(color_rgba.r, color_rgba.g, color_rgba.b));
+			m_materials[idx].set("u_albedo"sv, glm::vec3(color_rgba.r, color_rgba.g, color_rgba.b));
 		}
 		if (AI_SUCCESS == material->Get(AI_MATKEY_COLOR_EMISSIVE, color_rgb))
 		{
-			m_materials[idx].setVector3("u_emission"sv, glm::vec3(color_rgb.r, color_rgb.g, color_rgb.b));
+			m_materials[idx].set("u_emission"sv, glm::vec3(color_rgb.r, color_rgb.g, color_rgb.b));
 		}
 		if (AI_SUCCESS == material->Get(AI_MATKEY_COLOR_AMBIENT, color_rgb))
 		{
-			m_materials[idx].setFloat("u_ao"sv, (color_rgb.r + color_rgb.g + color_rgb.b) / 3.0f);
+			m_materials[idx].set("u_ao"sv, (color_rgb.r + color_rgb.g + color_rgb.b) / 3.0f);
 		}
 		if (AI_SUCCESS == material->Get(AI_MATKEY_ROUGHNESS_FACTOR, value))
 		{
-			m_materials[idx].setFloat("u_roughness"sv, value);
+			m_materials[idx].set("u_roughness"sv, value);
 		}
 		if (AI_SUCCESS == material->Get(AI_MATKEY_METALLIC_FACTOR, value))
 		{
-			m_materials[idx].setFloat("u_metallic"sv, value);
+			m_materials[idx].set("u_metallic"sv, value);
 		}
 	}
 
@@ -336,7 +331,7 @@ bool StaticModel::LoadMaterialTextures(const aiScene* scene, const aiMaterial* m
 				if (texture->Load(reinterpret_cast<unsigned char*>(paiTexture->pcData), data_size, is_srgb))
 				{
 					printf("Loaded embedded texture for the model '%s'\n", path.C_Str());
-					m_materials[material_index].setTexture(texture_type, texture);
+					m_materials[material_index].set(texture_type, texture);
 
 					if (texture_map_mode[0] == aiTextureMapMode_Wrap)
 					{
@@ -372,7 +367,7 @@ bool StaticModel::LoadMaterialTextures(const aiScene* scene, const aiMaterial* m
 				{
 					const auto T1 = steady_clock::now();
 					printf("Loaded texture '%s'  (%ld ms)\n", full_path.c_str(), duration_cast<milliseconds>(T1 - T0).count());
-					m_materials[material_index].setTexture(texture_type, texture);
+					m_materials[material_index].set(texture_type, texture);
 
 					if (texture_map_mode[0] == aiTextureMapMode_Wrap)
 					{
@@ -394,7 +389,7 @@ bool StaticModel::LoadMaterialTextures(const aiScene* scene, const aiMaterial* m
 
 		auto uniform_found = s_texture_flag_uniform_name.find(texture_type);
 		if(uniform_found != s_texture_flag_uniform_name.end())
-			m_materials[material_index].setBool(uniform_found->second, true);
+			m_materials[material_index].set(uniform_found->second, true);
 	}
 
 	return true;
@@ -488,7 +483,7 @@ void StaticModel::AddTexture(const std::shared_ptr<Texture2D>& texture, Material
 	if (m_mesh_parts[mesh_id].m_material_index == INVALID_MATERIAL)
 	{
 		Material new_material {};
-		new_material.setTexture(texture_type, texture);
+		new_material.set(texture_type, texture);
 
 		m_materials.push_back(new_material);
 		m_mesh_parts[mesh_id].m_material_index = m_materials.size() - 1;
@@ -496,7 +491,7 @@ void StaticModel::AddTexture(const std::shared_ptr<Texture2D>& texture, Material
 	else
 	{
 		auto material_index = m_mesh_parts[mesh_id].m_material_index;
-		m_materials[material_index].setTexture(texture_type, texture);
+		m_materials[material_index].set(texture_type, texture);
 	}
 }
 
