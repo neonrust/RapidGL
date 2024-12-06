@@ -2,7 +2,7 @@
 
 #include <cstdio>
 
-void Texture2DRenderTarget::create(size_t width, size_t height, GLenum internalformat)
+void RenderTargetTexture2d::create(size_t width, size_t height, GLenum internalformat)
 {
 	if(_texture_id)
 		cleanup();
@@ -45,7 +45,7 @@ void Texture2DRenderTarget::create(size_t width, size_t height, GLenum internalf
 	}
 }
 
-void Texture2DRenderTarget::cleanup()
+void RenderTargetTexture2d::cleanup()
 {
 	if(_texture_id)
 		glDeleteTextures(1, &_texture_id);
@@ -60,34 +60,34 @@ void Texture2DRenderTarget::cleanup()
 	_rbo_id = 0;
 }
 
-void Texture2DRenderTarget::bindTexture(GLuint unit)
+void RenderTargetTexture2d::bindTexture(GLuint unit)
 {
 	glBindTextureUnit(unit, _texture_id);
 }
 
-void Texture2DRenderTarget::bindRenderTarget(GLbitfield clear_mask)
+void RenderTargetTexture2d::bindRenderTarget(GLbitfield clear_mask)
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, _fbo_id);
 	glViewport(0, 0, _width, _height);
 	glClear(clear_mask);
 }
 
-void Texture2DRenderTarget::bindImageForRead(GLuint image_unit, GLint mip_level)
+void RenderTargetTexture2d::bindImageForRead(GLuint image_unit, GLint mip_level)
 {
 	glBindImageTexture(image_unit, _texture_id, mip_level, GL_FALSE, 0, GL_READ_ONLY, _internal_format);
 }
 
-void Texture2DRenderTarget::bindImageForWrite(GLuint image_unit, GLint mip_level)
+void RenderTargetTexture2d::bindImageForWrite(GLuint image_unit, GLint mip_level)
 {
 	glBindImageTexture(image_unit, _texture_id, mip_level, GL_FALSE, 0, GL_WRITE_ONLY, _internal_format);
 }
 
-void Texture2DRenderTarget::bindImageForReadWrite(GLuint image_unit, GLint mip_level)
+void RenderTargetTexture2d::bindImageForReadWrite(GLuint image_unit, GLint mip_level)
 {
 	glBindImageTexture(image_unit, _texture_id, mip_level, GL_FALSE, 0, GL_READ_WRITE, _internal_format);
 }
 
-uint8_t Texture2DRenderTarget::calculateMipmapLevels()
+uint8_t RenderTargetTexture2d::calculateMipmapLevels()
 {
 	auto width      = _width  / 2;
 	auto height     = _height / 2;
@@ -104,4 +104,14 @@ uint8_t Texture2DRenderTarget::calculateMipmapLevels()
 	}
 
 	return mip_levels + 1;
+}
+
+void RenderTargetTexture2d::copyTo(RenderTargetTexture2d &dest, GLbitfield mask, GLenum filter) const
+{
+	glBlitNamedFramebuffer(framebuffer_id(),
+						   dest.framebuffer_id(),
+						   0, 0, width(), height(),
+						   0, 0, dest.width(), dest.height(),
+						   mask,
+						   filter);
 }

@@ -6,11 +6,11 @@
 #include <cstdint>
 
 
-struct Texture2DRenderTarget
+struct RenderTargetTexture2d
 {
 	void create(size_t width, size_t height, GLenum internalformat);
 
-	~Texture2DRenderTarget() { cleanup(); }
+	~RenderTargetTexture2d() { cleanup(); }
 
 	void cleanup();
 
@@ -27,8 +27,10 @@ struct Texture2DRenderTarget
 	void bindImageForWrite(GLuint image_unit, GLint mip_level);
 	void bindImageForReadWrite(GLuint image_unit, GLint mip_level);
 
-	uint8_t calculateMipmapLevels();
+	void copyTo(RenderTargetTexture2d &dest, GLbitfield mask=GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GLenum filter=GL_LINEAR) const;
 
+private:
+	uint8_t calculateMipmapLevels();
 
 private:
 	GLuint _texture_id = 0;

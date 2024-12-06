@@ -4,11 +4,11 @@
 #include "glm/ext/matrix_float4x4.hpp"
 
 
-struct CubeMapRenderTarget
+struct RenderTargetCube
 {
 	void create(uint32_t width, uint32_t height, bool gen_mip_levels = false);
 
-	~CubeMapRenderTarget() { cleanup(); }
+	~RenderTargetCube() { cleanup(); }
 
 	void set_position(const glm::vec3 pos);
 

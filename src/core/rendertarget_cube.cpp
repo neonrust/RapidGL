@@ -4,7 +4,7 @@
 #include "glm/ext/matrix_transform.hpp"
 
 
-void CubeMapRenderTarget::create(uint32_t width, uint32_t height, bool gen_mip_levels)
+void RenderTargetCube::create(uint32_t width, uint32_t height, bool gen_mip_levels)
 {
 	_width  = GLsizei(width);
 	_height = GLsizei(height);
@@ -41,7 +41,7 @@ void CubeMapRenderTarget::create(uint32_t width, uint32_t height, bool gen_mip_l
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void CubeMapRenderTarget::set_position(const glm::vec3 pos)
+void RenderTargetCube::set_position(const glm::vec3 pos)
 {
 	_position = pos;
 	_view_transforms[0] = glm::lookAt(pos, pos + glm::vec3( 1,  0,  0), glm::vec3(0, -1,  0));
@@ -54,24 +54,24 @@ void CubeMapRenderTarget::set_position(const glm::vec3 pos)
 	_projection = glm::perspective(glm::radians(90.f), 1.f, 0.1f, 10.f);
 }
 
-void CubeMapRenderTarget::bindTexture(GLuint unit)
+void RenderTargetCube::bindTexture(GLuint unit)
 {
 	glBindTextureUnit(unit, _cubemap_texture_id);
 }
 
-void CubeMapRenderTarget::bindRenderBuffer()
+void RenderTargetCube::bindRenderBuffer()
 {
 	glBindRenderbuffer(GL_RENDERBUFFER, _rbo_id);
 }
 
-void CubeMapRenderTarget::bindRenderTarget(GLbitfield clear_mask)
+void RenderTargetCube::bindRenderTarget(GLbitfield clear_mask)
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, _fbo_id);
 	glViewport(0, 0, _width, _height);
 	glClear(clear_mask);
 }
 
-void CubeMapRenderTarget::cleanup()
+void RenderTargetCube::cleanup()
 {
 	if (_cubemap_texture_id != 0)
 	{
