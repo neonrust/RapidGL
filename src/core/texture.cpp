@@ -106,15 +106,15 @@ void TextureSampler::Create()
 	assert(m_so_id == 0);
 	glCreateSamplers(1, &m_so_id);
 
-	SetFiltering(TextureFiltering::MIN,       TextureFilteringParam::LINEAR_MIP_LINEAR);
-	SetFiltering(TextureFiltering::MAG,       TextureFilteringParam::LINEAR);
+	SetFiltering(TextureFiltering::Minify,       TextureFilteringParam::LINEAR_MIP_LINEAR);
+	SetFiltering(TextureFiltering::Magnify,       TextureFilteringParam::LINEAR);
 	SetWrapping  (TextureWrappingCoordinate::S, TextureWrappingParam::CLAMP_TO_EDGE);
 	SetWrapping  (TextureWrappingCoordinate::T, TextureWrappingParam::CLAMP_TO_EDGE);
 }
 
 void TextureSampler::SetFiltering(TextureFiltering type, TextureFilteringParam param)
 {
-	if (type == TextureFiltering::MAG && param > TextureFilteringParam::LINEAR)
+	if (type == TextureFiltering::Magnify && param > TextureFilteringParam::LINEAR)
 	{
 		param = TextureFilteringParam::LINEAR;
 	}
@@ -166,7 +166,7 @@ void TextureSampler::SetAnisotropy(float anisotropy)
 
 void Texture::SetFiltering(TextureFiltering type, TextureFilteringParam param)
 {
-	if (type == TextureFiltering::MAG && param > TextureFilteringParam::LINEAR)
+	if (type == TextureFiltering::Magnify && param > TextureFilteringParam::LINEAR)
 	{
 		param = TextureFilteringParam::LINEAR;
 	}
@@ -253,8 +253,8 @@ bool Texture2D::Load(const std::filesystem::path& filepath, bool is_srgb, uint32
 	glTextureSubImage2D    (m_obj_name, 0 /* level */, 0 /* xoffset */, 0 /* yoffset */, GLsizei(m_metadata.width), GLsizei(m_metadata.height), format, GL_UNSIGNED_BYTE, data.get());
 	glGenerateTextureMipmap(m_obj_name);
 
-	SetFiltering(TextureFiltering::MIN,       TextureFilteringParam::LINEAR_MIP_LINEAR);
-	SetFiltering(TextureFiltering::MAG,       TextureFilteringParam::LINEAR);
+	SetFiltering(TextureFiltering::Minify,       TextureFilteringParam::LINEAR_MIP_LINEAR);
+	SetFiltering(TextureFiltering::Magnify,       TextureFilteringParam::LINEAR);
 	SetWrapping (TextureWrappingCoordinate::S, TextureWrappingParam::CLAMP_TO_EDGE);
 	SetWrapping (TextureWrappingCoordinate::T, TextureWrappingParam::CLAMP_TO_EDGE);
 
@@ -301,8 +301,8 @@ bool Texture2D::Load(unsigned char* memory_data, uint32_t data_size, bool is_srg
 	glTextureSubImage2D    (m_obj_name, 0 /* level */, 0 /* xoffset */, 0 /* yoffset */, GLsizei(m_metadata.width), GLsizei(m_metadata.height), format, GL_UNSIGNED_BYTE, data.get());
 	glGenerateTextureMipmap(m_obj_name);
 
-	SetFiltering(TextureFiltering::MIN,       TextureFilteringParam::LINEAR_MIP_LINEAR);
-	SetFiltering(TextureFiltering::MAG,       TextureFilteringParam::LINEAR);
+	SetFiltering(TextureFiltering::Minify,       TextureFilteringParam::LINEAR_MIP_LINEAR);
+	SetFiltering(TextureFiltering::Magnify,       TextureFilteringParam::LINEAR);
 	SetWrapping (TextureWrappingCoordinate::S, TextureWrappingParam::CLAMP_TO_EDGE);
 	SetWrapping (TextureWrappingCoordinate::T, TextureWrappingParam::CLAMP_TO_EDGE);
 
@@ -340,8 +340,8 @@ bool Texture2D::LoadHdr(const std::filesystem::path & filepath, uint32_t num_mip
 	glTextureSubImage2D    (m_obj_name, 0 /* level */, 0 /* xoffset */, 0 /* yoffset */, GLsizei(m_metadata.width), GLsizei(m_metadata.height), format, type, data.get());
 	glGenerateTextureMipmap(m_obj_name);
 
-	SetFiltering(TextureFiltering::MIN,       TextureFilteringParam::LINEAR);
-	SetFiltering(TextureFiltering::MAG,       TextureFilteringParam::LINEAR);
+	SetFiltering(TextureFiltering::Minify,     TextureFilteringParam::LINEAR);
+	SetFiltering(TextureFiltering::Magnify,    TextureFilteringParam::LINEAR);
 	SetWrapping (TextureWrappingCoordinate::S, TextureWrappingParam::CLAMP_TO_EDGE);
 	SetWrapping (TextureWrappingCoordinate::T, TextureWrappingParam::CLAMP_TO_EDGE);
 
@@ -465,8 +465,8 @@ bool TextureCubeMap::Load(const std::filesystem::path* filepaths, bool is_srgb, 
 
 	glGenerateTextureMipmap(m_obj_name);
 
-	SetFiltering(TextureFiltering::MIN,       TextureFilteringParam::LINEAR_MIP_LINEAR);
-	SetFiltering(TextureFiltering::MAG,       TextureFilteringParam::LINEAR);
+	SetFiltering(TextureFiltering::Minify,      TextureFilteringParam::LINEAR_MIP_LINEAR);
+	SetFiltering(TextureFiltering::Magnify,     TextureFilteringParam::LINEAR);
 	SetWrapping  (TextureWrappingCoordinate::S, TextureWrappingParam::CLAMP_TO_EDGE);
 	SetWrapping  (TextureWrappingCoordinate::T, TextureWrappingParam::CLAMP_TO_EDGE);
 	SetWrapping  (TextureWrappingCoordinate::R, TextureWrappingParam::CLAMP_TO_EDGE);

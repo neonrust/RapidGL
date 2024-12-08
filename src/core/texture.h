@@ -17,8 +17,8 @@ enum class TextureType
 
 enum class TextureFiltering
 {
-	MAG  = GL_TEXTURE_MAG_FILTER,
-	MIN  = GL_TEXTURE_MIN_FILTER
+	Magnify  = GL_TEXTURE_MAG_FILTER,
+	Minify  = GL_TEXTURE_MIN_FILTER
 };
 
 enum class TextureFilteringParam
