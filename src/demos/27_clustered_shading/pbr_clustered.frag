@@ -71,11 +71,11 @@ layout (std430, binding = AREA_LIGHT_GRID_SSBO_BINDING_INDEX) buffer AreaLightGr
     LightGrid area_light_grid[];
 };
 
-uint  computeClusterIndex1D(uvec3 cluster_index3D);
-uvec3 computeClusterIndex3D(vec2 screen_pos, float view_z);
 vec3  fromRedToGreen(float interpolant);
 vec3  fromGreenToBlue(float interpolant);
 vec3  heatMap(float interpolant);
+uint computeClusterIndex(uvec3 cluster_coord);
+uvec3 computeClusterCoord(vec2 screen_pos, float view_z);
 
 void main()
 {
@@ -91,12 +91,12 @@ void main()
     }
 
     // Locating the cluster we are in
-    uvec3 cluster_index3D = computeClusterIndex3D(gl_FragCoord.xy, in_view_pos.z);
-    uint  cluster_index1D = computeClusterIndex1D(cluster_index3D);
+    uvec3 cluster_coord = computeClusterCoord(gl_FragCoord.xy, in_view_pos.z);
+    uint cluster_index = computeClusterIndex(cluster_coord);
 
     // Calculate the point lights contribution
-    uint light_index_offset = point_light_grid[cluster_index1D].offset;
-    uint light_count		= point_light_grid[cluster_index1D].count;
+    uint light_index_offset = point_light_grid[cluster_index].offset;
+    uint light_count = point_light_grid[cluster_index].count;
 
     for (uint i = 0; i < light_count; ++i)
     {
@@ -105,8 +105,8 @@ void main()
     }
 
     // Calculate the spot lights contribution
-    light_index_offset = spot_light_grid[cluster_index1D].offset;
-    light_count		   = spot_light_grid[cluster_index1D].count;
+    light_index_offset = spot_light_grid[cluster_index].offset;
+    light_count = spot_light_grid[cluster_index].count;
 
     for (uint i = 0; i < light_count; ++i)
     {
@@ -115,8 +115,8 @@ void main()
     }
 
     // Calculate the area lights contribution
-    light_index_offset = area_light_grid[cluster_index1D].offset;
-    light_count		   = area_light_grid[cluster_index1D].count;
+    light_index_offset = area_light_grid[cluster_index].offset;
+    light_count = area_light_grid[cluster_index].count;
 
     for (uint i = 0; i < light_count; ++i)
     {
@@ -129,11 +129,11 @@ void main()
 
     if (u_debug_slices)
     {
-        frag_color = vec4(debug_colors[cluster_index3D.z % 8], 1.0);
+        frag_color = vec4(debug_colors[cluster_coord.z % 8], 1.0);
     }
     else if (u_debug_clusters_occupancy)
     {
-        uint total_light_count = point_light_grid[cluster_index1D].count + spot_light_grid[cluster_index1D].count + area_light_grid[cluster_index1D].count;
+        uint total_light_count = point_light_grid[cluster_index].count + spot_light_grid[cluster_index].count + area_light_grid[cluster_index].count;
         if (total_light_count > 0)
         {
             float normalized_light_count = total_light_count / 100.0;
@@ -149,19 +149,19 @@ void main()
     }
 }
 
-uint computeClusterIndex1D(uvec3 cluster_index3D)
+uint computeClusterIndex(uvec3 cluster_coord)
 {
-    return cluster_index3D.x + (u_grid_dim.x * (cluster_index3D.y + u_grid_dim.y * cluster_index3D.z));
+    return cluster_coord.x + (u_grid_dim.x * (cluster_coord.y + u_grid_dim.y * cluster_coord.z));
 }
 
-uvec3 computeClusterIndex3D(vec2 screen_pos, float view_z)
+uvec3 computeClusterCoord(vec2 screen_pos, float view_z)
 {
     uint x = uint(screen_pos.x / u_cluster_size_ss.x);
     uint y = uint(screen_pos.y / u_cluster_size_ss.y);
 
     // View space z is negative (right-handed coordinate system)
     // so the view-space z coordinate needs to be negated to make it positive.
-    uint z = uint(log( -view_z / u_near_z ) * u_log_grid_dim_y);
+    uint z = uint(log(-view_z / u_near_z) * u_log_grid_dim_y);
 
     return uvec3(x, y, z);
 }

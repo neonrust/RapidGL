@@ -17,8 +17,8 @@ uniform uvec3 u_grid_dim;
 
 // Function's prototypes
 float linearDepth(float depth);
-uint  computeClusterIndex1D(uvec3 cluster_index3D);
-uvec3 computeClusterIndex3D(vec2 screen_pos, float view_z);
+uint computeClusterIndex(uvec3 cluster_coord);
+uvec3 computeClusterCoord(vec2 screen_pos, float view_z);
 
 layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 void main()
@@ -29,10 +29,10 @@ void main()
 	float view_z     = texture(u_depth_buffer, uv).r;
 	vec2  screen_pos = vec2(pixel_id) + vec2(0.5);
 
-	uvec3 cluster_index3D = computeClusterIndex3D(screen_pos, linearDepth(view_z));
-	uint  cluster_index1D = computeClusterIndex1D(cluster_index3D);
+    uvec3 cluster_coord = computeClusterCoord(screen_pos, linearDepth(view_z));
+    uint cluster_index = computeClusterIndex(cluster_coord);
 
-	clusters_flags[cluster_index1D] = true;
+    clusters_flags[cluster_index] = true;
 }
 
 float linearDepth(float depth)
@@ -43,12 +43,12 @@ float linearDepth(float depth)
 	return linear_depth;
 }
 
-uint computeClusterIndex1D(uvec3 cluster_index3D)
+uint computeClusterIndex(uvec3 cluster_coord)
 {
-	return cluster_index3D.x + (u_grid_dim.x * (cluster_index3D.y + u_grid_dim.y * cluster_index3D.z));
+    return cluster_coord.x + (u_grid_dim.x * (cluster_coord.y + u_grid_dim.y * cluster_coord.z));
 }
 
-uvec3 computeClusterIndex3D(vec2 screen_pos, float view_z)
+uvec3 computeClusterCoord(vec2 screen_pos, float view_z)
 {
 	uint x = uint(screen_pos.x / u_cluster_size_ss.x);
 	uint y = uint(screen_pos.y / u_cluster_size_ss.y);

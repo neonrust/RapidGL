@@ -62,7 +62,7 @@ layout(std430, binding = UNIQUE_ACTIVE_CLUSTERS_SSBO_BINDING_INDEX) buffer Uniqu
 
 uniform mat4 u_view_matrix;
 
-shared uint s_cluster_index_1D;
+shared uint s_cluster_index;
 shared ClusterAABB s_cluster_aabb;
 
 shared uint s_point_lights_count;
@@ -91,8 +91,8 @@ void main()
         s_spot_lights_count = 0;
         s_area_lights_count = 0;
 
-        s_cluster_index_1D = unique_clusters[gl_WorkGroupID.x];
-        s_cluster_aabb = clusters[s_cluster_index_1D];
+        s_cluster_index = unique_clusters[gl_WorkGroupID.x];
+        s_cluster_aabb = clusters[s_cluster_index];
     }
     barrier();
 
@@ -163,18 +163,18 @@ void main()
     {
         // Update light grid for point lights.
         s_point_lights_start_offset = atomicAdd(point_light_index_counter, s_point_lights_count);
-        point_light_grid[s_cluster_index_1D].offset = s_point_lights_start_offset;
-        point_light_grid[s_cluster_index_1D].count = s_point_lights_count;
+        point_light_grid[s_cluster_index].offset = s_point_lights_start_offset;
+        point_light_grid[s_cluster_index].count = s_point_lights_count;
 
         // Update light grid for spot lights.
         s_spot_lights_start_offset = atomicAdd(spot_light_index_counter, s_spot_lights_count);
-        spot_light_grid[s_cluster_index_1D].offset = s_spot_lights_start_offset;
-        spot_light_grid[s_cluster_index_1D].count = s_spot_lights_count;
+        spot_light_grid[s_cluster_index].offset = s_spot_lights_start_offset;
+        spot_light_grid[s_cluster_index].count = s_spot_lights_count;
 
         // Update light grid for area lights.
         s_area_lights_start_offset = atomicAdd(area_light_index_counter, s_area_lights_count);
-        area_light_grid[s_cluster_index_1D].offset = s_area_lights_start_offset;
-        area_light_grid[s_cluster_index_1D].count = s_area_lights_count;
+        area_light_grid[s_cluster_index].offset = s_area_lights_start_offset;
+        area_light_grid[s_cluster_index].count = s_area_lights_count;
     }
     barrier();
 

@@ -23,24 +23,24 @@ struct Plane
 };
 
 // Functions' prototypes
-uvec3 computeClusterIndex3D   (uint cluster_index1D);
 vec4  clipToView              (vec4 clip);
 vec4  screenToView            (vec4 screen);
 bool  lineIntersectionToZPlane(vec3 a, vec3 b, Plane p, out vec3 q);
+uvec3 computeClusterCoord     (uint cluster_index);
 
 layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 void main()
 {
-	uint  cluster_index1D = gl_GlobalInvocationID.x;
-	uvec3 cluster_index3D = computeClusterIndex3D(cluster_index1D);
+	uint  cluster_index = gl_GlobalInvocationID.x;
+    uvec3 cluster_coord = computeClusterCoord(cluster_index);
 
 	// Near and far values of the cluster in view space
-	Plane near_plane = Plane(vec3(0.0, 0.0, 1.0), -u_near_z * pow(abs(u_near_k), cluster_index3D.z    ));
-	Plane far_plane  = Plane(vec3(0.0, 0.0, 1.0), -u_near_z * pow(abs(u_near_k), cluster_index3D.z + 1));
+	Plane near_plane = Plane(vec3(0.0, 0.0, 1.0), -u_near_z * pow(abs(u_near_k), cluster_coord.z    ));
+	Plane far_plane  = Plane(vec3(0.0, 0.0, 1.0), -u_near_z * pow(abs(u_near_k), cluster_coord.z + 1));
 
 	// The top-left and bottom-right points respectively of the cluster k in screen space.
-	vec4 p_min = vec4( cluster_index3D.xy      * u_cluster_size_ss, 1.0, 1.0); // Top left in screen space
-	vec4 p_max = vec4((cluster_index3D.xy + 1) * u_cluster_size_ss, 1.0, 1.0); // Bottom right in screen space
+	vec4 p_min = vec4( cluster_coord.xy      * u_cluster_size_ss, 1.0, 1.0); // Top left in screen space
+	vec4 p_max = vec4((cluster_coord.xy + 1) * u_cluster_size_ss, 1.0, 1.0); // Bottom right in screen space
 
 	p_min = screenToView(p_min); // Top left in screen space
 	p_max = screenToView(p_max); // Bottom right in screen space
@@ -58,15 +58,15 @@ void main()
 	vec3 min_aabb = min(near_min, min(near_max, min(far_min, far_max)));
 	vec3 max_aabb = max(near_min, max(near_max, max(far_min, far_max)));
 
-	clusters[cluster_index1D].min = vec4(min_aabb.xyz, 1.0);
-	clusters[cluster_index1D].max = vec4(max_aabb.xyz, 1.0);
+	clusters[cluster_index].min = vec4(min_aabb.xyz, 1.0);
+	clusters[cluster_index].max = vec4(max_aabb.xyz, 1.0);
 }
 
-uvec3 computeClusterIndex3D(uint cluster_index1D)
+uvec3 computeClusterCoord(uint cluster_index)
 {
-	uint x = cluster_index1D % u_grid_dim.x;
-	uint y = cluster_index1D % (u_grid_dim.x * u_grid_dim.y) / u_grid_dim.x;
-	uint z = cluster_index1D / (u_grid_dim.x * u_grid_dim.y);
+	uint x = cluster_index % u_grid_dim.x;
+	uint y = cluster_index % (u_grid_dim.x * u_grid_dim.y) / u_grid_dim.x;
+	uint z = cluster_index / (u_grid_dim.x * u_grid_dim.y);
 
 	return uvec3(x, y, z);
 }
@@ -92,7 +92,7 @@ bool lineIntersectionToZPlane(vec3 a, vec3 b, Plane p, out vec3 q)
 	{
 		q = a + t * ab;
 	}
-	
+
     return intersects;
 }
 
@@ -103,7 +103,7 @@ vec4 clipToView(vec4 clip)
 
     //Perspective projection
     view = view / view.w;
-    
+
     return view;
 }
 
