@@ -379,13 +379,13 @@ bool StaticModel::LoadMaterialTextures(const aiScene* scene, const aiMaterial* m
 		}
 
 		static const dense_map<Material::TextureType, std::string_view> s_texture_flag_uniform_name {
-																									  { Material::TextureType::ALBEDO,    "u_has_albedo_map"sv },
-																									  { Material::TextureType::NORMAL,    "u_has_normal_map"sv },
-																									  { Material::TextureType::EMISSIVE,  "u_has_emissive_map"sv },
-																									  { Material::TextureType::AO,        "u_has_ao_map"sv },
-																									  { Material::TextureType::METALLIC,  "u_has_metallic_map"sv },
-																									  { Material::TextureType::ROUGHNESS, "u_has_roughness_map"sv },
-																									  };
+			{ Material::TextureType::ALBEDO,    "u_has_albedo_map"sv },
+			{ Material::TextureType::NORMAL,    "u_has_normal_map"sv },
+			{ Material::TextureType::EMISSIVE,  "u_has_emissive_map"sv },
+			{ Material::TextureType::AO,        "u_has_ao_map"sv },
+			{ Material::TextureType::METALLIC,  "u_has_metallic_map"sv },
+			{ Material::TextureType::ROUGHNESS, "u_has_roughness_map"sv }
+		};
 
 		auto uniform_found = s_texture_flag_uniform_name.find(texture_type);
 		if(uniform_found != s_texture_flag_uniform_name.end())
