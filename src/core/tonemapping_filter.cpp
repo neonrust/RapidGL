@@ -7,7 +7,7 @@ TonemappingFilter::TonemappingFilter(uint32_t width, uint32_t height)
 	_shader = std::make_shared<RGL::Shader>("src/demos/27_clustered_shading/FSQ.vert", "src/demos/27_clustered_shading/tmo.frag");
 	_shader->link();
 
-	_rt = std::make_shared<RenderTargetTexture2d>();
+	_rt = std::make_shared<RGL::RenderTarget::Texture2d>();
 	_rt->create(width, height, GL_RGBA32F);
 	glTextureParameteri(_rt->texture_id(), GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
 	glTextureParameteri(_rt->texture_id(), GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);

@@ -5,12 +5,22 @@
 #include <cstddef>
 #include <cstdint>
 
+namespace RGL
+{
 
-struct RenderTargetTexture2d
+namespace RenderTarget
+{
+
+using Access = uint32_t;
+static constexpr Access ReadOnly = GL_READ_ONLY;
+static constexpr Access WriteOnly = GL_WRITE_ONLY;
+static constexpr Access ReadWrite = GL_READ_WRITE;
+
+struct Texture2d
 {
 	void create(size_t width, size_t height, GLenum internalformat);
 
-	~RenderTargetTexture2d() { cleanup(); }
+	~Texture2d() { cleanup(); }
 
 	void cleanup();
 
@@ -23,11 +33,13 @@ struct RenderTargetTexture2d
 	void bindTexture(GLuint unit = 0);
 	void bindRenderTarget(GLbitfield clear_mask = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	void bindImageForRead(GLuint image_unit, GLint mip_level);
-	void bindImageForWrite(GLuint image_unit, GLint mip_level);
-	void bindImageForReadWrite(GLuint image_unit, GLint mip_level);
+	// void bindImageForRead(GLuint image_unit, GLint mip_level);
+	// void bindImageForWrite(GLuint image_unit, GLint mip_level);
+	// void bindImageForReadWrite(GLuint image_unit, GLint mip_level);
 
-	void copyTo(RenderTargetTexture2d &dest, GLbitfield mask=GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GLenum filter=GL_LINEAR) const;
+	void bindMipImage(GLuint image_unit, GLint mip_level, RenderTarget::Access access=GL_READ_ONLY);
+
+	void copyTo(Texture2d &dest, GLbitfield mask=GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GLenum filter=GL_LINEAR) const;
 
 private:
 	uint8_t calculateMipmapLevels();
@@ -44,3 +56,7 @@ private:
 	const uint8_t _max_iterations = 16; // max mipmap levels
 	uint8_t _mip_levels = 1;
 };
+
+} // RenderTarget
+
+} // RGL

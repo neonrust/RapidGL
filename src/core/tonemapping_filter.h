@@ -2,7 +2,10 @@
 
 #include "shader.h"
 
-struct RenderTargetTexture2d;
+namespace RGL::RenderTarget
+{
+struct Texture2d;
+}
 
 
 struct TonemappingFilter
@@ -16,12 +19,12 @@ struct TonemappingFilter
 
 	void render(float exposure, float gamma);
 
-	const RenderTargetTexture2d &renderTarget() const { return *_rt; }
-	RenderTargetTexture2d &renderTarget() { return *_rt; }
+	const RGL::RenderTarget::Texture2d &renderTarget() const { return *_rt; }
+	RGL::RenderTarget::Texture2d &renderTarget() { return *_rt; }
 
 private:
 	std::shared_ptr<RGL::Shader> _shader;
-	std::shared_ptr<RenderTargetTexture2d> _rt;
+	std::shared_ptr<RGL::RenderTarget::Texture2d> _rt;
 
 	GLuint _dummy_vao_id;
 };

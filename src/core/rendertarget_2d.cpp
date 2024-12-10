@@ -2,7 +2,13 @@
 
 #include <cstdio>
 
-void RenderTargetTexture2d::create(size_t width, size_t height, GLenum internalformat)
+namespace RGL
+{
+
+namespace RenderTarget
+{
+
+void Texture2d::create(size_t width, size_t height, GLenum internalformat)
 {
 	if(_texture_id)
 		cleanup();
@@ -45,7 +51,7 @@ void RenderTargetTexture2d::create(size_t width, size_t height, GLenum internalf
 	}
 }
 
-void RenderTargetTexture2d::cleanup()
+void Texture2d::cleanup()
 {
 	if(_texture_id)
 		glDeleteTextures(1, &_texture_id);
@@ -60,34 +66,39 @@ void RenderTargetTexture2d::cleanup()
 	_rbo_id = 0;
 }
 
-void RenderTargetTexture2d::bindTexture(GLuint unit)
+void Texture2d::bindTexture(GLuint unit)
 {
 	glBindTextureUnit(unit, _texture_id);
 }
 
-void RenderTargetTexture2d::bindRenderTarget(GLbitfield clear_mask)
+void Texture2d::bindRenderTarget(GLbitfield clear_mask)
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, _fbo_id);
 	glViewport(0, 0, _width, _height);
 	glClear(clear_mask);
 }
 
-void RenderTargetTexture2d::bindImageForRead(GLuint image_unit, GLint mip_level)
+// void RenderTargetTexture2d::bindImageForRead(GLuint image_unit, GLint mip_level)
+// {
+// 	glBindImageTexture(image_unit, _texture_id, mip_level, GL_FALSE, 0, GL_READ_ONLY, _internal_format);
+// }
+
+// void RenderTargetTexture2d::bindImageForWrite(GLuint image_unit, GLint mip_level)
+// {
+// 	glBindImageTexture(image_unit, _texture_id, mip_level, GL_FALSE, 0, GL_WRITE_ONLY, _internal_format);
+// }
+
+// void RenderTargetTexture2d::bindImageForReadWrite(GLuint image_unit, GLint mip_level)
+// {
+// 	glBindImageTexture(image_unit, _texture_id, mip_level, GL_FALSE, 0, GL_READ_WRITE, _internal_format);
+// }
+
+void Texture2d::bindMipImage(GLuint image_unit, GLint mip_level, RenderTarget::Access access)
 {
-	glBindImageTexture(image_unit, _texture_id, mip_level, GL_FALSE, 0, GL_READ_ONLY, _internal_format);
+	glBindImageTexture(image_unit, _texture_id, mip_level, GL_FALSE, 0, GLenum(access), _internal_format);
 }
 
-void RenderTargetTexture2d::bindImageForWrite(GLuint image_unit, GLint mip_level)
-{
-	glBindImageTexture(image_unit, _texture_id, mip_level, GL_FALSE, 0, GL_WRITE_ONLY, _internal_format);
-}
-
-void RenderTargetTexture2d::bindImageForReadWrite(GLuint image_unit, GLint mip_level)
-{
-	glBindImageTexture(image_unit, _texture_id, mip_level, GL_FALSE, 0, GL_READ_WRITE, _internal_format);
-}
-
-uint8_t RenderTargetTexture2d::calculateMipmapLevels()
+uint8_t Texture2d::calculateMipmapLevels()
 {
 	auto width      = _width  / 2;
 	auto height     = _height / 2;
@@ -106,7 +117,7 @@ uint8_t RenderTargetTexture2d::calculateMipmapLevels()
 	return mip_levels + 1;
 }
 
-void RenderTargetTexture2d::copyTo(RenderTargetTexture2d &dest, GLbitfield mask, GLenum filter) const
+void Texture2d::copyTo(Texture2d &dest, GLbitfield mask, GLenum filter) const
 {
 	glBlitNamedFramebuffer(framebuffer_id(),
 						   dest.framebuffer_id(),
@@ -115,3 +126,7 @@ void RenderTargetTexture2d::copyTo(RenderTargetTexture2d &dest, GLbitfield mask,
 						   mask,
 						   filter);
 }
+
+} // RenderTarget
+
+} // RGL

@@ -102,7 +102,7 @@ private:
     void IrradianceConvolution      (const std::shared_ptr<CubeMapRenderTarget> & cubemap_rt);
     void PrefilterCubemap           (const std::shared_ptr<CubeMapRenderTarget>& cubemap_rt);
     void PrecomputeIndirectLight    (const std::filesystem::path & hdri_map_filepath);
-    void PrecomputeBRDF             (const std::shared_ptr<Texture2DRenderTarget>& rt);
+	void PrecomputeBRDF             (const std::shared_ptr<RGL::RenderTarget::Texture2d>& rt);
     void GenSkyboxGeometry();
 
 	const std::vector<StaticObject> &cullScene();
@@ -116,7 +116,7 @@ private:
     std::shared_ptr<CubeMapRenderTarget>   m_env_cubemap_rt;
     std::shared_ptr<CubeMapRenderTarget>   m_irradiance_cubemap_rt;
     std::shared_ptr<CubeMapRenderTarget>   m_prefiltered_env_map_rt;
-    std::shared_ptr<Texture2DRenderTarget> m_brdf_lut_rt;
+	std::shared_ptr<RGL::RenderTarget::Texture2d> m_brdf_lut_rt;
 
     std::shared_ptr<RGL::Shader> m_equirectangular_to_cubemap_shader;
     std::shared_ptr<RGL::Shader> m_irradiance_convolution_shader;
@@ -150,6 +150,7 @@ private:
     GLuint m_area_light_index_list_ssbo;
     GLuint m_area_light_grid_ssbo;
     GLuint m_unique_active_clusters_ssbo;
+	RGL::RenderTarget::Texture2d m_depth_pass_rt;
 
     // Average number of overlapping lights per cluster AABB.
     // This variable matters when the lights are big and cover more than one cluster.
