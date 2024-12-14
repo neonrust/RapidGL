@@ -54,11 +54,11 @@ void SimpleTriangle::input()
         std::string filename = "01_simple_triangle";
         if (take_screenshot_png(filename, RGL::Window::getWidth() / 2.0, RGL::Window::getHeight() / 2.0))
         {
-            std::cout << "Saved " << filename << ".png to " << RGL::FileSystem::getRootPath() / "screenshots/" << std::endl;
+            std::cout << "Saved " << filename << ".png to " << RGL::FileSystem::rootPath() / "screenshots/" << std::endl;
         }
         else
         {
-            std::cerr << "Could not save " << filename << ".png to " << RGL::FileSystem::getRootPath() / "screenshots/" << std::endl;
+            std::cerr << "Could not save " << filename << ".png to " << RGL::FileSystem::rootPath() / "screenshots/" << std::endl;
         }
     }
 }

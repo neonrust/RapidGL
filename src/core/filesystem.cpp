@@ -3,7 +3,7 @@
 
 namespace RGL
 {
-    fs::path FileSystem::getRootPath()
+    fs::path FileSystem::rootPath()
     {
         return fs::path(RAPIDGL_ROOT);
     }

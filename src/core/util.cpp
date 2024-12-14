@@ -24,7 +24,7 @@ namespace RGL
         std::string filetext;
         std::string line;
 
-        std::filesystem::path filepath = FileSystem::getRootPath() / filename;
+        std::filesystem::path filepath = FileSystem::rootPath() / filename;
         std::ifstream inFile(filepath);
 
         if (!inFile)
@@ -47,7 +47,7 @@ namespace RGL
 
 	std::vector<uint8_t> Util::LoadFileBinary(const std::filesystem::path& filename)
     {
-        std::filesystem::path filepath = FileSystem::getRootPath() / filename;
+        std::filesystem::path filepath = FileSystem::rootPath() / filename;
         std::ifstream file(filepath, std::ios::binary);
 
         if (!file)

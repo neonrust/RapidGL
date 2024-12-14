@@ -113,7 +113,7 @@ namespace RGL
             image  = resized_image;
         }
 
-        auto screenshots_dir = FileSystem::getRootPath() / "screenshots";
+        auto screenshots_dir = FileSystem::rootPath() / "screenshots";
         if (!FileSystem::directoryExists(screenshots_dir))
         {
             FileSystem::createDirectory(screenshots_dir);

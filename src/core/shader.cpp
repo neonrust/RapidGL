@@ -95,12 +95,10 @@ namespace RGL
             return;
         }
 
-		std::string code = Util::LoadFile(filepath);
-		const auto   dir = FileSystem::getRootPath() / filepath.parent_path();
+		const auto  dir = FileSystem::rootPath() / filepath.parent_path();
+		const auto code = Util::PreprocessShaderSource(Util::LoadFile(filepath), dir);
 
-		code = Util::PreprocessShaderSource(code, dir);
-
-        const char * shader_code = code.c_str();
+		const char * shader_code = code.c_str();
 
         glShaderSource(shaderObject, 1, &shader_code, nullptr);
         glCompileShader(shaderObject);
