@@ -79,6 +79,8 @@ namespace RGL
 
 		void addShader(const std::filesystem::path & filepath, GLuint type);
 		void add_name(const std::filesystem::path &filepath);
+		std::tuple<bool, std::string> getStatusLog(GLuint object, GLenum statusType) const;
+
 		GLint getUniformLocation(const std::string_view &name);
 
 		string_map<GLuint> m_subroutine_indices;

@@ -81,7 +81,7 @@ namespace RGL
 
         if (filepath.empty())
         {
-            fprintf(stderr, "Error: Shader's file name can't be empty.\n");
+			std::fprintf(stderr, "Error: Shader's file name can't be empty.\n");
 
             return;
         }
@@ -90,48 +90,34 @@ namespace RGL
 
         if (shaderObject == 0)
         {
-            fprintf(stderr, "Error while creating %s.\n", filepath.c_str());
+			std::fprintf(stderr, "Error while creating %s.\n", filepath.c_str());
 
             return;
         }
 
-        std::string           code = Util::LoadFile(filepath);
-        std::filesystem::path dir  = FileSystem::getRootPath() / filepath.parent_path();
+		std::string code = Util::LoadFile(filepath);
+		const auto   dir = FileSystem::getRootPath() / filepath.parent_path();
 
-        code = Util::LoadShaderIncludes(code, dir);
+		code = Util::PreprocessShaderSource(code, dir);
 
         const char * shader_code = code.c_str();
 
         glShaderSource(shaderObject, 1, &shader_code, nullptr);
         glCompileShader(shaderObject);
 
-        GLint result;
-        glGetShaderiv(shaderObject, GL_COMPILE_STATUS, &result);
-
-        if (result == GL_FALSE)
-        {
-            fprintf(stderr, "\n%s compilation failed!\n", filepath.string().c_str());
-
-            GLint logLen;
-            glGetShaderiv(shaderObject, GL_INFO_LOG_LENGTH, &logLen);
-
-            if (logLen > 0)
-            {
-				std::string log;
-				log.resize(size_t(logLen));
-
-                GLsizei written;
-				glGetShaderInfoLog(shaderObject, logLen, &written, log.data());
-
-				fprintf(stderr, "Shader log: \n%s", log.c_str());
-            }
-            getchar();
+		const auto &[ok, log] = getStatusLog(m_program_id, GL_COMPILE_STATUS);
+		if(not ok)
+		{
+			if(not log.empty())
+				std::fprintf(stderr, "%s compilation failed!\n%s\n", filepath.string().c_str(), log.c_str());
+			else
+				std::fprintf(stderr, "%s compilation failed! (unknown error)!\n", filepath.string().c_str());
             return;
         }
 
 		add_name(filepath);
         glAttachShader(m_program_id, shaderObject);
-        glDeleteShader(shaderObject);
+		glDeleteShader(shaderObject); // flag for deletion; we don't need it for anything else
     }
 
 	void Shader::add_name(const std::filesystem::path & filepath)
@@ -146,26 +132,13 @@ namespace RGL
     {
         glLinkProgram(m_program_id);
 
-        GLint status;
-        glGetProgramiv(m_program_id, GL_LINK_STATUS, &status);
-
-        if (status == GL_FALSE)
-        {
-            fprintf(stderr, "Failed to link shader program!\n");
-
-            GLint logLen;
-            glGetProgramiv(m_program_id, GL_INFO_LOG_LENGTH, &logLen);
-
-            if (logLen > 0)
-            {
-				std::string log;
-				log.resize(size_t(logLen));
-
-				GLsizei written;
-				glGetProgramInfoLog(m_program_id, logLen, &written, log.data());
-
-				fprintf(stderr, "Program log: \n%s", log.c_str());
-            }
+		const auto &[ok, log] = getStatusLog(m_program_id, GL_LINK_STATUS);
+		if(not ok)
+		{
+			if(not log.empty())
+				std::fprintf(stderr, "%s Failed to link!\n%s\n", _name.c_str(), log.c_str());
+			else
+				std::fprintf(stderr, "%s Failed to link! (unknown error)\n", _name.c_str());
         }
         else
         {
@@ -343,4 +316,31 @@ namespace RGL
             }
         }
     }
+
+	std::tuple<bool, std::string> Shader::getStatusLog(GLuint object, GLenum statusType) const
+	{
+		GLint status;
+		glGetProgramiv(object, statusType, &status);
+
+		if (status == GL_FALSE)
+		{
+			GLint logLen;
+			glGetProgramiv(object, GL_INFO_LOG_LENGTH, &logLen);
+
+			if (logLen > 0)
+			{
+				std::string log;
+				log.resize(size_t(logLen));
+
+				GLsizei written;
+				glGetProgramInfoLog(object, logLen, &written, log.data());
+				return { false, log };
+			}
+
+			return { false, {} };
+
+		}
+
+		return { true, {} };
+	}
 }

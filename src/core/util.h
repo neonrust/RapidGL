@@ -47,7 +47,7 @@ namespace RGL
         */
         static std::vector<uint8_t> LoadFileBinary(const std::filesystem::path& filename);
 
-        static std::string LoadShaderIncludes(const std::string & shader_code, const std::filesystem::path& dir = "shaders");
+        static std::string PreprocessShaderSource(const std::string & shader_code, const std::filesystem::path& dir = "shaders");
         /**
         * @brief   Loads a file that contains an image data.
         * @param   std::string Relative path, with file name

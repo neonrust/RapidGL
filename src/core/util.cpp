@@ -72,20 +72,21 @@ namespace RGL
         return data;
     }
 
-    std::string Util::LoadShaderIncludes(const std::string& shader_code, const std::filesystem::path& dir)
+	std::string Util::PreprocessShaderSource(const std::string& shader_code, const std::filesystem::path& dir)
     {
-        std::istringstream ss(shader_code);
+		static const std::string include_phrase = "#include ";
 
-        std::string line, new_shader_code = "";
-        std::string include_phrase        = "#include";
+		std::istringstream ss(shader_code);
+
+		std::string line, new_shader_code;
 
         bool included = false;
 
         while (std::getline(ss, line))
         {
-            if (line.substr(0, include_phrase.size()) == include_phrase)
+			if (line.starts_with(include_phrase))
             {
-                std::string include_file_name = line.substr(include_phrase.size() + 2, line.size() - include_phrase .size() - 3);
+				auto include_file_name = line.substr(include_phrase.size() + 1, line.size() - include_phrase .size() - 2);
                 
                 line     = LoadFile(dir / include_file_name);
                 included = true;
@@ -94,11 +95,9 @@ namespace RGL
             new_shader_code.append(line + "\n");
         }
 
-        // Parse #include in the included files
+		// Preprocess the processed source (i.e. recursively)
         if (included)
-        {
-            new_shader_code = LoadShaderIncludes(new_shader_code, dir);
-        }
+			new_shader_code = PreprocessShaderSource(new_shader_code, dir);
 
         return new_shader_code;
     }
