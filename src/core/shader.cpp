@@ -103,7 +103,7 @@ namespace RGL
         glShaderSource(shaderObject, 1, &shader_code, nullptr);
         glCompileShader(shaderObject);
 
-		const auto &[ok, log] = getStatusLog(m_program_id, GL_COMPILE_STATUS);
+		const auto &[ok, log] = getStatusLog(shaderObject, GL_COMPILE_STATUS);
 		if(not ok)
 		{
 			if(not log.empty())
