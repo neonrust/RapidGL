@@ -30,7 +30,7 @@ namespace RGL
 
         if (!glfwInit())
         {
-            std::cerr << "ERROR: Could not initialize GLFW." << std::endl;
+			std::fprintf(stderr, "ERROR: Could not initialize GLFW.\n");
             exit(EXIT_FAILURE);
         }
 
@@ -50,7 +50,7 @@ namespace RGL
 
         if (!m_window)
         {
-            std::cerr << "ERROR: Could not create window and OpenGL context." << std::endl;
+			std::fprintf(stderr,"ERROR: Could not create window and OpenGL context.\n");
 
             glfwTerminate();
             exit(EXIT_FAILURE);
@@ -61,7 +61,7 @@ namespace RGL
         /* Initialize GLAD */
         if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
         {
-            std::cerr << "ERROR: Could not initialize GLAD." << std::endl;
+			std::fprintf(stderr,"ERROR: Could not initialize GLAD.\n");
             exit(EXIT_FAILURE);
         }
 
@@ -86,7 +86,24 @@ namespace RGL
         const GLubyte* driver_version = glGetString(GL_VERSION);
         const GLubyte* glsl_version   = glGetString(GL_SHADING_LANGUAGE_VERSION);
 
-        printf("%s %s\nDriver: %s\nGLSL Version: %s\n\n", vendor_name, renderer_name, driver_version, glsl_version);
+		std::printf("%s %s\nDriver: %s\nGLSL Version: %s\n", vendor_name, renderer_name, driver_version, glsl_version);
+
+		{
+			int groupCounts[3];
+			for(auto idx = 0u; idx < 3; ++idx)
+				glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, idx, &groupCounts[idx]);
+			int groupSizes[3];
+			for(auto idx = 0u; idx < 3; ++idx)
+				glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, idx, &groupSizes[idx]);
+			int invocations;
+			glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, &invocations);
+
+			std::printf("Compute shader work group limits:\n");
+			std::printf("   Counts:      %d x %d x %d\n", groupCounts[0], groupCounts[1], groupCounts[2]);
+			std::printf("   Sizes:       %d x %d x %d\n", groupSizes[0], groupSizes[1], groupSizes[2]);
+			std::printf("   Invocations: %d\n", invocations);
+		}
+
 
         /* Set the viewport */
         glfwGetWindowPos(m_window, &m_window_pos.x, &m_window_pos.y);
@@ -101,6 +118,8 @@ namespace RGL
         /* Init Input & GUI */
         Input::init(m_window);
         GUI::init(m_window);
+
+		std::printf("--------------------------------------------------\n\n");
     }
 
     void Window::endFrame()
