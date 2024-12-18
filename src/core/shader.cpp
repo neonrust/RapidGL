@@ -4,18 +4,14 @@
 #include "shader.h"
 #include "util.h"
 
+#include <cstdio>
+
 namespace RGL
 {
     Shader::Shader()
-        : m_program_id(0),
+		: m_program_id(0),   // allocated in first call to addShader()
           m_is_linked(false)
     {
-		m_program_id = glCreateProgram(); // TODO: defer until shader added? (default ctor shouldn't allocate stuff)
-
-        if (m_program_id == 0)
-        {
-            fprintf(stderr, "Error while creating program object.\n");
-        }
     }
 
     Shader::Shader(const std::filesystem::path& compute_shader_filepath)
@@ -65,34 +61,36 @@ namespace RGL
 
     Shader::~Shader()
     {
-        if (m_program_id != 0)
+		if (m_program_id)
         {
             glDeleteProgram(m_program_id);
             m_program_id = 0;
         }
     }
 
-	void Shader::addShader(const std::filesystem::path & filepath, GLuint type)
+	bool Shader::addShader(const std::filesystem::path & filepath, GLuint type)
     {
-        if (m_program_id == 0)
-        {
-            return;
-        }
+		if(not m_program_id)
+		{
+			m_program_id = glCreateProgram();
+			if(not m_program_id)
+			{
+				std::fprintf(stderr, "Error while creating program object.\n");
+				return false;
+			}
+		}
 
         if (filepath.empty())
         {
 			std::fprintf(stderr, "Error: Shader's file name can't be empty.\n");
-
-            return;
+			return false;
         }
 
-        GLuint shaderObject = glCreateShader(type);
-
-        if (shaderObject == 0)
+		auto shaderObject = glCreateShader(type);
+		if(not shaderObject)
         {
 			std::fprintf(stderr, "Error while creating %s.\n", filepath.c_str());
-
-            return;
+			return false;
         }
 
 		const auto  dir = FileSystem::rootPath() / filepath.parent_path();
@@ -100,22 +98,24 @@ namespace RGL
 
 		const char * shader_code = code.c_str();
 
-        glShaderSource(shaderObject, 1, &shader_code, nullptr);
+		glShaderSource(shaderObject, 1, &shader_code, nullptr);
         glCompileShader(shaderObject);
 
 		const auto &[ok, log] = getStatusLog(shaderObject, GL_COMPILE_STATUS);
 		if(not ok)
 		{
 			if(not log.empty())
-				std::fprintf(stderr, "%s compilation failed!\n%s\n", filepath.string().c_str(), log.c_str());
+				std::fprintf(stderr, "%s Compilation failed!\n%s\n", filepath.string().c_str(), log.c_str());
 			else
-				std::fprintf(stderr, "%s compilation failed! (unknown error)!\n", filepath.string().c_str());
-            return;
+				std::fprintf(stderr, "%s Compilation failed! (unknown error)!\n", filepath.string().c_str());
+			return false;
         }
 
 		add_name(filepath);
         glAttachShader(m_program_id, shaderObject);
 		glDeleteShader(shaderObject); // flag for deletion; we don't need it for anything else
+
+		return true;
     }
 
 	void Shader::add_name(const std::filesystem::path & filepath)
@@ -134,9 +134,10 @@ namespace RGL
 		if(not ok)
 		{
 			if(not log.empty())
-				std::fprintf(stderr, "%s Failed to link!\n%s\n", _name.c_str(), log.c_str());
+				std::fprintf(stderr, "%s Linking failed!\n%s\n", _name.c_str(), log.c_str());
 			else
-				std::fprintf(stderr, "%s Failed to link! (unknown error)\n", _name.c_str());
+				std::fprintf(stderr, "%s Linking failed! (unknown error)\n", _name.c_str());
+			return false;
         }
         else
         {
@@ -171,7 +172,7 @@ namespace RGL
 			location = glGetUniformLocation(m_program_id, name.data());
 			m_uniforms_locations[name] = location; // also remember failures (calls will be ignored)
 			if(location == -1)
-				fprintf(stderr, "Shader[%s]: Uniform '%s' not found\n", _name.c_str(), name.data());
+				std::fprintf(stderr, "Shader[%s]: Uniform '%s' not found\n", _name.c_str(), name.data());
 		}
 		else
 			location = found->second;
@@ -317,13 +318,23 @@ namespace RGL
 
 	std::tuple<bool, std::string> Shader::getStatusLog(GLuint object, GLenum statusType) const
 	{
+		const auto isShader = glIsShader(object);
+		if(not isShader and not glIsProgram(object))
+		{
+			std::fprintf(stderr, "getStatusLog provided object is neither program nor shader: %d\n", object);
+			return { false, {} };
+		}
+
+		const auto get_iv = isShader? glGetShaderiv: glGetProgramiv;
+		const auto get_log = isShader? glGetShaderInfoLog: glGetProgramInfoLog;
+
 		GLint status;
-		glGetProgramiv(object, statusType, &status);
+		get_iv(object, statusType, &status);
 
 		if (status == GL_FALSE)
 		{
 			GLint logLen;
-			glGetProgramiv(object, GL_INFO_LOG_LENGTH, &logLen);
+			get_iv(object, GL_INFO_LOG_LENGTH, &logLen);
 
 			if (logLen > 0)
 			{
@@ -331,7 +342,7 @@ namespace RGL
 				log.resize(size_t(logLen));
 
 				GLsizei written;
-				glGetProgramInfoLog(object, logLen, &written, log.data());
+				get_log(object, logLen, &written, log.data());
 				return { false, log };
 			}
 

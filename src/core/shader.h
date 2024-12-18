@@ -77,7 +77,7 @@ namespace RGL
     private:
         void addAllSubroutines();
 
-		void addShader(const std::filesystem::path & filepath, GLuint type);
+		bool addShader(const std::filesystem::path & filepath, GLuint type);
 		void add_name(const std::filesystem::path &filepath);
 		std::tuple<bool, std::string> getStatusLog(GLuint object, GLenum statusType) const;
 
