@@ -328,15 +328,15 @@ namespace RGL
 		const auto get_iv = isShader? glGetShaderiv: glGetProgramiv;
 		const auto get_log = isShader? glGetShaderInfoLog: glGetProgramInfoLog;
 
-		GLint status;
-		get_iv(object, statusType, &status);
+		GLint status_ok = GL_FALSE;
+		get_iv(object, statusType, &status_ok);
 
-		if (status == GL_FALSE)
+		if(not status_ok)
 		{
-			GLint logLen;
+			GLint logLen { 0 };
 			get_iv(object, GL_INFO_LOG_LENGTH, &logLen);
 
-			if (logLen > 0)
+			if(logLen)
 			{
 				std::string log;
 				log.resize(size_t(logLen));
