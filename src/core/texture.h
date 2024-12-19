@@ -31,7 +31,7 @@ enum class TextureFilteringParam
 	LINEAR_MIP_LINEAR    = GL_LINEAR_MIPMAP_LINEAR
 };
 
-enum class TextureWrappingCoordinate
+enum class TextureWrappingAxis
 {
 	S = GL_TEXTURE_WRAP_S,
 	T = GL_TEXTURE_WRAP_T,
@@ -95,7 +95,7 @@ public:
 	void SetFiltering(TextureFiltering type, TextureFilteringParam param);
 	void SetMinLod(float min);
 	void SetMaxLod(float max);
-	void SetWrapping(TextureWrappingCoordinate coord, TextureWrappingParam param);
+	void SetWrapping(TextureWrappingAxis coord, TextureWrappingParam param);
 	void SetBorderColor(float r, float g, float b, float a);
 	void SetCompareMode(TextureCompareMode mode);
 	void SetCompareFunc(TextureCompareFunc func);
@@ -148,7 +148,7 @@ public:
 	virtual void SetFiltering(TextureFiltering type, TextureFilteringParam param);
 	virtual void SetMinLod(float min);
 	virtual void SetMaxLod(float max);
-	virtual void SetWrapping(TextureWrappingCoordinate coord, TextureWrappingParam param);
+	virtual void SetWrapping(TextureWrappingAxis axis, TextureWrappingParam param);
 	virtual void SetBorderColor(float r, float g, float b, float a);
 	virtual void SetCompareMode(TextureCompareMode mode);
 	virtual void SetCompareFunc(TextureCompareFunc func);

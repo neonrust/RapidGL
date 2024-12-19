@@ -108,8 +108,8 @@ void TextureSampler::Create()
 
 	SetFiltering(TextureFiltering::Minify,       TextureFilteringParam::LINEAR_MIP_LINEAR);
 	SetFiltering(TextureFiltering::Magnify,       TextureFilteringParam::LINEAR);
-	SetWrapping  (TextureWrappingCoordinate::S, TextureWrappingParam::CLAMP_TO_EDGE);
-	SetWrapping  (TextureWrappingCoordinate::T, TextureWrappingParam::CLAMP_TO_EDGE);
+	SetWrapping  (TextureWrappingAxis::S, TextureWrappingParam::CLAMP_TO_EDGE);
+	SetWrapping  (TextureWrappingAxis::T, TextureWrappingParam::CLAMP_TO_EDGE);
 }
 
 void TextureSampler::SetFiltering(TextureFiltering type, TextureFilteringParam param)
@@ -132,7 +132,7 @@ void TextureSampler::SetMaxLod(float max)
 	glSamplerParameterf(m_so_id, GL_TEXTURE_MAX_LOD, max);
 }
 
-void TextureSampler::SetWrapping(TextureWrappingCoordinate coord, TextureWrappingParam param)
+void TextureSampler::SetWrapping(TextureWrappingAxis coord, TextureWrappingParam param)
 {
 	glSamplerParameteri(m_so_id, GLenum(coord), GLint(param));
 }
@@ -184,9 +184,9 @@ void Texture::SetMaxLod(float max)
 	glTextureParameterf(m_obj_name, GL_TEXTURE_MAX_LOD, max);
 }
 
-void Texture::SetWrapping(TextureWrappingCoordinate coord, TextureWrappingParam param)
+void Texture::SetWrapping(TextureWrappingAxis axis, TextureWrappingParam param)
 {
-	glTextureParameteri(m_obj_name, GLenum(coord), GLint(param));
+	glTextureParameteri(m_obj_name, GLenum(axis), GLint(param));
 }
 
 void Texture::SetBorderColor(float r, float g, float b, float a)
@@ -214,7 +214,7 @@ void Texture::SetAnisotropy(float anisotropy)
 	glTextureParameterf(m_obj_name, GL_TEXTURE_MAX_ANISOTROPY, anisotropy);
 }
 
-	   // --------------------- Texture2D -------------------------
+// --------------------- Texture2D -------------------------
 
 bool Texture2D::Load(const std::filesystem::path& filepath, bool is_srgb, uint32_t num_mipmaps)
 {
@@ -255,8 +255,8 @@ bool Texture2D::Load(const std::filesystem::path& filepath, bool is_srgb, uint32
 
 	SetFiltering(TextureFiltering::Minify,       TextureFilteringParam::LINEAR_MIP_LINEAR);
 	SetFiltering(TextureFiltering::Magnify,       TextureFilteringParam::LINEAR);
-	SetWrapping (TextureWrappingCoordinate::S, TextureWrappingParam::CLAMP_TO_EDGE);
-	SetWrapping (TextureWrappingCoordinate::T, TextureWrappingParam::CLAMP_TO_EDGE);
+	SetWrapping (TextureWrappingAxis::S, TextureWrappingParam::CLAMP_TO_EDGE);
+	SetWrapping (TextureWrappingAxis::T, TextureWrappingParam::CLAMP_TO_EDGE);
 
 	Util::ReleaseTextureData(data);
 
@@ -303,8 +303,8 @@ bool Texture2D::Load(unsigned char* memory_data, uint32_t data_size, bool is_srg
 
 	SetFiltering(TextureFiltering::Minify,       TextureFilteringParam::LINEAR_MIP_LINEAR);
 	SetFiltering(TextureFiltering::Magnify,       TextureFilteringParam::LINEAR);
-	SetWrapping (TextureWrappingCoordinate::S, TextureWrappingParam::CLAMP_TO_EDGE);
-	SetWrapping (TextureWrappingCoordinate::T, TextureWrappingParam::CLAMP_TO_EDGE);
+	SetWrapping (TextureWrappingAxis::S, TextureWrappingParam::CLAMP_TO_EDGE);
+	SetWrapping (TextureWrappingAxis::T, TextureWrappingParam::CLAMP_TO_EDGE);
 
 	Util::ReleaseTextureData(data);
 
@@ -342,8 +342,8 @@ bool Texture2D::LoadHdr(const std::filesystem::path & filepath, uint32_t num_mip
 
 	SetFiltering(TextureFiltering::Minify,     TextureFilteringParam::LINEAR);
 	SetFiltering(TextureFiltering::Magnify,    TextureFilteringParam::LINEAR);
-	SetWrapping (TextureWrappingCoordinate::S, TextureWrappingParam::CLAMP_TO_EDGE);
-	SetWrapping (TextureWrappingCoordinate::T, TextureWrappingParam::CLAMP_TO_EDGE);
+	SetWrapping (TextureWrappingAxis::S, TextureWrappingParam::CLAMP_TO_EDGE);
+	SetWrapping (TextureWrappingAxis::T, TextureWrappingParam::CLAMP_TO_EDGE);
 
 	Util::ReleaseTextureData(data);
 
@@ -420,7 +420,7 @@ bool Texture2D::LoadDds(const std::filesystem::path& filepath)
 	return true;
 }
 
-	   // --------------------- Texture CubeMap -------------------------
+// --------------------- Texture CubeMap -------------------------
 
 bool TextureCubeMap::Load(const std::filesystem::path* filepaths, bool is_srgb, uint32_t num_mipmaps)
 {
@@ -467,9 +467,9 @@ bool TextureCubeMap::Load(const std::filesystem::path* filepaths, bool is_srgb, 
 
 	SetFiltering(TextureFiltering::Minify,      TextureFilteringParam::LINEAR_MIP_LINEAR);
 	SetFiltering(TextureFiltering::Magnify,     TextureFilteringParam::LINEAR);
-	SetWrapping  (TextureWrappingCoordinate::S, TextureWrappingParam::CLAMP_TO_EDGE);
-	SetWrapping  (TextureWrappingCoordinate::T, TextureWrappingParam::CLAMP_TO_EDGE);
-	SetWrapping  (TextureWrappingCoordinate::R, TextureWrappingParam::CLAMP_TO_EDGE);
+	SetWrapping  (TextureWrappingAxis::S, TextureWrappingParam::CLAMP_TO_EDGE);
+	SetWrapping  (TextureWrappingAxis::T, TextureWrappingParam::CLAMP_TO_EDGE);
+	SetWrapping  (TextureWrappingAxis::R, TextureWrappingParam::CLAMP_TO_EDGE);
 
 	for (int idx = 0; idx < NUM_FACES; ++idx)
 	{

@@ -335,8 +335,8 @@ bool StaticModel::LoadMaterialTextures(const aiScene* scene, const aiMaterial* m
 
 					if (texture_map_mode[0] == aiTextureMapMode_Wrap)
 					{
-						texture->SetWrapping(RGL::TextureWrappingCoordinate::S, RGL::TextureWrappingParam::REPEAT);
-						texture->SetWrapping(RGL::TextureWrappingCoordinate::T, RGL::TextureWrappingParam::REPEAT);
+						texture->SetWrapping(RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::REPEAT);
+						texture->SetWrapping(RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::REPEAT);
 					}
 				}
 				else
@@ -371,8 +371,8 @@ bool StaticModel::LoadMaterialTextures(const aiScene* scene, const aiMaterial* m
 
 					if (texture_map_mode[0] == aiTextureMapMode_Wrap)
 					{
-						texture->SetWrapping(RGL::TextureWrappingCoordinate::S, RGL::TextureWrappingParam::REPEAT);
-						texture->SetWrapping(RGL::TextureWrappingCoordinate::T, RGL::TextureWrappingParam::REPEAT);
+						texture->SetWrapping(RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::REPEAT);
+						texture->SetWrapping(RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::REPEAT);
 					}
 				}
 			}

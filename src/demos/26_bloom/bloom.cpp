@@ -171,10 +171,10 @@ void Bloom::init_app()
     wooden_floor_roughness_map->SetAnisotropy(16.0f);
     wooden_floor_ao_map       ->SetAnisotropy(16.0f);
 
-    wooden_floor_albedo_map   ->SetWrapping(RGL::TextureWrappingCoordinate::S, RGL::TextureWrappingParam::REPEAT); wooden_floor_albedo_map   ->SetWrapping(RGL::TextureWrappingCoordinate::T, RGL::TextureWrappingParam::REPEAT);
-    wooden_floor_normal_map   ->SetWrapping(RGL::TextureWrappingCoordinate::S, RGL::TextureWrappingParam::REPEAT); wooden_floor_normal_map   ->SetWrapping(RGL::TextureWrappingCoordinate::T, RGL::TextureWrappingParam::REPEAT);
-    wooden_floor_roughness_map->SetWrapping(RGL::TextureWrappingCoordinate::S, RGL::TextureWrappingParam::REPEAT); wooden_floor_roughness_map->SetWrapping(RGL::TextureWrappingCoordinate::T, RGL::TextureWrappingParam::REPEAT);
-    wooden_floor_ao_map       ->SetWrapping(RGL::TextureWrappingCoordinate::S, RGL::TextureWrappingParam::REPEAT); wooden_floor_ao_map       ->SetWrapping(RGL::TextureWrappingCoordinate::T, RGL::TextureWrappingParam::REPEAT);
+    wooden_floor_albedo_map   ->SetWrapping(RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::REPEAT); wooden_floor_albedo_map   ->SetWrapping(RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::REPEAT);
+    wooden_floor_normal_map   ->SetWrapping(RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::REPEAT); wooden_floor_normal_map   ->SetWrapping(RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::REPEAT);
+    wooden_floor_roughness_map->SetWrapping(RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::REPEAT); wooden_floor_roughness_map->SetWrapping(RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::REPEAT);
+    wooden_floor_ao_map       ->SetWrapping(RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::REPEAT); wooden_floor_ao_map       ->SetWrapping(RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::REPEAT);
 
     crate_model->AddTexture(old_crate_albedo_map,    RGL::Material::TextureType::ALBEDO);
     crate_model->AddTexture(old_crate_normal_map,    RGL::Material::TextureType::NORMAL);

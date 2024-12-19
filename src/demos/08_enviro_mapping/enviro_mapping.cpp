@@ -90,8 +90,8 @@ void EnvironmentMapping::init_app()
 
     auto ground_texture = std::make_shared<RGL::Texture2D>();
     ground_texture->Load(RGL::FileSystem::getResourcesPath() / "textures/grass_green_d.jpg", true);
-    ground_texture->SetWrapping(RGL::TextureWrappingCoordinate::S, RGL::TextureWrappingParam::REPEAT);
-    ground_texture->SetWrapping(RGL::TextureWrappingCoordinate::T, RGL::TextureWrappingParam::REPEAT);
+    ground_texture->SetWrapping(RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::REPEAT);
+    ground_texture->SetWrapping(RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::REPEAT);
     ground_texture->SetAnisotropy(16);
 
     m_ground_plane->AddTexture(ground_texture);
