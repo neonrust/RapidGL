@@ -47,6 +47,7 @@ public:
 		m_far          = z_far;
 		m_fovy         = 1.f;
 	}
+	Camera(bool is_ortho=false);
 
 	void setPosition(const glm::vec3& position)
 	{
@@ -107,12 +108,15 @@ public:
 
 	const Frustum &frustum();
 
+
+
+
 	// TODO: this shouldn't be here (better in a controller-type thing)
 	void update(double dt);
 
 	glm::mat4 m_view;
 	glm::mat4 m_projection;
-	const bool m_is_ortho;
+	bool m_is_ortho;
 
 	float m_sensitivity;
 	float m_move_speed;
@@ -127,8 +131,6 @@ public:
 
 private:
 	void updateFrustum();
-
-	Camera(bool is_ortho=false);
 
 private:
 	Frustum _frustum;
