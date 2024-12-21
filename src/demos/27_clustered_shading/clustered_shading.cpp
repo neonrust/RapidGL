@@ -1,6 +1,7 @@
 #include "clustered_shading.h"
 #include "filesystem.h"
 #include "input.h"
+#include "postprocess.h"
 #include "util.h"
 #include "gui/gui.h"
 
@@ -29,9 +30,9 @@ ClusteredShading::ClusteredShading() :
 	m_background_lod_level(1.2f),
 	m_skybox_vao          (0),
 	m_skybox_vbo          (0),
-	m_threshold           (1.5),
-	m_knee                (0.1f),
-	m_bloom_intensity     (1),
+	m_bloom_threshold     (0.1f),
+	m_bloom_knee          (0.1f),
+	m_bloom_intensity     (1.0f),
 	m_bloom_dirt_intensity(0),
 	m_bloom_enabled       (true)
 {
@@ -323,14 +324,17 @@ void ClusteredShading::init_app()
 	m_tmo_ps = std::make_shared<TonemappingFilter>(Window::getWidth(), Window::getHeight());
 
     // Bloom shaders.
-    m_downscale_shader = std::make_shared<Shader>(dir + "downscale.comp");
-    m_downscale_shader->link();
+	m_bloom_pp.create();
+	assert(m_bloom_pp);
+	// m_downscale_shader = std::make_shared<Shader>(dir + "downscale.comp");
+	// m_downscale_shader->link();
 
-    m_upscale_shader = std::make_shared<Shader>(dir + "upscale.comp");
-    m_upscale_shader->link();
+	// m_upscale_shader = std::make_shared<Shader>(dir + "upscale.comp");
+	// m_upscale_shader->link();
 
-    m_bloom_dirt_texture = std::make_shared<Texture2D>(); 
-	m_bloom_dirt_texture->Load(FileSystem::getResourcesPath() / "textures/bloom_dirt_mask.jxl");
+	// m_bloom_dirt_texture = std::make_shared<RGL::Texture2D>();
+	// m_bloom_dirt_texture->Load(FileSystem::getResourcesPath() / "textures/bloom_dirt_mask.jxl");
+
 
     // IBL precomputations.
     GenSkyboxGeometry();
@@ -838,7 +842,7 @@ void ClusteredShading::render()
 	T0 = T1;
 
     // 6. Render lighting
-    m_tmo_ps->bindFilterFBO(GL_COLOR_BUFFER_BIT);
+	m_tmo_ps->bindRenderTarget(GL_COLOR_BUFFER_BIT);
     renderLighting();
 
     // 7. Render area lights geometry
@@ -870,53 +874,86 @@ void ClusteredShading::render()
     // 9. Bloom: downscale
     if (m_bloom_enabled)
     {
-		// TODO: move this stuff to a separate class (akin to TonemappingFilter
-		//   preferrably, generalize both to "postprocess filter"
+		m_bloom_pp.setThreshold(m_bloom_threshold);
+		m_bloom_pp.setIntensity(m_bloom_intensity);
+		m_bloom_pp.setKnee(m_bloom_knee);
+		m_bloom_pp.setDirtIntensity(m_bloom_dirt_intensity);
 
-        m_downscale_shader->bind();
-		m_downscale_shader->setUniform("u_threshold"sv, glm::vec4(m_threshold, m_threshold - m_knee, 2.0f * m_knee, 0.25f * m_knee));
-        m_tmo_ps->rt->bindTexture();
+		m_bloom_pp.render(m_tmo_ps->renderTarget(), m_tmo_ps->renderTarget());
 
-        glm::uvec2 mip_size = glm::uvec2(m_tmo_ps->rt->m_width / 2, m_tmo_ps->rt->m_height / 2);
+/*
+		m_downscale_shader->bind();
+		m_downscale_shader->setUniform("u_threshold"sv, glm::vec4(
+															m_bloom_threshold,
+															m_bloom_threshold - m_bloom_knee,
+															2.0f * m_bloom_knee,
+															0.25f * m_bloom_knee
+															));
+		// input pixels (the stuff we rendered above)
+		m_tmo_ps->bindTextureSampler();
 
-		for (auto idx = 0; idx < m_tmo_ps->rt->m_mip_levels - 1; ++idx)
+		// render at half resolution
+		const auto mip_cap = 1;
+		auto mip_size = glm::uvec2(
+			m_tmo_ps->renderTarget().width() / (1 << mip_cap),
+			m_tmo_ps->renderTarget().height() / (1 << mip_cap)
+		);
+
+		static auto printed = false;
+
+		if(not printed)
+			std::printf("mip_levels: %d\n", m_tmo_ps->renderTarget().mip_levels());
+
+		// TODO: couldn't these loops be made entirely in the compute shader, i.e. binding all mips at once
+		for (auto idx = 0; idx < m_tmo_ps->renderTarget().mip_levels() - mip_cap; ++idx)
         {
+			if(not printed)
+				std::fprintf(stderr, "dn mip_size[%d]: %d x %d\n", idx, mip_size.x, mip_size.y);
+
 			m_downscale_shader->setUniform("u_texel_size"sv,    1.0f / glm::vec2(mip_size));
 			m_downscale_shader->setUniform("u_mip_level"sv,     idx);
 			m_downscale_shader->setUniform("u_use_threshold"sv, idx == 0);
 
-			m_tmo_ps->rt->bindImageForWrite(IMAGE_UNIT_WRITE, idx + 1);
+			m_tmo_ps->renderTarget().bindImage(IMAGE_UNIT_WRITE, RenderTarget::Write, idx + mip_cap);
 
 			glDispatchCompute(GLuint(glm::ceil(float(mip_size.x) / 8.f)),
 							  GLuint(glm::ceil(float(mip_size.y) / 8.f)),
 							  1);
 
-            mip_size = mip_size / 2u;
+			mip_size >>= 1; // halve size each iteration
 
-            glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
+//            glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
         }
 
 		// Bloom: upscale
         m_upscale_shader->bind();
 		m_upscale_shader->setUniform("u_bloom_intensity"sv, m_bloom_intensity);
 		m_upscale_shader->setUniform("u_dirt_intensity"sv,  m_bloom_dirt_intensity);
-        m_tmo_ps->rt->bindTexture();
-        m_bloom_dirt_texture->Bind(1);
+		m_tmo_ps->bindTextureSampler();
+		m_bloom_dirt_texture->Bind(1);
 
-		for (auto idx = m_tmo_ps->rt->m_mip_levels - 1; idx >= 1; --idx)
+		for (auto idx = m_tmo_ps->renderTarget().mip_levels() - mip_cap; idx >= mip_cap; --idx)
         {
-			mip_size.x = glm::max(1u, uint32_t(glm::floor(float(m_tmo_ps->rt->m_width)  / glm::pow(2.0, idx - 1))));
-			mip_size.y = glm::max(1u, uint32_t(glm::floor(float(m_tmo_ps->rt->m_height) / glm::pow(2.0, idx - 1))));
+			mip_size.x = glm::max(1u, uint32_t(glm::floor(float(m_tmo_ps->renderTarget().width())  / glm::pow(2.f, idx - 1))));
+			mip_size.y = glm::max(1u, uint32_t(glm::floor(float(m_tmo_ps->renderTarget().height()) / glm::pow(2.f, idx - 1))));
+
+			if(not printed)
+				std::fprintf(stderr, "up mip_size[%d]: %d x %d\n", idx, mip_size.x, mip_size.y);
 
 			m_upscale_shader->setUniform("u_texel_size"sv, 1.0f / glm::vec2(mip_size));
-			m_upscale_shader->setUniform("u_mip_level"sv,  idx);
+			m_upscale_shader->setUniform("u_mip_level"sv,  int(idx));
 
-			m_tmo_ps->rt->bindImageForReadWrite(IMAGE_UNIT_WRITE, idx - 1);
+			m_tmo_ps->renderTarget().bindImage(IMAGE_UNIT_WRITE, RenderTarget::ReadWrite, idx - mip_cap);
 
-			glDispatchCompute(GLuint(glm::ceil(float(mip_size.x) / 8)), GLuint(glm::ceil(float(mip_size.y) / 8)), 1);
+			glDispatchCompute(GLuint(glm::ceil(float(mip_size.x) / 8.f)),
+							  GLuint(glm::ceil(float(mip_size.y) / 8.f)),
+							  1);
 
             glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
+
         }
+		printed = true;
+*/
     }
 
     // 10. Apply tone mapping
