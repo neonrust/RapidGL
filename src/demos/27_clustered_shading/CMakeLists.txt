@@ -12,6 +12,11 @@ file(GLOB_RECURSE HEADER_FILES_EXE
 	 ${CMAKE_CURRENT_SOURCE_DIR}/*.h
 	 ${CMAKE_CURRENT_SOURCE_DIR}/*.hpp)
 
+file(GLOB_RECURSE SHADER_FILES
+	${CMAKE_CURRENT_SOURCE_DIR}/*.frag
+	${CMAKE_CURRENT_SOURCE_DIR}/*.vert
+	${CMAKE_CURRENT_SOURCE_DIR}/*.comp
+)
 # Define the executable
 add_executable(${DEMO_NAME} ${HEADER_FILES_EXE} ${SOURCE_FILES_EXE})
 
@@ -26,3 +31,9 @@ target_link_libraries(${DEMO_NAME} ${CORE_LIB_NAME})
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} PREFIX "sources" FILES ${SOURCE_FILES_EXE})						   
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} PREFIX "headers" FILES ${HEADER_FILES_EXE})
+
+
+add_custom_target(Other-files
+	SOURCES
+	${SHADER_FILES}
+)
