@@ -162,7 +162,27 @@ void TextureSampler::SetAnisotropy(float anisotropy)
 	glSamplerParameterf(m_so_id, GL_TEXTURE_MAX_ANISOTROPY, anisotropy);
 }
 
-	   // --------------------- Texture -------------------------
+// --------------------- Texture -------------------------
+
+bool Texture::Create(GLuint width, GLuint height, GLuint depth, GLenum internalFormat, GLsizei num_mipmaps)
+{
+	if(m_obj_name)
+		Release();
+
+	if(not num_mipmaps)
+		num_mipmaps = calculateMipMapLevels(width, height, depth);
+
+	glCreateTextures  (GLenum(TextureType::Texture2D), 1, &m_obj_name);
+	glTextureStorage2D(m_obj_name, num_mipmaps, internalFormat, GLsizei(width), GLsizei(height));
+
+	m_metadata.width = width;
+	m_metadata.height = height;
+	m_metadata.channels = 0;
+	m_metadata.channel_type = 0;
+	m_metadata.channel_format = 0;
+
+	return true;
+}
 
 void Texture::SetFiltering(TextureFiltering type, TextureFilteringParam param)
 {
@@ -214,6 +234,39 @@ void Texture::SetAnisotropy(float anisotropy)
 	glTextureParameterf(m_obj_name, GL_TEXTURE_MAX_ANISOTROPY, anisotropy);
 }
 
+uint8_t Texture::calculateMipMapLevels(size_t width, size_t height, size_t depth, size_t min_size, size_t max_levels)
+{
+	if(not min_size and not max_levels)
+	{
+		const auto max_extent = std::max(width, std::max(height, depth));
+		return uint8_t(1.f + std::floor(std::log2(float(max_extent))));
+	}
+
+	const auto use_height = height > 0;
+	const auto use_depth = depth > 0;
+
+	width /= 2;
+	height /= 2;
+	depth /= 2;
+
+	if(max_levels == 0)
+		max_levels = 64;  // a huge number, i.e. loop until 'mip_limit' is hit
+
+	uint_fast8_t levels = 1;
+
+	for (; levels < max_levels; ++levels)
+	{
+		width /= 2;
+		height /= 2;
+		depth /= 2;
+
+		if (width < min_size or (use_height and height < min_size) or (use_depth and depth < min_size))
+			break;
+	}
+
+	return levels + 1;
+}
+
 // --------------------- Texture2D -------------------------
 
 bool Texture2D::Load(const std::filesystem::path& filepath, bool is_srgb, uint32_t num_mipmaps)
@@ -245,7 +298,7 @@ bool Texture2D::Load(const std::filesystem::path& filepath, bool is_srgb, uint32
 		internal_format = is_srgb ? GL_SRGB8_ALPHA8 : GL_RGBA8;
 	}
 
-	const GLuint max_num_mipmaps = GetMaxMipMapsLevels(m_metadata.width, m_metadata.height, 0);
+	const GLuint max_num_mipmaps = calculateMipMapLevels(m_metadata.width, m_metadata.height);
 	num_mipmaps     = num_mipmaps == 0 ? max_num_mipmaps : glm::clamp(num_mipmaps, 1u, max_num_mipmaps);
 
 	glCreateTextures       (GLenum(TextureType::Texture2D), 1, &m_obj_name);
@@ -292,7 +345,7 @@ bool Texture2D::Load(unsigned char* memory_data, uint32_t data_size, bool is_srg
 		internal_format = is_srgb ? GL_SRGB8_ALPHA8 : GL_RGBA8;
 	}
 
-	const GLuint max_num_mipmaps = GetMaxMipMapsLevels(m_metadata.width, m_metadata.height, 0);
+	const GLuint max_num_mipmaps = calculateMipMapLevels(m_metadata.width, m_metadata.height);
 	num_mipmaps     = num_mipmaps == 0 ? max_num_mipmaps : glm::clamp(num_mipmaps, 1u, max_num_mipmaps);
 
 
@@ -332,7 +385,7 @@ bool Texture2D::LoadHdr(const std::filesystem::path & filepath, uint32_t num_mip
 	GLenum type            = m_metadata.channel_type;
 	GLenum internal_format = GL_RGB16F;
 
-	const GLuint max_num_mipmaps = GetMaxMipMapsLevels(m_metadata.width, m_metadata.height, 0);
+	const GLuint max_num_mipmaps = calculateMipMapLevels(m_metadata.width, m_metadata.height);
 	num_mipmaps     = num_mipmaps == 0 ? max_num_mipmaps : glm::clamp(num_mipmaps, 1u, max_num_mipmaps);
 
 	glCreateTextures       (GLenum(TextureType::Texture2D), 1, &m_obj_name);
@@ -442,7 +495,7 @@ bool TextureCubeMap::Load(const std::filesystem::path* filepaths, bool is_srgb, 
 	GLuint m_format          = m_metadata.channels == 4 ? GL_RGBA         : GL_RGB;
 	GLuint m_internal_format = is_srgb                  ? GL_SRGB8_ALPHA8 : GL_RGBA8;
 
-	const GLuint max_num_mipmaps = GetMaxMipMapsLevels(m_metadata.width, m_metadata.height, 0);
+	const GLuint max_num_mipmaps = calculateMipMapLevels(m_metadata.width, m_metadata.height);
 	num_mipmaps     = num_mipmaps == 0 ? max_num_mipmaps : glm::clamp(num_mipmaps, 1u, max_num_mipmaps);
 
 	glCreateTextures  (GLenum(TextureType::TextureCubeMap), 1, &m_obj_name);

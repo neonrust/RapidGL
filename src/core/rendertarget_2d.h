@@ -1,6 +1,8 @@
 #pragma once
 
 #include "glad/glad.h"
+#include "glm/ext/vector_uint2.hpp"
+#include "texture.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -11,50 +13,55 @@ namespace RGL
 namespace RenderTarget
 {
 
-using Access = uint32_t;
-static constexpr Access ReadOnly = GL_READ_ONLY;
-static constexpr Access WriteOnly = GL_WRITE_ONLY;
-static constexpr Access ReadWrite = GL_READ_WRITE;
+enum Access : GLenum
+{
+	Read      = GL_READ_ONLY,
+	Write     = GL_WRITE_ONLY,
+	ReadWrite = GL_READ_WRITE
+};
 
-struct Texture2d
+struct Texture2d : public RGL::Texture
 {
 	void create(size_t width, size_t height, GLenum internalformat);
 
-	~Texture2d() { cleanup(); }
+	// TODO: instead of above 'internalformat':
+	//    addColor( format )
+	//    addDepth( format )
+	//  could return *this to enable chaining, than calling a:
+	//    build()
 
-	void cleanup();
+	~Texture2d() { release(); }
 
-	inline GLuint texture_id() const { return _texture_id; }
-	inline GLuint framebuffer_id() const { return _fbo_id; }
-	inline GLsizei width() const { return _width; }
-	inline GLsizei height() const { return _height; }
-	inline uint8_t mip_levels() const { return _mip_levels; }
+	void release();
 
-	void bindTexture(GLuint unit = 0);
-	void bindRenderTarget(GLbitfield clear_mask = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	// inline GLuint framebuffer_id() const { return _fbo_id; }
+	inline GLuint width() const { return m_metadata.width; }
+	inline GLuint height() const { return m_metadata.height; }
+	inline glm::uvec2 size() const { return { m_metadata.width, m_metadata.height }; }
+	inline uint_fast8_t mip_levels() const { return _mip_levels; }
 
-	// void bindImageForRead(GLuint image_unit, GLint mip_level);
-	// void bindImageForWrite(GLuint image_unit, GLint mip_level);
-	// void bindImageForReadWrite(GLuint image_unit, GLint mip_level);
+	//! bind for use in shader as a texture
+	void bindTextureSampler(GLuint unit=0) const;
+	//! bind for drawing into using regular draw calls
+	void bindRenderTarget(GLbitfield clear_mask=GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	//! bind for read/write from compute shaders
+	void bindImage(GLuint image_unit=0, RenderTarget::Access access=RenderTarget::Read, GLint mip_level=0);
 
-	void bindMipImage(GLuint image_unit, GLint mip_level, RenderTarget::Access access=GL_READ_ONLY);
-
+	// copy this texture to another texture
 	void copyTo(Texture2d &dest, GLbitfield mask=GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GLenum filter=GL_LINEAR) const;
+	void copyFrom(const Texture2d &source, GLbitfield mask=GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GLenum filter=GL_LINEAR);
 
 private:
 	uint8_t calculateMipmapLevels();
 
 private:
-	GLuint _texture_id = 0;
-	GLuint _fbo_id = 0;
-	GLuint _rbo_id = 0;
-	GLsizei _width = 0;
-	GLsizei _height = 0;
-	GLenum _internal_format;
+	GLuint _fbo_id { 0 };
+	GLuint _rbo_id { 0 };
+	GLenum _internal_format { 0 };
 
-	const uint8_t _downscale_limit = 10;
-	const uint8_t _max_iterations = 16; // max mipmap levels
-	uint8_t _mip_levels = 1;
+	static constexpr uint8_t _downscale_limit { 10 };
+	static constexpr uint8_t _max_iterations { 16 }; // max mipmap levels
+	uint_fast8_t _mip_levels { 1 };
 };
 
 } // RenderTarget

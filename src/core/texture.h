@@ -144,6 +144,11 @@ public:
 		return *this;
 	}
 
+	bool Create(GLuint width, GLuint height, GLuint depth, GLenum internalFormat, GLsizei num_mipmaps=0);
+
+	inline GLuint texture_id() const { return m_obj_name; }
+	inline TextureType texture_type() const { return m_type; }
+
 	virtual void Bind(uint32_t unit) { glBindTextureUnit(unit, m_obj_name); }
 	virtual void SetFiltering(TextureFiltering type, TextureFilteringParam param);
 	virtual void SetMinLod(float min);
@@ -156,10 +161,9 @@ public:
 
 	virtual ImageData GetMetadata() const { return m_metadata; };
 
-	static uint8_t GetMaxMipMapsLevels(uint32_t width, uint32_t height, uint32_t depth)
-	{
-		return uint8_t(1.f + std::floor(std::log2(float(std::max(width, std::max(height, depth))))));
-	}
+	static uint8_t calculateMipMapLevels(size_t width, size_t height=0, size_t depth=0, size_t min_size=0, size_t max_levels=0);
+
+	inline operator bool () const { return m_obj_name; }
 
 protected:
 	Texture() : m_type(TextureType::NONE), m_obj_name(0) {}
