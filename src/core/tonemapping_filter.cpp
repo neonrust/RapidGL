@@ -9,9 +9,9 @@ TonemappingFilter::TonemappingFilter(uint32_t width, uint32_t height)
 
 	_rt = std::make_shared<RGL::RenderTarget::Texture2d>();
 	_rt->create(width, height, GL_RGBA32F);
-	glTextureParameteri(_rt->texture_id(), GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
-	glTextureParameteri(_rt->texture_id(), GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTextureParameteri(_rt->texture_id(), GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	_rt->SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LINEAR_MIP_NEAREST);
+	_rt->SetWrapping (RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
+	_rt->SetWrapping (RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
 
 	glCreateVertexArrays(1, &_dummy_vao_id);
 }
@@ -24,7 +24,7 @@ TonemappingFilter::~TonemappingFilter()
 
 void TonemappingFilter::bindTexture(GLuint unit)
 {
-	_rt->bindTexture(unit);
+	_rt->bindTextureSampler(unit);
 }
 
 void TonemappingFilter::bindRenderTarget(GLbitfield clear_mask)

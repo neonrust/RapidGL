@@ -4,16 +4,15 @@
 
 namespace RGL::RenderTarget
 {
-struct Texture2d;
+class Texture2d;
 }
 
+class Texture2D;
 
 struct TonemappingFilter
 {
 	TonemappingFilter(uint32_t width, uint32_t height);
 	~TonemappingFilter();
-
-	void bindTexture(GLuint unit = 0);
 
 	void bindRenderTarget(GLbitfield clear_mask = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -21,6 +20,9 @@ struct TonemappingFilter
 
 	const RGL::RenderTarget::Texture2d &renderTarget() const { return *_rt; }
 	RGL::RenderTarget::Texture2d &renderTarget() { return *_rt; }
+
+private:
+	void bindTexture(GLuint unit = 0);
 
 private:
 	std::shared_ptr<RGL::Shader> _shader;
