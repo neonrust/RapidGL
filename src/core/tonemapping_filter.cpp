@@ -8,7 +8,7 @@ TonemappingFilter::TonemappingFilter(uint32_t width, uint32_t height)
 	_shader->link();
 
 	_rt = std::make_shared<RGL::RenderTarget::Texture2d>();
-	_rt->create(width, height, GL_RGBA32F);
+	_rt->create(width, height, RGL::RenderTarget::ColorFloat | RGL::RenderTarget::Depth);
 	_rt->SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LINEAR_MIP_NEAREST);
 	_rt->SetWrapping (RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
 	_rt->SetWrapping (RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::CLAMP_TO_EDGE);

@@ -7,11 +7,13 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace RGL
+namespace RGL::RenderTarget
 {
 
-namespace RenderTarget
-{
+using Format = uint32_t;
+static constexpr Format Color      = 0x01;
+static constexpr Format ColorFloat = 0x02;
+static constexpr Format Depth      = 0x04;
 
 enum Access : GLenum
 {
@@ -22,7 +24,7 @@ enum Access : GLenum
 
 struct Texture2d : public RGL::Texture
 {
-	void create(size_t width, size_t height, GLenum internalformat);
+	void create(size_t width, size_t height, Format format=ColorFloat);
 
 	// TODO: instead of above 'internalformat':
 	//    addColor( format )
@@ -64,6 +66,5 @@ private:
 	uint_fast8_t _mip_levels { 1 };
 };
 
-} // RenderTarget
+} // RGL::RenderTarget
 
-} // RGL
