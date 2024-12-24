@@ -12,7 +12,7 @@ namespace RGL::RenderTarget
 
 using Format = uint32_t;
 static constexpr Format Color      = 0x01;
-static constexpr Format ColorFloat = 0x02;
+static constexpr Format ColorFloat = Color | 0x02;
 static constexpr Format Depth      = 0x04;
 
 enum Access : GLenum
