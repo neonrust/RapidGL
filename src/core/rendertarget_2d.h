@@ -61,8 +61,6 @@ private:
 	GLuint _rbo_id { 0 };
 	GLenum _internal_format { 0 };
 
-	static constexpr uint8_t _downscale_limit { 10 };
-	static constexpr uint8_t _max_iterations { 16 }; // max mipmap levels
 	uint_fast8_t _mip_levels { 1 };
 };
 

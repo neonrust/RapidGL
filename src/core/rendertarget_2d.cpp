@@ -5,6 +5,11 @@
 namespace RGL::RenderTarget
 {
 
+// relevant for bloom downscale/upscale (blur)
+static constexpr uint8_t s_downscale_limit { 8 }; // essentially max blur radius TODO: should be screen size dependent
+static constexpr uint8_t s_max_iterations { 18 }; // max mipmap levels
+
+
 void Texture2d::create(size_t width, size_t height, Format format)
 {
 	if(texture_id())
@@ -22,11 +27,13 @@ void Texture2d::create(size_t width, size_t height, Format format)
 	{
 		_internal_format = GL_DEPTH_COMPONENT32F;
 		depthOnly = true;
+		_mip_levels = 1;
 	}
 	else
 		assert(false);
 
-	_mip_levels = depthOnly? 1: Texture::calculateMipMapLevels(m_metadata.width, m_metadata.height, 0, _downscale_limit, _max_iterations);
+	if(not depthOnly)
+		_mip_levels = Texture::calculateMipMapLevels(m_metadata.width, m_metadata.height, 0, s_downscale_limit, s_max_iterations);
 
 	Create(GLuint(width), GLuint(height), 0, _internal_format, _mip_levels);
 
