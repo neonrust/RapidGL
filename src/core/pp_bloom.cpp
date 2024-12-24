@@ -50,7 +50,7 @@ void Bloom::render(const RenderTarget::Texture2d &in, RenderTarget::Texture2d &o
 	// m_tmo_ps->bindTextureSampler();
 	in.bindTextureSampler();
 
-		   // render at half resolution
+	// render at half resolution
 	const auto mip_cap = 1;
 	auto mip_size = glm::uvec2(
 		in.width() / (1 << mip_cap),

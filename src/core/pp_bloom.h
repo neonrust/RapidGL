@@ -27,8 +27,8 @@ private:
 	Shader _upscale_shader;
 	Texture2D _dirt_texture;
 
-	float _threshold      { 0.1f };
-	float _intensity      { 1.0f };
+	float _threshold      { 0.8f };
+	float _intensity      { 1.5f };
 	float _knee           { 0.1f };
 	float _dirt_intensity { 0.1f };
 };
