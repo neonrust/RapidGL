@@ -99,9 +99,10 @@ private:
     void GenerateSpotLights();
     void UpdateLightsSSBOs();
 
-    void HdrEquirectangularToCubemap(const std::shared_ptr<CubeMapRenderTarget> & cubemap_rt, const std::shared_ptr<RGL::Texture2D> & m_equirectangular_map);
-    void IrradianceConvolution      (const std::shared_ptr<CubeMapRenderTarget> & cubemap_rt);
-    void PrefilterCubemap           (const std::shared_ptr<CubeMapRenderTarget>& cubemap_rt);
+	void bindScreenRenderTarget();
+	void HdrEquirectangularToCubemap(const std::shared_ptr<RenderTargetCube> & cubemap_rt, const std::shared_ptr<RGL::Texture2D> & m_equirectangular_map);
+	void IrradianceConvolution      (const std::shared_ptr<RenderTargetCube> & cubemap_rt);
+	void PrefilterCubemap           (const std::shared_ptr<RenderTargetCube>& cubemap_rt);
     void PrecomputeIndirectLight    (const std::filesystem::path & hdri_map_filepath);
 	void PrecomputeBRDF             (const std::shared_ptr<RGL::RenderTarget::Texture2d>& rt);
     void GenSkyboxGeometry();
@@ -114,11 +115,11 @@ private:
 	void draw2d(const RGL::Texture &texture); // TODO: move to CoreApp
 	void draw2d(const RGL::Texture &texture, const glm::uvec2 &top_left, const glm::uvec2 &bottom_right); // TODO: move to CoreApp
 
-    std::shared_ptr<RGL::Camera> m_camera;
+	RGL::Camera m_camera;
 
-    std::shared_ptr<CubeMapRenderTarget>   m_env_cubemap_rt;
-    std::shared_ptr<CubeMapRenderTarget>   m_irradiance_cubemap_rt;
-    std::shared_ptr<CubeMapRenderTarget>   m_prefiltered_env_map_rt;
+	std::shared_ptr<RenderTargetCube>   m_env_cubemap_rt;
+	std::shared_ptr<RenderTargetCube>   m_irradiance_cubemap_rt;
+	std::shared_ptr<RenderTargetCube>   m_prefiltered_env_map_rt;
 	std::shared_ptr<RGL::RenderTarget::Texture2d> m_brdf_lut_rt;
 
     std::shared_ptr<RGL::Shader> m_equirectangular_to_cubemap_shader;
@@ -156,6 +157,7 @@ private:
     GLuint m_unique_active_clusters_ssbo;
 	RGL::RenderTarget::Texture2d m_depth_pass_rt;
 
+	GLuint _dummy_vao_id;
     // Average number of overlapping lights per cluster AABB.
     // This variable matters when the lights are big and cover more than one cluster.
 	const uint32_t AVERAGE_OVERLAPPING_LIGHTS_PER_CLUSTER      = 50;
@@ -226,7 +228,7 @@ private:
 	RGL::PP::Tonemapping m_tmo_pp;
 	float m_exposure;
 	float m_gamma;
-	RGL::RenderTarget::Texture2d final_rt;
+	RGL::RenderTarget::Texture2d _final_rt;
 
     float m_background_lod_level;
 	std::string_view m_hdr_maps_names[5] = {

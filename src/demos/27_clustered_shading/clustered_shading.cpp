@@ -101,13 +101,14 @@ void ClusteredShading::init_app()
     glEnable(GL_MULTISAMPLE);
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
-    /* Create virtual camera. */
-	m_camera = std::make_shared<Camera>(80, Window::aspectRatio(), 0.1, 50);
-	// m_camera->setPosition(-8.32222f, 4.5269f, -0.768721f);
-	// m_camera->setOrientation(glm::quat(0.634325f, 0.0407623f, 0.772209f, 0.0543523f));
-	m_camera->setPosition({ -5, 1, -11 });
-	m_camera->setOrientationEuler({ 0, 180, 0 });
 	glCreateVertexArrays(1, &_dummy_vao_id);
+
+	// Create camera
+	m_camera = Camera(80, Window::aspectRatio(), 0.1f, 200);
+	// m_camera.setPosition(-8.32222f, 4.5269f, -0.768721f);
+	// m_camera.setOrientation(glm::quat(0.634325f, 0.0407623f, 0.772209f, 0.0543523f));
+	m_camera.setPosition({ -5, 1, -11 });
+	m_camera.setOrientationEuler({ 0, 180, 0 });
    
     /// Init clustered shading variables.
 	m_cluster_grid_dim.x = uint32_t(glm::ceil(float(Window::getWidth())  / float(m_cluster_grid_block_size)));
@@ -116,13 +117,13 @@ void ClusteredShading::init_app()
     // The depth of the cluster grid during clustered rendering is dependent on the 
     // number of clusters subdivisions in the screen Y direction.
     // Source: Clustered Deferred and Forward Shading (2012) (Ola Olsson, Markus Billeter, Ulf Assarsson).
-	const float half_fov     = glm::radians(m_camera->verticalFov() * 0.5f);
+	const float half_fov     = glm::radians(m_camera.verticalFov() * 0.5f);
 	float sD         = 2.0f * glm::tan(half_fov) / float(m_cluster_grid_dim.y);
           m_near_k   = 1.0f + sD;
     m_log_grid_dim_y = 1.0f / glm::log(m_near_k);
 
-	const float z_near       = m_camera->nearPlane();
-	const float z_far        = m_camera->farPlane();
+	const float z_near       = m_camera.nearPlane();
+	const float z_far        = m_camera.farPlane();
 	const float log_depth      = glm::log(z_far / z_near);
     m_cluster_grid_dim.z = uint32_t(glm::floor(log_depth * m_log_grid_dim_y));
 
@@ -239,7 +240,7 @@ void ClusteredShading::init_app()
 	const auto ltc_lut_mat_path = ltc_lut_path / "ltc_mat.dds";
 	const auto ltc_lut_amp_path = ltc_lut_path / "ltc_amp.dds";
 
-    m_ltc_mat_lut = std::make_shared<Texture2D>();
+	m_ltc_mat_lut = std::make_shared<RGL::Texture2D>();
     if (m_ltc_mat_lut->LoadDds(ltc_lut_mat_path))
     {
 		m_ltc_mat_lut->SetWrapping (TextureWrappingAxis::S, TextureWrappingParam::CLAMP_TO_EDGE);
@@ -252,7 +253,7 @@ void ClusteredShading::init_app()
         fprintf(stderr, "Error: could not load texture %s\n", ltc_lut_mat_path.string().c_str());
     }
 
-    m_ltc_amp_lut = std::make_shared<Texture2D>();
+	m_ltc_amp_lut = std::make_shared<RGL::Texture2D>();
     if (m_ltc_amp_lut->LoadDds(ltc_lut_amp_path))
     {
 		m_ltc_amp_lut->SetWrapping (TextureWrappingAxis::S, TextureWrappingParam::CLAMP_TO_EDGE);
@@ -316,10 +317,10 @@ void ClusteredShading::init_app()
 	_rt.SetWrapping (RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
 
 	// TODO: final_rt.cloneFrom(_rt);
-	final_rt.create(size_t(Window::getWidth()), size_t(Window::getHeight()), RGL::RenderTarget::ColorFloat | RGL::RenderTarget::Depth);
-	final_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LINEAR_MIP_NEAREST);
-	final_rt.SetWrapping (RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
-	final_rt.SetWrapping (RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
+	_final_rt.create(size_t(Window::getWidth()), size_t(Window::getHeight()), RGL::RenderTarget::ColorFloat);
+	_final_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LINEAR_MIP_NEAREST);
+	_final_rt.SetWrapping (RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
+	_final_rt.SetWrapping (RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
 
 	// Post-processing steps
 	m_tmo_pp.create();
@@ -355,7 +356,7 @@ void ClusteredShading::init_app()
     PrecomputeBRDF(m_brdf_lut_rt);
 
 
-	// auto proj = m_camera->m_projection;
+	// auto proj = m_camera.m_projection;
 	// auto inv_proj = glm::inverse(proj);
 
     /// Generate clusters' AABBs
@@ -364,8 +365,8 @@ void ClusteredShading::init_app()
 	m_generate_clusters_shader->setUniform("u_grid_dim"sv,           m_cluster_grid_dim);
 	m_generate_clusters_shader->setUniform("u_cluster_size_ss"sv,    glm::uvec2(m_cluster_grid_block_size));
 	m_generate_clusters_shader->setUniform("u_near_k"sv,             m_near_k);
-	m_generate_clusters_shader->setUniform("u_near_z"sv,             m_camera->nearPlane());
-	m_generate_clusters_shader->setUniform("u_inverse_projection"sv, glm::inverse(m_camera->m_projection));
+	m_generate_clusters_shader->setUniform("u_near_z"sv,             m_camera.nearPlane());
+	m_generate_clusters_shader->setUniform("u_inverse_projection"sv, glm::inverse(m_camera.m_projection));
 	m_generate_clusters_shader->setUniform("u_pixel_size"sv,         1.0f / glm::vec2(RGL::Window::getWidth(), RGL::Window::getHeight()));
 	glDispatchCompute(GLuint(glm::ceil(float(m_clusters_count) / 1024.0f)), 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
@@ -421,7 +422,7 @@ void ClusteredShading::input()
 void ClusteredShading::update(double delta_time)
 {
     /* Update variables here. */
-    m_camera->update(delta_time);
+	m_camera.update(delta_time);
 
 	// static float     rotation_speed = 1;
 	static float     time_accum     = 0;
@@ -575,21 +576,22 @@ void ClusteredShading::UpdateLightsSSBOs()
 	m_spot_lights_orbit_ssbo.set(m_spot_lights_orbit);
 }
 
-void ClusteredShading::HdrEquirectangularToCubemap(const std::shared_ptr<CubeMapRenderTarget>& cubemap_rt, const std::shared_ptr<Texture2D>& m_equirectangular_map)
+void ClusteredShading::HdrEquirectangularToCubemap(const std::shared_ptr<RenderTargetCube>& cubemap_rt, const std::shared_ptr<RGL::Texture2D>& m_equirectangular_map)
 {
     /* Update all faces per frame */
     m_equirectangular_to_cubemap_shader->bind();
-	m_equirectangular_to_cubemap_shader->setUniform("u_projection"sv, cubemap_rt->m_projection);
+	m_equirectangular_to_cubemap_shader->setUniform("u_projection"sv, cubemap_rt->projection());
 
-	glViewport(0, 0, GLsizei(cubemap_rt->m_width), GLsizei(cubemap_rt->m_height));
-    glBindFramebuffer(GL_FRAMEBUFFER, cubemap_rt->m_fbo_id);
+	cubemap_rt->bindRenderTarget();
+	// glViewport(0, 0, GLsizei(cubemap_rt->m_width), GLsizei(cubemap_rt->m_height));
+ //    glBindFramebuffer(GL_FRAMEBUFFER, cubemap_rt->m_fbo_id);
     m_equirectangular_map->Bind(1);
 
     glBindVertexArray(m_skybox_vao);
     for (uint8_t side = 0; side < 6; ++side)
     {
-		m_equirectangular_to_cubemap_shader->setUniform("u_view"sv, cubemap_rt->m_view_transforms[side]);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + side, cubemap_rt->m_cubemap_texture_id, 0);
+		m_equirectangular_to_cubemap_shader->setUniform("u_view"sv, cubemap_rt->view_transform(side));
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + side, cubemap_rt->texture_id(), 0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
         glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -597,20 +599,21 @@ void ClusteredShading::HdrEquirectangularToCubemap(const std::shared_ptr<CubeMap
     glViewport(0, 0, Window::getWidth(), Window::getHeight());
 }
 
-void ClusteredShading::IrradianceConvolution(const std::shared_ptr<CubeMapRenderTarget>& cubemap_rt)
+void ClusteredShading::IrradianceConvolution(const std::shared_ptr<RenderTargetCube>& cubemap_rt)
 {
     /* Update all faces per frame */
     m_irradiance_convolution_shader->bind();
-	m_irradiance_convolution_shader->setUniform("u_projection"sv, cubemap_rt->m_projection);
+	m_irradiance_convolution_shader->setUniform("u_projection"sv, cubemap_rt->projection());
 
-	glViewport(0, 0, GLsizei(cubemap_rt->m_width), GLsizei(cubemap_rt->m_height));
-    glBindFramebuffer(GL_FRAMEBUFFER, cubemap_rt->m_fbo_id);
+	cubemap_rt->bindRenderTarget();
+	// glViewport(0, 0, GLsizei(cubemap_rt->m_width), GLsizei(cubemap_rt->m_height));
+ //    glBindFramebuffer(GL_FRAMEBUFFER, cubemap_rt->m_fbo_id);
     m_env_cubemap_rt->bindTexture(1);
 
     for (uint8_t side = 0; side < 6; ++side)
     {
-		m_irradiance_convolution_shader->setUniform("u_view"sv, cubemap_rt->m_view_transforms[side]);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + side, cubemap_rt->m_cubemap_texture_id, 0);
+		m_irradiance_convolution_shader->setUniform("u_view"sv, cubemap_rt->view_transform(side));
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + side, cubemap_rt->texture_id(), 0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
         glBindVertexArray(m_skybox_vao);
@@ -619,23 +622,24 @@ void ClusteredShading::IrradianceConvolution(const std::shared_ptr<CubeMapRender
     glViewport(0, 0, Window::getWidth(), Window::getHeight());
 }
 
-void ClusteredShading::PrefilterCubemap(const std::shared_ptr<CubeMapRenderTarget>& cubemap_rt)
+void ClusteredShading::PrefilterCubemap(const std::shared_ptr<RenderTargetCube>& cubemap_rt)
 {
     m_prefilter_env_map_shader->bind();
-	m_prefilter_env_map_shader->setUniform("u_projection"sv, cubemap_rt->m_projection);
+	m_prefilter_env_map_shader->setUniform("u_projection"sv, cubemap_rt->projection());
     
     m_env_cubemap_rt->bindTexture(1);
 
-    glBindFramebuffer(GL_FRAMEBUFFER, cubemap_rt->m_fbo_id);
+	cubemap_rt->bindRenderTarget();
+	// glBindFramebuffer(GL_FRAMEBUFFER, cubemap_rt->m_fbo_id);
 
-	auto max_mip_levels = uint8_t(glm::log2(float(cubemap_rt->m_width)));
+	auto max_mip_levels = uint8_t(glm::log2(float(cubemap_rt->width())));
     for (uint8_t mip = 0; mip < max_mip_levels; ++mip)
     {
         // resize the framebuffer according to mip-level size.
-		auto mip_width  = uint32_t(cubemap_rt->m_width  * std::pow(0.5, mip));
-		auto mip_height = uint32_t(cubemap_rt->m_height * std::pow(0.5, mip));
+		auto mip_width  = uint32_t(cubemap_rt->width()  * std::pow(0.5, mip));
+		auto mip_height = uint32_t(cubemap_rt->height() * std::pow(0.5, mip));
 
-        glBindRenderbuffer(GL_RENDERBUFFER, cubemap_rt->m_rbo_id);
+		cubemap_rt->bindRenderBuffer();
         //glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, mip_width, mip_height);
 		glViewport(0, 0, GLsizei(mip_width), GLsizei(mip_height));
 
@@ -644,8 +648,8 @@ void ClusteredShading::PrefilterCubemap(const std::shared_ptr<CubeMapRenderTarge
 
         for (uint8_t side = 0; side < 6; ++side)
         {
-			m_prefilter_env_map_shader->setUniform("u_view"sv, cubemap_rt->m_view_transforms[side]);
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + side, cubemap_rt->m_cubemap_texture_id, mip);
+			m_prefilter_env_map_shader->setUniform("u_view"sv, cubemap_rt->view_transform(side));
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + side, cubemap_rt->texture_id(), mip);
 
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             glBindVertexArray(m_skybox_vao);
@@ -662,7 +666,7 @@ void ClusteredShading::PrecomputeIndirectLight(const std::filesystem::path& hdri
 
     HdrEquirectangularToCubemap(m_env_cubemap_rt, envmap_hdr);
 
-    glBindTexture(GL_TEXTURE_CUBE_MAP, m_env_cubemap_rt->m_cubemap_texture_id);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, m_env_cubemap_rt->texture_id());
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
 
@@ -769,7 +773,6 @@ void ClusteredShading::render()
 	renderDepthPass();
 
     // 2. Blit depth info to tmo_ps framebuffer
-	// m_depth_pass_rt.copyTo(m_tmo_pp->renderTarget(), GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 	m_depth_pass_rt.copyTo(_rt, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 
 	auto T1 = steady_clock::now();
@@ -784,8 +787,8 @@ void ClusteredShading::render()
 	glClearNamedBufferData(m_clusters_flags_ssbo, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &zero_val);
 
     m_find_visible_clusters_shader->bind();
-	m_find_visible_clusters_shader->setUniform("u_near_z"sv,          m_camera->nearPlane());
-	m_find_visible_clusters_shader->setUniform("u_far_z"sv,           m_camera->farPlane());
+	m_find_visible_clusters_shader->setUniform("u_near_z"sv,          m_camera.nearPlane());
+	m_find_visible_clusters_shader->setUniform("u_far_z"sv,           m_camera.farPlane());
 	m_find_visible_clusters_shader->setUniform("u_log_grid_dim_y"sv,  m_log_grid_dim_y);
 	m_find_visible_clusters_shader->setUniform("u_cluster_size_ss"sv, glm::uvec2(m_cluster_grid_block_size));
 	m_find_visible_clusters_shader->setUniform("u_grid_dim"sv,        m_cluster_grid_dim);
@@ -824,7 +827,7 @@ void ClusteredShading::render()
 	glClearNamedBufferData(m_area_light_index_list_ssbo,  GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &zero_val);
 
     m_cull_lights_shader->bind();
-	m_cull_lights_shader->setUniform("u_view_matrix"sv, m_camera->m_view);
+	m_cull_lights_shader->setUniform("u_view_matrix"sv, m_camera.m_view);
 
     glBindBuffer             (GL_DISPATCH_INDIRECT_BUFFER, m_cull_lights_dispatch_args_ssbo);
     glDispatchComputeIndirect(0);
@@ -847,7 +850,7 @@ void ClusteredShading::render()
 	if(m_area_lights_geometry)
 	{
 		m_draw_area_lights_geometry_shader->bind();
-		m_draw_area_lights_geometry_shader->setUniform("u_view_projection"sv, m_camera->m_projection * m_camera->m_view);
+		m_draw_area_lights_geometry_shader->setUniform("u_view_projection"sv, m_camera.m_projection * m_camera.m_view);
 		glDrawArrays(GL_TRIANGLES, 0, GLsizei(6 * m_area_lights.size()));
 	}
 
@@ -857,8 +860,8 @@ void ClusteredShading::render()
 
     // 8. Render skybox
     m_background_shader->bind();
-	m_background_shader->setUniform("u_projection"sv, m_camera->m_projection);
-	m_background_shader->setUniform("u_view"sv,       glm::mat4(glm::mat3(m_camera->m_view)));
+	m_background_shader->setUniform("u_projection"sv, m_camera.m_projection);
+	m_background_shader->setUniform("u_view"sv,       glm::mat4(glm::mat3(m_camera.m_view)));
 	m_background_shader->setUniform("u_lod_level"sv,  m_background_lod_level);
     m_env_cubemap_rt->bindTexture();
 
@@ -882,19 +885,14 @@ void ClusteredShading::render()
 	}
 
     // 10. Apply tone mapping
-	// TODO: continuously adjust 'exposure' depending on how bright the image is
-
-	// TODO: hm, shouldn't bloom happen after tone mapping and exposure?
-	//   but if, so, 'exposure' needs to be taken into account already
-	//   in the lighting/shading pass.
-	//   b/c bloom can't be be done after as tone mapping will cap the values to [0, 1]
+	// TODO: continuously adjust 'm_exposure' depending on how bright the image is
 
 	m_tmo_pp.setExposure(m_exposure);
 	m_tmo_pp.setGamma(m_gamma);
-	m_tmo_pp.render(_rt, final_rt);
+	m_tmo_pp.render(_rt, _final_rt);
 
 
-	draw2d(final_rt);
+	draw2d(_final_rt);
 
 
 	T1 = steady_clock::now();
@@ -909,7 +907,7 @@ void ClusteredShading::renderSceneAABB()
 	if(not m_debug_draw_vbo)
 		glGenBuffers(1, &m_debug_draw_vbo);
 
-	const auto modelView = m_camera->m_projection * m_camera->m_view;
+	const auto modelView = m_camera.m_projection * m_camera.m_view;
 
 	// if using VBO, generate the data into a single VBO then draw using a single call
 
@@ -1004,11 +1002,11 @@ const std::vector<StaticObject> &ClusteredShading::cullScene()
 
 	// perform frustum culling of all objects in the scene (or a partition there of)
 
-	const auto view_pos = m_camera->position();
-	const auto &frustum = m_camera->frustum();
+	const auto view_pos = m_camera.position();
+	const auto &frustum = m_camera.frustum();
 	// TODO: _scenePvs = _scene.cull(view_pos, frustum)
 
-	for(const auto &obj: _scene) // TODO _scene.near(view_pos, m_camera->farPlane()) i.e. everything within range of the camera's far plane
+	for(const auto &obj: _scene) // TODO _scene.near(view_pos, m_camera.farPlane()) i.e. everything within range of the camera's far plane
 	{
 		auto result = intersect::check(frustum, obj.model->aabb(), obj.transform);
 
@@ -1059,7 +1057,7 @@ void ClusteredShading::renderScene(RGL::Shader &shader, bool use_material)
 	//   this would also include skinned meshes (don't want to do the skinning computations multiple times)
 	//   (AnimatedMode::BoneTransform() genereates a list of bone transforms, done once, but the actual skinning is in the shader)
 
-	const auto modelView = m_camera->m_projection * m_camera->m_view;
+	const auto modelView = m_camera.m_projection * m_camera.m_view;
 
 	for(const auto &obj: _scenePvs)
 	{
@@ -1097,15 +1095,15 @@ void ClusteredShading::renderLighting()
 
     m_clustered_pbr_shader->bind();
 
-	m_clustered_pbr_shader->setUniform("u_cam_pos"sv,                               m_camera->position());
-	m_clustered_pbr_shader->setUniform("u_near_z"sv,                                m_camera->nearPlane());
+	m_clustered_pbr_shader->setUniform("u_cam_pos"sv,                               m_camera.position());
+	m_clustered_pbr_shader->setUniform("u_near_z"sv,                                m_camera.nearPlane());
 	m_clustered_pbr_shader->setUniform("u_grid_dim"sv,                              m_cluster_grid_dim);
 	m_clustered_pbr_shader->setUniform("u_cluster_size_ss"sv,                       glm::uvec2(m_cluster_grid_block_size));
 	m_clustered_pbr_shader->setUniform("u_log_grid_dim_y"sv,                        m_log_grid_dim_y);
 	m_clustered_pbr_shader->setUniform("u_debug_slices"sv,                          m_debug_slices);
 	m_clustered_pbr_shader->setUniform("u_debug_clusters_occupancy"sv,              m_debug_clusters_occupancy);
 	m_clustered_pbr_shader->setUniform("u_debug_clusters_occupancy_blend_factor"sv, m_debug_clusters_occupancy_blend_factor);
-	m_clustered_pbr_shader->setUniform("u_view"sv,                                  m_camera->m_view);
+	m_clustered_pbr_shader->setUniform("u_view"sv,                                  m_camera.m_view);
 
     m_irradiance_cubemap_rt->bindTexture(6);
     m_prefiltered_env_map_rt->bindTexture(7);
@@ -1160,9 +1158,9 @@ void ClusteredShading::render_gui()
 
         if (ImGui::CollapsingHeader("Camera Info"))
         {
-            glm::vec3 cam_pos = m_camera->position();
-            glm::vec3 cam_dir = m_camera->direction();
-			float     cam_fov = m_camera->verticalFov();
+			glm::vec3 cam_pos = m_camera.position();
+			glm::vec3 cam_dir = m_camera.direction();
+			float     cam_fov = m_camera.verticalFov();
 
             ImGui::Text("Position  : [%.2f, %.2f, %.2f]\n"
                         "Direction : [%.2f, %.2f, %.2f]\n"
@@ -1313,7 +1311,7 @@ void ClusteredShading::render_gui()
             ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.5f);
             ImGui::SliderFloat("Exposure",             &m_exposure,             0.0, 10.0, "%.1f");
             ImGui::SliderFloat("Gamma",                &m_gamma,                0.0, 10.0, "%.1f");
-            ImGui::SliderFloat("Background LOD level", &m_background_lod_level, 0.0, glm::log2(float(m_env_cubemap_rt->m_width)), "%.1f");
+			ImGui::SliderFloat("Background LOD level", &m_background_lod_level, 0.0, glm::log2(float(m_env_cubemap_rt->width())), "%.1f");
 
 			if (ImGui::BeginCombo("HDR map", m_hdr_maps_names[m_current_hdr_map_idx].data()))
             {
@@ -1339,8 +1337,8 @@ void ClusteredShading::render_gui()
         if (ImGui::CollapsingHeader("Bloom"))
         {
             ImGui::Checkbox   ("Bloom enabled",        &m_bloom_enabled);
-            ImGui::SliderFloat("Bloom threshold",      &m_threshold,            0.0f, 15.0f, "%.1f");
-            ImGui::SliderFloat("Bloom knee",           &m_knee,                 0.0f, 1.0f,  "%.1f");
+			ImGui::SliderFloat("Bloom threshold",      &m_bloom_threshold,            0.0f, 15.0f, "%.1f");
+			ImGui::SliderFloat("Bloom knee",           &m_bloom_knee,                 0.0f, 1.0f,  "%.1f");
             ImGui::SliderFloat("Bloom intensity",      &m_bloom_intensity,      0.0f, 5.0f,  "%.1f");
             ImGui::SliderFloat("Bloom dirt intensity", &m_bloom_dirt_intensity, 0.0f, 10.0f, "%.1f");
         }
