@@ -104,7 +104,7 @@ void ClusteredShading::init_app()
 	glCreateVertexArrays(1, &_dummy_vao_id);
 
 	// Create camera
-	m_camera = Camera(80, Window::aspectRatio(), 0.1f, 200);
+	m_camera = Camera(m_camera_fov, Window::aspectRatio(), 0.1f, 200);
 	// m_camera.setPosition(-8.32222f, 4.5269f, -0.768721f);
 	// m_camera.setOrientation(glm::quat(0.634325f, 0.0407623f, 0.772209f, 0.0543523f));
 	m_camera.setPosition({ -5, 1, -11 });
@@ -758,6 +758,8 @@ void ClusteredShading::GenSkyboxGeometry()
 
 void ClusteredShading::render()
 {
+	m_camera.setFov(m_camera_fov);
+
 	auto T0 = steady_clock::now();
 
 	cullScene();
@@ -780,7 +782,6 @@ void ClusteredShading::render()
 
 	T0 = steady_clock::now();
 
-    // 3. Find visible clusters
 	static const uint32_t zero_val = 0;
 
 	// 3. Find visible clusters
@@ -857,6 +858,7 @@ void ClusteredShading::render()
 	T1 = steady_clock::now();
 	m_lighting_time = duration_cast<microseconds>(T1 - T0);
 	T0 = T1;
+
 
     // 8. Render skybox
     m_background_shader->bind();
@@ -1171,6 +1173,7 @@ void ClusteredShading::render_gui()
 			ImGui::Text("Visible   : %lu", _scenePvs.size());
 
 			ImGui::Checkbox("Draw AABB", &m_draw_aabb);
+			ImGui::SliderFloat("FOV", &m_camera_fov, 25.f, 120.f);
 		}
 
         if (ImGui::CollapsingHeader("Lights Generator", ImGuiTreeNodeFlags_DefaultOpen))

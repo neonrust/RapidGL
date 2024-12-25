@@ -116,6 +116,7 @@ private:
 	void draw2d(const RGL::Texture &texture, const glm::uvec2 &top_left, const glm::uvec2 &bottom_right); // TODO: move to CoreApp
 
 	RGL::Camera m_camera;
+	float m_camera_fov { 90.f };
 
 	std::shared_ptr<RenderTargetCube>   m_env_cubemap_rt;
 	std::shared_ptr<RenderTargetCube>   m_irradiance_cubemap_rt;

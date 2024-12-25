@@ -17,86 +17,38 @@ public:
 	/*
 	 * Perspective camera
 	 */
-	Camera(float fovy,
-		   float aspect_ratio,
-		   float z_near,
-		   float z_far)
-		: Camera()
+	Camera(float fovy, float aspect_ratio, float z_near, float z_far) : Camera()
 	{
-		m_projection   = glm::perspective(glm::radians(fovy), aspect_ratio, z_near, z_far);
-		m_aspect_ratio = aspect_ratio;
-		m_near         = z_near;
-		m_far          = z_far;
-		m_fovy         = fovy;
+		setPerspective(fovy, aspect_ratio, z_near, z_far);
 	}
 
 	/*
 	 * Ortho camera
 	 */
-	Camera(float left,
-		   float right,
-		   float bottom,
-		   float top,
-		   float z_near,
-		   float z_far)
-		: Camera(true)
+	Camera(float left, float right, float bottom, float top, float z_near, float z_far) : Camera(true)
 	{
-		m_projection   = glm::ortho(left, right, bottom, top, z_near, z_far);
-		m_aspect_ratio = 1.f;
-		m_near         = z_near;
-		m_far          = z_far;
-		m_fovy         = 1.f;
+		setOrtho(left, right, bottom, top, z_near, z_far);
 	}
+
 	Camera(bool is_ortho=false);
 
-	void setPosition(const glm::vec3& position)
-	{
-		m_position = position;
-		m_is_dirty = true;
-	}
 
-	/*
-	 * Set orientation using Euler Angles in degrees
-	 */
-	void setOrientationEuler(const glm::vec3 &euler)
-	{
-		m_orientation = glm::angleAxis(glm::radians(euler.x), glm::vec3(1, 0, 0)) *
-			glm::angleAxis(glm::radians(euler.y), glm::vec3(0, 1, 0)) *
-			glm::angleAxis(glm::radians(euler.z), glm::vec3(0, 0, 1));
+	void setPerspective(float fovy, float aspect_ratio, float z_near, float z_far);
+	void setOrtho(float left, float right, float bottom, float top, float z_near, float z_far);
 
-		m_direction = glm::normalize(glm::conjugate(m_orientation) * glm::vec3(0, 0, 1));
-		m_is_dirty  = true;
-	}
+	void setPosition(const glm::vec3& position);
 
-	/*
-	 * Set orientation using explicit direction vector
-	 */
-	void setOrientation(const glm::vec3 & direction)
-	{
-		m_orientation = glm::quatLookAt(glm::normalize(direction), glm::vec3(0, 1, 0));
-		m_direction = glm::normalize(glm::conjugate(m_orientation) * glm::vec3(0, 0, 1));
-		m_is_dirty  = true;
-	}
+	// Set orientation using Euler Angles in degrees
+	void setOrientationEuler(const glm::vec3 &euler);
+	// Set orientation using explicit direction vector
+	void setOrientation(const glm::vec3 & direction);
+	// Set orientation using axis and angle in degrees
+	void setOrientation(const glm::vec3& axis, float angle);
+	void setOrientation(const glm::quat& quat);
 
-	/*
-	 * Set orientation using axis and angle in degrees
-	 */
-	void setOrientation(const glm::vec3& axis, float angle)
-	{
-		m_orientation = glm::angleAxis(glm::radians(angle), glm::normalize(axis));
-		m_direction   = glm::normalize(glm::conjugate(m_orientation) * glm::vec3(0, 0, 1));
-		m_is_dirty    = true;
-	}
-
-	void setOrientation(const glm::quat& quat)
-	{
-		m_orientation = quat;
-		m_direction   = glm::normalize(glm::conjugate(m_orientation) * glm::vec3(0, 0, 1));
-		m_is_dirty    = true;
-	}
-
-	void setFarPlane(float f)  { m_far = f; m_is_dirty = true; }
-	void setNearPlane(float n) { m_near = n; m_is_dirty = true; }
+	void setFov(float fov);
+	void setFarPlane(float f);
+	void setNearPlane(float n);
 
 	inline glm::quat orientation() const { return m_orientation; }
 	inline glm::vec3 position()    const { return m_position; }
