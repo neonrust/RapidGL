@@ -11,6 +11,7 @@
 
 #include <chrono>
 #include <vector>
+
 using namespace std::chrono;
 using namespace std::literals;
 
@@ -30,9 +31,9 @@ ClusteredShading::ClusteredShading() :
 	m_background_lod_level(1.2f),
 	m_skybox_vao          (0),
 	m_skybox_vbo          (0),
-	m_bloom_threshold     (0.1f),
+	m_bloom_threshold     (0.8f),
 	m_bloom_knee          (0.1f),
-	m_bloom_intensity     (1.0f),
+	m_bloom_intensity     (1.5f),
 	m_bloom_dirt_intensity(0),
 	m_bloom_enabled       (true)
 {
@@ -106,6 +107,7 @@ void ClusteredShading::init_app()
 	// m_camera->setOrientation(glm::quat(0.634325f, 0.0407623f, 0.772209f, 0.0543523f));
 	m_camera->setPosition({ -5, 1, -11 });
 	m_camera->setOrientationEuler({ 0, 180, 0 });
+	glCreateVertexArrays(1, &_dummy_vao_id);
    
     /// Init clustered shading variables.
 	m_cluster_grid_dim.x = uint32_t(glm::ceil(float(Window::getWidth())  / float(m_cluster_grid_block_size)));
@@ -174,6 +176,9 @@ void ClusteredShading::init_app()
 		}
 	}
 
+	// Create depth pre-pass render target
+	m_depth_pass_rt.create(size_t(Window::getWidth()), size_t(Window::getHeight()), RGL::RenderTarget::Depth);
+
     /// Prepare lights' SSBOs.
 	UpdateLightsSSBOs();  // initial update will create the GL buffers
 
@@ -227,20 +232,7 @@ void ClusteredShading::init_app()
     glNamedBufferData(m_area_light_grid_ssbo, sizeof(uint32_t) + sizeof(LightGrid) * m_clusters_count, nullptr, GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, AREA_LIGHT_GRID_SSBO_BINDING_INDEX, m_area_light_grid_ssbo);
 
-    // Create depth pre-pass texture and FBO
-    glCreateTextures  (GL_TEXTURE_2D, 1, &m_depth_tex2D_id);
-    glTextureStorage2D(m_depth_tex2D_id, 1, GL_DEPTH_COMPONENT32F, RGL::Window::getWidth(), RGL::Window::getHeight());
 
-    glTextureParameteri(m_depth_tex2D_id, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTextureParameteri(m_depth_tex2D_id, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTextureParameteri(m_depth_tex2D_id, GL_TEXTURE_WRAP_S,     GL_CLAMP_TO_EDGE);
-    glTextureParameteri(m_depth_tex2D_id, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);
-
-    glCreateFramebuffers     (1, &m_depth_pass_fbo_id);
-    glNamedFramebufferTexture(m_depth_pass_fbo_id, GL_DEPTH_ATTACHMENT, m_depth_tex2D_id, 0);
-
-    GLenum draw_buffers[] = { GL_NONE };
-    glNamedFramebufferDrawBuffers(m_depth_pass_fbo_id, 1, draw_buffers);
 
     /// Load LTC look-up-tables for area lights rendering
 	const auto ltc_lut_path     = FileSystem::getResourcesPath() / "lut";
@@ -250,8 +242,8 @@ void ClusteredShading::init_app()
     m_ltc_mat_lut = std::make_shared<Texture2D>();
     if (m_ltc_mat_lut->LoadDds(ltc_lut_mat_path))
     {
-		m_ltc_mat_lut->SetWrapping (TextureWrappingCoordinate::S, TextureWrappingParam::CLAMP_TO_EDGE);
-		m_ltc_mat_lut->SetWrapping (TextureWrappingCoordinate::T, TextureWrappingParam::CLAMP_TO_EDGE);
+		m_ltc_mat_lut->SetWrapping (TextureWrappingAxis::S, TextureWrappingParam::CLAMP_TO_EDGE);
+		m_ltc_mat_lut->SetWrapping (TextureWrappingAxis::T, TextureWrappingParam::CLAMP_TO_EDGE);
 		m_ltc_mat_lut->SetFiltering(TextureFiltering::Minify,     TextureFilteringParam::NEAREST);
 		m_ltc_mat_lut->SetFiltering(TextureFiltering::Magnify,    TextureFilteringParam::LINEAR);
     }
@@ -263,8 +255,8 @@ void ClusteredShading::init_app()
     m_ltc_amp_lut = std::make_shared<Texture2D>();
     if (m_ltc_amp_lut->LoadDds(ltc_lut_amp_path))
     {
-		m_ltc_amp_lut->SetWrapping (TextureWrappingCoordinate::S, TextureWrappingParam::CLAMP_TO_EDGE);
-		m_ltc_amp_lut->SetWrapping (TextureWrappingCoordinate::T, TextureWrappingParam::CLAMP_TO_EDGE);
+		m_ltc_amp_lut->SetWrapping (TextureWrappingAxis::S, TextureWrappingParam::CLAMP_TO_EDGE);
+		m_ltc_amp_lut->SetWrapping (TextureWrappingAxis::T, TextureWrappingParam::CLAMP_TO_EDGE);
 		m_ltc_amp_lut->SetFiltering(TextureFiltering::Minify,     TextureFilteringParam::NEAREST);
 		m_ltc_amp_lut->SetFiltering(TextureFiltering::Magnify,    TextureFilteringParam::LINEAR);
     }
@@ -303,9 +295,6 @@ void ClusteredShading::init_app()
     m_draw_area_lights_geometry_shader = std::make_shared<Shader>(dir + "area_light_geom.vert", dir + "area_light_geom.frag");
     m_draw_area_lights_geometry_shader->link();
 
-	m_line_draw_shader = std::make_shared<Shader>(dir + "line_draw.vert", dir + "line_draw.frag");
-	m_line_draw_shader->link();
-
     m_equirectangular_to_cubemap_shader = std::make_shared<Shader>(dir + "cubemap.vert", dir + "equirectangular_to_cubemap.frag");
     m_equirectangular_to_cubemap_shader->link();
 
@@ -321,37 +310,45 @@ void ClusteredShading::init_app()
     m_background_shader = std::make_shared<Shader>(dir + "background.vert", dir + "background.frag");
     m_background_shader->link();
 
-	m_tmo_ps = std::make_shared<TonemappingFilter>(Window::getWidth(), Window::getHeight());
+	_rt.create(size_t(Window::getWidth()), size_t(Window::getHeight()), RGL::RenderTarget::ColorFloat | RGL::RenderTarget::Depth);
+	_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LINEAR_MIP_NEAREST);
+	_rt.SetWrapping (RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
+	_rt.SetWrapping (RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
 
-    // Bloom shaders.
+	// TODO: final_rt.cloneFrom(_rt);
+	final_rt.create(size_t(Window::getWidth()), size_t(Window::getHeight()), RGL::RenderTarget::ColorFloat | RGL::RenderTarget::Depth);
+	final_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LINEAR_MIP_NEAREST);
+	final_rt.SetWrapping (RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
+	final_rt.SetWrapping (RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
+
+	// Post-processing steps
+	m_tmo_pp.create();
+	assert(m_tmo_pp);
+
 	m_bloom_pp.create();
 	assert(m_bloom_pp);
-	// m_downscale_shader = std::make_shared<Shader>(dir + "downscale.comp");
-	// m_downscale_shader->link();
 
-	// m_upscale_shader = std::make_shared<Shader>(dir + "upscale.comp");
-	// m_upscale_shader->link();
-
-	// m_bloom_dirt_texture = std::make_shared<RGL::Texture2D>();
-	// m_bloom_dirt_texture->Load(FileSystem::getResourcesPath() / "textures/bloom_dirt_mask.jxl");
-
+	m_line_draw_shader = std::make_shared<Shader>(dir + "line_draw.vert", dir + "line_draw.frag");
+	m_line_draw_shader->link();
+	m_fsq_shader = std::make_shared<Shader>(dir + "FSQ.vert", dir + "FSQ.frag");
+	m_fsq_shader->link();
 
     // IBL precomputations.
     GenSkyboxGeometry();
 
-    m_env_cubemap_rt = std::make_shared<CubeMapRenderTarget>();
+	m_env_cubemap_rt = std::make_shared<RenderTargetCube>();
     m_env_cubemap_rt->set_position(glm::vec3(0.0));
-    m_env_cubemap_rt->generate_rt(2048, 2048, true);
+	m_env_cubemap_rt->create(2048, 2048, true);
 
-    m_irradiance_cubemap_rt = std::make_shared<CubeMapRenderTarget>();
+	m_irradiance_cubemap_rt = std::make_shared<RenderTargetCube>();
     m_irradiance_cubemap_rt->set_position(glm::vec3(0.0));
-    m_irradiance_cubemap_rt->generate_rt(32, 32);
+	m_irradiance_cubemap_rt->create(32, 32);
 
-    m_prefiltered_env_map_rt = std::make_shared<CubeMapRenderTarget>();
+	m_prefiltered_env_map_rt = std::make_shared<RenderTargetCube>();
     m_prefiltered_env_map_rt->set_position(glm::vec3(0.0));
-    m_prefiltered_env_map_rt->generate_rt(512, 512, true);
+	m_prefiltered_env_map_rt->create(512, 512, true);
 
-    m_brdf_lut_rt = std::make_shared<Texture2DRenderTarget>();
+	m_brdf_lut_rt = std::make_shared<RGL::RenderTarget::Texture2d>();
     m_brdf_lut_rt->create(512, 512, GL_RG16F);
 
     PrecomputeIndirectLight(FileSystem::getResourcesPath() / "textures/skyboxes/IBL" / m_hdr_maps_names[m_current_hdr_map_idx]);
@@ -655,13 +652,12 @@ void ClusteredShading::PrefilterCubemap(const std::shared_ptr<CubeMapRenderTarge
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
     }
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0, 0, Window::getWidth(), Window::getHeight());
+	bindScreenRenderTarget();
 }
 
 void ClusteredShading::PrecomputeIndirectLight(const std::filesystem::path& hdri_map_filepath)
 {
-    auto envmap_hdr = std::make_shared<Texture2D>();
+	auto envmap_hdr = std::make_shared<RGL::Texture2D>();
     envmap_hdr->LoadHdr(hdri_map_filepath);
 
     HdrEquirectangularToCubemap(m_env_cubemap_rt, envmap_hdr);
@@ -674,21 +670,21 @@ void ClusteredShading::PrecomputeIndirectLight(const std::filesystem::path& hdri
     PrefilterCubemap(m_prefiltered_env_map_rt);
 }
 
-void ClusteredShading::PrecomputeBRDF(const std::shared_ptr<Texture2DRenderTarget>& rt)
+void ClusteredShading::PrecomputeBRDF(const std::shared_ptr<RGL::RenderTarget::Texture2d>& rt)
 {
-    GLuint m_dummy_vao_id;
-    glCreateVertexArrays(1, &m_dummy_vao_id);
-
     rt->bindRenderTarget();
     m_precompute_brdf->bind();
 
-    glBindVertexArray(m_dummy_vao_id);
+	glBindVertexArray(_dummy_vao_id);
     glDrawArrays(GL_TRIANGLES, 0, 3);
 
-    glDeleteVertexArrays(1, &m_dummy_vao_id);
+	bindScreenRenderTarget();
+}
 
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0, 0, Window::getWidth(), Window::getHeight());
+void ClusteredShading::bindScreenRenderTarget()
+{
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glViewport(0, 0, Window::getWidth(), Window::getHeight());
 }
 
 void ClusteredShading::GenSkyboxGeometry()
@@ -760,35 +756,32 @@ void ClusteredShading::render()
 {
 	auto T0 = steady_clock::now();
 
+	cullScene();
+
+
 
 	// TODO: render shadow-maps (if lights/meshes changed)
 	//   need to limit to only "a few" lights, basically strongest lights (as perceived by the camera)
 
 
 
-	cullScene();
-
-
 	// 1. Depth(Z) pre-pass (if camera/meshes moved, likely always)
 	renderDepthPass();
 
     // 2. Blit depth info to tmo_ps framebuffer
-	glBlitNamedFramebuffer(m_depth_pass_fbo_id,
-						   m_tmo_ps->rt->m_fbo_id,
-                           0, 0, Window::getWidth(), Window::getHeight(),
-						   0, 0, Window::getWidth(), Window::getHeight(),
-						   GL_DEPTH_BUFFER_BIT,
-						   GL_NEAREST);
+	// m_depth_pass_rt.copyTo(m_tmo_pp->renderTarget(), GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+	m_depth_pass_rt.copyTo(_rt, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 
 	auto T1 = steady_clock::now();
 	m_depth_time = duration_cast<microseconds>(T1 - T0);
-    
-    static const uint32_t clear_val = 0;
 
 	T0 = steady_clock::now();
 
     // 3. Find visible clusters
-    glClearNamedBufferData(m_clusters_flags_ssbo, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &clear_val);
+	static const uint32_t zero_val = 0;
+
+	// 3. Find visible clusters
+	glClearNamedBufferData(m_clusters_flags_ssbo, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &zero_val);
 
     m_find_visible_clusters_shader->bind();
 	m_find_visible_clusters_shader->setUniform("u_near_z"sv,          m_camera->nearPlane());
@@ -796,10 +789,10 @@ void ClusteredShading::render()
 	m_find_visible_clusters_shader->setUniform("u_log_grid_dim_y"sv,  m_log_grid_dim_y);
 	m_find_visible_clusters_shader->setUniform("u_cluster_size_ss"sv, glm::uvec2(m_cluster_grid_block_size));
 	m_find_visible_clusters_shader->setUniform("u_grid_dim"sv,        m_cluster_grid_dim);
-    
-    glBindTextureUnit(0, m_depth_tex2D_id);
-	glDispatchCompute(GLuint(glm::ceil(float(RGL::Window::getWidth()) / 32.f)),
-					  GLuint(glm::ceil(float(RGL::Window::getHeight()) / 32.f)),
+
+	m_depth_pass_rt.bindTextureSampler();
+	glDispatchCompute(GLuint(glm::ceil(float(m_depth_pass_rt.width()) / 32.f)),
+					  GLuint(glm::ceil(float(m_depth_pass_rt.height()) / 32.f)),
 					  1);
     glMemoryBarrier  (GL_SHADER_STORAGE_BARRIER_BIT);
 
@@ -808,7 +801,7 @@ void ClusteredShading::render()
 	T0 = T1;
 
     // 4. Find unique clusters and update the indirect dispatch arguments buffer
-    glClearNamedBufferData(m_unique_active_clusters_ssbo, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &clear_val);
+	glClearNamedBufferData(m_unique_active_clusters_ssbo, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &zero_val);
 
     m_find_unique_clusters_shader->bind();
 	glDispatchCompute(GLuint(glm::ceil(float(m_clusters_count) / 1024.0f)), 1, 1);
@@ -823,12 +816,12 @@ void ClusteredShading::render()
 	T0 = T1;
 
 	// 5. Assign lights to clusters (cull lights)
-    glClearNamedBufferData(m_point_light_grid_ssbo,       GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &clear_val);
-    glClearNamedBufferData(m_point_light_index_list_ssbo, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &clear_val);
-    glClearNamedBufferData(m_spot_light_grid_ssbo,        GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &clear_val);
-    glClearNamedBufferData(m_spot_light_index_list_ssbo,  GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &clear_val);
-    glClearNamedBufferData(m_area_light_grid_ssbo,        GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &clear_val);
-    glClearNamedBufferData(m_area_light_index_list_ssbo,  GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &clear_val);
+	glClearNamedBufferData(m_point_light_grid_ssbo,       GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &zero_val);
+	glClearNamedBufferData(m_point_light_index_list_ssbo, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &zero_val);
+	glClearNamedBufferData(m_spot_light_grid_ssbo,        GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &zero_val);
+	glClearNamedBufferData(m_spot_light_index_list_ssbo,  GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &zero_val);
+	glClearNamedBufferData(m_area_light_grid_ssbo,        GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &zero_val);
+	glClearNamedBufferData(m_area_light_index_list_ssbo,  GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &zero_val);
 
     m_cull_lights_shader->bind();
 	m_cull_lights_shader->setUniform("u_view_matrix"sv, m_camera->m_view);
@@ -842,8 +835,13 @@ void ClusteredShading::render()
 	T0 = T1;
 
     // 6. Render lighting
-	m_tmo_ps->bindRenderTarget(GL_COLOR_BUFFER_BIT);
+	_rt.bindRenderTarget(GL_COLOR_BUFFER_BIT);
     renderLighting();
+
+
+	// TODO: compute average luminance of rendered image
+	//   and gradually adjust expsure over time (see tone mapping, below)
+
 
     // 7. Render area lights geometry
 	if(m_area_lights_geometry)
@@ -879,11 +877,25 @@ void ClusteredShading::render()
 		m_bloom_pp.setKnee(m_bloom_knee);
 		m_bloom_pp.setDirtIntensity(m_bloom_dirt_intensity);
 
-		m_bloom_pp.render(m_tmo_ps->renderTarget(), m_tmo_ps->renderTarget());
-    }
+		// m_bloom_pp.render(m_tmo_pp->renderTarget(), m_tmo_pp->renderTarget());
+		m_bloom_pp.render(_rt, _rt);
+	}
 
     // 10. Apply tone mapping
-    m_tmo_ps->render(m_exposure, m_gamma);
+	// TODO: continuously adjust 'exposure' depending on how bright the image is
+
+	// TODO: hm, shouldn't bloom happen after tone mapping and exposure?
+	//   but if, so, 'exposure' needs to be taken into account already
+	//   in the lighting/shading pass.
+	//   b/c bloom can't be be done after as tone mapping will cap the values to [0, 1]
+
+	m_tmo_pp.setExposure(m_exposure);
+	m_tmo_pp.setGamma(m_gamma);
+	m_tmo_pp.render(_rt, final_rt);
+
+
+	draw2d(final_rt);
+
 
 	T1 = steady_clock::now();
 	m_pp_time = duration_cast<microseconds>(T1 - T0);
@@ -955,6 +967,30 @@ void ClusteredShading::renderSceneAABB()
 	glDepthMask(GL_TRUE);
 	glEnable(GL_DEPTH_TEST);
 	glDisableVertexAttribArray(0);
+}
+
+void ClusteredShading::draw2d(const Texture &texture)
+{
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	m_fsq_shader->bind();
+	texture.Bind();
+
+	glBindVertexArray(_dummy_vao_id);
+	glDrawArrays(GL_TRIANGLES, 0, 3);
+}
+
+void ClusteredShading::draw2d(const RGL::Texture &texture, const glm::uvec2 &top_left, const glm::uvec2 &bottom_right)
+{
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	// m_2d_shader->bind();
+	texture.Bind();
+
+	// glBindVertexArray(_rect_vao_id);
+	// glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
 const std::vector<StaticObject> &ClusteredShading::cullScene()
@@ -1042,8 +1078,7 @@ void ClusteredShading::renderScene(RGL::Shader &shader, bool use_material)
 
 void ClusteredShading::renderDepthPass()
 {
-    glBindFramebuffer(GL_FRAMEBUFFER, m_depth_pass_fbo_id);
-    glClear          (GL_DEPTH_BUFFER_BIT);
+	m_depth_pass_rt.bindRenderTarget(GL_DEPTH_BUFFER_BIT);
 
 	glDepthMask(GL_TRUE);
     glColorMask(0, 0, 0, 0);
@@ -1074,7 +1109,7 @@ void ClusteredShading::renderLighting()
 
     m_irradiance_cubemap_rt->bindTexture(6);
     m_prefiltered_env_map_rt->bindTexture(7);
-    m_brdf_lut_rt->bindTexture(8);
+	m_brdf_lut_rt->bindTextureSampler(8);
     m_ltc_mat_lut->Bind(9);
     m_ltc_amp_lut->Bind(10);
 

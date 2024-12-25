@@ -2,7 +2,7 @@
 #include "core_app.h"
 
 #include "camera.h"
-#include "tonemapping_filter.h"
+#include "pp_tonemapping.h"
 #include "ssbo.h"
 #include "static_model.h"
 #include "shader.h"
@@ -11,6 +11,7 @@
 #include "rendertarget_cube.h"
 
 #include <memory>
+#include <pp_bloom.h>
 #include <vector>
 
 namespace
@@ -110,6 +111,8 @@ private:
     void renderDepthPass();
     void renderLighting();
 	void renderSceneAABB();
+	void draw2d(const RGL::Texture &texture); // TODO: move to CoreApp
+	void draw2d(const RGL::Texture &texture, const glm::uvec2 &top_left, const glm::uvec2 &bottom_right); // TODO: move to CoreApp
 
     std::shared_ptr<RGL::Camera> m_camera;
 
@@ -136,6 +139,7 @@ private:
 
     std::shared_ptr<RGL::Shader> m_draw_area_lights_geometry_shader;
 	std::shared_ptr<RGL::Shader> m_line_draw_shader;
+	std::shared_ptr<RGL::Shader> m_fsq_shader;
 
     GLuint m_depth_tex2D_id;
     GLuint m_depth_pass_fbo_id;
@@ -218,28 +222,28 @@ private:
     std::shared_ptr<RGL::Texture2D> m_ltc_mat_lut;
 
     /* Tonemapping variables */
-	std::shared_ptr<TonemappingFilter> m_tmo_ps;
+	RGL::RenderTarget::Texture2d _rt;
+	RGL::PP::Tonemapping m_tmo_pp;
 	float m_exposure;
-    float m_gamma;
+	float m_gamma;
+	RGL::RenderTarget::Texture2d final_rt;
 
     float m_background_lod_level;
-	std::string_view m_hdr_maps_names[4] = {
+	std::string_view m_hdr_maps_names[5] = {
 		"../black.hdr",
 		"colorful_studio_4k.hdr", // TODO: add support for JPEG XL see Util::LoadTextureDataHdr()
 		"phalzer_forest_01_4k.hdr",
 		"sunset_fairway_4k.hdr",
+		"rogland_clear_night_2k.hdr",
 	};
-	uint8_t m_current_hdr_map_idx   = 3;
+	uint8_t m_current_hdr_map_idx   = 4;
 
     GLuint m_skybox_vao, m_skybox_vbo;
 
-    /* Bloom members */
-    std::shared_ptr<RGL::Shader>    m_downscale_shader;
-    std::shared_ptr<RGL::Shader>    m_upscale_shader;
-    std::shared_ptr<RGL::Texture2D> m_bloom_dirt_texture;
+	RGL::PP::Bloom m_bloom_pp;
 
-    float m_threshold;
-    float m_knee;
+	float m_bloom_threshold;
+	float m_bloom_knee;
     float m_bloom_intensity;
     float m_bloom_dirt_intensity;
     bool  m_bloom_enabled;

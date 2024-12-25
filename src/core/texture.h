@@ -149,7 +149,8 @@ public:
 	inline GLuint texture_id() const { return m_obj_name; }
 	inline TextureType texture_type() const { return m_type; }
 
-	virtual void Bind(uint32_t unit) { glBindTextureUnit(unit, m_obj_name); }
+	virtual inline void Bind(uint32_t unit=0) const { glBindTextureUnit(unit, m_obj_name); }
+
 	virtual void SetFiltering(TextureFiltering type, TextureFilteringParam param);
 	virtual void SetMinLod(float min);
 	virtual void SetMaxLod(float max);
@@ -202,4 +203,4 @@ public:
 	bool Load(const std::filesystem::path * filepaths, bool is_srgb = false, uint32_t num_mipmaps = 0);
 };
 
-}
+} // RGL
