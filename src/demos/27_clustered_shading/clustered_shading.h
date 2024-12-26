@@ -94,7 +94,9 @@ public:
     void render_gui()              override;
 
 private:
-    void GenerateAreaLights();
+	void calculateShadingClusterGrid();
+	void prepareClusterBuffers();
+	void GenerateAreaLights();
     void GeneratePointLights();
     void GenerateSpotLights();
     void UpdateLightsSSBOs();

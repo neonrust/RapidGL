@@ -109,27 +109,6 @@ void ClusteredShading::init_app()
 	// m_camera.setOrientation(glm::quat(0.634325f, 0.0407623f, 0.772209f, 0.0543523f));
 	m_camera.setPosition({ -5, 1, -11 });
 	m_camera.setOrientationEuler({ 0, 180, 0 });
-   
-    /// Init clustered shading variables.
-	m_cluster_grid_dim.x = uint32_t(glm::ceil(float(Window::getWidth())  / float(m_cluster_grid_block_size)));
-	m_cluster_grid_dim.y = uint32_t(glm::ceil(float(Window::getHeight()) / float(m_cluster_grid_block_size)));
-
-    // The depth of the cluster grid during clustered rendering is dependent on the 
-    // number of clusters subdivisions in the screen Y direction.
-    // Source: Clustered Deferred and Forward Shading (2012) (Ola Olsson, Markus Billeter, Ulf Assarsson).
-	const float half_fov     = glm::radians(m_camera.verticalFov() * 0.5f);
-	float sD         = 2.0f * glm::tan(half_fov) / float(m_cluster_grid_dim.y);
-          m_near_k   = 1.0f + sD;
-    m_log_grid_dim_y = 1.0f / glm::log(m_near_k);
-
-	const float z_near       = m_camera.nearPlane();
-	const float z_far        = m_camera.farPlane();
-	const float log_depth      = glm::log(z_far / z_near);
-    m_cluster_grid_dim.z = uint32_t(glm::floor(log_depth * m_log_grid_dim_y));
-
-    m_clusters_count = m_cluster_grid_dim.x * m_cluster_grid_dim.y * m_cluster_grid_dim.z;
-
-	std::printf("clusters count: %d   (%d x %d x %d)\n", m_clusters_count, m_cluster_grid_dim.x, m_cluster_grid_dim.y, m_cluster_grid_dim.z);
 
     /// Randomly initialize lights
 	::srand(3281991);
@@ -184,55 +163,41 @@ void ClusteredShading::init_app()
 	UpdateLightsSSBOs();  // initial update will create the GL buffers
 
     /// Prepare SSBOs related to the clustering (light-culling) algorithm.
-    // Stores the screen-space clusters 
-    glCreateBuffers  (1, &m_clusters_ssbo);
-    glNamedBufferData(m_clusters_ssbo, sizeof(ClusterAABB) * m_clusters_count, nullptr, GL_STATIC_READ);
-    glBindBufferBase (GL_SHADER_STORAGE_BUFFER, CLUSTERS_SSBO_BINDING_INDEX, m_clusters_ssbo);
+	// Stores the screen-space clusters
 
-    // Create a buffer to hold (boolean) flags in the cluster grid that contain samples.
-    glCreateBuffers  (1, &m_clusters_flags_ssbo);
-    glNamedBufferData(m_clusters_flags_ssbo, sizeof(uint32_t) * m_clusters_count, nullptr, GL_STATIC_READ);
-    glBindBufferBase (GL_SHADER_STORAGE_BUFFER, CLUSTERS_FLAGS_SSBO_BINDING_INDEX, m_clusters_flags_ssbo);
+	// represent all the below stuff into a "render method"
+	// init:
+	//   m_renderMethod.init(m_clusters_count);
+	// render:
+	//   m_renderMethod.render(_scenePvs);
+	//   howevr, api surface-area would be pretty big; e.g. lights, shaders (& pbr), etc
+	// step 1: gather all these ssbo into a struct; clusterRendering.cluster_ssbo
 
-    // A buffer (and internal counter) that holds a list of the unique clusters (the clusters that are visible and actually contain a sample).
-    glCreateBuffers  (1, &m_unique_active_clusters_ssbo);
-    glNamedBufferData(m_unique_active_clusters_ssbo, sizeof(uint32_t) * m_clusters_count + sizeof(uint32_t), nullptr, GL_STATIC_READ);
-    glBindBufferBase (GL_SHADER_STORAGE_BUFFER, UNIQUE_ACTIVE_CLUSTERS_SSBO_BINDING_INDEX, m_unique_active_clusters_ssbo);
+	// Create a buffer to hold (boolean) flags in the cluster grid that contain samples.
+	glCreateBuffers(1, &m_clusterShading.ssbo.aabb);
+	glBindBufferBase (GL_SHADER_STORAGE_BUFFER, CLUSTERS_SSBO_BINDING_INDEX, m_clusterShading.ssbo.aabb);
+	glCreateBuffers(1, &m_clusters_flags_ssbo);
+	glBindBufferBase (GL_SHADER_STORAGE_BUFFER, CLUSTERS_FLAGS_SSBO_BINDING_INDEX, m_clusters_flags_ssbo);
+	// A buffer (and internal counter) that holds a list of the unique clusters (the clusters that are visible and actually contain a sample).
+	glCreateBuffers(1, &m_unique_active_clusters_ssbo);
+	glBindBufferBase (GL_SHADER_STORAGE_BUFFER, UNIQUE_ACTIVE_CLUSTERS_SSBO_BINDING_INDEX, m_unique_active_clusters_ssbo);
+	// A buffer that stores number of work groups to be dispatched by cull lights shader
+	glCreateBuffers(1, &m_cull_lights_dispatch_args_ssbo);
+	glBindBufferBase (GL_SHADER_STORAGE_BUFFER, CULL_LIGHTS_DISPATCH_ARGS_SSBO_BINDING_INDEX, m_cull_lights_dispatch_args_ssbo);
+	// A list of indices to the lights that are active and intersect with a cluster
+	glCreateBuffers(1, &m_point_light_index_list_ssbo);
+	glBindBufferBase (GL_SHADER_STORAGE_BUFFER, POINT_LIGHT_INDEX_LIST_SSBO_BINDING_INDEX, m_point_light_index_list_ssbo);
+	glCreateBuffers(1, &m_spot_light_index_list_ssbo);
+	glBindBufferBase (GL_SHADER_STORAGE_BUFFER, SPOT_LIGHT_INDEX_LIST_SSBO_BINDING_INDEX, m_spot_light_index_list_ssbo);
+	glCreateBuffers(1, &m_area_light_index_list_ssbo);
 
-    // A buffer that stores number of work groups to be dispatched by cull lights shader
-    glCreateBuffers  (1, &m_cull_lights_dispatch_args_ssbo);
-    glNamedBufferData(m_cull_lights_dispatch_args_ssbo, sizeof(uint32_t) * 3, nullptr, GL_STATIC_DRAW);
-    glBindBufferBase (GL_SHADER_STORAGE_BUFFER, CULL_LIGHTS_DISPATCH_ARGS_SSBO_BINDING_INDEX, m_cull_lights_dispatch_args_ssbo);
-
-    // A list of indices to the lights that are active and intersect with a cluster
-    glCreateBuffers  (1, &m_point_light_index_list_ssbo);
-    glNamedBufferData(m_point_light_index_list_ssbo, sizeof(uint32_t) * m_clusters_count * AVERAGE_OVERLAPPING_LIGHTS_PER_CLUSTER, nullptr, GL_DYNAMIC_DRAW);
-    glBindBufferBase (GL_SHADER_STORAGE_BUFFER, POINT_LIGHT_INDEX_LIST_SSBO_BINDING_INDEX, m_point_light_index_list_ssbo);
-
-    glCreateBuffers  (1, &m_spot_light_index_list_ssbo);
-    glNamedBufferData(m_spot_light_index_list_ssbo, sizeof(uint32_t) * m_clusters_count * AVERAGE_OVERLAPPING_LIGHTS_PER_CLUSTER, nullptr, GL_DYNAMIC_DRAW);
-    glBindBufferBase (GL_SHADER_STORAGE_BUFFER, SPOT_LIGHT_INDEX_LIST_SSBO_BINDING_INDEX, m_spot_light_index_list_ssbo);
-
-    glCreateBuffers  (1, &m_area_light_index_list_ssbo);
-    glNamedBufferData(m_area_light_index_list_ssbo, sizeof(uint32_t) * m_clusters_count * AVERAGE_OVERLAPPING_LIGHTS_PER_CLUSTER, nullptr, GL_DYNAMIC_DRAW);
-    glBindBufferBase (GL_SHADER_STORAGE_BUFFER, AREA_LIGHT_INDEX_LIST_SSBO_BINDING_INDEX, m_area_light_index_list_ssbo);
-
-    // Every tile takes LightGrid struct that has two unsigned ints one to represent the number of lights in that grid
-    // Another to represent the offset to the light index list from where to begin reading light indexes from
-    // In this SSBO, atomic counter is also being stored (uint global_index_count)
-    // This implementation is straight up from Olsson paper
-    glCreateBuffers  (1, &m_point_light_grid_ssbo);
-    glNamedBufferData(m_point_light_grid_ssbo, sizeof(uint32_t) + sizeof(LightGrid) * m_clusters_count, nullptr, GL_DYNAMIC_DRAW);
-    glBindBufferBase (GL_SHADER_STORAGE_BUFFER, POINT_LIGHT_GRID_SSBO_BINDING_INDEX, m_point_light_grid_ssbo);
-
-    glCreateBuffers  (1, &m_spot_light_grid_ssbo);
-    glNamedBufferData(m_spot_light_grid_ssbo, sizeof(uint32_t) + sizeof(LightGrid) * m_clusters_count, nullptr, GL_DYNAMIC_DRAW);
-    glBindBufferBase (GL_SHADER_STORAGE_BUFFER, SPOT_LIGHT_GRID_SSBO_BINDING_INDEX, m_spot_light_grid_ssbo);
-
-    glCreateBuffers(1, &m_area_light_grid_ssbo);
-    glNamedBufferData(m_area_light_grid_ssbo, sizeof(uint32_t) + sizeof(LightGrid) * m_clusters_count, nullptr, GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, AREA_LIGHT_GRID_SSBO_BINDING_INDEX, m_area_light_grid_ssbo);
-
+	glBindBufferBase (GL_SHADER_STORAGE_BUFFER, AREA_LIGHT_INDEX_LIST_SSBO_BINDING_INDEX, m_area_light_index_list_ssbo);
+	glCreateBuffers(1, &m_point_light_grid_ssbo);
+	glBindBufferBase (GL_SHADER_STORAGE_BUFFER, POINT_LIGHT_GRID_SSBO_BINDING_INDEX, m_point_light_grid_ssbo);
+	glCreateBuffers(1, &m_spot_light_grid_ssbo);
+	glBindBufferBase (GL_SHADER_STORAGE_BUFFER, SPOT_LIGHT_GRID_SSBO_BINDING_INDEX, m_spot_light_grid_ssbo);
+	glCreateBuffers(1, &m_area_light_grid_ssbo);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, AREA_LIGHT_GRID_SSBO_BINDING_INDEX, m_area_light_grid_ssbo);
 
 
     /// Load LTC look-up-tables for area lights rendering
@@ -355,13 +320,66 @@ void ClusteredShading::init_app()
     PrecomputeIndirectLight(FileSystem::getResourcesPath() / "textures/skyboxes/IBL" / m_hdr_maps_names[m_current_hdr_map_idx]);
     PrecomputeBRDF(m_brdf_lut_rt);
 
+	calculateShadingClusterGrid();  // will also call prepareClusterBuffers()
+}
+
+void ClusteredShading::calculateShadingClusterGrid()
+{
+	const auto cluster_count_before = m_clusters_count;
+
+	/// Init clustered shading variables.
+	m_cluster_grid_dim.x = uint32_t(glm::ceil(float(Window::getWidth())  / float(m_cluster_grid_block_size)));
+	m_cluster_grid_dim.y = uint32_t(glm::ceil(float(Window::getHeight()) / float(m_cluster_grid_block_size)));
+
+	// The depth of the cluster grid during clustered rendering is dependent on the
+	// number of clusters subdivisions in the screen Y direction.
+	// Source: Clustered Deferred and Forward Shading (2012) (Ola Olsson, Markus Billeter, Ulf Assarsson).
+	const float half_fov     = glm::radians(m_camera.verticalFov() * 0.5f);
+	float sD         = 2.0f * glm::tan(half_fov) / float(m_cluster_grid_dim.y);
+	m_near_k   = 1.0f + sD;
+	m_log_grid_dim_y = 1.0f / glm::log(m_near_k);
+
+	const float z_near       = m_camera.nearPlane();
+	const float z_far        = m_camera.farPlane();
+	const float log_depth      = glm::log(z_far / z_near);
+	m_cluster_grid_dim.z = uint32_t(glm::floor(log_depth * m_log_grid_dim_y));
+
+	const auto cluster_count = m_cluster_grid_dim.x * m_cluster_grid_dim.y * m_cluster_grid_dim.z;
+
+	if(cluster_count != cluster_count_before)
+	{
+		m_clusters_count = cluster_count;
+		std::printf("shading clusters: %d   (%d x %d x %d)\n", m_clusters_count, m_cluster_grid_dim.x, m_cluster_grid_dim.y, m_cluster_grid_dim.z);
+		prepareClusterBuffers();
+	}
+}
+
+void ClusteredShading::	prepareClusterBuffers()
+{
+	glNamedBufferData(m_clusterShading.ssbo.aabb, sizeof(ClusterAABB) * m_clusters_count, nullptr, GL_STATIC_READ);
+	glNamedBufferData(m_clusters_flags_ssbo, sizeof(uint32_t) * m_clusters_count, nullptr, GL_STATIC_READ);
+	glNamedBufferData(m_unique_active_clusters_ssbo, sizeof(uint32_t) * m_clusters_count + sizeof(uint32_t), nullptr, GL_STATIC_READ);
+	glNamedBufferData(m_cull_lights_dispatch_args_ssbo, sizeof(uint32_t) * 3, nullptr, GL_STATIC_DRAW);
+	glNamedBufferData(m_point_light_index_list_ssbo, sizeof(uint32_t) * m_clusters_count * AVERAGE_OVERLAPPING_LIGHTS_PER_CLUSTER, nullptr, GL_DYNAMIC_DRAW);
+	glNamedBufferData(m_spot_light_index_list_ssbo, sizeof(uint32_t) * m_clusters_count * AVERAGE_OVERLAPPING_LIGHTS_PER_CLUSTER, nullptr, GL_DYNAMIC_DRAW);
+	glNamedBufferData(m_area_light_index_list_ssbo, sizeof(uint32_t) * m_clusters_count * AVERAGE_OVERLAPPING_LIGHTS_PER_CLUSTER, nullptr, GL_DYNAMIC_DRAW);
+
+	// Every tile takes LightGrid struct that has two unsigned ints one to represent the number of lights in that grid
+	// Another to represent the offset to the light index list from where to begin reading light indexes from
+	// In this SSBO, atomic counter is also being stored (uint global_index_count)
+	// This implementation is straight up from Olsson paper
+
+	glNamedBufferData(m_point_light_grid_ssbo, sizeof(uint32_t) + sizeof(LightGrid) * m_clusters_count, nullptr, GL_DYNAMIC_DRAW);
+	glNamedBufferData(m_spot_light_grid_ssbo, sizeof(uint32_t) + sizeof(LightGrid) * m_clusters_count, nullptr, GL_DYNAMIC_DRAW);
+	glNamedBufferData(m_area_light_grid_ssbo, sizeof(uint32_t) + sizeof(LightGrid) * m_clusters_count, nullptr, GL_DYNAMIC_DRAW);
+
 
 	// auto proj = m_camera.m_projection;
 	// auto inv_proj = glm::inverse(proj);
 
-    /// Generate clusters' AABBs
-    // This can be done once as long as the camera parameters doesn't change (projection matrix related variables)
-    m_generate_clusters_shader->bind();
+	/// Generate clusters' AABBs
+	// This can be done once as long as the camera parameters doesn't change (projection matrix related variables)
+	m_generate_clusters_shader->bind();
 	m_generate_clusters_shader->setUniform("u_grid_dim"sv,           m_cluster_grid_dim);
 	m_generate_clusters_shader->setUniform("u_cluster_size_ss"sv,    glm::uvec2(m_cluster_grid_block_size));
 	m_generate_clusters_shader->setUniform("u_near_k"sv,             m_near_k);
@@ -1173,7 +1191,8 @@ void ClusteredShading::render_gui()
 			ImGui::Text("Visible   : %lu", _scenePvs.size());
 
 			ImGui::Checkbox("Draw AABB", &m_draw_aabb);
-			ImGui::SliderFloat("FOV", &m_camera_fov, 25.f, 120.f);
+			if(ImGui::SliderFloat("FOV", &m_camera_fov, 25.f, 120.f))
+				calculateShadingClusterGrid();
 		}
 
         if (ImGui::CollapsingHeader("Lights Generator", ImGuiTreeNodeFlags_DefaultOpen))
