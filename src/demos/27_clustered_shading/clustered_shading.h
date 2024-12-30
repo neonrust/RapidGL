@@ -2,6 +2,7 @@
 #include "core_app.h"
 
 #include "camera.h"
+#include "pp_light_scattering.h"
 #include "pp_tonemapping.h"
 #include "ssbo.h"
 #include "static_model.h"
@@ -163,8 +164,8 @@ private:
 	GLuint _dummy_vao_id;
     // Average number of overlapping lights per cluster AABB.
     // This variable matters when the lights are big and cover more than one cluster.
-	const uint32_t AVERAGE_OVERLAPPING_LIGHTS_PER_CLUSTER      = 50;
-	const uint32_t AVERAGE_OVERLAPPING_AREA_LIGHTS_PER_CLUSTER = 100;
+	static constexpr uint32_t AVERAGE_OVERLAPPING_LIGHTS_PER_CLUSTER      = 50;
+	static constexpr uint32_t AVERAGE_OVERLAPPING_AREA_LIGHTS_PER_CLUSTER = 100;
 
 	uint32_t   m_cluster_grid_block_size = 64; // The size of a cluster in the screen space.(unit?)
     glm::uvec3 m_cluster_grid_dim;             // 3D dimensions of the cluster grid.
@@ -177,7 +178,7 @@ private:
     float m_debug_clusters_occupancy_blend_factor = 0.9f;
 
     /// Lights
-	uint32_t  m_point_lights_count       = 0;
+	uint32_t  m_point_lights_count       = 2;
 	uint32_t  m_spot_lights_count        = 0;
     uint32_t  m_directional_lights_count = 0;
 	uint32_t  m_area_lights_count        = 0;
@@ -231,6 +232,7 @@ private:
 	RGL::PP::Tonemapping m_tmo_pp;
 	float m_exposure;
 	float m_gamma;
+	RGL::PP::LightScattering m_scattering_pp;
 	RGL::RenderTarget::Texture2d _final_rt;
 
     float m_background_lod_level;
@@ -260,5 +262,6 @@ private:
 	std::chrono::microseconds m_cluster_time1;
 	std::chrono::microseconds m_lighting_time;
 	std::chrono::microseconds m_skybox_time;
+	std::chrono::microseconds m_scatter_time;
 	std::chrono::microseconds m_pp_time;
 };

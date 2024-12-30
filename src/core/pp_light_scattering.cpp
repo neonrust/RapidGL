@@ -20,14 +20,15 @@ LightScattering::operator bool() const
 
 void LightScattering::render(const RenderTarget::Texture2d &in, RenderTarget::Texture2d &out)
 {
-	in.bindTextureSampler();
-	out.bindImage(0, RGL::RenderTarget::Write);
+	in.bindImageRead(0);
+	out.bindImage(1, RGL::RenderTarget::Write);
 
 	_shader.bind();
 
-	glDispatchCompute(GLuint(glm::ceil(float(in.width()) / 64.f)),
-					  GLuint(glm::ceil(float(in.height()) / 64.f)),
+	glDispatchCompute(GLuint(glm::ceil(float(in.width()) / 8.f)),
+					  GLuint(glm::ceil(float(in.height()) / 8.f)),
 					  1);
+	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 }
 
 } // RGL
