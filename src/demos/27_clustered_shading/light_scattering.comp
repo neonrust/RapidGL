@@ -1,0 +1,322 @@
+#version 460 core
+
+#include "shared.h"
+
+#define GROUP_SIZE 8
+
+layout(rgba32f, binding = 0) uniform image2D   u_input_color;
+layout(rgba32f, binding = 1) uniform image2D   u_output_color;
+layout(binding = 2)          uniform sampler2D u_input_depth;
+
+
+uniform float u_fog_density;
+uniform vec3 u_fog_color;
+uniform vec3  u_cam_pos;
+uniform vec3  u_cam_forward;
+uniform vec3  u_cam_right;
+uniform vec3  u_cam_up;
+uniform float u_near_z;
+uniform float u_far_z;
+uniform uvec3 u_grid_dim;
+uniform uvec2 u_cluster_size_ss;
+uniform float u_log_grid_dim_y;
+uniform mat4  u_view;
+uniform mat4  u_projection;
+
+struct Ray
+{
+	vec3 start;
+	vec3 direction;
+};
+
+struct Sphere
+{
+	vec3 center;
+	float radius;
+};
+
+struct RaySphereResult
+{
+	float closest_fraction;
+	//float closest_distance;
+	float t1_fraction;
+	float t2_fraction;
+};
+
+
+float atan_approx(float x);
+float linearDepth(float depth);
+uint computeClusterIndex(uvec3 cluster_coord);
+uvec3 computeClusterCoord(vec2 screen_pos, float view_z);
+float getSquareFalloffAttenuation(vec3 pos_to_light, float light_radius);
+
+vec3 scatterLightsInCluster(Ray eye_ray, uvec3 cluster_coord, float frag_depth);
+vec3 scatterPointLight(Ray eye_ray, PointLight light, float frag_depth);
+
+bool castRay(Ray ray, Sphere sphere, inout RaySphereResult result);
+vec3 rayPoint(Ray ray, float fraction);
+
+layout(std430, binding = DIRECTIONAL_LIGHTS_SSBO_BINDING_INDEX) buffer DirLightsSSBO
+{
+    DirectionalLight dir_lights[];
+};
+
+layout(std430, binding = POINT_LIGHTS_SSBO_BINDING_INDEX) buffer PointLightSSBO
+{
+    PointLight point_lights[];
+};
+
+layout(std430, binding = SPOT_LIGHTS_SSBO_BINDING_INDEX) buffer SpotLightsSSBO
+{
+    SpotLight spot_lights[];
+};
+
+layout(std430, binding = AREA_LIGHTS_SSBO_BINDING_INDEX) buffer AreaLightsSSBO
+{
+    AreaLight area_lights[];
+};
+
+layout(std430, binding = POINT_LIGHT_INDEX_LIST_SSBO_BINDING_INDEX) buffer PointLightIndexListSSBO
+{
+    uint point_light_index_list[];
+};
+
+layout(std430, binding = POINT_LIGHT_GRID_SSBO_BINDING_INDEX) buffer PointLightGridSSBO
+{
+    uint point_light_index_counter;
+	LightGrid point_light_grid[];
+};
+
+layout(std430, binding = SPOT_LIGHT_INDEX_LIST_SSBO_BINDING_INDEX) buffer SpotLightIndexListSSBO
+{
+    uint spot_light_index_list[];
+};
+
+layout(std430, binding = SPOT_LIGHT_GRID_SSBO_BINDING_INDEX) buffer SpotLightGridSSBO
+{
+    uint spot_light_index_counter;
+	LightGrid spot_light_grid[];
+};
+
+layout (std430, binding = AREA_LIGHT_INDEX_LIST_SSBO_BINDING_INDEX) buffer AreaLightIndexListSSBO
+{
+    uint area_light_index_list[];
+};
+
+layout (std430, binding = AREA_LIGHT_GRID_SSBO_BINDING_INDEX) buffer AreaLightGridSSBO
+{
+    uint area_light_index_counter;
+	LightGrid area_light_grid[];
+};
+
+layout(std430, binding = CLUSTERS_SSBO_BINDING_INDEX) buffer ClustersSSBO
+{
+    ClusterAABB clusters_aabb[];
+};
+
+/*
+transform all into "light-space":
+- camera direction towards fragment (or infinity) along X-axis
+- light perpendicular to camera direction, on Y-axis; distance = h
+- camera at X=a
+- "world fragment" at X=b
+
+foglight = atan(b/h)/h - atan(a/h)/h
+
+(percentage of light intensity?)
+*/
+
+layout(local_size_x = GROUP_SIZE, local_size_y = GROUP_SIZE, local_size_z = 1) in;
+void main()
+{
+	uvec2 pixel_id   = gl_GlobalInvocationID.xy;
+	vec2 screen_pos  = vec2(pixel_id) + vec2(0.5);
+	vec2 screen_size = vec2(imageSize(u_input_color));
+
+	float aspect_ratio = float(screen_size.y) / float(screen_size.x);
+	vec2  screen_norm = (screen_pos*2 - vec2(screen_size)) / vec2(screen_size);
+	screen_norm.y *= aspect_ratio;
+
+	float view_z     = texture(u_input_depth, screen_pos/screen_size).r;
+	float frag_depth = linearDepth(view_z);
+
+	vec4 src_color = imageLoad(u_input_color, ivec2(screen_pos));
+
+	Ray eye_ray;
+	eye_ray.start = u_cam_pos;
+	// TODO: how to calculate this magical constant?
+	//  (fov/projection-dependent, for vfov 90, ~0.55 works)
+	eye_ray.direction = normalize(u_cam_forward*0.55 + u_cam_right*screen_norm.x + u_cam_up*screen_norm.y);
+
+	// to camera space
+	// eye_ray.start = (u_view * vec4(eye_ray.start, 1)).xyz;
+	// eye_ray.direction = u_view * eye_ray.direction;
+
+
+	uvec3 cluster_coord = computeClusterCoord(screen_pos, u_near_z);
+
+	vec3 fog_radiance = vec3(0);
+
+
+	// TODO: this list of lights should be computed by a separate pre-process;
+	//   likely tile-based light culling from a (potentially very) large number of lights.
+
+	// for now, we'll just use a hard-coded test case
+	PointLight lights[2];
+	lights[0].base.color = vec3(1, 0.8, 0.5);
+	lights[0].base.intensity = 100;
+	lights[0].position = vec3(-10, 2, 0);
+	lights[0].radius = 8;
+
+	lights[1].base.color = vec3(0.4, 0.7, 1.0);
+	lights[1].base.intensity = 100;
+	lights[1].position = vec3(10, 2, 0);
+	lights[1].radius = 8;
+
+	for(int idx = 0; idx < lights.length(); ++idx)
+		fog_radiance += scatterPointLight(eye_ray, lights[idx], frag_depth);
+
+
+	// TODO: argh, doind this by cluster DOES NOT WORK!
+	//   e.g. a cluster containing only a wall not lit by the light
+	//   will not contain that light, thus can't get scattering either...
+/*
+	// loop through all clusters in this "screen square"
+	for(uint cluster_z = cluster_coord.z; cluster_z < u_grid_dim.z; ++cluster_z)
+	{
+		cluster_coord.z = cluster_z;
+		fog_radiance += scatterLightsInCluster(eye_ray, cluster_coord, frag_depth);
+	}
+*/
+	imageStore(u_output_color, ivec2(screen_pos), src_color + vec4(fog_radiance, 1));
+}
+
+vec3 scatterLightsInCluster(Ray eye_ray, uvec3 cluster_coord, float frag_depth)
+{
+	uint cluster_index = computeClusterIndex(cluster_coord);
+
+	 // Calculate the point lights contribution
+   	uint light_index_offset = point_light_grid[cluster_index].offset;
+    uint light_count = point_light_grid[cluster_index].count;
+
+	vec3 radiance = vec3(0);
+
+    for (uint i = 0; i < light_count; ++i)
+    {
+        uint light_index = point_light_index_list[light_index_offset + i];
+		PointLight light = point_lights[light_index];
+
+		radiance += scatterPointLight(eye_ray, light, frag_depth);
+	}
+
+	return radiance;
+}
+
+vec3 scatterPointLight(Ray eye_ray, PointLight light, float frag_depth)
+{
+	vec3 radiance = vec3(0);
+
+	Sphere light_sphere;
+	light_sphere.center = light.position;
+	light_sphere.radius = light.radius;
+
+	// to camera space
+	// light_sphere.center = (u_view * vec4(light_sphere.center, 1)).xyz;
+
+
+	RaySphereResult result;
+	if(castRay(eye_ray, light_sphere, result))
+	{
+		// TODO: reject hits farther away than 'frag_depth'
+		// TODO: prevent the 'mirror' light; inside the radius, where t1 and/or t2 is negative
+
+		// vec3 t1p = rayPoint(eye_ray, result.t1_fraction);
+		// vec3 t2p = rayPoint(eye_ray, result.t2_fraction);
+
+		// t1p.z = min(t1p.z, frag_depth);
+		// t2p.z = min(t2p.z, frag_depth);
+
+		// float thickness_sq = dot(t1p - t2p, t1p - t2p);
+		// float sphere_fraction_sq = thickness_sq / (4*light.radius*light.radius);
+
+		result.t1_fraction = max(0, result.t1_fraction);
+		result.t2_fraction = max(0, result.t2_fraction);
+		result.closest_fraction = max(0, result.closest_fraction);
+
+		float thickness = result.t2_fraction - result.t1_fraction;
+		float sphere_fraction = thickness/(2*light.radius);
+		vec3 middle_point = rayPoint(eye_ray, result.closest_fraction);
+		vec3 closest_to_light = middle_point - light.position;
+
+		float energy = light.base.intensity * getSquareFalloffAttenuation(closest_to_light, light.radius*light.radius);
+		float fog_energy = energy * sphere_fraction;
+		radiance += fog_energy * u_fog_density * light.base.color * u_fog_color;
+	}
+
+	return radiance;
+}
+
+
+float atan_approx(float x)
+{
+    return (1.570796 * x) / (1.0 + abs(x));
+}
+
+
+uint computeClusterIndex(uvec3 cluster_coord)
+{
+    return cluster_coord.x + (u_grid_dim.x * (cluster_coord.y + u_grid_dim.y * cluster_coord.z));
+}
+
+uvec3 computeClusterCoord(vec2 screen_pos, float view_z)
+{
+    uint x = uint(screen_pos.x / u_cluster_size_ss.x);
+	uint y = uint(screen_pos.y / u_cluster_size_ss.y);
+	uint z = uint(log(view_z / u_near_z) * u_log_grid_dim_y);
+
+    return uvec3(x, y, z);
+}
+
+
+float linearDepth(float depth)
+{
+	float ndc          = depth * 2.0 - 1.0;
+	float linear_depth = 2.0 * u_near_z * u_far_z / (u_far_z + u_near_z - ndc * (u_far_z - u_near_z));
+
+	return linear_depth;
+}
+
+bool castRay(Ray ray, Sphere sphere, inout RaySphereResult result)
+{
+	float a = dot(ray.direction, ray.direction);
+	vec3 sphere_to_ray = ray.start - sphere.center;
+	float b = 2 * dot(sphere_to_ray, ray.direction);
+	float c = dot(sphere_to_ray, sphere_to_ray) - sphere.radius*sphere.radius;
+
+	float discriminant = b*b - 4*a*c;
+	if(discriminant < 0)
+		return false;
+
+	float discr_root = sqrt(discriminant);
+
+	result.t1_fraction = (-b - discr_root) / (2*a);
+	result.t2_fraction = (-b + discr_root) / (2*a);
+	result.closest_fraction = (result.t1_fraction + result.t2_fraction) / 2;
+
+	return true;
+}
+
+vec3 rayPoint(Ray ray, float fraction)
+{
+	return ray.start + ray.direction*fraction;
+}
+
+// from pbr_lighting.glh (slightly modified)
+float getSquareFalloffAttenuation(vec3 pos_to_light, float light_radius_squared)
+{
+    float distance_square = dot(pos_to_light, pos_to_light);
+    float factor          = distance_square / light_radius_squared;
+    float smooth_factor   = max(1.0 - factor * factor, 0.0);
+
+    return (smooth_factor * smooth_factor) / max(distance_square, 1e-5);
+}
