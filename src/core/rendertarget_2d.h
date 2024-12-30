@@ -15,6 +15,11 @@ static constexpr Format Color      = 0x01;
 static constexpr Format ColorFloat = Color | 0x02;
 static constexpr Format Depth      = 0x04;
 
+using BufferMask = uint32_t;
+static constexpr BufferMask ColorBuffer = GL_COLOR_BUFFER_BIT;
+static constexpr BufferMask DepthBuffer = GL_DEPTH_BUFFER_BIT;
+
+
 enum Access : GLenum
 {
 	Read      = GL_READ_ONLY,
@@ -44,14 +49,16 @@ struct Texture2d : public RGL::Texture
 
 	//! bind for use in shader as a texture
 	void bindTextureSampler(GLuint unit=0) const;
-	//! bind for drawing into using regular draw calls
-	void bindRenderTarget(GLbitfield clear_mask=GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	//! bind for drawing into using regular draw calls (and clear specified aspects of the RT)
+	void bindRenderTarget(BufferMask clear_buffers=ColorBuffer | DepthBuffer);
 	//! bind for read/write from compute shaders
 	void bindImage(GLuint image_unit=0, RenderTarget::Access access=RenderTarget::Read, GLint mip_level=0);
+	void bindImageRead(GLuint image_unit=0, GLint mip_level=0) const;
 
 	// copy this texture to another texture
 	void copyTo(Texture2d &dest, GLbitfield mask=GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GLenum filter=GL_LINEAR) const;
 	void copyFrom(const Texture2d &source, GLbitfield mask=GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GLenum filter=GL_LINEAR);
+
 
 private:
 	uint8_t calculateMipmapLevels();

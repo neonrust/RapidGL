@@ -78,18 +78,23 @@ void Texture2d::bindTextureSampler(GLuint unit) const
 	glBindTextureUnit(unit, texture_id());
 }
 
-void Texture2d::bindRenderTarget(GLbitfield clear_mask)
+void Texture2d::bindRenderTarget(BufferMask clear_buffers)
 {
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _fbo_id);
 	glViewport(0, 0, GLsizei(m_metadata.width), GLsizei(m_metadata.height));
 
 	// NOTE: makes no sense to use clear_mask = GL_DEPTH_BUFFER_BIT if the framebuffer has no depth component
-	glClear(clear_mask);
+	glClear(clear_buffers);
 }
 
 void Texture2d::bindImage(GLuint image_unit, RenderTarget::Access access, GLint mip_level)
 {
 	glBindImageTexture(image_unit, texture_id(), mip_level, GL_FALSE, 0, GLenum(access), _internal_format);
+}
+
+void Texture2d::bindImageRead(GLuint image_unit, GLint mip_level) const
+{
+	glBindImageTexture(image_unit, texture_id(), mip_level, GL_FALSE, 0, GL_READ_ONLY, _internal_format);
 }
 
 void Texture2d::copyTo(Texture2d &dest, GLbitfield mask, GLenum filter) const
