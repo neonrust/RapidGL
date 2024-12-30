@@ -75,17 +75,19 @@ public:
 
 	void setSubroutine(ShaderType shader_type, const std::string& subroutine_name);
 
-	inline operator bool () const { return m_is_linked; }
+	inline operator bool () const { return m_program_id > 0 and m_is_linked > 0; }
 
 private:
 	void addAllSubroutines();
 
 	bool addShader(const std::filesystem::path & filepath, GLuint type);
+	void logLineErrors(const std::string &source, const std::string &log);
 	void add_name(const std::filesystem::path &filepath);
 	std::tuple<bool, std::string> getStatusLog(GLuint object, GLenum statusType) const;
 
 	GLint getUniformLocation(const std::string_view &name);
 
+private:
 	string_map<GLuint> m_subroutine_indices;
 	dense_map<GLenum, GLuint> m_active_subroutine_uniform_locations;
 
