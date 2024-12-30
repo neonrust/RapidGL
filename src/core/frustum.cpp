@@ -206,7 +206,7 @@ void Frustum::setFromView(const glm::mat4 &proj, const glm::mat4 &view)
 
 	const glm::vec4 anchor { mvp[3] };
 
-	// TODO: normalize
+	// TODO: normalize?
 	_left.set(  anchor + mvp[0]);
 	_right.set( anchor - mvp[0]);
 	_bottom.set(anchor + mvp[1]);
@@ -214,31 +214,12 @@ void Frustum::setFromView(const glm::mat4 &proj, const glm::mat4 &view)
 	_front.set( anchor + mvp[2]);
 	_back.set(  anchor - mvp[2]);
 
-	// static auto printed = false;
-	// if(not printed)
-	// {
-	// 	std::printf("  left: { %.3f; %.3f; %.3f } | %g\n", _left.normal().x,   _left.normal().y,   _left.normal().z,   _left.offset());
-	// 	std::printf(" right: { %.3f; %.3f; %.3f } | %g\n", _right.normal().x,  _right.normal().y,  _right.normal().z,  _right.offset());
-	// 	std::printf("bottom: { %.3f; %.3f; %.3f } | %g\n", _bottom.normal().x, _bottom.normal().y, _bottom.normal().z, _bottom.offset());
-	// 	std::printf("   top: { %.3f; %.3f; %.3f } | %g\n", _top.normal().x,    _top.normal().y,    _top.normal().z,    _top.offset());
-	// 	std::printf(" front: { %.3f; %.3f; %.3f } | %g\n", _front.normal().x,  _front.normal().y,  _front.normal().z,  _front.offset());
-	// 	std::printf("  back: { %.3f; %.3f; %.3f } | %g\n", _back.normal().x,   _back.normal().y,   _back.normal().z,   _back.offset());
-	// 	std::printf("ff   left: { %.3f; %.3f; %.3f } | %g\n", ff.m_planes[0].x,   ff.m_planes[0].y,   ff.m_planes[0].z,   ff.m_planes[0].w);
-	// 	std::printf("ff  right: { %.3f; %.3f; %.3f } | %g\n", ff.m_planes[1].x,   ff.m_planes[1].y,   ff.m_planes[1].z,   ff.m_planes[1].w);
-	// 	std::printf("ff bottom: { %.3f; %.3f; %.3f } | %g\n", ff.m_planes[2].x,   ff.m_planes[2].y,   ff.m_planes[2].z,   ff.m_planes[2].w);
-	// 	std::printf("ff    top: { %.3f; %.3f; %.3f } | %g\n", ff.m_planes[3].x,   ff.m_planes[3].y,   ff.m_planes[3].z,   ff.m_planes[3].w);
-	// 	std::printf("ff  front: { %.3f; %.3f; %.3f } | %g\n", ff.m_planes[4].x,   ff.m_planes[4].y,   ff.m_planes[4].z,   ff.m_planes[4].w);
-	// 	std::printf("ff   back: { %.3f; %.3f; %.3f } | %g\n", ff.m_planes[5].x,   ff.m_planes[5].y,   ff.m_planes[5].z,   ff.m_planes[5].w);
-	// }
-
-
-
 	// build an AABB around the frustum for even faster early-outs
 	_aabb.clear();
 
-	// // compute the 8 corners of the frustum by intersecting the 3 adjacent planes
+	// compute the 8 corners of the frustum by intersecting the 3 adjacent planes
 	const glm::vec3 crosses[] = {
-		{},//glm::cross(_left.normal(),   _right.normal()),   // 0
+		{}, // glm::cross(_left.normal(),   _right.normal()), // 0
 		glm::cross(_left.normal(),   _bottom.normal()),  // 1
 		glm::cross(_left.normal(),   _top.normal()),     // 2
 		glm::cross(_left.normal(),   _front.normal()),   // 3
@@ -247,12 +228,12 @@ void Frustum::setFromView(const glm::mat4 &proj, const glm::mat4 &view)
 		glm::cross(_right.normal(),  _top.normal()),     // 6
 		glm::cross(_right.normal(),  _front.normal()),   // 7
 		glm::cross(_right.normal(),  _back.normal()),    // 8
-		{},//glm::cross(_bottom.normal(), _top.normal()),     // 9
+		{}, // glm::cross(_bottom.normal(), _top.normal()),  // 9
 		glm::cross(_bottom.normal(), _front.normal()),   // 10
 		glm::cross(_bottom.normal(), _back.normal()),    // 11
 		glm::cross(_top.normal(),    _front.normal()),   // 12
 		glm::cross(_top.normal(),    _back.normal()),    // 13
-		{}//glm::cross(_front.normal(),  _back.normal())     // 14
+		{} // glm::cross(_front.normal(),  _back.normal())   // 14
 	};
 
 	_corners = {
@@ -266,47 +247,8 @@ void Frustum::setFromView(const glm::mat4 &proj, const glm::mat4 &view)
 		intersection(_right, _bottom, _back,  crosses[5], crosses[8], crosses[11])
 	};
 
-	static const char *corner_names[] = {
-		"left-top-front",
-		"left-bottom-front",
-		"left-top-back",
-		"left-bottom-back",
-		"right-top-front",
-		"right-bottom-front",
-		"right-top-back",
-		"right-bottom-back",
-	};
-
 	for(const auto &corner: _corners)
 		_aabb.expand(corner);
-
-//	static auto printed = false;
-	// if(not printed)
-	// {
-	// 	for(auto idx = 0u; idx < 8; ++idx)
-	// 	{
-	// 		const auto &corner = _corners[idx];
-	// 		std::printf("corner[%u]:  %s   %s\n", idx, glm::to_string(corner).c_str(), corner_names[idx]);
-	// 	}
-	// }
-
-
-
-	// if(not printed)
-	{
-		// auto idx = 0;
-		// for(const auto corner: _aabb.corners())
-		// 	std::printf("AABB [%u]: { %.1f; %.1f %.1f }\n", idx++, corner.x, corner.y, corner.z);
-
-		// std::printf("Frustum AABB  %s  ->  %s   (%.0f x %.0f x %.0f)\n",
-		// 			glm::to_string(_aabb.min()).c_str(),
-		// 			glm::to_string(_aabb.max()).c_str(),
-		// 			_aabb.width(),
-		// 			_aabb.height(),
-		// 			_aabb.depth()
-		// 			);
-	}
-	// printed = true;
 }
 
 namespace intersect
@@ -341,7 +283,7 @@ frustum_cull_result check(const Frustum &f, const bounds::AABB &box, const glm::
 		{
 			const auto dist = math::distance(plane, corner);
 
-			if(result.distance_to_plane[size_t(cull_plane)] == std::numeric_limits<float>::min() or dist < result.distance_to_plane[size_t(cull_plane)])
+			if(result.distance_to_plane[size_t(cull_plane)] == frustum_cull_result::UNUSED or dist < result.distance_to_plane[size_t(cull_plane)])
 				result.distance_to_plane[size_t(cull_plane)] = dist;
 		}
 		++cull_plane;
@@ -373,7 +315,7 @@ frustum_cull_result check(const Frustum &f, const bounds::AABB &box, const glm::
 	const auto &box_min = tfm_aabb.min();
 	const auto &box_max = tfm_aabb.max();
 
-	// check each axis; wether athe frustum corners are all outside the AABB box
+	// check each axis; wether the frustum corners are all outside the AABB box
 	std::uint_fast8_t out = 0;
 	result.visible = false;
 	// TODO: faster with branch?

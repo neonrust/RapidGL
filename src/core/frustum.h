@@ -44,17 +44,19 @@ namespace intersect
 
 struct frustum_cull_result
 {
+	static constexpr auto UNUSED = std::numeric_limits<float>::min();
+
 	inline frustum_cull_result() :
 		visible(false),
 		culled_by_aabb(false),
 		culled_by_plane(-1)
 	{
-		distance_to_plane[0] = std::numeric_limits<float>::min();
-		distance_to_plane[1] = std::numeric_limits<float>::min();
-		distance_to_plane[2] = std::numeric_limits<float>::min();
-		distance_to_plane[3] = std::numeric_limits<float>::min();
-		distance_to_plane[4] = std::numeric_limits<float>::min();
-		distance_to_plane[5] = std::numeric_limits<float>::min();
+		distance_to_plane[0] = UNUSED;
+		distance_to_plane[1] = UNUSED;
+		distance_to_plane[2] = UNUSED;
+		distance_to_plane[3] = UNUSED;
+		distance_to_plane[4] = UNUSED;
+		distance_to_plane[5] = UNUSED;
 	}
 
 	bool visible { false };
