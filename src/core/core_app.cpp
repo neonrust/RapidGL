@@ -53,8 +53,6 @@ namespace RGL
         ImGui::SetNextWindowBgAlpha(0.3f); // Transparent background
         if (ImGui::Begin("Perf info", 0, (corner != -1 ? ImGuiWindowFlags_NoMove : 0) | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
         {
-            ImGui::Text("Performance info\n");
-            ImGui::Separator();
 			ImGui::Text("%.1f FPS (%.3f ms/frame)",	ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
 			ImGui::Text("r-time: %ld us (~%ld FPS)", _render_time.count(), 1'000'000 / _render_time.count());
         }
