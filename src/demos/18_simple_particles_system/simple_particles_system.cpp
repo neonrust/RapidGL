@@ -248,8 +248,8 @@ void SimpleParticlesSystem::render()
     m_particles_shader->setUniform("emitter_basis",          make_arbitrary_basis(m_emitter_dir));
     m_particles_shader->setUniform("delta_t",                m_delta_time);
     m_particles_shader->setUniform("acceleration",           m_acceleration);
-    m_particles_shader->setUniform("model_view",             m_camera->m_view);
-    m_particles_shader->setUniform("projection",             m_camera->m_projection);
+	m_particles_shader->setUniform("model_view",             m_camera->viewTransform());
+	m_particles_shader->setUniform("projection",             m_camera->projectionTransform());
     m_particles_shader->setUniform("particle_size_min_max",  m_particle_size_min_max);
     m_particles_shader->setUniform("should_keep_color",      !m_should_fade_out_with_time);
     m_particles_shader->setUniform("start_position_min_max", m_start_position_min_max);
@@ -277,8 +277,9 @@ void SimpleParticlesSystem::render()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     /* Draw grid */
-    m_simple_shader->bind();
-    m_simple_shader->setUniform("mvp",        m_camera->m_projection * m_camera->m_view);
+	const auto view_projection = m_camera->projectionTransform() * m_camera->viewTransform();
+	m_simple_shader->bind();
+	m_simple_shader->setUniform("mvp",        view_projection);
     m_simple_shader->setUniform("color",      glm::vec3(0.4));
     m_simple_shader->setUniform("mix_factor", 1.0f);
 

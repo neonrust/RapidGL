@@ -128,9 +128,9 @@ void GSPointSprites::render()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     m_point_sprites_shader->bind();
-    m_point_sprites_shader->setUniform("model_view_matrix", m_camera->m_view);
+	m_point_sprites_shader->setUniform("model_view_matrix", m_camera->viewTransform());
     m_point_sprites_shader->setUniform("half_quad_width", m_half_quad_width);
-    m_point_sprites_shader->setUniform("projection_matrix", m_camera->m_projection);
+	m_point_sprites_shader->setUniform("projection_matrix", m_camera->projectionTransform());
 
     m_sprite_tex->Bind(0);
     glBindVertexArray(m_sprites_vao_id);

@@ -481,7 +481,7 @@ void Bloom::GenSkyboxGeometry()
 
 void Bloom::RenderScene()
 {
-    auto view_projection = m_camera->m_projection * m_camera->m_view;
+	const auto view_projection = m_camera->projectionTransform() * m_camera->viewTransform();
 
     m_ambient_light_shader->bind();
     m_ambient_light_shader->setUniform("u_cam_pos", m_camera->position());
@@ -567,8 +567,8 @@ void Bloom::render()
     RenderScene();
 
     m_background_shader->bind();
-    m_background_shader->setUniform("u_projection", m_camera->m_projection);
-    m_background_shader->setUniform("u_view", glm::mat4(glm::mat3(m_camera->m_view)));
+	m_background_shader->setUniform("u_projection", m_camera->projectionTransform());
+	m_background_shader->setUniform("u_view", glm::mat4(glm::mat3(m_camera->viewTransform())));
     m_background_shader->setUniform("u_lod_level", m_background_lod_level);
     m_env_cubemap_rt->bindTexture();
 

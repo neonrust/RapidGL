@@ -169,7 +169,7 @@ void Lighting::render()
     m_ambient_light_shader->setUniform("ambient_factor", m_ambient_factor);
     m_ambient_light_shader->setUniform("gamma",          m_gamma);
 
-    auto view_projection = m_camera->m_projection * m_camera->m_view;
+	const auto view_projection = m_camera->projectionTransform() * m_camera->viewTransform();
 
     /* First, render the ambient color only for the opaque objects. */
     for (unsigned i = 0; i < m_objects.size(); ++i)

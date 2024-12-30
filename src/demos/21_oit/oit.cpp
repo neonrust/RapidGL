@@ -165,7 +165,7 @@ void OIT::render()
     glNamedBufferSubData(m_list_info_buffer, 0 /*offset*/, sizeof(uint32_t), &zero); // clear next_node_counter only
     glClearTexImage(m_head_pointers_image2d, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, m_head_pointers_clear_data.data());
 
-    auto view_projection = m_camera->m_projection * m_camera->m_view;
+	const auto view_projection = m_camera->projectionTransform() * m_camera->viewTransform();
 
     /* Pass 1 - create the linked lists. */
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

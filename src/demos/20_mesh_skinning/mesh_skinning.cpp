@@ -124,7 +124,7 @@ void MeshSkinning::render()
     /* Put render specific code here. Don't update variables here! */
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    auto view_projection = m_camera->m_projection * m_camera->m_view;
+	const auto view_projection = m_camera->projectionTransform() * m_camera->viewTransform();
 
     /* Draw the grid. */
     m_simple_shader->bind();

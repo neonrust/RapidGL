@@ -64,12 +64,15 @@ public:
 
 	const Frustum &frustum();
 
+	inline const glm::mat4 &projectionTransform() const { return m_projection; }
+	inline const glm::mat4 &viewTransform() const { return m_view; }
 
 
 
 	// TODO: this shouldn't be here (better in a controller-type thing)
 	void update(double dt);
 
+private:
 	glm::mat4 m_view;
 	glm::mat4 m_projection;
 	bool m_is_ortho;

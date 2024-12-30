@@ -374,7 +374,7 @@ void ClusteredShading::	prepareClusterBuffers()
 	m_generate_clusters_shader->setUniform("u_cluster_size_ss"sv,    glm::uvec2(m_cluster_grid_block_size));
 	m_generate_clusters_shader->setUniform("u_near_k"sv,             m_near_k);
 	m_generate_clusters_shader->setUniform("u_near_z"sv,             m_camera.nearPlane());
-	m_generate_clusters_shader->setUniform("u_inverse_projection"sv, glm::inverse(m_camera.m_projection));
+	m_generate_clusters_shader->setUniform("u_inverse_projection"sv, glm::inverse(m_camera.projectionTransform()));
 	m_generate_clusters_shader->setUniform("u_pixel_size"sv,         1.0f / glm::vec2(RGL::Window::getWidth(), RGL::Window::getHeight()));
 	glDispatchCompute(GLuint(glm::ceil(float(m_clusters_count) / 1024.0f)), 1, 1);
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
@@ -853,7 +853,7 @@ void ClusteredShading::render()
 	glClearNamedBufferData(m_area_light_index_list_ssbo,  GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &clear_val);
 
     m_cull_lights_shader->bind();
-	m_cull_lights_shader->setUniform("u_view_matrix"sv, m_camera.m_view);
+	m_cull_lights_shader->setUniform("u_view_matrix"sv, m_camera.viewTransform());
 
     glBindBuffer             (GL_DISPATCH_INDIRECT_BUFFER, m_cull_lights_dispatch_args_ssbo);
     glDispatchComputeIndirect(0);
@@ -872,7 +872,7 @@ void ClusteredShading::render()
 	if(m_area_lights_geometry)
 	{
 		m_draw_area_lights_geometry_shader->bind();
-		m_draw_area_lights_geometry_shader->setUniform("u_view_projection"sv, m_camera.m_projection * m_camera.m_view);
+		m_draw_area_lights_geometry_shader->setUniform("u_view_projection"sv, m_camera.projectionTransform() * m_camera.viewTransform());
 		glDrawArrays(GL_TRIANGLES, 0, GLsizei(6 * m_area_lights.size()));
 	}
 
@@ -883,8 +883,8 @@ void ClusteredShading::render()
 
     // 8. Render skybox
     m_background_shader->bind();
-	m_background_shader->setUniform("u_projection"sv, m_camera.m_projection);
-	m_background_shader->setUniform("u_view"sv,       glm::mat4(glm::mat3(m_camera.m_view)));
+	m_background_shader->setUniform("u_projection"sv, m_camera.projectionTransform());
+	m_background_shader->setUniform("u_view"sv,       glm::mat4(glm::mat3(m_camera.viewTransform())));
 	m_background_shader->setUniform("u_lod_level"sv,  m_background_lod_level);
     m_env_cubemap_rt->bindTexture();
 
@@ -909,7 +909,9 @@ void ClusteredShading::render()
 	m_scattering_pp.shader().setUniform("u_cam_up"sv,          m_camera.upVector());
 	m_scattering_pp.shader().setUniform("u_near_z"sv,          m_camera.nearPlane());
 	m_scattering_pp.shader().setUniform("u_far_z"sv,           m_camera.farPlane());
-	m_scattering_pp.shader().setUniform("u_view"sv,            m_camera.m_view);
+	m_scattering_pp.shader().setUniform("u_view"sv,            m_camera.viewTransform());
+	// m_scattering_pp.shader().setUniform("u_projection"sv,      m_camera.projectionTransform());
+
 	// TODO: m_camera.setUniforms(m_scattering_pp.shader());  // could even cache the uniform locations (per shader)
 
 	m_depth_pass_rt.bindTextureSampler(2);
@@ -966,7 +968,7 @@ void ClusteredShading::renderSceneAABB()
 	if(not m_debug_draw_vbo)
 		glGenBuffers(1, &m_debug_draw_vbo);
 
-	const auto modelView = m_camera.m_projection * m_camera.m_view;
+	const auto modelView = m_camera.projectionTransform() * m_camera.viewTransform();
 
 	// if using VBO, generate the data into a single VBO then draw using a single call
 
@@ -1141,7 +1143,7 @@ void ClusteredShading::renderScene(RGL::Shader &shader, bool use_material)
 	//   this would also include skinned meshes (don't want to do the skinning computations multiple times)
 	//   (AnimatedMode::BoneTransform() genereates a list of bone transforms, done once, but the actual skinning is in the shader)
 
-	const auto modelView = m_camera.m_projection * m_camera.m_view;
+	const auto modelView = m_camera.projectionTransform() * m_camera.viewTransform();
 
 	for(const auto &obj: _scenePvs)
 	{
@@ -1187,7 +1189,7 @@ void ClusteredShading::renderLighting()
 	m_clustered_pbr_shader->setUniform("u_debug_slices"sv,                          m_debug_slices);
 	m_clustered_pbr_shader->setUniform("u_debug_clusters_occupancy"sv,              m_debug_clusters_occupancy);
 	m_clustered_pbr_shader->setUniform("u_debug_clusters_occupancy_blend_factor"sv, m_debug_clusters_occupancy_blend_factor);
-	m_clustered_pbr_shader->setUniform("u_view"sv,                                  m_camera.m_view);
+	m_clustered_pbr_shader->setUniform("u_view"sv,                                  m_camera.viewTransform());
 
     m_irradiance_cubemap_rt->bindTexture(6);
     m_prefiltered_env_map_rt->bindTexture(7);

@@ -107,7 +107,7 @@ void VertexDisplacement::render()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    auto view_projection = m_camera->m_projection * m_camera->m_view;
+	const auto view_projection = m_camera->projectionTransform() * m_camera->viewTransform();
 
     /* Draw curve */
     m_vs_disp_shader->bind();

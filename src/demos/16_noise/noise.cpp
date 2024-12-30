@@ -192,7 +192,7 @@ void ProceduralNoise::render()
 
     m_noise_texturing_shader->bind();
 
-    auto view_projection = m_camera->m_projection * m_camera->m_view;
+	const auto view_projection = m_camera->projectionTransform() * m_camera->viewTransform();
 
     // Decal
     glBindTextureUnit(0, m_decal_texture);

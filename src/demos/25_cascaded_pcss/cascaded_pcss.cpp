@@ -595,7 +595,7 @@ void CascadedPCSS::update_csm_frusta()
         };
 
         // Project frustum corners into world space
-        glm::mat4 inv_cam = glm::inverse(m_camera->m_projection * m_camera->m_view);
+		glm::mat4 inv_cam = glm::inverse(m_camera->projectionTransform() * m_camera->viewTransform());
         for (uint32_t i = 0; i < 8; ++i)
         {
             glm::vec4 corner_world_space = inv_cam * glm::vec4(frustum_corners[i], 1.0f);
@@ -675,7 +675,7 @@ void CascadedPCSS::RenderTexturedModels()
     m_ambient_light_shader->setUniform("u_has_ao_map",        true);
     m_ambient_light_shader->setUniform("u_has_emissive_map",  false);
 
-    auto view_projection = m_camera->m_projection * m_camera->m_view;
+	const auto view_projection = m_camera->projectionTransform() * m_camera->viewTransform();
 
     /* First, render the ambient color only for the opaque objects. */
     m_irradiance_cubemap_rt->bindTexture(6);
@@ -739,7 +739,7 @@ void CascadedPCSS::RenderTexturedModels()
         m_directional_light_shader->setUniform("u_model",         m_models_with_model_matrices[i].second);
         m_directional_light_shader->setUniform("u_normal_matrix", glm::mat3(glm::transpose(glm::inverse(m_models_with_model_matrices[i].second))));
         m_directional_light_shader->setUniform("u_mvp",           view_projection * m_models_with_model_matrices[i].second);
-        m_directional_light_shader->setUniform("u_mv",            m_camera->m_view * m_models_with_model_matrices[i].second);
+		m_directional_light_shader->setUniform("u_mv",            m_camera->viewTransform() * m_models_with_model_matrices[i].second);
 
         m_models_with_model_matrices[i].first->Render();
     }
@@ -767,8 +767,8 @@ void CascadedPCSS::render()
     RenderTexturedModels();
 
     m_background_shader->bind();
-    m_background_shader->setUniform("u_projection", m_camera->m_projection);
-    m_background_shader->setUniform("u_view", glm::mat4(glm::mat3(m_camera->m_view)));
+	m_background_shader->setUniform("u_projection", m_camera->projectionTransform());
+	m_background_shader->setUniform("u_view", glm::mat4(glm::mat3(m_camera->viewTransform())));
     m_background_shader->setUniform("u_lod_level", m_background_lod_level);
     m_env_cubemap_rt->bindTexture();
     

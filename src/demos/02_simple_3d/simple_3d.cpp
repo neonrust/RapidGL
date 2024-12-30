@@ -134,8 +134,8 @@ void Simple3d::render()
     m_simple_texturing_shader->bind();
     m_simple_texturing_shader->setUniform("mix_factor", m_mix_factor);
 
-    auto view_projection = m_camera->m_projection * m_camera->m_view;
-    
+	const auto view_projection = m_camera->projectionTransform() * m_camera->viewTransform();
+
     for (unsigned i = 0; i < m_objects.size(); ++i)
     {
         m_simple_texturing_shader->setUniform("color", m_objects_colors[i]);

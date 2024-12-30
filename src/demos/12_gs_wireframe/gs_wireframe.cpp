@@ -118,8 +118,8 @@ void GSWireframe::render()
     m_directional_light_shader->setUniform("line_info.width",                  m_line_width * 0.5f);
     m_directional_light_shader->setUniform("line_info.color",                  m_line_color);
 
-    const auto view_projection = m_camera->m_projection * m_camera->m_view;
-    
+	const auto view_projection = m_camera->projectionTransform() * m_camera->viewTransform();
+
     for (unsigned i = 0; i < m_objects.size(); ++i)
     {
         m_directional_light_shader->setUniform("model", m_objects_model_matrices[i]);

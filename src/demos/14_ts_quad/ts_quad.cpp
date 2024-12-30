@@ -129,7 +129,7 @@ void Tessellation2D::render()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glBindVertexArray(m_quad_points_vao_id);
-    auto view_projection = m_camera->m_projection * m_camera->m_view;
+	const auto view_projection = m_camera->projectionTransform() * m_camera->viewTransform();
 
     /* Draw curve */
     m_quad_tessellation_shader->bind();

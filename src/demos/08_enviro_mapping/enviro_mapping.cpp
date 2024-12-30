@@ -227,7 +227,7 @@ void EnvironmentMapping::render()
     glViewport(0, 0, RGL::Window::getWidth(), RGL::Window::getHeight());
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    render_objects(m_camera->m_view, m_camera->m_projection, m_camera->position());
+	render_objects(m_camera->viewTransform(), m_camera->projectionTransform(), m_camera->position());
 }
 
 void EnvironmentMapping::render_objects(const glm::mat4& camera_view, const glm::mat4& camera_projection, const glm::vec3& camera_position, int ignore_obj_id)

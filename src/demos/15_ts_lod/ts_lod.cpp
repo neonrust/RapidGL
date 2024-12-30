@@ -117,7 +117,7 @@ void TessellationLoD::render()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    auto view_projection = m_camera->m_projection * m_camera->m_view;
+	const auto view_projection = m_camera->projectionTransform() * m_camera->viewTransform();
 
     /* Draw curve */
     m_pn_tessellation_shader->bind();
@@ -127,7 +127,7 @@ void TessellationLoD::render()
     m_pn_tessellation_shader->setUniform("max_tess_level",                   m_max_tess_level);
     m_pn_tessellation_shader->setUniform("min_depth",                        m_min_depth);
     m_pn_tessellation_shader->setUniform("max_depth",                        m_max_depth);
-    m_pn_tessellation_shader->setUniform("view_matrix",                      m_camera->m_view);
+	m_pn_tessellation_shader->setUniform("view_matrix",                      m_camera->viewTransform());
     m_pn_tessellation_shader->setUniform("directional_light.base.color",     m_dir_light_properties.color);
     m_pn_tessellation_shader->setUniform("directional_light.base.intensity", m_dir_light_properties.intensity);
     m_pn_tessellation_shader->setUniform("directional_light.direction",      m_dir_light_properties.direction);

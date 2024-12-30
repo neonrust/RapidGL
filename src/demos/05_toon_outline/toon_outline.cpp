@@ -285,7 +285,7 @@ void ToonOutline::stencil_outline()
     m_stencil_outline_shader->setUniform("outline_color", m_outline_color);
     m_stencil_outline_shader->setUniform("screen_resolution", RGL::Window::getSize());
 
-    auto view_projection = m_camera->m_projection * m_camera->m_view;
+	const auto view_projection = m_camera->projectionTransform() * m_camera->viewTransform();
 
     for (unsigned i = 0; i < m_objects.size(); ++i)
     {
@@ -311,8 +311,8 @@ void ToonOutline::ps_outline()
 
     m_generate_data_outline_shader->bind();
 
-    auto view       = m_camera->m_view;
-    auto projection = m_camera->m_projection;
+	auto view       = m_camera->viewTransform();
+	auto projection = m_camera->projectionTransform();
 
     m_generate_data_outline_shader->setUniform("projection", projection);
 
@@ -401,7 +401,7 @@ void ToonOutline::render_toon_shaded_objects()
         m_toon_shaders[toon_shader_id]->setUniform("dark_shade_cutoff", m_twin_shade_dark_shade_cutoff);
     }
 
-    auto view_projection = m_camera->m_projection * m_camera->m_view;
+	const auto view_projection = m_camera->projectionTransform() * m_camera->viewTransform();
 
     for (unsigned i = 0; i < m_objects.size(); ++i)
     {

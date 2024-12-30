@@ -190,8 +190,10 @@ void InstancedParticlesCS::render()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     /* Draw the grid */
+	const auto view_projection = m_camera->projectionTransform() * m_camera->viewTransform();
+
     m_simple_shader->bind();
-    m_simple_shader->setUniform("mvp", m_camera->m_projection * m_camera->m_view);
+	m_simple_shader->setUniform("mvp", view_projection);
     m_simple_shader->setUniform("color", glm::vec3(0.4));
     m_simple_shader->setUniform("mix_factor", 1.0f);
 
@@ -201,8 +203,8 @@ void InstancedParticlesCS::render()
 
     /* Draw the particles */
     m_particles_render_shader->bind();
-    m_particles_render_shader->setUniform("u_mvp",        m_camera->m_projection * m_camera->m_view);
-    m_particles_render_shader->setUniform("u_model_view", m_camera->m_view);
+	m_particles_render_shader->setUniform("u_mvp",        view_projection);
+	m_particles_render_shader->setUniform("u_model_view", m_camera->viewTransform());
     m_particles_render_shader->setUniform("u_diffuse",    m_particles_color);
     m_instanced_model.Render(m_total_particles);
 }

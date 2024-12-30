@@ -555,7 +555,7 @@ void PCSS::RenderTexturedModels()
     m_ambient_light_shader->setUniform("u_has_ao_map",        true);
     m_ambient_light_shader->setUniform("u_has_emissive_map",  false);
 
-    auto view_projection = m_camera->m_projection * m_camera->m_view;
+	const auto view_projection = m_camera->projectionTransform() * m_camera->viewTransform();
 
     /* First, render the ambient color only for the opaque objects. */
     m_irradiance_cubemap_rt->bindTexture(6);
@@ -633,8 +633,8 @@ void PCSS::render()
     RenderTexturedModels();
 
     m_background_shader->bind();
-    m_background_shader->setUniform("u_projection", m_camera->m_projection);
-    m_background_shader->setUniform("u_view", glm::mat4(glm::mat3(m_camera->m_view)));
+	m_background_shader->setUniform("u_projection", m_camera->projectionTransform());
+	m_background_shader->setUniform("u_view", glm::mat4(glm::mat3(m_camera->viewTransform())));
     m_background_shader->setUniform("u_lod_level", m_background_lod_level);
     m_env_cubemap_rt->bindTexture();
     
