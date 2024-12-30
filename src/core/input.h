@@ -175,7 +175,7 @@ namespace RGL
          *         of the cursor position within the
          *         current window.
          */
-        static glm::vec2 getMousePosition();
+        static glm::uvec2 getMousePosition();
 
         /**
          * @brief Enable or disable visibility of the cursor
@@ -184,7 +184,7 @@ namespace RGL
          */
         static void setMouseCursorVisibility(bool is_visible);
 
-        static void setMouseCursorPosition(const glm::vec2 & cursor_position);
+        static void setMousePosition(const glm::uvec2 &cursor_position);
 
 		static float getGamepadAxis(int gamepad, int axis);
 		static bool getGamepadButton(int gamepad, int button);

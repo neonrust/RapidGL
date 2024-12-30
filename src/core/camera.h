@@ -50,13 +50,17 @@ public:
 	void setFarPlane(float f);
 	void setNearPlane(float n);
 
-	inline glm::quat orientation() const { return m_orientation; }
 	inline glm::vec3 position()    const { return m_position; }
-	inline glm::vec3 direction()   const { return m_direction; }
-	inline float aspectRatio()     const { return m_aspect_ratio; }
-	inline float nearPlane()       const { return m_near; }
-	inline float farPlane()        const { return m_far; }
-	inline float verticalFov()     const { return m_fovy; }
+	inline glm::quat orientation() const { return m_orientation; }
+
+	inline glm::vec3 directionVector() const { return m_direction; }
+	inline glm::vec3 forwardVector()   const { return -m_direction; }
+		   glm::vec3 rightVector()     const;
+		   glm::vec3 upVector()        const;
+	inline float aspectRatio()   const { return m_aspect_ratio; }
+	inline float nearPlane()     const { return m_near; }
+	inline float farPlane()      const { return m_far; }
+	inline float verticalFov()   const { return m_fovy; }
 
 	const Frustum &frustum();
 
@@ -82,7 +86,9 @@ public:
 	KeyCode m_down_key;
 
 private:
+	void updateDirection();
 	void updateFrustum();
+	void move(const glm::vec3 & position, const glm::vec3& dir, float amount);
 
 private:
 	Frustum _frustum;
@@ -95,11 +101,10 @@ private:
 	float m_aspect_ratio;
 	float m_fovy; // in degrees
 
-	glm::vec2 m_mouse_pressed_position;
-	bool      m_is_dirty;
-	bool      m_is_mouse_move;
+	glm::ivec2 m_mouse_pressed_position;
+	bool       m_is_dirty;
+	bool       m_is_mouse_move;
 
-	void move(const glm::vec3 & position, const glm::vec3& dir, float amount);
 };
 
 } // RGL

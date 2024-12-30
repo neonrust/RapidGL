@@ -165,15 +165,15 @@ namespace RGL
         return !getMouse(keyCode) && m_last_mouse_states[keyCode];
     }
 
-    glm::vec2 Input::getMousePosition()
+	glm::uvec2 Input::getMousePosition()
     {
         double x_pos, y_pos;
         glfwGetCursorPos(m_window, &x_pos, &y_pos);
 
-        return glm::vec2(x_pos, y_pos);
+		return glm::uvec2(x_pos, y_pos);
     }
 
-	void Input::setMouseCursorPosition(const glm::vec2 & cursor_position)
+	void Input::setMousePosition(const glm::uvec2 & cursor_position)
 	{
 		glfwSetCursorPos(m_window, cursor_position.x, cursor_position.y);
 	}

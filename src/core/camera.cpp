@@ -3,6 +3,10 @@
 namespace RGL
 {
 
+static constexpr glm::vec3 AXIS_X { 1, 0, 0 };
+static constexpr glm::vec3 AXIS_Y { 0, 1, 0 };
+static constexpr glm::vec3 AXIS_Z { 0, 0, 1 };
+
 Camera::Camera(bool is_ortho)
 	: m_view                  (1),
 	m_projection            (1),
@@ -18,7 +22,7 @@ Camera::Camera(bool is_ortho)
 	m_down_key              (KeyCode::Q),
 	m_orientation           (glm::vec3(0)),
 	m_position              (glm::vec3(0)),
-	m_direction             (glm::vec3(0, 0, -1)),
+	m_direction             (-AXIS_Z),
 	m_near                  (0.01f),
 	m_far                   (100),
 	m_aspect_ratio          (1),
@@ -58,62 +62,78 @@ const Frustum &Camera::frustum()
 
 void Camera::update(double dt)
 {
-	/* Camera Movement */
-	auto movement_amount = float(m_move_speed * dt);
+	// Camera Movement
+	const auto movement_amount = float(m_move_speed * dt);
 
 	if (Input::getKey(m_forward_key))
-		move(m_position, glm::conjugate(m_orientation) * glm::vec3(0, 0, -1), movement_amount);
+		// move(m_position, glm::conjugate(m_orientation) * glm::vec3(0, 0, -1), movement_amount);
+		move(m_position, forwardVector(), movement_amount);
 
 	if (Input::getKey(m_backward_key))
-		move(m_position, glm::conjugate(m_orientation) * glm::vec3(0, 0, 1), movement_amount);
+		// move(m_position, glm::conjugate(m_orientation) * glm::vec3(0, 0, 1), movement_amount);
+		move(m_position, -forwardVector(), movement_amount);
 
 	if (Input::getKey(m_right_key))
-		move(m_position, glm::conjugate(m_orientation) * glm::vec3(1, 0, 0), movement_amount);
+		// move(m_position, glm::conjugate(m_orientation) * glm::vec3(1, 0, 0), movement_amount);
+		move(m_position, rightVector(), movement_amount);
 
 	if (Input::getKey(m_left_key))
-		move(m_position, glm::conjugate(m_orientation) * glm::vec3(-1, 0, 0), movement_amount);
+		// move(m_position, glm::conjugate(m_orientation) * glm::vec3(-1, 0, 0), movement_amount);
+		move(m_position, -rightVector(), movement_amount);
 
 	if (Input::getKey(m_up_key))
-		move(m_position, glm::vec3(0, 1, 0), movement_amount);
+		move(m_position, AXIS_Y, movement_amount); // regardless of orientation
 
 	if (Input::getKey(m_down_key))
-		move(m_position, glm::vec3(0, -1, 0), movement_amount);
+		move(m_position, -AXIS_Y, movement_amount); // regardless of orientation
 
 	/* Camera Rotation */
 	if (Input::getMouse(m_unlock_mouse_key))
 	{
-		if (!m_is_mouse_move)
-			m_mouse_pressed_position = Input::getMousePosition();
-
-		m_is_mouse_move = true;
+		if (not m_is_mouse_move)
+		{
+			m_mouse_pressed_position = glm::ivec2(Input::getMousePosition());
+			Input::setMouseCursorVisibility(false);
+			//Input::setMousePosition( center of the screen )
+			m_is_mouse_move = true;
+		}
 	}
-	else
+	else if(m_is_mouse_move)
+	{
+		Input::setMousePosition(m_mouse_pressed_position);
+		Input::setMouseCursorVisibility(true);
 		m_is_mouse_move = false;
+	}
 
 	if (m_is_mouse_move)
 	{
-		auto mouse_pos = Input::getMousePosition();
-		auto delta_pos = mouse_pos - m_mouse_pressed_position;
+		auto mouse_pos = glm::ivec2(Input::getMousePosition());
+		auto delta_pos = mouse_pos - m_mouse_pressed_position; // TODO: actually, subtract the center of the screen
+		Input::setMousePosition(m_mouse_pressed_position); // TODO: actually, to the center of the screen
 
-		auto rot_y = delta_pos.x != 0.0f;
-		auto rot_x = delta_pos.y != 0.0f;
+		// TODO: probably, this should instead keep track of yaw & pitch (as floats)
+		//   and here just update those, and at the end build 'm_orientation' from those
+		//   and of course, this all should be in a "controller" class, not in the camera itself
 
-		/* pitch */
-		if (rot_x)
-			setOrientation(glm::angleAxis(glm::radians(delta_pos.y * m_sensitivity), glm::vec3(1, 0, 0)) * m_orientation);
+		// yaw   (rotation around the Y axis)
+		if (delta_pos.x)
+		{
+			const auto angle = glm::radians(float(delta_pos.x) * m_sensitivity);
+			setOrientation(m_orientation * glm::angleAxis(angle, AXIS_Y));
+		}
 
-		/* yaw */
-		if (rot_y)
-			setOrientation(m_orientation * glm::angleAxis(glm::radians(delta_pos.x * m_sensitivity), glm::vec3(0, 1, 0)));
-
-		if (rot_x || rot_y)
-			m_mouse_pressed_position = Input::getMousePosition();
+		// pitch  (rotation around the X axis)
+		if (delta_pos.y)
+		{
+			const auto angle = glm::radians(float(delta_pos.y) * m_sensitivity);
+			setOrientation(glm::angleAxis(angle, AXIS_X) * m_orientation);
+		}
 	}
 
 	if (m_is_dirty)
 	{
-		glm::mat4 R = glm::mat4_cast(m_orientation);
-		glm::mat4 T = glm::translate(glm::mat4(1), -m_position);
+		const auto R = glm::mat4_cast(m_orientation);
+		const auto T = glm::translate(glm::mat4(1), -m_position);
 
 		m_view = R * T;
 
@@ -140,29 +160,34 @@ void Camera::setOrientationEuler(const glm::vec3 &euler)
 		glm::angleAxis(glm::radians(euler.y), glm::vec3(0, 1, 0)) *
 		glm::angleAxis(glm::radians(euler.z), glm::vec3(0, 0, 1));
 
-	m_direction = glm::normalize(glm::conjugate(m_orientation) * glm::vec3(0, 0, 1));
+	updateDirection();
 	m_is_dirty  = true;
 }
 
 void Camera::setOrientation(const glm::vec3 &direction)
 {
 	m_orientation = glm::quatLookAt(glm::normalize(direction), glm::vec3(0, 1, 0));
-	m_direction = glm::normalize(glm::conjugate(m_orientation) * glm::vec3(0, 0, 1));
+	updateDirection();
 	m_is_dirty  = true;
 }
 
 void Camera::setOrientation(const glm::vec3 &axis, float angle)
 {
 	m_orientation = glm::angleAxis(glm::radians(angle), glm::normalize(axis));
-	m_direction   = glm::normalize(glm::conjugate(m_orientation) * glm::vec3(0, 0, 1));
+	updateDirection();
 	m_is_dirty    = true;
 }
 
 void Camera::setOrientation(const glm::quat &quat)
 {
 	m_orientation = quat;
-	m_direction   = glm::normalize(glm::conjugate(m_orientation) * glm::vec3(0, 0, 1));
+	updateDirection();
 	m_is_dirty    = true;
+}
+
+void Camera::updateDirection()
+{
+	m_direction = glm::normalize(glm::conjugate(m_orientation) * AXIS_Z);
 }
 
 void Camera::move(const glm::vec3& position, const glm::vec3& dir, float amount)
@@ -192,6 +217,16 @@ void Camera::setNearPlane(float n)
 {
 	m_is_dirty = n != m_near;
 	m_near = n;
+}
+
+glm::vec3 Camera::upVector() const
+{
+	return glm::normalize(glm::conjugate(m_orientation) * AXIS_Y);
+}
+
+glm::vec3 Camera::rightVector() const
+{
+	return glm::normalize(glm::conjugate(m_orientation) * AXIS_X);
 }
 
 } // RGL
