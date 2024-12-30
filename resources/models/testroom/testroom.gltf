@@ -103,12 +103,12 @@
 		{
 			"mimeType":"image/png",
 			"name":"rocks-1k-normal.png",
-			"uri":"../../../../strain/SOURCE-TEXTURES/rocks-1k-normal.png"
+			"uri":"../../../../strain/data/texture/rocks-1k-normal.jxl"
 		},
 		{
 			"mimeType":"image/png",
 			"name":"rocks-1k-diffuse.png",
-			"uri":"../../../../strain/SOURCE-TEXTURES/rocks-1k-diffuse.png"
+			"uri":"../../../../strain/data/texture/rocks-1k-diffuse.jxl"
 		}
 	],
 	"accessors":[
