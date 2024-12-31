@@ -162,16 +162,28 @@ void main()
 	//   likely tile-based light culling from a (potentially very) large number of lights.
 
 	// for now, we'll just use a hard-coded test case
-	PointLight lights[2];
+	PointLight lights[4];
+
 	lights[0].base.color = vec3(1, 0.8, 0.5);
 	lights[0].base.intensity = 100;
 	lights[0].position = vec3(-10, 2, 0);
-	lights[0].radius = 8;
+	lights[0].radius = 15;
 
-	lights[1].base.color = vec3(0.4, 0.7, 1.0);
+	lights[1].base.color = vec3(0.3, 0.5, 1);
 	lights[1].base.intensity = 100;
 	lights[1].position = vec3(10, 2, 0);
-	lights[1].radius = 8;
+	lights[1].radius = 15;
+
+	lights[2].base.color = vec3(0.4, 1, 0.4);
+	lights[2].base.intensity = 150;
+	lights[2].position = vec3(0, 2, -10);
+	lights[2].radius = 18;
+
+	lights[3].base.color = vec3(1, 0.1, 0.05);
+	lights[3].base.intensity = 100;
+	lights[3].position = vec3(0, 2, 10);
+	lights[3].radius = 15;
+
 
 	vec3 fog_radiance = vec3(0);
 
@@ -254,7 +266,6 @@ vec3 scatterPointLight(Ray eye_ray, PointLight light, float max_depth)
 		// float attenuation_lin = 1 - (d*d)/(light.radius*light.radius);
 		// float attenuation_lin = 1 - pow(d, 0.8)/pow(light.radius, 0.8);
 		float attenuation_lin = 1 - d/light.radius;
-
 		float attenuation_sq = getSquareFalloffAttenuation(closest_to_light, light.radius*light.radius);
 
 		float attenuation = mix(attenuation_lin, attenuation_sq, 0.05);

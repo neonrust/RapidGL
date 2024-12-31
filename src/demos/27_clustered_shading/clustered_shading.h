@@ -255,6 +255,8 @@ private:
     float m_bloom_dirt_intensity;
     bool  m_bloom_enabled;
 
+	float m_fog_density;
+
 	std::chrono::microseconds m_cull_time;
 	std::chrono::microseconds m_depth_time;
 	std::chrono::microseconds m_cluster_time3;

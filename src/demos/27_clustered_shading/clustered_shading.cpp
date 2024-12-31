@@ -49,7 +49,8 @@ ClusteredShading::ClusteredShading() :
 	m_bloom_knee          (0.1f),
 	m_bloom_intensity     (1.5f),
 	m_bloom_dirt_intensity(0),
-	m_bloom_enabled       (true)
+	m_bloom_enabled       (false),
+	m_fog_density         (0.005f)
 {
 }
 
@@ -543,16 +544,34 @@ void ClusteredShading::GeneratePointLights()
 			.intensity = 100
 		},
 		.position = { -10, 2.f, 0 },
-		.radius = 8.f,
+		.radius = 15,
 	});
 
 	m_point_lights.push_back({
 		.base = {
-			.color = { 0.4f, 0.7f, 1.0 },
+			.color = { 0.3f, 0.5f, 1.0 },
 			.intensity = 100
 		},
 		.position = { 10, 2.f, 0 },
-		.radius = 8.f,
+		.radius = 15,
+	});
+
+	m_point_lights.push_back({
+		.base = {
+			.color = { 0.4f, 1.0f, 0.4f },
+			.intensity = 150
+		},
+		.position = { 0, 2.f, -10 },
+		.radius = 18,
+	});
+
+	m_point_lights.push_back({
+		.base = {
+			.color = { 1.0f, 0.1f, 0.05f },
+			.intensity = 100
+		},
+		.position = { 0, 2.f, 10 },
+		.radius = 15,
 	});
 	return;
 
@@ -920,7 +939,7 @@ void ClusteredShading::render()
 	// TODO: Render atmospheric/fog light scattering (i.e. volumetric lights)
 	//    - lights culled into screen tiles (i.e. only 2d)
 	//    - (optional) grid/voxel-based atmospheric density; otherwise, just use a constant
-	m_scattering_pp.shader().setUniform("u_fog_density"sv,     0.005f);
+	m_scattering_pp.shader().setUniform("u_fog_density"sv,     m_fog_density);
 	m_scattering_pp.shader().setUniform("u_fog_color"sv,       glm::vec3(1, 1, 1));
 	m_scattering_pp.shader().setUniform("u_grid_dim"sv,        m_cluster_grid_dim);
 	m_scattering_pp.shader().setUniform("u_cluster_size_ss"sv, glm::uvec2(m_cluster_grid_block_size));
