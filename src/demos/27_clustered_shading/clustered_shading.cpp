@@ -898,7 +898,7 @@ void ClusteredShading::render()
 	// TODO: Render atmospheric/fog light scattering (i.e. volumetric lights)
 	//    - lights culled into screen tiles (i.e. only 2d)
 	//    - (optional) grid/voxel-based atmospheric density; otherwise, just use a constant
-	m_scattering_pp.shader().setUniform("u_fog_density"sv,     0.01f);
+	m_scattering_pp.shader().setUniform("u_fog_density"sv,     0.005f);
 	m_scattering_pp.shader().setUniform("u_fog_color"sv,       glm::vec3(1, 1, 1));
 	m_scattering_pp.shader().setUniform("u_grid_dim"sv,        m_cluster_grid_dim);
 	m_scattering_pp.shader().setUniform("u_cluster_size_ss"sv, glm::uvec2(m_cluster_grid_block_size));

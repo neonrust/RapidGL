@@ -23,6 +23,8 @@ uniform float u_log_grid_dim_y;
 uniform mat4  u_view;
 uniform mat4  u_projection;
 
+mat4 inv_view;
+
 struct Ray
 {
 	vec3 start;
@@ -50,11 +52,13 @@ uint computeClusterIndex(uvec3 cluster_coord);
 uvec3 computeClusterCoord(vec2 screen_pos, float view_z);
 float getSquareFalloffAttenuation(vec3 pos_to_light, float light_radius);
 
-vec3 scatterLightsInCluster(Ray eye_ray, uvec3 cluster_coord, float frag_depth);
-vec3 scatterPointLight(Ray eye_ray, PointLight light, float frag_depth);
+vec3 scatterLightsInCluster(Ray eye_ray, uvec3 cluster_coord, float max_depth);
+vec3 scatterPointLight(Ray eye_ray, PointLight light, float max_depth);
 
 bool castRay(Ray ray, Sphere sphere, inout RaySphereResult result);
 vec3 rayPoint(Ray ray, float fraction);
+float capDepth(Ray ray, float fraction, float max_depth, out bool capped);
+float rayFraction(Ray ray, vec3 point);
 
 layout(std430, binding = DIRECTIONAL_LIGHTS_SSBO_BINDING_INDEX) buffer DirLightsSSBO
 {
@@ -138,6 +142,7 @@ void main()
 	screen_norm.y *= aspect_ratio;
 
 	float view_z     = texture(u_input_depth, screen_pos/screen_size).r;
+	inv_view = inverse(u_view);
 	float frag_depth = linearDepth(view_z);
 
 	vec4 src_color = imageLoad(u_input_color, ivec2(screen_pos));
@@ -145,17 +150,12 @@ void main()
 	Ray eye_ray;
 	eye_ray.start = u_cam_pos;
 	// TODO: how to calculate this magical constant?
-	//  (fov/projection-dependent, for vfov 90, ~0.55 works)
+	//  it's fov/projection-dependent; for vfov 90, ~0.55 works
 	eye_ray.direction = normalize(u_cam_forward*0.55 + u_cam_right*screen_norm.x + u_cam_up*screen_norm.y);
 
-	// to camera space
-	// eye_ray.start = (u_view * vec4(eye_ray.start, 1)).xyz;
-	// eye_ray.direction = u_view * eye_ray.direction;
-
-
-	uvec3 cluster_coord = computeClusterCoord(screen_pos, u_near_z);
-
-	vec3 fog_radiance = vec3(0);
+	// to camera space  --  why does this not work?  capping depth would be much easier!
+	// eye_ray.start = vec3(0);
+	// eye_ray.direction = (u_view * vec4(eye_ray.direction, 0)).xyz;
 
 
 	// TODO: this list of lights should be computed by a separate pre-process;
@@ -173,11 +173,13 @@ void main()
 	lights[1].position = vec3(10, 2, 0);
 	lights[1].radius = 8;
 
+	vec3 fog_radiance = vec3(0);
+
 	for(int idx = 0; idx < lights.length(); ++idx)
 		fog_radiance += scatterPointLight(eye_ray, lights[idx], frag_depth);
 
 
-	// TODO: argh, doind this by cluster DOES NOT WORK!
+	// TODO: argh, doing this by cluster DOES NOT WORK!
 	//   e.g. a cluster containing only a wall not lit by the light
 	//   will not contain that light, thus can't get scattering either...
 /*
@@ -212,7 +214,7 @@ vec3 scatterLightsInCluster(Ray eye_ray, uvec3 cluster_coord, float frag_depth)
 	return radiance;
 }
 
-vec3 scatterPointLight(Ray eye_ray, PointLight light, float frag_depth)
+vec3 scatterPointLight(Ray eye_ray, PointLight light, float max_depth)
 {
 	vec3 radiance = vec3(0);
 
@@ -220,35 +222,44 @@ vec3 scatterPointLight(Ray eye_ray, PointLight light, float frag_depth)
 	light_sphere.center = light.position;
 	light_sphere.radius = light.radius;
 
-	// to camera space
+	// to camera space  --  why does this not work?  capping depth would be much easier!
 	// light_sphere.center = (u_view * vec4(light_sphere.center, 1)).xyz;
 
 
 	RaySphereResult result;
 	if(castRay(eye_ray, light_sphere, result))
 	{
-		// TODO: reject hits farther away than 'frag_depth'
-		// TODO: prevent the 'mirror' light; inside the radius, where t1 and/or t2 is negative
+		float t1 = result.t1_fraction;
+		float t_closest = result.closest_fraction;
+		float t2 = result.t2_fraction;
 
-		// vec3 t1p = rayPoint(eye_ray, result.t1_fraction);
-		// vec3 t2p = rayPoint(eye_ray, result.t2_fraction);
+		bool capped = false;
+		t1 = capDepth(eye_ray, result.t1_fraction, max_depth, capped);
+		if(capped)
+			t_closest = t1;
+		else
+			t_closest = capDepth(eye_ray, result.closest_fraction, max_depth, capped);
+		if(capped)
+			t2 = t_closest;
+		else
+			t2 = capDepth(eye_ray, result.t2_fraction, max_depth, capped);
 
-		// t1p.z = min(t1p.z, frag_depth);
-		// t2p.z = min(t2p.z, frag_depth);
+		float thickness = t2 - t1;
+		float sphere_fraction = thickness/(2*light.radius);  // fraction of diameter sampled
+		vec3 point_closest = rayPoint(eye_ray, t_closest);
+		vec3 closest_to_light = point_closest - light.position;
 
-		// float thickness_sq = dot(t1p - t2p, t1p - t2p);
-		// float sphere_fraction_sq = thickness_sq / (4*light.radius*light.radius);
+		// NOTE: linear fall off actually looks a bit nicer (subjectively)
+		float d = length(closest_to_light);
+		// float attenuation_lin = 1 - (d*d)/(light.radius*light.radius);
+		// float attenuation_lin = 1 - pow(d, 0.8)/pow(light.radius, 0.8);
+		float attenuation_lin = 1 - d/light.radius;
 
-		result.t1_fraction = max(0, result.t1_fraction);
-		result.t2_fraction = max(0, result.t2_fraction);
-		result.closest_fraction = max(0, result.closest_fraction);
+		float attenuation_sq = getSquareFalloffAttenuation(closest_to_light, light.radius*light.radius);
 
-		float thickness = result.t2_fraction - result.t1_fraction;
-		float sphere_fraction = thickness/(2*light.radius);
-		vec3 middle_point = rayPoint(eye_ray, result.closest_fraction);
-		vec3 closest_to_light = middle_point - light.position;
+		float attenuation = mix(attenuation_lin, attenuation_sq, 0.05);
 
-		float energy = light.base.intensity * getSquareFalloffAttenuation(closest_to_light, light.radius*light.radius);
+		float energy = light.base.intensity * attenuation;
 		float fog_energy = energy * sphere_fraction;
 		radiance += fog_energy * u_fog_density * light.base.color * u_fog_color;
 	}
@@ -309,6 +320,30 @@ bool castRay(Ray ray, Sphere sphere, inout RaySphereResult result)
 vec3 rayPoint(Ray ray, float fraction)
 {
 	return ray.start + ray.direction*fraction;
+}
+
+float rayFraction(Ray ray, vec3 point)
+{
+	// reeturn the fraction alonf 'ray' that is closest to 'point'
+	vec3 v = point - ray.start;
+	return max(dot(v, ray.direction), 0);
+}
+
+float capDepth(Ray ray, float fraction, float max_depth, out bool capped)
+{
+	vec3 p = rayPoint(ray, fraction);
+	vec3 p_cs = (u_view * vec4(p, 1)).xyz;
+
+	capped = -p_cs.z > max_depth;
+	if(capped)
+	{
+		// float dz = max_depth - ray.direction.z;
+		// vec2 dxy = ray.direction.xy * dz/ray.direction.z;
+		// p_cs.xy = ray.direction.xy + dxy;
+		p_cs.z = -max_depth;
+	}
+	p = (inv_view * vec4(p_cs, 1)).xyz;
+	return rayFraction(ray, p);
 }
 
 // from pbr_lighting.glh (slightly modified)
