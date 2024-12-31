@@ -54,10 +54,10 @@ layout(std430, binding = AREA_LIGHT_GRID_SSBO_BINDING_INDEX) buffer AreaLightGri
     LightGrid area_light_grid[];
 };
 
-layout(std430, binding = UNIQUE_ACTIVE_CLUSTERS_SSBO_BINDING_INDEX) buffer UniqueActiveClustersSSBO
+layout(std430, binding = ACTIVE_CLUSTERS_SSBO_BINDING_INDEX) buffer UniqueActiveClustersSSBO
 {
-    uint unique_clusters_count;
-    uint unique_clusters[];
+    uint active_clusters_count;
+    uint active_clusters[];
 };
 
 uniform mat4 u_view_matrix;
@@ -85,13 +85,13 @@ void main()
 {
     uint index = 0;
 
-    if (gl_LocalInvocationIndex == 0)
+    if (gl_LocalInvocationIndex == 0) // once per cluster
     {
         s_point_lights_count = 0;
         s_spot_lights_count = 0;
         s_area_lights_count = 0;
 
-        s_cluster_index = unique_clusters[gl_WorkGroupID.x];
+        s_cluster_index = active_clusters[gl_WorkGroupID.x];
         s_cluster_aabb = clusters[s_cluster_index];
     }
     barrier();
@@ -108,9 +108,7 @@ void main()
             index = atomicAdd(s_point_lights_count, 1);
 
             if (index < 1024)
-            {
                 s_point_lights_list[index] = i;
-            }
         }
     }
 
@@ -126,9 +124,7 @@ void main()
             index = atomicAdd(s_spot_lights_count, 1);
 
             if (index < 1024)
-            {
                 s_spot_lights_list[index] = i;
-            }
         }
     }
 
@@ -148,9 +144,7 @@ void main()
                 index = atomicAdd(s_area_lights_count, 1);
 
                 if (index < 1024)
-                {
                     s_area_lights_list[index] = i;
-                }
             }
         }
     }

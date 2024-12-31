@@ -75,14 +75,14 @@ ClusteredShading::~ClusteredShading()
 
     glDeleteBuffers(1, &m_clusters_ssbo);
     glDeleteBuffers(1, &m_cull_lights_dispatch_args_ssbo);
-    glDeleteBuffers(1, &m_clusters_flags_ssbo);
+	glDeleteBuffers(1, &m_nonempty_clusters_ssbo);
     glDeleteBuffers(1, &m_point_light_index_list_ssbo);
     glDeleteBuffers(1, &m_point_light_grid_ssbo);
     glDeleteBuffers(1, &m_spot_light_index_list_ssbo);
     glDeleteBuffers(1, &m_spot_light_grid_ssbo);
     glDeleteBuffers(1, &m_area_light_index_list_ssbo);
     glDeleteBuffers(1, &m_area_light_grid_ssbo);
-    glDeleteBuffers(1, &m_unique_active_clusters_ssbo);
+	glDeleteBuffers(1, &m_active_clusters_ssbo);
 
 	// glDeleteTextures(1, &m_depth_tex2D_id);
 	// glDeleteFramebuffers(1, &m_depth_pass_fbo_id);
@@ -156,11 +156,13 @@ void ClusteredShading::init_app()
 	// Create a buffer to hold (boolean) flags in the cluster grid that contain samples.
 	glCreateBuffers(1, &m_clusterShading.ssbo.aabb);
 	glBindBufferBase (GL_SHADER_STORAGE_BUFFER, CLUSTERS_SSBO_BINDING_INDEX, m_clusterShading.ssbo.aabb);
-	glCreateBuffers(1, &m_clusters_flags_ssbo);
-	glBindBufferBase (GL_SHADER_STORAGE_BUFFER, CLUSTERS_FLAGS_SSBO_BINDING_INDEX, m_clusters_flags_ssbo);
-	// A buffer (and internal counter) that holds a list of the unique clusters (the clusters that are visible and actually contain a sample).
-	glCreateBuffers(1, &m_unique_active_clusters_ssbo);
-	glBindBufferBase (GL_SHADER_STORAGE_BUFFER, UNIQUE_ACTIVE_CLUSTERS_SSBO_BINDING_INDEX, m_unique_active_clusters_ssbo);
+	glCreateBuffers(1, &m_nonempty_clusters_ssbo);
+	glBindBufferBase (GL_SHADER_STORAGE_BUFFER, NONEMPTY_CLUSTERS_SSBO_BINDING_INDEX, m_nonempty_clusters_ssbo);
+
+	// A buffer (and internal counter) that holds a list of the active/used clusters (i.e. that contain fragments).
+	glCreateBuffers(1, &m_active_clusters_ssbo);
+	glBindBufferBase (GL_SHADER_STORAGE_BUFFER, ACTIVE_CLUSTERS_SSBO_BINDING_INDEX, m_active_clusters_ssbo);
+
 	// A buffer that stores number of work groups to be dispatched by cull lights shader
 	glCreateBuffers(1, &m_cull_lights_dispatch_args_ssbo);
 	glBindBufferBase (GL_SHADER_STORAGE_BUFFER, CULL_LIGHTS_DISPATCH_ARGS_SSBO_BINDING_INDEX, m_cull_lights_dispatch_args_ssbo);
@@ -218,45 +220,59 @@ void ClusteredShading::init_app()
 
     m_depth_prepass_shader = std::make_shared<Shader>(dir + "depth_pass.vert", dir + "depth_pass.frag");
     m_depth_prepass_shader->link();
+	assert(*m_depth_prepass_shader);
 
     m_generate_clusters_shader = std::make_shared<Shader>(dir + "generate_clusters.comp");
     m_generate_clusters_shader->link();
+	assert(*m_generate_clusters_shader);
 
-    m_find_visible_clusters_shader = std::make_shared<Shader>(dir + "find_visible_clusters.comp");
-    m_find_visible_clusters_shader->link();
+	m_flag_nonempty_clusters_shader = std::make_shared<Shader>(dir + "flag_nonempty_clusters.comp");
+	m_flag_nonempty_clusters_shader->link();
+	assert(*m_flag_nonempty_clusters_shader);
 
-    m_find_unique_clusters_shader = std::make_shared<Shader>(dir + "find_unique_clusters.comp");
-    m_find_unique_clusters_shader->link();
+	m_collect_active_clusters_shader = std::make_shared<Shader>(dir + "collect_active_clusters.comp");
+	m_collect_active_clusters_shader->link();
+	assert(*m_collect_active_clusters_shader);
 
     m_update_cull_lights_indirect_args_shader = std::make_shared<Shader>(dir + "update_cull_lights_indirect_args.comp");
     m_update_cull_lights_indirect_args_shader->link();
+	assert(*m_update_cull_lights_indirect_args_shader);
 
     m_cull_lights_shader = std::make_shared<Shader>(dir + "cull_lights.comp");
     m_cull_lights_shader->link();
+	assert(*m_cull_lights_shader);
 
     m_clustered_pbr_shader = std::make_shared<Shader>(dir + "pbr_lighting.vert", dir + "pbr_clustered.frag");
     m_clustered_pbr_shader->link();
+	assert(*m_clustered_pbr_shader);
 
     m_update_lights_shader = std::make_shared<Shader>(dir + "update_lights.comp");
     m_update_lights_shader->link();
+	assert(*m_update_lights_shader);
 
     m_draw_area_lights_geometry_shader = std::make_shared<Shader>(dir + "area_light_geom.vert", dir + "area_light_geom.frag");
     m_draw_area_lights_geometry_shader->link();
+	assert(*m_draw_area_lights_geometry_shader);
 
     m_equirectangular_to_cubemap_shader = std::make_shared<Shader>(dir + "cubemap.vert", dir + "equirectangular_to_cubemap.frag");
     m_equirectangular_to_cubemap_shader->link();
+	assert(*m_equirectangular_to_cubemap_shader);
 
     m_irradiance_convolution_shader = std::make_shared<Shader>(dir + "cubemap.vert", dir + "irradiance_convolution.frag");
     m_irradiance_convolution_shader->link();
-    
+	assert(*m_irradiance_convolution_shader);
+
     m_prefilter_env_map_shader = std::make_shared<Shader>(dir + "cubemap.vert", dir + "prefilter_cubemap.frag");
     m_prefilter_env_map_shader->link();
+	assert(*m_prefilter_env_map_shader);
 
 	m_precompute_brdf = std::make_shared<Shader>(dir + "FSQ.vert", dir + "precompute_brdf.frag");
     m_precompute_brdf->link();
+	assert(*m_precompute_brdf);
 
     m_background_shader = std::make_shared<Shader>(dir + "background.vert", dir + "background.frag");
     m_background_shader->link();
+	assert(*m_background_shader);
 
 
 	// Post-processing steps
@@ -271,8 +287,10 @@ void ClusteredShading::init_app()
 
 	m_line_draw_shader = std::make_shared<Shader>(dir + "line_draw.vert", dir + "line_draw.frag");
 	m_line_draw_shader->link();
+	assert(*m_line_draw_shader);
 	m_fsq_shader = std::make_shared<Shader>(dir + "FSQ.vert", dir + "FSQ.frag");
 	m_fsq_shader->link();
+	assert(*m_fsq_shader);
 
 	const auto T1 = steady_clock::now();
 	const auto shader_init_time = duration_cast<microseconds>(T1 - T0);
@@ -347,8 +365,8 @@ void ClusteredShading::calculateShadingClusterGrid()
 void ClusteredShading::	prepareClusterBuffers()
 {
 	glNamedBufferData(m_clusterShading.ssbo.aabb, sizeof(ClusterAABB) * m_clusters_count, nullptr, GL_STATIC_READ);
-	glNamedBufferData(m_clusters_flags_ssbo, sizeof(uint32_t) * m_clusters_count, nullptr, GL_STATIC_READ);
-	glNamedBufferData(m_unique_active_clusters_ssbo, sizeof(uint32_t) * m_clusters_count + sizeof(uint32_t), nullptr, GL_STATIC_READ);
+	glNamedBufferData(m_nonempty_clusters_ssbo, sizeof(uint32_t) * m_clusters_count, nullptr, GL_STATIC_READ);
+	glNamedBufferData(m_active_clusters_ssbo, sizeof(uint32_t) * m_clusters_count + sizeof(uint32_t), nullptr, GL_STATIC_READ);
 	glNamedBufferData(m_cull_lights_dispatch_args_ssbo, sizeof(uint32_t) * 3, nullptr, GL_STATIC_DRAW);
 	glNamedBufferData(m_point_light_index_list_ssbo, sizeof(uint32_t) * m_clusters_count * AVERAGE_OVERLAPPING_LIGHTS_PER_CLUSTER, nullptr, GL_DYNAMIC_DRAW);
 	glNamedBufferData(m_spot_light_index_list_ssbo, sizeof(uint32_t) * m_clusters_count * AVERAGE_OVERLAPPING_LIGHTS_PER_CLUSTER, nullptr, GL_DYNAMIC_DRAW);
@@ -540,7 +558,7 @@ void ClusteredShading::GeneratePointLights()
 
 	m_point_lights_orbit.clear();
 	m_point_lights_orbit.resize(m_point_lights_count);
-    
+
     for(uint32_t i = 0; i < m_point_lights.size(); ++i)
     {
         auto& p = m_point_lights[i];
@@ -618,7 +636,7 @@ void ClusteredShading::HdrEquirectangularToCubemap(const std::shared_ptr<RenderT
 		m_equirectangular_to_cubemap_shader->setUniform("u_view"sv, cubemap_rt->view_transform(side));
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + side, cubemap_rt->texture_id(), 0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        
+
         glDrawArrays(GL_TRIANGLES, 0, 36);
     }
     glViewport(0, 0, Window::getWidth(), Window::getHeight());
@@ -640,7 +658,7 @@ void ClusteredShading::IrradianceConvolution(const std::shared_ptr<RenderTargetC
 		m_irradiance_convolution_shader->setUniform("u_view"sv, cubemap_rt->view_transform(side));
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + side, cubemap_rt->texture_id(), 0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        
+
         glBindVertexArray(m_skybox_vao);
         glDrawArrays(GL_TRIANGLES, 0, 36);
     }
@@ -651,7 +669,7 @@ void ClusteredShading::PrefilterCubemap(const std::shared_ptr<RenderTargetCube>&
 {
     m_prefilter_env_map_shader->bind();
 	m_prefilter_env_map_shader->setUniform("u_projection"sv, cubemap_rt->projection());
-    
+
     m_env_cubemap_rt->bindTexture(1);
 
 	cubemap_rt->bindRenderTarget();
@@ -725,7 +743,7 @@ void ClusteredShading::GenSkyboxGeometry()
     glCreateBuffers(1, &m_skybox_vbo);
 
 	glm::vec3 skybox_positions[] = {
-        // positions          
+        // positions
 		{ -1, -1, -1 },
 		{  1,  1, -1 },
 		{  1, -1, -1 },
@@ -787,6 +805,8 @@ void ClusteredShading::render()
 
 	auto T0 = steady_clock::now();
 
+
+	// determine visible meshes  (only if camera or meshes moved (much))
 	cullScene();
 
 
@@ -796,10 +816,11 @@ void ClusteredShading::render()
 
 
 
-	// 1. Depth(Z) pre-pass (if camera/meshes moved, likely always)
+	// 1. Depth pre-pass  (only if camera/meshes moved, probably always)
 	renderDepthPass();
 
-    // 2. Blit depth info to tmo_ps framebuffer
+
+	// 2. Blit depth info to our main render target
 	m_depth_pass_rt.copyTo(_rt, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 
 	auto T1 = steady_clock::now();
@@ -809,15 +830,16 @@ void ClusteredShading::render()
 
 	static const uint32_t clear_val = 0;
 
-	// 3. Find visible clusters
-	glClearNamedBufferData(m_clusters_flags_ssbo, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &clear_val);
+	// 3. Find used/visible clusters
+	//   (clusters containing rendered fragments, those are the only ones we need to care about)
+	glClearNamedBufferData(m_nonempty_clusters_ssbo, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &clear_val);
 
-    m_find_visible_clusters_shader->bind();
-	m_find_visible_clusters_shader->setUniform("u_near_z"sv,          m_camera.nearPlane());
-	m_find_visible_clusters_shader->setUniform("u_far_z"sv,           m_camera.farPlane());
-	m_find_visible_clusters_shader->setUniform("u_log_grid_dim_y"sv,  m_log_grid_dim_y);
-	m_find_visible_clusters_shader->setUniform("u_cluster_size_ss"sv, glm::uvec2(m_cluster_grid_block_size));
-	m_find_visible_clusters_shader->setUniform("u_grid_dim"sv,        m_cluster_grid_dim);
+	m_flag_nonempty_clusters_shader->bind();
+	m_flag_nonempty_clusters_shader->setUniform("u_near_z"sv,          m_camera.nearPlane());
+	m_flag_nonempty_clusters_shader->setUniform("u_far_z"sv,           m_camera.farPlane());
+	m_flag_nonempty_clusters_shader->setUniform("u_log_grid_dim_y"sv,  m_log_grid_dim_y);
+	m_flag_nonempty_clusters_shader->setUniform("u_cluster_size_ss"sv, glm::uvec2(m_cluster_grid_block_size));
+	m_flag_nonempty_clusters_shader->setUniform("u_grid_dim"sv,        m_cluster_grid_dim);
 
 	m_depth_pass_rt.bindTextureSampler();
 	glDispatchCompute(GLuint(glm::ceil(float(m_depth_pass_rt.width()) / 32.f)),
@@ -829,10 +851,10 @@ void ClusteredShading::render()
 	m_cluster_time1 = duration_cast<microseconds>(T1 - T0);
 	T0 = T1;
 
-    // 4. Find unique clusters and update the indirect dispatch arguments buffer
-	glClearNamedBufferData(m_unique_active_clusters_ssbo, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &clear_val);
+	// 4. Find active clusters and update the indirect dispatch arguments buffer
+	glClearNamedBufferData(m_active_clusters_ssbo, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &clear_val);
 
-    m_find_unique_clusters_shader->bind();
+	m_collect_active_clusters_shader->bind();
 	glDispatchCompute(GLuint(glm::ceil(float(m_clusters_count) / 1024.0f)), 1, 1);
     glMemoryBarrier  (GL_SHADER_STORAGE_BARRIER_BIT);
 
@@ -1283,10 +1305,10 @@ void ClusteredShading::render_gui()
 
             if (ImGui::DragFloat3("Min Bounds", &min_lights_bounds.x, 0.01f))
                 max_lights_bounds = glm::max(min_lights_bounds, max_lights_bounds);
-            
+
             if (ImGui::DragFloat3("Max Bounds", &max_lights_bounds.x, 0.01f))
                 min_lights_bounds = glm::min(min_lights_bounds, max_lights_bounds);
-            
+
             if (ImGui::Button("Normalize Bounds"))
             {
                 float range3      = glm::pow(glm::max(min_max_point_light_radius.y, min_max_spot_light_radius.y), 3.0f);

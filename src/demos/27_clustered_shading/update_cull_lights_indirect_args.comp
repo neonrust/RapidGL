@@ -1,10 +1,10 @@
 #version 460 core
 #include "shared.h"
 
-layout(std430, binding = UNIQUE_ACTIVE_CLUSTERS_SSBO_BINDING_INDEX) buffer UniqueActiveClustersSSBO
+layout(std430, binding = ACTIVE_CLUSTERS_SSBO_BINDING_INDEX) buffer UniqueActiveClustersSSBO
 {
-	uint unique_clusters_count;
-	uint unique_clusters[];
+	uint active_clusters_count;
+	uint active_clusters[];
 };
 
 layout(std430, binding = CULL_LIGHTS_DISPATCH_ARGS_SSBO_BINDING_INDEX) buffer CullLightsDispatchArgsSSBO
@@ -15,5 +15,5 @@ layout(std430, binding = CULL_LIGHTS_DISPATCH_ARGS_SSBO_BINDING_INDEX) buffer Cu
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main()
 {
-	num_groups = uvec3(unique_clusters_count, 1, 1);
+	num_groups = uvec3(active_clusters_count, 1, 1);
 }

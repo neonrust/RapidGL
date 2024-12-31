@@ -135,8 +135,8 @@ private:
     /// Clustered shading variables.
     std::shared_ptr<RGL::Shader> m_depth_prepass_shader;
     std::shared_ptr<RGL::Shader> m_generate_clusters_shader;
-    std::shared_ptr<RGL::Shader> m_find_visible_clusters_shader;
-    std::shared_ptr<RGL::Shader> m_find_unique_clusters_shader;
+	std::shared_ptr<RGL::Shader> m_flag_nonempty_clusters_shader;
+	std::shared_ptr<RGL::Shader> m_collect_active_clusters_shader;
     std::shared_ptr<RGL::Shader> m_update_cull_lights_indirect_args_shader;
     std::shared_ptr<RGL::Shader> m_cull_lights_shader;
     std::shared_ptr<RGL::Shader> m_clustered_pbr_shader;
