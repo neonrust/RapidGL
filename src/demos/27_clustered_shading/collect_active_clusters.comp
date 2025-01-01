@@ -1,0 +1,25 @@
+#version 460 core
+#include "shared.h"
+
+// ssbo
+layout(std430, binding = NONEMPTY_CLUSTERS_SSBO_BINDING_INDEX) buffer ClustersFlagsSSBO
+{
+	bool nonempty_clusters[];
+};
+
+layout(std430, binding = ACTIVE_CLUSTERS_SSBO_BINDING_INDEX) buffer UniqueActiveClustersSSBO
+{
+	uint active_clusters_count;
+	uint active_clusters[];
+};
+
+layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
+void main()
+{
+	uint cluster_id = gl_GlobalInvocationID.x;
+	if (nonempty_clusters[cluster_id])
+	{
+		uint i = atomicAdd(active_clusters_count, 1);
+		active_clusters[i] = cluster_id;
+	}
+}

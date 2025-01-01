@@ -1,0 +1,58 @@
+#version 460 core
+#include "shared.h"
+
+layout(std430, binding = NONEMPTY_CLUSTERS_SSBO_BINDING_INDEX) buffer ClustersFlagsSSBO
+{
+	bool nonempty_clusters[];
+};
+
+layout (binding = 0) uniform sampler2D u_depth_buffer;
+
+// Uniforms
+uniform float u_near_z;
+uniform float u_far_z;
+uniform float u_log_grid_dim_y;
+uniform uvec2 u_cluster_size_ss;
+uniform uvec3 u_grid_dim;
+
+// Function's prototypes
+float linearDepth(float depth);
+uint computeClusterIndex(uvec3 cluster_coord);
+uvec3 computeClusterCoord(vec2 screen_pos, float view_z);
+
+layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
+void main()
+{
+	uvec2 pixel_id   = gl_GlobalInvocationID.xy;
+
+	vec2  uv         = vec2(pixel_id + vec2(0.5)) / vec2(textureSize(u_depth_buffer, 0).xy);
+	float view_z     = texture(u_depth_buffer, uv).r;
+	vec2  screen_pos = vec2(pixel_id) + vec2(0.5);
+
+    uvec3 cluster_coord = computeClusterCoord(screen_pos, linearDepth(view_z));
+    uint cluster_index = computeClusterIndex(cluster_coord);
+
+    nonempty_clusters[cluster_index] = true;
+}
+
+float linearDepth(float depth)
+{
+	float ndc          = depth * 2.0 - 1.0;
+	float linear_depth = 2.0 * u_near_z * u_far_z / (u_far_z + u_near_z - ndc * (u_far_z - u_near_z));
+
+	return linear_depth;
+}
+
+uint computeClusterIndex(uvec3 cluster_coord)
+{
+    return cluster_coord.x + (u_grid_dim.x * (cluster_coord.y + u_grid_dim.y * cluster_coord.z));
+}
+
+uvec3 computeClusterCoord(vec2 screen_pos, float view_z)
+{
+	uint x = uint(screen_pos.x / u_cluster_size_ss.x);
+	uint y = uint(screen_pos.y / u_cluster_size_ss.y);
+    uint z = uint(log(view_z / u_near_z) * u_log_grid_dim_y);
+
+	return uvec3(x, y, z);
+}
