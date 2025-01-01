@@ -119,7 +119,7 @@ private:
 	void draw2d(const RGL::Texture &texture, const glm::uvec2 &top_left, const glm::uvec2 &bottom_right); // TODO: move to CoreApp
 
 	RGL::Camera m_camera;
-	float m_camera_fov { 90.f };
+	float m_camera_fov { 80.f };
 
 	std::shared_ptr<RenderTargetCube>   m_env_cubemap_rt;
 	std::shared_ptr<RenderTargetCube>   m_irradiance_cubemap_rt;
@@ -256,6 +256,7 @@ private:
     bool  m_bloom_enabled;
 
 	float m_fog_density;
+	float m_fog_falloff_blend;
 
 	std::chrono::microseconds m_cull_time;
 	std::chrono::microseconds m_depth_time;

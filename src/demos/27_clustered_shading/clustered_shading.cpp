@@ -50,7 +50,8 @@ ClusteredShading::ClusteredShading() :
 	m_bloom_intensity     (1.5f),
 	m_bloom_dirt_intensity(0),
 	m_bloom_enabled       (false),
-	m_fog_density         (0.005f)
+	m_fog_density         (0.03f), // 0.005
+	m_fog_falloff_blend   (0.02f)
 {
 }
 
@@ -939,11 +940,13 @@ void ClusteredShading::render()
 	// TODO: Render atmospheric/fog light scattering (i.e. volumetric lights)
 	//    - lights culled into screen tiles (i.e. only 2d)
 	//    - (optional) grid/voxel-based atmospheric density; otherwise, just use a constant
-	m_scattering_pp.shader().setUniform("u_fog_density"sv,     m_fog_density);
 	m_scattering_pp.shader().setUniform("u_fog_color"sv,       glm::vec3(1, 1, 1));
+	m_scattering_pp.shader().setUniform("u_fog_density"sv,     m_fog_density);
+	m_scattering_pp.shader().setUniform("u_fog_falloff_blend"sv, m_fog_falloff_blend);
+
 	m_scattering_pp.shader().setUniform("u_grid_dim"sv,        m_cluster_grid_dim);
 	m_scattering_pp.shader().setUniform("u_cluster_size_ss"sv, glm::uvec2(m_cluster_grid_block_size));
-	m_scattering_pp.shader().setUniform("u_log_grid_dim_y"sv,  m_log_grid_dim_y);
+	// m_scattering_pp.shader().setUniform("u_log_grid_dim_y"sv,  m_log_grid_dim_y);
 	m_scattering_pp.shader().setUniform("u_cam_pos"sv,         m_camera.position());
 	m_scattering_pp.shader().setUniform("u_cam_forward"sv,     m_camera.forwardVector());
 	m_scattering_pp.shader().setUniform("u_cam_right"sv,       m_camera.rightVector());
@@ -951,7 +954,9 @@ void ClusteredShading::render()
 	m_scattering_pp.shader().setUniform("u_near_z"sv,          m_camera.nearPlane());
 	m_scattering_pp.shader().setUniform("u_far_z"sv,           m_camera.farPlane());
 	m_scattering_pp.shader().setUniform("u_view"sv,            m_camera.viewTransform());
-	// m_scattering_pp.shader().setUniform("u_projection"sv,      m_camera.projectionTransform());
+	m_scattering_pp.shader().setUniform("u_inv_view"sv,        glm::inverse(m_camera.viewTransform()));
+	m_scattering_pp.shader().setUniform("u_inv_projection"sv,  glm::inverse(m_camera.projectionTransform()));
+
 
 	// TODO: m_camera.setUniforms(m_scattering_pp.shader());  // could even cache the uniform locations (per shader)
 
@@ -1009,7 +1014,7 @@ void ClusteredShading::renderSceneAABB()
 	if(not m_debug_draw_vbo)
 		glGenBuffers(1, &m_debug_draw_vbo);
 
-	const auto modelView = m_camera.projectionTransform() * m_camera.viewTransform();
+	const auto view_projection = m_camera.projectionTransform() * m_camera.viewTransform();
 
 	// if using VBO, generate the data into a single VBO then draw using a single call
 
@@ -1041,10 +1046,13 @@ void ClusteredShading::renderSceneAABB()
 		3, 7
 	};
 
+	// TODO: also draw AABBs for lights
+	//   a tad "laborious" since the light "animation" is currently done in a compute shader
+
 
 	m_line_draw_shader->bind();
 	m_line_draw_shader->setUniform("u_line_color"sv, glm::vec4(0.3, 1.0, 0.7, 1));
-	m_line_draw_shader->setUniform("u_mvp"sv, modelView); // no obj.transform needed; we'll transform the AABB vertices
+	m_line_draw_shader->setUniform("u_view_projection"sv, view_projection); // no obj.transform needed; we'll transform the AABB vertices
 
 	for(const auto &obj: _scene) // _scenePvs
 	{
@@ -1184,11 +1192,11 @@ void ClusteredShading::renderScene(RGL::Shader &shader, bool use_material)
 	//   this would also include skinned meshes (don't want to do the skinning computations multiple times)
 	//   (AnimatedMode::BoneTransform() genereates a list of bone transforms, done once, but the actual skinning is in the shader)
 
-	const auto modelView = m_camera.projectionTransform() * m_camera.viewTransform();
+	const auto view_projection = m_camera.projectionTransform() * m_camera.viewTransform();
 
 	for(const auto &obj: _scenePvs)
 	{
-		shader.setUniform("u_mvp"sv,   modelView * obj.transform);
+		shader.setUniform("u_mvp"sv,   view_projection * obj.transform);
 		shader.setUniform("u_model"sv, obj.transform);
 
 		if(use_material)
@@ -1463,6 +1471,11 @@ void ClusteredShading::render_gui()
             ImGui::SliderFloat("Bloom intensity",      &m_bloom_intensity,      0.0f, 5.0f,  "%.1f");
             ImGui::SliderFloat("Bloom dirt intensity", &m_bloom_dirt_intensity, 0.0f, 10.0f, "%.1f");
         }
+		if(ImGui::CollapsingHeader("Fog / Scattering", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			ImGui::SliderFloat("Fog density", &m_fog_density, 0.f, 0.1f);
+			ImGui::SliderFloat("Fog falloff blend", &m_fog_falloff_blend, 0, 1);
+		}
 
     }
     ImGui::End();
