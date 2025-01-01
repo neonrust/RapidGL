@@ -91,9 +91,6 @@ void main()
 
 	Ray eye_ray;
 	eye_ray.start = u_cam_pos;
-	// TODO: how to calculate this magical constant?
-	//  it's fov/projection-dependent; vfov 90 -> 0.55, 80 -> 0.67
-	// eye_ray.direction = normalize(u_cam_forward*0.67 + u_cam_right*screen_norm.x + u_cam_up*screen_norm.y);
 	vec4 target = u_inv_projection * vec4(screen_norm, 1, 1);
 	eye_ray.direction = vec3(u_inv_view * vec4(normalize(target.xyz / target.w), 0)); // world space
 
