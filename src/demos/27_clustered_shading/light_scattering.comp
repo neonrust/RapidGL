@@ -84,10 +84,7 @@ void main()
 	uvec2 pixel_id   = gl_GlobalInvocationID.xy;
 	vec2 screen_pos  = vec2(pixel_id) + vec2(0.5);
 	vec2 screen_size = vec2(imageSize(u_input_color));
-
-	float aspect_ratio = float(screen_size.y) / float(screen_size.x);
 	vec2  screen_norm = (screen_pos*2 - vec2(screen_size)) / vec2(screen_size);
-	screen_norm.y *= aspect_ratio;
 
 	float view_z     = texture(u_input_depth, screen_pos/screen_size).r;
 	float frag_depth = linearDepth(view_z);
