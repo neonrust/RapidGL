@@ -50,8 +50,8 @@ ClusteredShading::ClusteredShading() :
 	m_bloom_intensity     (1.5f),
 	m_bloom_dirt_intensity(0),
 	m_bloom_enabled       (false),
-	m_fog_density         (0.03f), // 0.005
-	m_fog_falloff_blend   (0.02f)
+	m_fog_density         (0.005f), // 0.005
+	m_fog_falloff_blend   (0.05f)
 {
 }
 

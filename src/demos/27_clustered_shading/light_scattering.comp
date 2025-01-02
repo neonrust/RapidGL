@@ -41,7 +41,6 @@ struct Sphere
 struct RaySphereResult
 {
 	float closest_fraction;
-	//float closest_distance;
 	float t1_fraction;
 	float t2_fraction;
 };
@@ -56,7 +55,7 @@ float getSquareFalloffAttenuation(vec3 pos_to_light, float light_radius);
 vec3 scatterLightsInCluster(Ray eye_ray, uvec3 cluster_coord, float max_depth);
 vec3 scatterPointLight(Ray eye_ray, PointLight light, float max_depth);
 
-bool castRay(Ray ray, Sphere sphere, inout RaySphereResult result);
+bool testRaySphere(Ray ray, Sphere sphere, inout RaySphereResult result);
 vec3 rayPoint(Ray ray, float fraction);
 float capDepth(Ray ray, float fraction, float max_depth, out bool capped);
 float rayFraction(Ray ray, vec3 point);
@@ -95,44 +94,31 @@ void main()
 	eye_ray.direction = vec3(u_inv_view * vec4(normalize(target.xyz / target.w), 0)); // world space
 
 
-	bool USE_CAMERA_SPACE = false;
-
-
 	// TODO: this list of lights should be computed by a separate pre-process;
 	//   likely tile-based light culling from a (potentially very) large number of lights.
 
 	// for now, we'll just use a hard-coded test case
-	PointLight lights[1];
+	PointLight lights[4];
 
 	lights[0].base.color = vec3(1, 0.8, 0.5);
 	lights[0].base.intensity = 100;
 	lights[0].position = vec3(-10, 2, 0);
-	lights[0].radius = 10;
+	lights[0].radius = 20;
 
-	// lights[1].base.color = vec3(0.3, 0.5, 1);
-	// lights[1].base.intensity = 100;
-	// lights[1].position = vec3(10, 2, 0);
-	// lights[1].radius = 15;
+	lights[1].base.color = vec3(0.3, 0.5, 1);
+	lights[1].base.intensity = 100;
+	lights[1].position = vec3(10, 2, 0);
+	lights[1].radius = 20;
 
-	// lights[2].base.color = vec3(0.4, 1, 0.4);
-	// lights[2].base.intensity = 150;
-	// lights[2].position = vec3(0, 2, -10);
-	// lights[2].radius = 18;
+	lights[2].base.color = vec3(0.4, 1, 0.4);
+	lights[2].base.intensity = 150;
+	lights[2].position = vec3(0, 2, -10);
+	lights[2].radius = 20;
 
-	// lights[3].base.color = vec3(1, 0.1, 0.05);
-	// lights[3].base.intensity = 100;
-	// lights[3].position = vec3(0, 2, 10);
-	// lights[3].radius = 15;
-
-
-
-	if(USE_CAMERA_SPACE)
-	{
-		// to camera space  --  why does this not work?  capping depth would be much easier!
-		eye_ray.start = vec3(0);
-		// eye_ray.direction = (u_projection  * u_view* vec4(eye_ray.direction, 0)).xyz;
-		// eye_ray.direction = normalize(vec3(0, 0, -1) + vec3(1, 0, 0)*screen_norm.x + vec3(0, 1, 0)*screen_norm.y);
-	}
+	lights[3].base.color = vec3(1, 0.1, 0.05);
+	lights[3].base.intensity = 100;
+	lights[3].position = vec3(0, 2, 10);
+	lights[3].radius = 20;
 
 
 	vec3 fog_radiance = vec3(0);
@@ -140,11 +126,6 @@ void main()
 	for(int idx = 0; idx < lights.length(); ++idx)
 	{
 		PointLight light = lights[idx];
-		if(USE_CAMERA_SPACE)
-		{
-			// to camera space  --  why does this not work?  capping depth would be much easier!
-			// light.position = normalize((u_view_projection * vec4(light.position, 1)).xyz);
-		}
 
 		fog_radiance += scatterPointLight(eye_ray, lights[idx], frag_depth);
 	}
@@ -196,28 +177,18 @@ vec3 scatterPointLight(Ray eye_ray, PointLight light, float max_depth)
 	light_sphere.radius = light.radius;
 
 	RaySphereResult result;
-	if(castRay(eye_ray, light_sphere, result))
+	if(testRaySphere(eye_ray, light_sphere, result))
 	{
 		float t1 = result.t1_fraction;
 		float t_closest = result.closest_fraction;
 		float t2 = result.t2_fraction;
 
-		bool capped = false;
-		t1 = capDepth(eye_ray, result.t1_fraction, max_depth, capped);
-		// if(t1 > result.t1_fraction)
-		// 	return vec3(1, 1, 0);
-		// if(t1 < result.t1_fraction)
-		// 	return vec3(0, 1, 0);
-		// if(t1 < 0)
-		// 	return vec3(1, 0, 0);
-		if(capped)
-			t_closest = t1;
-		else
-			t_closest = capDepth(eye_ray, result.closest_fraction, max_depth, capped);
-		if(capped)
-			t2 = t_closest;
-		else
-			t2 = capDepth(eye_ray, result.t2_fraction, max_depth, capped);
+		// this isn't strictly correct (doesn't take the projection into account)
+		t1 = clamp(t1, 0, max_depth);
+		t2 = clamp(t2, t1, max_depth);
+		t_closest = clamp(t_closest, t1, t2);
+
+
 
 		float thickness = t2 - t1;
 		float sphere_fraction = thickness/(2*light.radius);  // fraction of diameter sampled
@@ -239,8 +210,8 @@ vec3 scatterPointLight(Ray eye_ray, PointLight light, float max_depth)
 		radiance += fog_energy * u_fog_density * light.base.color * u_fog_color;
 	}
 
-	return radiance;
-	// return max(vec3(0), radiance);
+	// return radiance;
+	return max(vec3(0), radiance);
 }
 
 
@@ -273,7 +244,7 @@ float linearDepth(float depth)
 	return linear_depth;
 }
 
-bool castRay(Ray ray, Sphere sphere, inout RaySphereResult result)
+bool testRaySphere(Ray ray, Sphere sphere, inout RaySphereResult result)
 {
 	float a = dot(ray.direction, ray.direction);
 	vec3 sphere_to_ray = ray.start - sphere.center;
@@ -313,13 +284,13 @@ float capDepth(Ray ray, float fraction, float max_depth, out bool capped)
 	capped = -p_cs.z > max_depth;
 	if(capped)
 	{
-		// float dz = max_depth - ray.direction.z;
-		// vec2 dxy = ray.direction.xy * dz/ray.direction.z;
-		// p_cs.xy = ray.direction.xy + dxy;
-		p_cs.z = -max_depth;
+		p_cs.z = -max_depth;  // this isn't strictly correct (doesn't take the projection into account)
+
+		// find closest point on the ray to the capped point (expected to be *very* close)
+		p = (u_inv_view * vec4(p_cs, 1)).xyz;
+		fraction = rayFraction(ray, p);
 	}
-	p = (u_inv_view * vec4(p_cs, 1)).xyz;
-	return rayFraction(ray, p);
+	return fraction;
 }
 
 // from pbr_lighting.glh (slightly modified)
