@@ -31,7 +31,8 @@
 struct BaseLight
 {
     vec3 color;
-	float intensity; // TODO: =0 means end of light list?
+	float intensity;
+	// TODO: float fog; // [ 0, 1 ]
 };
 
 struct DirectionalLight
