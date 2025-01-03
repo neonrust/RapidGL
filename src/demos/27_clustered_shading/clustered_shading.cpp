@@ -108,11 +108,12 @@ void ClusteredShading::init_app()
 	glCreateVertexArrays(1, &_dummy_vao_id);
 
 	// Create camera
-	m_camera = Camera(m_camera_fov, Window::aspectRatio(), 0.1f, 200);
+	m_camera = Camera(m_camera_fov, 0.1f, 200);
+	m_camera.setSize(Window::getWidth(), Window::getHeight());
 	// m_camera.setPosition(-8.32222f, 4.5269f, -0.768721f);
 	// m_camera.setOrientation(glm::quat(0.634325f, 0.0407623f, 0.772209f, 0.0543523f));
-	m_camera.setPosition({ -10, 2, 10 });
-	m_camera.setOrientationEuler({ 0, 0, 0 });
+	m_camera.setPosition({ -10, 3.3f, 10 });
+	m_camera.setOrientationEuler({ 0, 45, 0 });
 
     /// Randomly initialize lights
 	::srand(3281991);

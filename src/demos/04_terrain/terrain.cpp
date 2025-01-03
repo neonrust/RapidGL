@@ -34,7 +34,8 @@ void Terrain::init_app()
     glEnable(GL_MULTISAMPLE);
 
     /* Create virtual camera. */
-    m_camera = std::make_shared<RGL::Camera>(60.0, RGL::Window::aspectRatio(), 0.01, 1000.0);
+	m_camera = std::make_shared<RGL::Camera>(60.0, 0.01, 1000.0);
+	m_camera->setSize(RGL::Window::getWidth(), RGL::Window::getHeight());
 	m_camera->setPosition({ 1.5, 0.0, 10.0 });
 
     /* Create terrain */

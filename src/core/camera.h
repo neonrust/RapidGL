@@ -17,9 +17,10 @@ public:
 	/*
 	 * Perspective camera
 	 */
-	Camera(float fovy, float aspect_ratio, float z_near, float z_far) : Camera()
+	Camera(float fovy, float z_near, float z_far) : Camera()
 	{
-		setPerspective(fovy, aspect_ratio, z_near, z_far);
+		// should/must call  setSize() after creating the camera
+		setPerspective(fovy, 1280, 720, z_near, z_far);
 	}
 
 	/*
@@ -33,8 +34,10 @@ public:
 	Camera(bool is_ortho=false);
 
 
-	void setPerspective(float fovy, float aspect_ratio, float z_near, float z_far);
+	void setSize(int width, int height);
+	void setPerspective(float fovy, int width, int height, float z_near, float z_far);
 	void setOrtho(float left, float right, float bottom, float top, float z_near, float z_far);
+
 
 	void setPosition(const glm::vec3& position);
 
@@ -57,7 +60,7 @@ public:
 	inline glm::vec3 forwardVector()   const { return -m_direction; }
 		   glm::vec3 rightVector()     const;
 		   glm::vec3 upVector()        const;
-	inline float aspectRatio()   const { return m_aspect_ratio; }
+	inline float aspectRatio()   const { return float(m_width) / float(m_height); }
 	inline float nearPlane()     const { return m_near; }
 	inline float farPlane()      const { return m_far; }
 	inline float verticalFov()   const { return m_fovy; }
@@ -99,9 +102,10 @@ private:
 	glm::quat m_orientation;
 	glm::vec3 m_position;
 	glm::vec3 m_direction;
+	size_t m_width;
+	size_t m_height;
 	float m_near;
 	float m_far;
-	float m_aspect_ratio;
 	float m_fovy; // in degrees
 
 	glm::ivec2 m_mouse_pressed_position;

@@ -23,9 +23,10 @@ Camera::Camera(bool is_ortho)
 	m_orientation           (glm::vec3(0)),
 	m_position              (glm::vec3(0)),
 	m_direction             (-AXIS_Z),
+	m_width                 (0),
+	m_height                (0),
 	m_near                  (0.01f),
 	m_far                   (100),
-	m_aspect_ratio          (1),
 	m_fovy                  (60),
 	m_mouse_pressed_position(glm::vec2(0)),
 	m_is_dirty              (true),
@@ -33,10 +34,23 @@ Camera::Camera(bool is_ortho)
 {
 }
 
-void Camera::setPerspective(float fovy, float aspect_ratio, float z_near, float z_far)
+void Camera::setSize(int width, int height)
 {
-	m_projection   = glm::perspective(glm::radians(fovy), aspect_ratio, z_near, z_far);
-	m_aspect_ratio = aspect_ratio;
+	if(size_t(width) == m_width and size_t(height) == m_height)
+		return;
+
+	if(m_is_ortho)
+		assert(false);
+	else
+		setPerspective(m_fovy, width, height, m_near, m_far);
+}
+
+void Camera::setPerspective(float fovy, int width, int height, float z_near, float z_far)
+{
+	m_projection   = glm::perspectiveFov(glm::radians(fovy), float(width), float(height), z_near, z_far);
+	m_is_ortho     = false;
+	m_width        = size_t(width);
+	m_height       = size_t(height);
 	m_near         = z_near;
 	m_far          = z_far;
 	m_fovy         = fovy;
@@ -46,7 +60,7 @@ void Camera::setPerspective(float fovy, float aspect_ratio, float z_near, float 
 void Camera::setOrtho(float left, float right, float bottom, float top, float z_near, float z_far)
 {
 	m_projection   = glm::ortho(left, right, bottom, top, z_near, z_far);
-	m_aspect_ratio = 1.f;
+	m_is_ortho     = true;
 	m_near         = z_near;
 	m_far          = z_far;
 	m_fovy         = 1.f;
@@ -204,7 +218,7 @@ void Camera::setFov(float fov)
 	}
 
 	if(auto changed = fov != m_fovy; changed)
-		setPerspective(fov, m_aspect_ratio, m_near, m_far);
+		setPerspective(fov, m_width, m_height, m_near, m_far);
 }
 
 void RGL::Camera::setFarPlane(float f)

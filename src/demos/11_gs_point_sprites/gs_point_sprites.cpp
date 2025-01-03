@@ -40,7 +40,8 @@ void GSPointSprites::init_app()
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     /* Create virtual camera. */
-    m_camera = std::make_shared<RGL::Camera>(60.0, RGL::Window::aspectRatio(), 0.01, 100.0);
+	m_camera = std::make_shared<RGL::Camera>(60.0, 0.01, 100.0);
+	m_camera->setSize(RGL::Window::getWidth(), RGL::Window::getHeight());
 	m_camera->setPosition({ -6, 5.0, 10.0 });
 	m_camera->setOrientationEuler({ 20.0f, 30.0f, 0.0f });
 
