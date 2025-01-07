@@ -50,7 +50,7 @@ ClusteredShading::ClusteredShading() :
 	m_bloom_intensity     (1.5f),
 	m_bloom_dirt_intensity(0),
 	m_bloom_enabled       (false),
-	m_fog_density         (0.005f), // 0.005
+	m_fog_density         (0.2f), // [ 0, 0.5 ]   nice-ish value: 0.015
 	m_fog_falloff_blend   (0.05f)
 {
 }
@@ -538,7 +538,6 @@ void ClusteredShading::GenerateAreaLights()
 void ClusteredShading::GeneratePointLights()
 {
     m_point_lights.clear();
-    m_point_lights.resize(m_point_lights_count);
 
 	m_point_lights.push_back({
 		.base = {
@@ -546,7 +545,7 @@ void ClusteredShading::GeneratePointLights()
 			.intensity = 100
 		},
 		.position = { -10, 2.f, 0 },
-		.radius = 15,
+		.radius = 10,
 	});
 
 	m_point_lights.push_back({
@@ -555,27 +554,29 @@ void ClusteredShading::GeneratePointLights()
 			.intensity = 100
 		},
 		.position = { 10, 2.f, 0 },
-		.radius = 15,
+		.radius = 10,
 	});
 
 	m_point_lights.push_back({
 		.base = {
 			.color = { 0.4f, 1.0f, 0.4f },
-			.intensity = 150
-		},
-		.position = { 0, 2.f, -10 },
-		.radius = 18,
-	});
-
-	m_point_lights.push_back({
-		.base = {
-			.color = { 1.0f, 0.1f, 0.05f },
 			.intensity = 100
 		},
-		.position = { 0, 2.f, 10 },
-		.radius = 15,
+		.position = { 0, 2.f, -10 },
+		.radius = 10,
 	});
+
+	// m_point_lights.push_back({
+	// 	.base = {
+	// 		.color = { 1.0f, 0.1f, 0.05f },
+	// 		.intensity = 100
+	// 	},
+	// 	.position = { 0, 2.f, 10 },
+	// 	.radius = 10,
+	// });
 	return;
+
+	m_point_lights.resize(m_point_lights_count);
 
 	m_point_lights_orbit.clear();
 	m_point_lights_orbit.resize(m_point_lights_count);
@@ -603,7 +604,23 @@ void ClusteredShading::GeneratePointLights()
 void ClusteredShading::GenerateSpotLights()
 {
     m_spot_lights.clear();
-    m_spot_lights.resize(m_spot_lights_count);
+
+	m_spot_lights.push_back({
+		.point = {
+			.base = {
+				.color = { 1.0f, 1.0f, 0.2f },
+				.intensity = 100
+			},
+			.position = { 0, 3.f, 0 },
+			.radius = 15
+		},
+		.direction = { 0, 0, 1 },
+		.inner_angle = glm::radians(30.f),
+		.outer_angle = glm::radians(40.f)
+	});
+	return;
+
+	m_spot_lights.resize(m_spot_lights_count);
 
 	m_spot_lights_orbit.clear();
 	m_spot_lights_orbit.resize(m_spot_lights_count);
@@ -954,9 +971,11 @@ void ClusteredShading::render()
 	m_scattering_pp.shader().setUniform("u_cam_up"sv,          m_camera.upVector());
 	m_scattering_pp.shader().setUniform("u_near_z"sv,          m_camera.nearPlane());
 	m_scattering_pp.shader().setUniform("u_far_z"sv,           m_camera.farPlane());
+	m_scattering_pp.shader().setUniform("u_projection"sv,      m_camera.projectionTransform());
 	m_scattering_pp.shader().setUniform("u_view"sv,            m_camera.viewTransform());
-	m_scattering_pp.shader().setUniform("u_inv_view"sv,        glm::inverse(m_camera.viewTransform()));
 	m_scattering_pp.shader().setUniform("u_inv_projection"sv,  glm::inverse(m_camera.projectionTransform()));
+	m_scattering_pp.shader().setUniform("u_inv_view"sv,        glm::inverse(m_camera.viewTransform()));
+
 
 
 	// TODO: m_camera.setUniforms(m_scattering_pp.shader());  // could even cache the uniform locations (per shader)
