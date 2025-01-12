@@ -104,9 +104,10 @@ namespace RGL
 		const auto &[ok, log] = getStatusLog(shaderObject, GL_COMPILE_STATUS);
 		if(not ok)
 		{
+
 			if(not log.empty())
 			{
-				std::fprintf(stderr, "%s Compilation failed!\n%s\n", filepath.string().c_str(), log.c_str());
+				std::fprintf(stderr, "%s Compilation failed!\n", filepath.string().c_str());
 				logLineErrors(shader_code, log);
 			}
 			else
@@ -142,6 +143,8 @@ namespace RGL
 		std::string line;
 		while(std::getline(strm, line))
 		{
+			std::fprintf(stderr, "%s\n", line.c_str());
+
 			if(line.size() < 10)
 				continue;
 			if(not line.starts_with("0("))
@@ -150,9 +153,10 @@ namespace RGL
 			auto end_bracket = line.find(')', 2);
 			if(end_bracket == std::string::npos)
 				continue;
-			auto line_num = std::stoi(line.substr(2, end_bracket - 2));
-			line = source_line(line_num);
-			std::fprintf(stderr, "0(%d) :  %s\n", line_num, line.c_str());
+
+			const auto line_num = std::stoi(line.substr(2, end_bracket - 2));
+			const auto src_line = source_line(line_num);
+			std::fprintf(stderr, ">%s\n", src_line.c_str());
 		}
 	}
 
