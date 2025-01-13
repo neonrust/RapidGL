@@ -12,11 +12,36 @@
 #include <chrono>
 #include <vector>
 
+static constexpr glm::vec3 AXIS_X { 1, 0, 0 };
+static constexpr glm::vec3 AXIS_Y { 0, 1, 0 };
+static constexpr glm::vec3 AXIS_Z { 0, 0, 1 };
+
+
 using namespace std::chrono;
 using namespace std::literals;
 
 #define IMAGE_UNIT_WRITE 0
 
+
+
+glm::mat3 make_common_space_from_direction(const glm::vec3 &direction)
+{
+	glm::vec3 space_x;
+	glm::vec3 space_y;
+	glm::vec3 space_z = direction;
+	if(space_z == AXIS_Y)
+	{
+		space_y = glm::cross(AXIS_X, space_z);
+		space_x = glm::cross(space_z, space_y);
+	}
+	else
+	{
+		space_y = glm::cross(AXIS_Y, space_z);
+		space_x = glm::cross(space_z, space_y);
+	}
+
+	return glm::mat3{ space_x, space_y, space_z };
+}
 
 void opengl_message_callback([[maybe_unused]] GLenum source,
 							 GLenum type,
