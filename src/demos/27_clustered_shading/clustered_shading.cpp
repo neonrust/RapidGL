@@ -1072,7 +1072,7 @@ void ClusteredShading::renderSceneAABB()
 
 	m_line_draw_shader->bind();
 	m_line_draw_shader->setUniform("u_line_color"sv, glm::vec4(0.3, 1.0, 0.7, 1));
-	m_line_draw_shader->setUniform("u_view_projection"sv, view_projection); // no obj.transform needed; we'll transform the AABB vertices
+	m_line_draw_shader->setUniform("u_mvp"sv, view_projection); // no model transform needed; we'll generate vertices in world-space
 
 	for(const auto &obj: _scene) // _scenePvs
 	{
