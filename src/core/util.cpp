@@ -79,21 +79,32 @@ namespace RGL
 		std::istringstream ss(shader_code);
 
 		std::string line, new_shader_code;
+		size_t line_num = 0;
 
         bool included = false;
 
         while (std::getline(ss, line))
         {
+			bool file_loaded = false;
 			if (line.starts_with(include_phrase))
             {
 				auto include_file_name = line.substr(include_phrase.size() + 1, line.size() - include_phrase .size() - 2);
                 
                 line     = LoadFile(dir / include_file_name);
+				file_loaded = true;
                 included = true;
             }
 
             new_shader_code.append(line + "\n");
-        }
+			++line_num;
+
+			if(file_loaded)
+			{
+				new_shader_code.append("#line ");
+				new_shader_code.append(std::to_string(line_num));
+				new_shader_code.append("\n");
+			}
+		}
 
 		// Preprocess the processed source (i.e. recursively)
         if (included)

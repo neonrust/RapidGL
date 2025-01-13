@@ -70,6 +70,12 @@ namespace RGL
 
 	bool Shader::addShader(const std::filesystem::path & filepath, GLuint type)
     {
+        if (filepath.empty())
+        {
+			std::fprintf(stderr, "Error: Shader's file name can't be empty.\n");
+			return false;
+        }
+
 		if(not m_program_id)
 		{
 			m_program_id = glCreateProgram();
@@ -79,12 +85,6 @@ namespace RGL
 				return false;
 			}
 		}
-
-        if (filepath.empty())
-        {
-			std::fprintf(stderr, "Error: Shader's file name can't be empty.\n");
-			return false;
-        }
 
 		auto shaderObject = glCreateShader(type);
 		if(not shaderObject)
@@ -98,6 +98,8 @@ namespace RGL
 
 		const char * shader_code = code.c_str();
 
+		add_name(filepath);
+
 		glShaderSource(shaderObject, 1, &shader_code, nullptr);
         glCompileShader(shaderObject);
 
@@ -107,58 +109,19 @@ namespace RGL
 
 			if(not log.empty())
 			{
+				logLineErrors(filepath, log);
 				std::fprintf(stderr, "%s Compilation failed!\n", filepath.string().c_str());
-				logLineErrors(shader_code, log);
 			}
 			else
-				std::fprintf(stderr, "%s Compilation failed! (unknown error)!\n", filepath.string().c_str());
+				std::fprintf(stderr, "%s Compilation failed!\n", filepath.string().c_str());
 			return false;
         }
 
-		add_name(filepath);
         glAttachShader(m_program_id, shaderObject);
 		glDeleteShader(shaderObject); // flag for deletion; we don't need it for anything else
 
 		return true;
     }
-
-	void Shader::logLineErrors(const std::string &source, const std::string &log)
-	{
-		std::istringstream source_strm(source);
-
-		auto source_line = [&source_strm](auto line_num) -> std::string {
-			std::string line;
-			source_strm.seekg(0);
-			for(auto idx = 0; idx < line_num; ++idx)
-			{
-				if(not std::getline(source_strm, line))
-					return "** EOF **";
-			}
-			return line;
-		};
-
-		// error message syntax:
-		//    "0(<line num>) : "
-		std::istringstream strm(log);
-		std::string line;
-		while(std::getline(strm, line))
-		{
-			std::fprintf(stderr, "%s\n", line.c_str());
-
-			if(line.size() < 10)
-				continue;
-			if(not line.starts_with("0("))
-				continue;
-
-			auto end_bracket = line.find(')', 2);
-			if(end_bracket == std::string::npos)
-				continue;
-
-			const auto line_num = std::stoi(line.substr(2, end_bracket - 2));
-			const auto src_line = source_line(line_num);
-			std::fprintf(stderr, ">%s\n", src_line.c_str());
-		}
-	}
 
 	void Shader::add_name(const std::filesystem::path & filepath)
 	{
@@ -176,9 +139,12 @@ namespace RGL
 		if(not ok)
 		{
 			if(not log.empty())
-				std::fprintf(stderr, "%s Linking failed!\n%s\n", _name.c_str(), log.c_str());
+			{
+				std::fprintf(stderr, "%s Linking failed!\n", _name.c_str());
+				logLineErrors(_name, log);
+			}
 			else
-				std::fprintf(stderr, "%s Linking failed! (unknown error)\n", _name.c_str());
+				std::fprintf(stderr, "%s Linking failed!\n", _name.c_str());
 			return false;
         }
         else
@@ -190,6 +156,49 @@ namespace RGL
 
         return m_is_linked;
     }
+
+	void Shader::logLineErrors(const std::filesystem::path & filepath, const std::string &log) const
+	{
+		// std::istringstream source_strm(source);
+
+		// auto source_line = [&source_strm](auto line_num) -> std::string {
+		// 	std::string line;
+		// 	source_strm.seekg(0);
+		// 	for(auto idx = 0; idx < line_num; ++idx)
+		// 	{
+		// 		if(not std::getline(source_strm, line))
+		// 			return "** EOF **";
+		// 	}
+		// 	return line;
+		// };
+
+	   // error message syntax:
+	   //    "0(<line num>) : "
+		std::istringstream strm(log);
+		std::string line;
+		while(std::getline(strm, line))
+		{
+			if(line.size() < 10 or not line.starts_with("0("))
+			{
+				std::fprintf(stderr, "%s\n", line.c_str());
+				continue;
+			}
+
+			const auto end_bracket = line.find(')', 2);
+			if(end_bracket == std::string::npos)
+			{
+				std::fprintf(stderr, "%s\n", line.c_str());
+				continue;
+			}
+
+			line = line.replace(0, 1, filepath);
+			std::fprintf(stderr, "%s\n", line.c_str());
+
+			// const auto line_num = std::stoi(line.substr(2, end_bracket - 2));
+			// const auto src_line = source_line(line_num);
+			// std::fprintf(stderr, ">%s\n", src_line.c_str());
+		}
+	}
 
     void Shader::setTransformFeedbackVaryings(const std::vector<const char*>& output_names, GLenum buffer_mode) const
     {

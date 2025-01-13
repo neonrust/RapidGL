@@ -81,7 +81,7 @@ private:
 	void addAllSubroutines();
 
 	bool addShader(const std::filesystem::path & filepath, GLuint type);
-	void logLineErrors(const std::string &source, const std::string &log);
+	void logLineErrors(const std::filesystem::path &filepath, const std::string &log) const;
 	void add_name(const std::filesystem::path &filepath);
 	std::tuple<bool, std::string> getStatusLog(GLuint object, GLenum statusType) const;
 
