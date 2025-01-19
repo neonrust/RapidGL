@@ -1,7 +1,10 @@
-[![Build Status](https://github.com/Shot511/RapidGL/actions/workflows/cpp_cmake.yml/badge.svg)](https://github.com/Shot511/RapidGL/actions)
+[![Build Status](https://github.com/neonrust/RapidGL/actions/workflows/cpp_cmake.yml/badge.svg)](https://github.com/Shot511/RapidGL/actions)
+
 
 # RapidGL
 Framework for rapid OpenGL demos prototyping.
+
+Forked from https://github.com/tgalaj/RapidGL but detached so I can use Git LFS.
 
 This framework consists of two major parts:
 * **Core library** - which is used as a static library for all examples. Source files are located in ```src/core```.
