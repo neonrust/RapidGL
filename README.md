@@ -1,4 +1,4 @@
-[![Build Status](https://github.com/neonrust/RapidGL/actions/workflows/cpp_cmake.yml/badge.svg)](https://github.com/Shot511/RapidGL/actions)
+[![Build Status](https://github.com/neonrust/RapidGL/actions/workflows/cpp_cmake.yml/badge.svg)](https://github.com/neonrust/RapidGL/actions)
 
 
 # RapidGL
