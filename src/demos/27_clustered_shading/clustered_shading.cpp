@@ -3,11 +3,11 @@
 #include "input.h"
 #include "postprocess.h"
 #include "util.h"
-#include "gui/gui.h"
+#include "gui/gui.h"   // IWYU pragma: keep
 
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/random.hpp>
-#include <glm/gtx/string_cast.hpp>
+// #include <glm/gtx/string_cast.hpp>  // glm::to_string
 
 #include <chrono>
 #include <vector>

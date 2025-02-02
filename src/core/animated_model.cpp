@@ -2,8 +2,11 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <assimp/postprocess.h>
-#include <glm/gtx/quaternion.hpp>
+#include <glm/gtc/quaternion.hpp>
+
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/dual_quaternion.hpp>
+#include <glm/gtx/component_wise.hpp>
 
 #include <cmath>
 
@@ -218,7 +221,7 @@ void AnimatedModel::ReadNodeHierarchy(float animation_time, const aiNode* node, 
 		aiQuaternion rotation_quat;
 		CalcInterpolatedRotation(rotation_quat, animation_time, node_anim);
 		glm::quat rotation     = quat_cast(rotation_quat);
-		glm::mat4 rotation_mat = glm::toMat4(rotation);
+		glm::mat4 rotation_mat = glm::mat4_cast(rotation); // glm::toMat4(rotation);
 
 			   // Interpolate translation and generate translation transformation matrix
 		aiVector3D translation;
@@ -445,42 +448,42 @@ void AnimatedModel::CreateBuffers(VertexData& vertex_data, std::vector<VertexBon
 		}
 	}
 
-	const GLsizei positions_size_bytes    = vertex_data.positions.size() * sizeof(vertex_data.positions[0]);
-	const GLsizei texcoords_size_bytes    = vertex_data.texcoords.size() * sizeof(vertex_data.texcoords[0]);
-	const GLsizei normals_size_bytes      = vertex_data.normals  .size() * sizeof(vertex_data.normals  [0]);
+	const auto positions_size_bytes    = vertex_data.positions.size() * sizeof(vertex_data.positions[0]);
+	const auto texcoords_size_bytes    = vertex_data.texcoords.size() * sizeof(vertex_data.texcoords[0]);
+	const auto normals_size_bytes      = vertex_data.normals  .size() * sizeof(vertex_data.normals  [0]);
 
-	const GLsizei tangents_size_bytes     = has_tangents   ? vertex_data.tangents.size() * sizeof(vertex_data.tangents[0]) : 0;
-	const GLsizei bone_weights_size_bytes = has_bones_data ? bone_weights        .size() * sizeof(bone_weights        [0]) : 0;
-	const GLsizei bone_ids_size_bytes     = has_bones_data ? bone_ids            .size() * sizeof(bone_ids            [0]) : 0;
+	const auto tangents_size_bytes     = has_tangents   ? vertex_data.tangents.size() * sizeof(vertex_data.tangents[0]) : 0;
+	const auto bone_weights_size_bytes = has_bones_data ? bone_weights        .size() * sizeof(bone_weights        [0]) : 0;
+	const auto bone_ids_size_bytes     = has_bones_data ? bone_ids            .size() * sizeof(bone_ids            [0]) : 0;
 
-	const GLsizei total_size_bytes = positions_size_bytes + texcoords_size_bytes + normals_size_bytes + tangents_size_bytes + bone_weights_size_bytes + bone_ids_size_bytes;
+	const GLsizeiptr total_size_bytes = GLsizeiptr(positions_size_bytes + texcoords_size_bytes + normals_size_bytes + tangents_size_bytes + bone_weights_size_bytes + bone_ids_size_bytes);
 
 	glCreateBuffers(1, &m_vbo_name);
 	glNamedBufferStorage(m_vbo_name, total_size_bytes, nullptr, GL_DYNAMIC_STORAGE_BIT);
 
-	uint64_t offset = 0;
+	GLintptr offset = 0;
 
-	glNamedBufferSubData(m_vbo_name, offset, positions_size_bytes, vertex_data.positions.data());
+	glNamedBufferSubData(m_vbo_name, offset, GLsizeiptr(positions_size_bytes), vertex_data.positions.data());
 	offset += positions_size_bytes;
 
-	glNamedBufferSubData(m_vbo_name, offset, texcoords_size_bytes, vertex_data.texcoords.data());
+	glNamedBufferSubData(m_vbo_name, offset, GLsizeiptr(texcoords_size_bytes), vertex_data.texcoords.data());
 	offset += texcoords_size_bytes;
 
-	glNamedBufferSubData(m_vbo_name, offset, normals_size_bytes, vertex_data.normals.data());
+	glNamedBufferSubData(m_vbo_name, offset, GLsizeiptr(normals_size_bytes), vertex_data.normals.data());
 	offset += normals_size_bytes;
 
 	if (has_tangents)
 	{
-		glNamedBufferSubData(m_vbo_name, offset, tangents_size_bytes, vertex_data.tangents.data());
+		glNamedBufferSubData(m_vbo_name, offset, GLsizeiptr(tangents_size_bytes), vertex_data.tangents.data());
 		offset += tangents_size_bytes;
 	}
 
 	if (has_bones_data)
 	{
-		glNamedBufferSubData(m_vbo_name, offset, bone_weights_size_bytes, bone_weights.data());
+		glNamedBufferSubData(m_vbo_name, offset, GLsizeiptr(bone_weights_size_bytes), bone_weights.data());
 		offset += bone_weights_size_bytes;
 
-		glNamedBufferSubData(m_vbo_name, offset, bone_ids_size_bytes, bone_ids.data());
+		glNamedBufferSubData(m_vbo_name, offset, GLsizeiptr(bone_ids_size_bytes), bone_ids.data());
 	}
 
 	glCreateBuffers     (1, &m_ibo_name);

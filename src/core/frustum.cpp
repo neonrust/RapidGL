@@ -1,6 +1,5 @@
 #include "frustum.h"
 #include <glm/mat4x4.hpp>
-#include <glm/gtx/string_cast.hpp>
 #include "bounds.h"
 #include <cstdio>
 

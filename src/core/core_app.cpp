@@ -12,7 +12,7 @@ using namespace std::chrono;
 #include "timer.h"
 #include "window.h"
 
-#include "gui/gui.h"
+#include "gui/gui.h"  // IWYU pragma: keep
 
 namespace RGL
 {
