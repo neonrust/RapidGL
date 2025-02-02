@@ -1134,32 +1134,32 @@ void StaticModel::GenTrefoilKnot(uint32_t slices, uint32_t stacks)
 		const float d = 0.1f;
 		const float u = (1 - s) * 2 * glm::two_pi<float>();
 		const float v = t * glm::two_pi<float>();
-		const float r = a + b * cos(1.5f * u);
-		const float x = r * cos(u);
-		const float y = r * sin(u);
-		const float z = c * sin(1.5f * u);
+		const float r = a + b * std::cos(1.5f * u);
+		const float x = r * std::cos(u);
+		const float y = r * std::sin(u);
+		const float z = c * std::sin(1.5f * u);
 
 		glm::vec3 dv;
-		dv.x = -1.5f * b * sin(1.5f * u) * cos(u) -
-			(a + b * cos(1.5f * u)) * sin(u);
-		dv.y = -1.5f * b * sin(1.5f * u) * sin(u) +
-			(a + b * cos(1.5f * u)) * cos(u);
-		dv.z =  1.5f * c * cos(1.5f * u);
+		dv.x = -1.5f * b * std::sin(1.5f * u) * std::cos(u) -
+			(a + b * std::cos(1.5f * u)) * std::sin(u);
+		dv.y = -1.5f * b * std::sin(1.5f * u) * std::sin(u) +
+			(a + b * std::cos(1.5f * u)) * std::cos(u);
+		dv.z =  1.5f * c * std::cos(1.5f * u);
 
 		glm::vec3 q   = glm::normalize(dv);
 		glm::vec3 qvn = glm::normalize(glm::vec3(q.y, -q.x, 0));
 		glm::vec3 ww  = glm::cross(qvn, q);
 
 		glm::vec3 range;
-		range.x = x + d * (qvn.x * cos(v) + ww.x * sin(v));
-		range.y = y + d * (qvn.y * cos(v) + ww.y * sin(v));
-		range.z = z + d * ww.z * sin(v);
+		range.x = x + d * (qvn.x * std::cos(v) + ww.x * std::sin(v));
+		range.y = y + d * (qvn.y * std::cos(v) + ww.y * std::sin(v));
+		range.z = z + d * ww.z * std::sin(v);
 
 		return range;
 	};
 
-	float ds = 1.0 / slices;
-	float dt = 1.0 / stacks;
+	float ds = 1.f / float(slices);
+	float dt = 1.f / float(stacks);
 
 	const float E = 0.01f;
 
@@ -1208,32 +1208,28 @@ void StaticModel::GenPQTorusKnot(uint32_t slices, uint32_t stacks, int p, int q,
 {
 	VertexData vertex_data;
 
-	float theta      = 0.0;
-	float theta_step = glm::two_pi<float>() / slices;
+	float theta      = 0;
+	float theta_step = glm::two_pi<float>() / float(slices);
 
-	float phi      = -3.14 / 4.0;
-	float phi_step = glm::two_pi<float>() / stacks;
+	float phi      = -3.14f / 4.f;
+	float phi_step = glm::two_pi<float>() / float(stacks);
 
 	if (p < 1)
-	{
 		p = 1;
-	}
 
 	if (q < 0)
-	{
 		q = 0;
-	}
 
 	for (uint32_t slice = 0; slice <= slices; ++slice, theta += theta_step)
 	{
-		phi = -3.14 / 4.0;
+		phi = -3.14f / 4.f;
 
-		float r = knot_r * (0.5 * (2.0 + glm::sin(q * theta)));
-		auto  P = glm::vec3(glm::cos(p * theta), glm::cos(q * theta), glm::sin(p * theta)) * r;
+		float r = knot_r * (0.5f * (2 + std::sin(float(q) * theta)));
+		auto  P = glm::vec3(std::cos(float(p) * theta), std::cos(float(q) * theta), std::sin(float(p) * theta)) * r;
 
-		auto theta_next = theta + theta_step * 1.0;
-		r     = knot_r * (0.5 * (2.0 + glm::sin(q * theta_next)));
-		auto P_next     = glm::vec3(glm::cos(p * theta_next), glm::cos(q * theta_next), glm::sin(p * theta_next)) * r;
+		float theta_next = theta + theta_step * 1.f;
+		r     = knot_r * (0.5f * (2.f + std::sin(float(q) * theta_next)));
+		auto P_next     = glm::vec3(std::cos(float(p) * theta_next), std::cos(float(q) * theta_next), std::sin(float(p) * theta_next)) * r;
 
 		auto T = P_next - P;
 		auto N = P_next + P;
@@ -1246,7 +1242,7 @@ void StaticModel::GenPQTorusKnot(uint32_t slices, uint32_t stacks, int p, int q,
 
 			vertex_data.positions.push_back(N * circle_vertex_position.x + B * circle_vertex_position.y + P);
 			vertex_data.normals  .push_back(glm::normalize(vertex_data.positions[stack] - P));
-			vertex_data.texcoords.push_back(glm::vec2(slice / float(slices), 1.0 - stack / float(stacks)));
+			vertex_data.texcoords.push_back(glm::vec2(float(slice) / float(slices), 1.f - float(stack) / float(stacks)));
 		}
 	}
 
