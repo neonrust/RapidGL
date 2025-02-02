@@ -104,11 +104,7 @@ public:
 	void Bind(uint32_t texture_unit) { glBindSampler(texture_unit, m_so_id); }
 
 private:
-	void Release()
-	{
-		glDeleteSamplers(1, &m_so_id);
-		m_so_id = 0;
-	}
+	void Release();
 
 	GLuint m_so_id;
 	float m_max_anisotropy;

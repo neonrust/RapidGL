@@ -158,8 +158,14 @@ void TextureSampler::SetAnisotropy(float anisotropy)
 	float max_anisotropy;
 	glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &max_anisotropy);
 
-	glm::clamp(anisotropy, 1.0f, max_anisotropy);
+	anisotropy = glm::clamp(anisotropy, 1.0f, max_anisotropy);
 	glSamplerParameterf(m_so_id, GL_TEXTURE_MAX_ANISOTROPY, anisotropy);
+}
+
+void TextureSampler::Release()
+{
+	glDeleteSamplers(1, &m_so_id);
+	m_so_id = 0;
 }
 
 // --------------------- Texture -------------------------
@@ -230,7 +236,7 @@ void Texture::SetAnisotropy(float anisotropy)
 	float max_anisotropy;
 	glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &max_anisotropy);
 
-	glm::clamp(anisotropy, 1.0f, max_anisotropy);
+	anisotropy = glm::clamp(anisotropy, 1.0f, max_anisotropy);
 	glTextureParameterf(m_obj_name, GL_TEXTURE_MAX_ANISOTROPY, anisotropy);
 }
 
