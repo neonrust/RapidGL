@@ -8,27 +8,31 @@ layout(rgba32f, binding = 0) uniform image2D   u_input_color;
 layout(rgba32f, binding = 1) uniform image2D   u_output_color;
 layout(binding = 2)          uniform sampler2D u_input_depth;
 
-
 uniform vec3 u_fog_color;
 uniform float u_fog_density;       // [ 0, 0.1 ]   (sensible)
 uniform float u_fog_falloff_blend; // [ 0, 1 ]
 
 uniform vec3  u_cam_pos;
-uniform vec3  u_cam_forward;
-uniform vec3  u_cam_right;
-uniform vec3  u_cam_up;
 uniform float u_near_z;
 uniform float u_far_z;
-uniform uvec3 u_grid_dim;
-uniform uvec2 u_cluster_size_ss;
-uniform float u_log_grid_dim_y;
 uniform mat4  u_projection;
 uniform mat4  u_view;
 uniform mat4  u_inv_projection;
 uniform mat4  u_inv_view;
+uniform uvec3 u_grid_dim;
+uniform uvec2 u_cluster_size_ss;
+uniform float u_log_grid_dim_y;
 
 const float FOG_RADIANCE_SCALE = 0.01;
-const float FOG_DISTANCE_SCALE = 1.3;  // must be 1-
+const float FOG_DISTANCE_SCALE = 0.7;  // [ 0, 1 ]
+
+const int _RED = 1;
+const int _ORANGE = 2;
+const int _YELLOW = 3;
+const int _GREEN = 4;
+const int _CYAN = 5;
+const int _BLUE = 6;
+const int _PINK = 7;
 
 struct Ray
 {
@@ -43,42 +47,57 @@ struct Sphere
 	float radius;
 };
 
-struct Cone
+struct SphericalCone
 {
 	Sphere sphere;
 	vec3 axis;
-	float cos_theta;
+	float angle;   // radians
 };
 
-struct RaySphereResult
+struct RayResult
 {
-	float dist_closest; // exactly in the middle of t1 and t2, except when depth-capped
 	float dist_enter;
+	float dist_closest;
 	float dist_exit;
+	vec3 p_enter;
+	vec3 p_exit;
+	vec3 p_closest;
 };
 
 struct RayConeResult
 {
 	float dist_enter;
 	float dist_exit;
+	float dist_axis; // 0 = bang-on the axis, 1 = as far away from the axis as possible (still inside the cone)
+
+	float dist_center;
+	vec3 p_enter;
+	vec3 p_exit;
+	int debug;
 };
 
 
 
 float atan_approx(float x);
+bool solveRoots(float A, float B, float C, out float t1, out float t2);
 float linearDepth(float depth);
 uint computeClusterIndex(uvec3 cluster_coord);
 uvec3 computeClusterCoord(vec2 screen_pos, float view_z);
-float getSquareFalloffAttenuation(vec3 pos_to_light, float light_radius);
+float getSquareFalloffAttenuation(float distance_sq, float light_radius);
 
 // vec3 scatterLightsInCluster(Ray eye_ray, uvec3 cluster_coord, float max_depth);
 
-vec3 scatterPointLight(Ray eye_ray, PointLight light, float max_depth);
-vec3 scatterSpotLight(Ray eye_ray, SpotLight light, float max_depth);
+vec3 scatterPointLight(Ray ray, PointLight light);
+vec3 scatterSpotLight(Ray ray, SpotLight light);
+bool isPointInsideCone(vec3 point, SphericalCone cone);
 
-bool testRaySphere(Ray ray, Sphere sphere, out RaySphereResult result);
-bool testRayCone(Ray ray, Cone cone, out RayConeResult result);
+bool testRaySphere(Ray ray, Sphere sphere, out RayResult result);
+bool testRayCone(Ray ray, SphericalCone cone, out RayResult result);
+bool testRaySphereCap(Ray ray, SphericalCone cone, bool startInside, out RayResult result);
 vec3 rayPoint(Ray ray, float fraction);
+void rayRayDistance(Ray ray1, Ray ray2, out RayResult result);
+float rayPointDistance(Ray ray, vec3 point, out float ray_dist);
+float vectorVectorAngle(vec3 v1_norm, vec3 v2_norm);
 float capDepth(Ray ray, float fraction, float max_depth, out bool capped);
 float rayFraction(Ray ray, vec3 point);
 
@@ -92,13 +111,32 @@ layout(std430, binding = SPOT_LIGHTS_SSBO_BINDING_INDEX) buffer SpotLightsSSBO
     SpotLight spot_lights[];
 };
 
+
 layout(local_size_x = GROUP_SIZE, local_size_y = GROUP_SIZE, local_size_z = 1) in;
 void main()
 {
-	uvec2 pixel_id   = gl_GlobalInvocationID.xy;
-	vec2 screen_pos  = vec2(pixel_id) + vec2(0.5);
 	vec2 screen_size = vec2(imageSize(u_input_color));
-	vec2  screen_norm = (screen_pos*2 - vec2(screen_size)) / vec2(screen_size); // [ -1, 1 ]
+	uvec2 pixel_id   = gl_GlobalInvocationID.xy;
+
+
+	// draw "aiming dot" at the center of the screen
+	// this should not be in the final version!  ;)
+	ivec2 vec_to_enter = ivec2(int(pixel_id.x) - screen_size.x/2, int(pixel_id.y) - screen_size.y/2);
+	float distance_from_center = dot(vec_to_enter, vec_to_enter);
+	if(distance_from_center < 8)
+	{
+		imageStore(u_output_color, ivec2(pixel_id), vec4(10, 10, 10, 1));
+		return;
+	}
+
+
+
+	// skip invocations that operate outside the screen
+	if(pixel_id.x >= screen_size.x || pixel_id.y >= screen_size.y)
+		return;
+
+	vec2 screen_pos  = vec2(pixel_id) + vec2(0.5); // pointing at the center of each pixel
+	vec2 screen_norm = (screen_pos*2 - vec2(screen_size)) / vec2(screen_size); // [ -1, 1 ]
 
 	float view_z     = texture(u_input_depth, screen_pos/screen_size).r;
 	float frag_depth = linearDepth(view_z);
@@ -112,15 +150,24 @@ void main()
 	// world-space
 	eye_ray.start = u_cam_pos;
 	eye_ray.direction = vec3(u_inv_view * vec4(eye_ray.direction, 0));
+	eye_ray.max_length = frag_depth; // TODO: transform into view-space
+
 
 	vec3 fog_radiance = vec3(0);
 
 	// for(int idx = 0; idx < point_lights.length(); ++idx)
-	// 	fog_radiance += scatterPointLight(eye_ray, point_lights[idx], frag_depth);
+	// 	fog_radiance += scatterPointLight(eye_ray, point_lights[idx]);
 
 	for(int idx = 0; idx < spot_lights.length(); ++idx)
-		fog_radiance += scatterSpotLight(eye_ray, spot_lights[idx], frag_depth);
+		fog_radiance += scatterSpotLight(eye_ray, spot_lights[idx]);
 
+
+
+
+	if(point_lights.length() == 0 && pixel_id.x < 45 && pixel_id.y < 50)
+		fog_radiance += vec3(1, 0, 0);
+	if(spot_lights.length() == 0 && pixel_id.x >= 55 && pixel_id.x < 100 && pixel_id.y < 50)
+		fog_radiance += vec3(1, 0, 0);
 
 	// TODO: area lights
 	//   I guess area light scattering could be approximated using a frustum (the shape, i.e. a cropped pyramid),
@@ -128,13 +175,13 @@ void main()
 	//    (in light-space, naturally).
 	//    Here's a daring 2d representation:
 	//                   ___----
-	//         ___----***    *
+	//         ___---****    *
 	//        |              |  fall off from center axis
 	//      C |------------------> center (falling off from C)
 	//        |___           |  fall-off from center axis
 	//            ***----___ v
 	//                      ****
-	// Are the angle of the frustum sides always the same or a function of the width/height (in that axis) ?
+	// Are the angle of the frustum sides always the same or a function of the width/height (on that axis) ?
 	// If the latter, probably with a sqrt-like curvature, increasing fast in the beginning,
 	// then asymptotically reaching a "max" angle (maybe 70-90 degrees?)
 	// Pr maybe both width & height contribute to that curve?
@@ -147,7 +194,9 @@ void main()
 */
 
 	vec4 src_color = imageLoad(u_input_color, ivec2(screen_pos));
-	vec4 final_color = vec4(src_color.xyz + fog_radiance, 1);
+	vec4 final_color = vec4(src_color.rgb + fog_radiance, 1);
+
+	final_color = vec4(clamp(final_color.rgb, vec3(0), vec3(1000)), 1);
 
 	imageStore(u_output_color, ivec2(screen_pos), final_color);
 }
@@ -167,187 +216,75 @@ void main()
 //         uint light_index = point_light_index_list[light_index_offset + i];
 // 		PointLight light = point_lights[light_index];
 
-// 		radiance += scatterPointLight(eye_ray, light, frag_depth);
+// 		radiance += scatterPointLight(eye_ray, light);
 // 	}
 
 // 	return radiance;
 // }
 
-vec3 scatterPointLight(Ray eye_ray, PointLight light, float max_depth)
+vec3 scatterPointLight(Ray ray, PointLight light)
 {
 	vec3 radiance = vec3(0);
 
 	Sphere light_sphere;
 	light_sphere.center = light.position;
-	// light_sphere.center = (u_projection * u_view * vec4(light.position, 1)).xyz;
 	light_sphere.radius = light.radius;
 
-	RaySphereResult result;
-	if(testRaySphere(eye_ray, light_sphere, result))
+	RayResult result;
+	if(testRaySphere(ray, light_sphere, result))
 	{
 		// clamping like this isn't strictly correct (doesn't take the projection into account)
-		float t1 = clamp(result.dist_enter, 0, max_depth);
-		float t2 = clamp(result.dist_exit, t1, max_depth);
+		float t1 = clamp(result.dist_enter, 0, ray.max_length);
+		float t2 = clamp(result.dist_exit, t1, ray.max_length);
 		float t_closest = clamp(result.dist_closest, t1, t2);
 
-		vec3 point_closest = rayPoint(eye_ray, t_closest);
+		vec3 point_closest = rayPoint(ray, t_closest);
 		vec3 closest_to_light = point_closest - light.position;
 
 		// NOTE: linear fall off actually looks a bit nicer (subjectively)  ;)
 		//   squared fall off is better but also produces a very bright center...
-		float d = length(closest_to_light)*FOG_DISTANCE_SCALE;
+		float d = length(closest_to_light)/FOG_DISTANCE_SCALE;
 
 		float attenuation_lin = 1 - d/light.radius;
-		float attenuation_sq = getSquareFalloffAttenuation(closest_to_light, light.radius*light.radius);
+		float attenuation_sq = getSquareFalloffAttenuation(dot(closest_to_light, closest_to_light), light.radius*light.radius);
 		float attenuation = mix(attenuation_lin, attenuation_sq, u_fog_falloff_blend);
 
 		float energy = light.base.intensity * attenuation;
 		float thickness = t2 - t1;
 		float fog_energy = energy * thickness;
+		// TODO: could also sample a 3d texture using a line through t1 and t2
 		radiance += fog_energy * u_fog_density * light.base.color * u_fog_color * FOG_RADIANCE_SCALE;
 	}
 
 	return max(vec3(0), radiance);
 }
 
-vec3 scatterSpotLight(Ray eye_ray, SpotLight light, float max_depth)
+vec3 scatterSpotLight(Ray ray, SpotLight light)
 {
 	vec3 radiance = vec3(0);
 
-	Cone outer_cone;
+	SphericalCone outer_cone;
 	outer_cone.sphere.center  = light.point.position;
 	outer_cone.sphere.radius  = light.point.radius;
 	outer_cone.axis           = light.direction;
-	outer_cone.cos_theta      = cos(light.outer_angle);
+	outer_cone.angle          = light.outer_angle;
 
-	// do 2 ray tests? one inner and one outer ?
-	// to get the t1 & t2 for each (essentially, t1, t2, t3 and t4)
-	// then blend the contribution linearly to the outer
-
-	// https://www.gamedev.net/forums/topic/464248-ray-to-spherically-capped-cone/
-	// construct a transform matrix into "cone space";
-	//   coner (sphere) center at the origin
-	//   direction along z-axis
-	// mat4 cone_space;
-	// vec3 space_x;
-	// vec3 space_y;
-	// vec3 space_z = light.axis;
-	// if(space_z == vec3(0, 1, 0))
-	// {
-	// 	space_y = cross(vec3(1, 0, 0), space_z);
-	// 	space_x = cross(space_z, space_y);
-	// }
-	// else
-	// {
-	// 	space_y = cross(vec3(0, 1, 0), space_z);
-	// 	space_x = cross(space_z, space_y);
-	// }
-	// cone_space[0] = vec4(space_x, 0);
-	// cone_space[1] = vec4(space_y, 0);
-	// cone_space[2] = vec4(space_z, 0);
-	// cone_space[3] = vec4(light.point.position, 1);
-
-	// Ray cone_ray;
-	// cone_ray.start = (cone_space * vec4(eye_ray.start, 1)).xyz;
-	// cone_ray.direction = (cone_space * vec4(eye_ray.direction, 0)).xyz;
-
-	RaySphereResult sphere_result;
-	if(! testRaySphere(eye_ray, outer_cone.sphere, sphere_result))
-		return vec3(0);  // missed the entire sphere, can never intersect with the cone
-
-
-	// NOTE: this will test a cone that has the same radius as the sphere,
-	//   which is strictly not correct (it's a bit too much).
-	//   but, since we already tested the sphere (encluses the cone), it's ok ;)
-	RayConeResult cone_result;
-	if(! testRayCone(eye_ray, outer_cone, cone_result))
+	RayResult result;
+	if(! testRayCone(ray, outer_cone, result))
 		return vec3(0);  // missed the entire cone
 
-	// return vec3(1, 0, 0);
+	return vec3(1 * u_fog_density);
 
-	float sphere_enter = clamp(sphere_result.dist_enter, 0, max_depth);
-	float sphere_exit = clamp(sphere_result.dist_exit, sphere_enter, max_depth);
-	float sphere_closest = clamp(sphere_result.dist_closest, sphere_enter, sphere_exit);
+	// float cone_enter = min(result.dist_enter, ray.max_length);
+	// float cone_exit = min(result.dist_exit, ray.max_length);
 
-	float cone_enter = cone_result.dist_enter;
-	float cone_exit = cone_result.dist_exit;
-
-	// if(cone_enter > cone_exit)
-	// 	return vec3(1, 0, 0);
-
-	// if(cone_enter > max_depth)  // surely, these may be ignored?
-	// 	return vec3(0, 1, 1);
-	// cone_enter = clamp(cone_enter, 0, max_depth);
-	// cone_exit = clamp(cone_exit, cone_enter, max_depth);
-
-	// if(cone_enter < 0) // surely, these may be ignored?
-	// 	return vec3(0, 1, 1);
-
-	vec3 p_closest;
-	bool got_p = false;
-	if(cone_enter > 0 /*&& cone_enter < max_depth*/)
-	{
-		vec3 p_enter = rayPoint(eye_ray, cone_enter);
-		float h_enter = dot(p_enter - outer_cone.sphere.center, outer_cone.axis);
-		if(h_enter >= 0 && h_enter <= outer_cone.sphere.radius)
-		{
-			p_closest = p_enter;
-			got_p = true;
-			// return vec3(0, 1, 0);
-		}
-	}
-	if(cone_exit > 0 /*&& cone_exit < max_depth*/ && (!got_p || cone_exit < cone_enter))
-	{
-		vec3 p_exit = rayPoint(eye_ray, cone_exit);
-		float h_exit = dot(p_exit - outer_cone.sphere.center, outer_cone.axis);
-		if(h_exit >= 0 && h_exit <= outer_cone.sphere.radius)
-		{
-			p_closest = p_exit;
-			got_p = true;
-			// return vec3(0, 1, 0);
-		}
-	}
-	if(! got_p)
-		return vec3(0);
-
-	// return vec3(0, 0, 0);
-
-	// float r = 0;
-	// float g = 0;
-	// float b = 0;
-	// if(cone_enter < 0)
-	// 	r = 1;
-	// if(cone_enter > max_depth)
-	// 	g = 1;
-	// if(cone_exit < 0)
-	// 	r = 1;
-	// if(cone_exit > max_depth)
-	// 	b = 1;
-
-	// if(r > 0 || g > 0 || b > 0)
-	// 	return vec3(r, g, b);
-
-	// TODO: inner cone test
-
-	// vec3 point_closest = rayPoint(eye_ray, sphere_closest);
-	vec3 closest_to_light = p_closest - light.point.position;
-
-	float d = length(closest_to_light)*FOG_DISTANCE_SCALE;
-	// float attenuation_lin = 1 - (d*d)/(light.radius*light.radius);
-	// float attenuation_lin = 1 - pow(d, 0.8)/pow(light.radius, 0.8);
-	float attenuation_lin = 1 - d/light.point.radius;
-	float attenuation_sq = getSquareFalloffAttenuation(closest_to_light, light.point.radius*light.point.radius);
-
-	float attenuation = mix(attenuation_lin, attenuation_sq, u_fog_falloff_blend);
-
-	float energy = light.point.base.intensity * attenuation;
-	float thickness = d * outer_cone.cos_theta; // TODO: how far from axis (in screen-sspace?)
-	float fog_energy = energy * thickness;
-	radiance += fog_energy * u_fog_density * light.point.base.color * u_fog_color * FOG_RADIANCE_SCALE;
-
-	return max(vec3(0), radiance);
+	// TODO: perform raymarching between 'cone_enter' & 'cone_exit' in X steps
+	//   and accumulate the irradiance along the way (integating, really)
+	//   can probably scale the number of steps by how far apart tenter & exit are.
+	//   and by how far away from the camera it is. (and a global step count scale, naturally)
+	// OR is it possible to build a "curve" of the brightness along the ray, and integrate that?
+	//   hm, maybe that will result in the same thing... ;)
 }
-
 
 float atan_approx(float x)
 {
@@ -378,114 +315,280 @@ float linearDepth(float depth)
 	return linear_depth;
 }
 
-bool testRaySphere(Ray ray, Sphere sphere, out RaySphereResult result)
+bool testRaySphere(Ray ray, Sphere sphere, out RayResult result)
 {
 	vec3 center_to_ray = ray.start - sphere.center;
 
-	float a = 2 * dot(ray.direction, ray.direction);
-	float b = 2 * dot(center_to_ray, ray.direction);
-	float c = dot(center_to_ray, center_to_ray) - sphere.radius*sphere.radius;
+	float A = dot(ray.direction, ray.direction);
+	float B = 2 * dot(center_to_ray, ray.direction);
+	float C = dot(center_to_ray, center_to_ray) - sphere.radius*sphere.radius;
 
-	float discriminant = b*b - 2*a*c;
-	if(discriminant < 0)
+	float t1;
+	float t2;
+	if(! solveRoots(A, B, C, t1, t2))
 		return false;
 
-	// divide both by 'a' to avoid double effort
-	float discr_root = sqrt(discriminant) / a;
-	b /= a;
+	result.dist_enter = t1;
+	result.dist_exit  = t2;
+	result.dist_closest = (t1 + t2)/2; // aka -B/2A
 
-	result.dist_enter = -b - discr_root;
-	result.dist_exit  = -b + discr_root;
-	result.dist_closest = -b; //(result.dist_enter + result.dist_exit) / 2;
+	result.p_enter = rayPoint(ray, result.dist_enter);
+	result.p_exit = rayPoint(ray, result.dist_exit);
+	result.p_closest = rayPoint(ray, result.dist_closest);
 
 	return true;
 }
 
-bool testRayCone(Ray ray, Cone cone, out RayConeResult result)
+bool testRayCone(Ray ray, SphericalCone cone, out RayResult result)
 {
-	vec3 center_to_ray = ray.start - cone.sphere.center;
-	float cos_theta_sq = cone.cos_theta*cone.cos_theta;
+	vec3 center_to_ray = ray.start - cone.sphere.center; // aka CO
+
+	float start_distance_sq = dot(center_to_ray, center_to_ray);
+
+	// check wherther ray starts inside the cone (sphere & cone surface)
+	bool startInside = start_distance_sq < cone.sphere.radius*cone.sphere.radius \
+		&& (dot(center_to_ray, cone.axis) / length(center_to_ray)) >= cos(cone.angle);  // inside the cone surface
+
+	// optimization: check if the ray will miss the sphere entirely
+	// float t_closest = dot(center_to_ray, cone.axis);
+	// vec3 p_closest_to_center = rayPoint(ray, t_closest);
+	// vec3 closest_to_center = p_closest_to_center - cone.sphere.center;
+	// float distance_sq = dot(closest_to_center, closest_to_center);
+	// if(distance_sq > cone.sphere.radius*cone.sphere.radius)
+	// 	return false;
+
+
+	// check intersection with the infinite cone
+	float cos_theta = cos(cone.angle);
+	float cos_theta_sq = cos_theta*cos_theta;
 	float dir_axis_dot = dot(ray.direction, cone.axis);
+	float CO_axis_dot = dot(center_to_ray, cone.axis);
 
-	float a = 2 * (dir_axis_dot*dir_axis_dot - cos_theta_sq);
-	float b = 2 * (dir_axis_dot*dot(center_to_ray, cone.axis) - dot(ray.direction, center_to_ray)*cos_theta_sq);
-	float c = dot(center_to_ray, cone.axis)*dot(center_to_ray, cone.axis) - dot(center_to_ray, center_to_ray)*cos_theta_sq;
+	float A = dir_axis_dot*dir_axis_dot - cos_theta_sq;
+	float B = 2 * (dir_axis_dot*CO_axis_dot - dot(ray.direction, center_to_ray)*cos_theta_sq);
+	float C = CO_axis_dot*CO_axis_dot - start_distance_sq*cos_theta_sq;
 
-	float discriminant = b*b - 2*a*c;
-	if(discriminant < 0)
+	float t1;
+	float t2;
+	t1 = -1;
+	t2 = -1;
+
+	if(! solveRoots(A, B, C, t1, t2))
 		return false;
 
-	float discr_root = sqrt(discriminant) / a;
-	b /= a;
+   // t1 & t2 are intersection (fractions along 'ray')
+   //   negative means "before" the ray origin (in relation to the ray direction).
 
-	result.dist_enter = -b - discr_root;
-	result.dist_exit  = -b + discr_root;
-	float t1 = -b - discr_root;
-	float t2 = -b + discr_root;;
+   // if ray started outside the cone and both intersections are "behind"
+   //  -> the ray missed completely  (direction is away from the cone)
+	if(! startInside && t1 < 0 && t2 < 0)
+		return false;
 
-	// TODO: need to handle the "cap"
-
-	// https://stackoverflow.com/questions/45783444/glsl-spotlight-projection-volume
-	// vec3 p1 = rayPoint(ray, t1);
-	// vec3 p2 = rayPoint(ray, t2);
-
-	// float isect1 = step(0, dot(normalize(p1 - cone.sphere.center), cone.axis));
-	// float isect2 = step(0, dot(normalize(p2 - cone.sphere.center), cone.axis));
-
-	// if(isect1 < 0.5)
+	// if(t1 < 0 && t2 > 0)
 	// {
 	// 	t1 = t2;
-	// 	p1 = p2;
-	// 	isect1 = isect2;
+	// 	t2 = -1;
 	// }
-	// if(isect2 < 0.5)
-	// {
-	// 	t2 = t1;
-	// 	p2 = p1;
-	// 	isect2 = isect1;
-	// }
-	// vec3 isectP = (length(p1 - ray.start) < length(p2 - ray.start))? p1: p2;
-	// float isIsect = mix(isect2, 1, isect1);
 
-	result.dist_enter = t1;
-	result.dist_exit = t2;
-	return true;
-/*
+	// ensure t1 is before t2
+	if(t1 > t2)
+	{
+		float tmp = t2;
+		t2 = t1;
+		t1 = tmp;
+	}
+
+
+	bool t1_valid = false;
+	bool t2_valid = false;
+	bool t1_testCap = false;
+	bool t2_testCap = false;
+
+	// calculate 'height' of point, in relation to the cone's axis and its radius
+	//   negative height means it is on the "negative" side of the infinite cone (never useful)
+	//   larger than radius means it is too far away, i.e. intersection with the cap should be tested.
+	float h1 = -1;
 	if(t1 >= 0)
 	{
-		vec3 cp1 = rayPoint(ray, t1) - cone.sphere.center;
-		float h = dot(cp1, cone.axis);
-		if(h >= 0 && h <= cone.sphere.radius) // actually 'height'; should depend on distance from axis
-		{
-			// hitFound = true;
-			// t = t1;
-			// cp = cp1;
-		}
-		else
-			t1 = -1;
+		result.p_enter = rayPoint(ray, t1);
+		// check if it's within sphere; too far on the periphery, will be tested below
+		h1 = dot(result.p_enter - cone.sphere.center, cone.axis);
+		t1_valid = h1 >= 0 && h1 <= (cone.sphere.radius*cos(cone.angle) + 1e-4);
+		t1_testCap = ! t1_valid;
 	}
-	if(t2 >= 0)// && (!hitFound || t2 < t))
+	else if(startInside)
 	{
-		vec3 cp2 = rayPoint(ray, t2) - cone.sphere.center;
-		float h = dot(cp2, cone.axis);
-		if(h >= 0 && h <= cone.sphere.radius) // actually 'height'; should depend on distance from axis
+		// swap t1 & t2
+		t1_valid = true;
+		t1 = 0;
+		result.p_enter = ray.start;
+	}
+	else
+		t1_testCap = true;
+
+	if(t2 >= 0)
+	{
+		result.p_exit = rayPoint(ray, t2);
+		float h2 = dot(result.p_exit - cone.sphere.center, cone.axis);
+		t2_valid = h2 >= 0 && h2 <= (cone.sphere.radius*cos(cone.angle) + 1e-4);
+		t2_testCap = ! t2_valid;
+
+		// if t1 wasn't valid (but positive), test the cap for t1
+		// t1_testCap = ! t1_valid && (h1 >= 0 || t1 == -1);
+	}
+	else
+		t2_testCap = true;
+
+	if(! t1_valid && ! t1_testCap && ! t2_valid && ! t2_testCap)
+		return false; // there's no hope for an intersection
+
+	if(t1_testCap || t2_testCap)
+	{
+		RayResult cap_result;
+		if(testRaySphereCap(ray, cone, startInside, cap_result))
 		{
-			// hitFound = true;
-			// t = t2;
-			// cp = cp2;
+			if(t1_testCap && cap_result.dist_enter >= 0)
+			{
+				t1 = cap_result.dist_enter;
+				result.p_enter = cap_result.p_enter;
+				t1_valid = true;
+			}
+			if(t2_testCap)
+			{
+				if(cap_result.dist_exit >= 0)
+				{
+					t2 = cap_result.dist_exit;
+					result.p_exit = cap_result.p_exit;
+					t2_valid = true;
+				}
+				else if(!t1_testCap && cap_result.dist_enter >= 0)
+				{
+					t2 = cap_result.dist_enter;
+					result.p_exit = cap_result.p_enter;
+					t2_valid = true;
+				}
+			}
+			if(t1 >= 0 && t2 >= 0 && t2 < t1)
+			{
+				// swap t1 & t2
+				float tmp = t2;
+				t2 = t1;
+				t1 = tmp;
+				// swap p_enter & p_exit
+				vec3 ptmp = result.p_enter;
+				result.p_enter = result.p_exit;
+				result.p_exit = ptmp;
+			}
 		}
 		else
-			t2 = -1;
+		{
+			if(t1_testCap)
+			{
+				t1 = -1;
+				t1_valid = false;
+			}
+			if(t2_testCap)
+			{
+				t2 = -1;
+				t2_valid = false;
+			}
+		}
 	}
 
-	if(t1 == -1 || t2 == -1)
+	// neither of the intersections were valid, in the end
+	if(! t1_valid && ! t2_valid)
 		return false;
 
-	result.dist_enter = min(t1, t2);
-	result.dist_exit = max(t1, t2);
+	if(t1_valid && t1 >= 0)
+		result.dist_enter = t1;
+	else
+		result.dist_enter = -1;
+
+	if(t2_valid && t2 >= 0)
+		result.dist_exit = t2;
+	else
+		result.dist_exit = -1;
+
+	// float ray_closest;
+	// result.dist_center = rayPointDistance(ray, cone.sphere.center, ray_closest);
+	// Ray spot_ray;
+	// spot_ray.start = cone.sphere.center;
+	// spot_ray.direction = cone.axis;
+	// RayResult axis_result;
+	// rayRayDistance(ray, spot_ray, axis_result);
+	// vec3 p_closest = axis_result.p_enter;  // point on ray that is closest to spot axis
+	// result.dist_axis = vectorVectorAngle(cone.axis, normalize(p_closest - cone.sphere.center));
+	// // 0 = right on the axis, 1 = as far away from the axis as possible (still inside the cone)
+	// result.dist_axis = clamp(result.dist_axis / cone.angle, 0, 1);
 
 	return true;
-*/
+}
+
+bool testRaySphereCap(Ray ray, SphericalCone cone, bool startInside, out RayResult result)
+{
+	// find the ray intersection with a spherical cap of a cone.
+
+	// quadric equation coefficients
+	vec3 oc = ray.start - cone.sphere.center;
+	float A = 1;  // actually: dot(ray.dir, ray.dir)   but ray.dir is already unit length
+	float B = 2 * dot(oc, ray.direction);
+	float C = dot(oc, oc) - cone.sphere.radius*cone.sphere.radius;
+
+	float t1 = -1;
+	float t2 = -1;
+	if(! solveRoots(A, B, C, t1, t2))
+		return false;
+
+	result.dist_enter = -1;
+	result.dist_exit = -1;
+
+	if(t1 > t2)
+	{
+		float tmp = t2;
+		t2 = t1;
+		t1 = tmp;
+	}
+
+	// check the angular condition
+	bool gotPoint = false;
+	if(t1 >= 0)
+	{
+		vec3 p = rayPoint(ray, t1);
+		if(isPointInsideCone(p, cone))
+		{
+			result.dist_enter = t1;
+			result.p_enter = p;
+			gotPoint = true;
+		}
+	}
+	else if(startInside)
+	{
+		t1 = 0;
+		result.dist_enter = t1;
+		result.p_enter = ray.start;
+		gotPoint = true;
+	}
+
+	if(t2 >= 0)
+	{
+		vec3 p = rayPoint(ray, t2);
+		if(isPointInsideCone(p, cone))
+		{
+			if(! gotPoint)
+			{
+				result.dist_enter = t2;
+				result.p_enter = p;
+			}
+			else
+			{
+				result.dist_exit = t2;
+				result.p_exit = p;
+			}
+			gotPoint = true;
+		}
+	}
+
+	return gotPoint;
 }
 
 vec3 rayPoint(Ray ray, float fraction)
@@ -518,11 +621,110 @@ float capDepth(Ray ray, float fraction, float max_depth, out bool capped)
 }
 
 // from pbr_lighting.glh (slightly modified)
-float getSquareFalloffAttenuation(vec3 pos_to_light, float light_radius_squared)
+float getSquareFalloffAttenuation(float distance_sq, float light_radius_squared)
 {
-    float distance_square = dot(pos_to_light, pos_to_light);
-    float factor          = distance_square / light_radius_squared;
+    // float distance_square = dot(pos_to_light, pos_to_light);
+    float factor          = distance_sq / light_radius_squared;
     float smooth_factor   = max(1.0 - factor * factor, 0.0);
 
-    return (smooth_factor * smooth_factor) / max(distance_square, 1e-5);
+    return (smooth_factor * smooth_factor) / max(distance_sq, 1e-5);
+}
+
+bool isPointInsideCone(vec3 point, SphericalCone cone)
+{
+	//    point
+	//   /
+	//  C--------| axis
+	//           ^ radius
+
+	vec3 to_center = point - cone.sphere.center;
+	float len_sq = dot(to_center, to_center);
+
+	// outside the entire sphere?
+	if(len_sq > (cone.sphere.radius*cone.sphere.radius + 1e-1))
+		return false;
+
+	// cos of the angle between the vector and the cone's axis
+	float cos_theta = dot(to_center, cone.axis) / sqrt(len_sq);
+
+	// compare with the cosine of the cone's half-angle (i.e. must be less than 90 degrees)
+	// (larger cos value means sharper angle)
+	return cos_theta >= cos(cone.angle);
+}
+
+// calculate shortest distance between two rays
+void rayRayDistance(Ray ray1, Ray ray2, out RayResult result)
+{
+	vec3 d1 = ray1.direction;
+	vec3 d2 = ray2.direction;
+
+	vec3 w0 = ray1.start - ray2.start;
+
+	float a = 1;//dot(d1, d1); // always 1 if d1 is normalized
+	float b = dot(d1, d2);
+	float c = 1;//dot(d2, d2); // always 1 if d2 is normalized
+	float d = dot(d1, w0);
+	float e = dot(d2, w0);
+
+	float denominator = a * c - b * b;
+
+	if(abs(denominator) > 1e-6)
+	{
+		// clamp to ensure they are non-negative (since it's a ray)
+		result.dist_enter = max((b * e - c * d) / denominator, 0);
+		result.dist_exit = max((a * e - b * d) / denominator, 0);
+	}
+	else // rays are parallel
+	{
+		result.dist_enter = 0;
+		// project onto ray2's direction
+		result.dist_exit = max(dot(d2, w0) / c, 0);
+	}
+
+	result.p_enter = rayPoint(ray1, result.dist_enter); // point on ray1
+	result.p_exit = rayPoint(ray2, result.dist_exit);   // point on ray2
+}
+
+float rayPointDistance(Ray ray, vec3 point, out float ray_dist)
+{
+	// Vector from the ray origin to the point
+	vec3 w = point - ray.start;
+
+	// Project vector w onto the ray direction
+	ray_dist = dot(w, ray.direction);
+
+	if(ray_dist < 0.0)
+ 	{
+	    // Closest point is the ray origin
+	    vec3 p_closest = ray.start;
+	    return length(point - p_closest);
+	}
+
+    // Closest point is along the ray
+    vec3 p_closest = rayPoint(ray, ray_dist);
+    return length(point - p_closest);
+}
+
+float vectorVectorAngle(vec3 v1_norm, vec3 v2_norm)
+{
+	float cos_angle = clamp(dot(v1_norm, v2_norm), -1, 1);
+	return acos(cos_angle);
+}
+
+bool solveRoots(float squareCoeff, float linearCoeff, float constantCoeff, out float t1, out float t2)
+{
+	float A = 2*squareCoeff;
+	float B = linearCoeff;
+	float C = constantCoeff;
+
+	float discriminant = B*B - 2*A*C;
+	if(discriminant < 0)
+		return false;  // no real intersection
+
+	// step 2: Solve the quadric equation
+	float sqrt_discriminant = sqrt(discriminant);
+	t1 = (-B - sqrt_discriminant) / A;
+	t2 = (-B + sqrt_discriminant) / A;
+
+	return true;
 }

@@ -111,12 +111,17 @@ private:
     void GenSkyboxGeometry();
 
 	const std::vector<StaticObject> &cullScene();
-	void renderScene(RGL::Shader &shader, bool use_material=true);
-    void renderDepthPass();
-    void renderLighting();
-	void renderSceneAABB();
+	void renderScene(const RGL::Camera &camera, RGL::Shader &shader, MaterialCtrl matCtrl=UseMaterials);
+	void renderDepth(const RGL::Camera &camera, RGL::RenderTarget::Texture2d &target);
+	void renderLighting(const RGL::Camera &camera);
+	void renderSceneBounds();
 	void draw2d(const RGL::Texture &texture); // TODO: move to CoreApp
 	void draw2d(const RGL::Texture &texture, const glm::uvec2 &top_left, const glm::uvec2 &bottom_right); // TODO: move to CoreApp
+
+	void debugDrawLine(const glm::vec3 &p1, const glm::vec3 &p2, const glm::vec4 &color={1,1,1,1});
+	void debugDrawSphere(const glm::vec3 &center, float radius, const glm::vec4 &color={1,1,1,1});
+	void debugDrawSphere(const glm::vec3 &center, float radius, size_t rings, size_t slices, const glm::vec4 &color={1,1,1,1});
+	void debugDrawSpotLight(const SpotLight &light, const glm::vec4 &color={1,1,1,1});
 
 	RGL::Camera m_camera;
 	float m_camera_fov { 80.f };
@@ -146,22 +151,44 @@ private:
 	std::shared_ptr<RGL::Shader> m_line_draw_shader;
 	std::shared_ptr<RGL::Shader> m_fsq_shader;
 
-    GLuint m_depth_tex2D_id;
-    GLuint m_depth_pass_fbo_id;
-
-	GLuint m_clusters_ssbo;
-    GLuint m_cull_lights_dispatch_args_ssbo;
-    GLuint m_clusters_flags_ssbo;
-    GLuint m_point_light_index_list_ssbo;
-    GLuint m_point_light_grid_ssbo;
-    GLuint m_spot_light_index_list_ssbo;
-    GLuint m_spot_light_grid_ssbo;
-    GLuint m_area_light_index_list_ssbo;
-    GLuint m_area_light_grid_ssbo;
-    GLuint m_unique_active_clusters_ssbo;
+	// GLuint m_depth_tex2D_id;
+	// GLuint m_depth_pass_fbo_id;
 	RGL::RenderTarget::Texture2d m_depth_pass_rt;
 
 	GLuint _dummy_vao_id;
+
+	// GLuint m_clusters_ssbo;
+	GLuint m_cull_lights_dispatch_args_ssbo;
+	GLuint m_nonempty_clusters_ssbo;
+	GLuint m_point_light_index_list_ssbo;
+	GLuint m_point_light_grid_ssbo;
+	GLuint m_spot_light_index_list_ssbo;
+	GLuint m_spot_light_grid_ssbo;
+	GLuint m_area_light_index_list_ssbo;
+	GLuint m_area_light_grid_ssbo;
+	GLuint m_active_clusters_ssbo;
+
+	struct
+	{
+		struct
+		{
+			GLuint aabb;
+			GLuint cull_lights_dispatch_args;
+			GLuint flags;
+			GLuint unique_active_clusters;
+
+			GLuint point_light_index_list;
+			GLuint point_light_grid;
+
+			GLuint spot_light_index_list;
+			GLuint spot_light_grid;
+
+			GLuint area_light_index_list;
+			GLuint area_light_grid;
+
+		} ssbo;
+	} m_clusterShading;
+
     // Average number of overlapping lights per cluster AABB.
     // This variable matters when the lights are big and cover more than one cluster.
 	static constexpr uint32_t AVERAGE_OVERLAPPING_LIGHTS_PER_CLUSTER      = 50;
@@ -173,28 +200,29 @@ private:
     float      m_log_grid_dim_y;               // 1.0f / log( NearK )  // Used to compute the k index of the cluster from the view depth of a pixel sample.
 	uint32_t   m_clusters_count;
 
+
     bool  m_debug_slices                          = false;
     bool  m_debug_clusters_occupancy              = false;
     float m_debug_clusters_occupancy_blend_factor = 0.9f;
 
     /// Lights
-	uint32_t  m_point_lights_count       = 2;
+	uint32_t  m_point_lights_count       = 0;
 	uint32_t  m_spot_lights_count        = 0;
     uint32_t  m_directional_lights_count = 0;
 	uint32_t  m_area_lights_count        = 0;
 
-	glm::vec2 min_max_point_light_radius = { 1, 2 };
+	glm::vec2 min_max_point_light_radius = { 10, 20 };
 	glm::vec2 min_max_spot_light_radius  = { 1, 4 };
 	glm::vec2 min_max_spot_angles        = { 10, 15 };
 	glm::vec3 min_lights_bounds          = { -11,  0.2f, -6 };
 	glm::vec3 max_lights_bounds          = { 11, 12,  6 };
 
+	float     m_point_lights_intensity   = 100;
+	float     m_spot_lights_intensity    = 100;
 	float     m_area_lights_intensity    = 30;
 	glm::vec2 m_area_lights_size         = glm::vec2(0.5f);
-	float     m_point_lights_intensity   = 6;
-	float     m_spot_lights_intensity    = 100;
-	float     m_animation_speed          = 0.2f;
-	bool      m_animate_lights           = true;
+	float     m_animation_speed          = 0.1f;
+	bool      m_animate_lights           = false;
     bool      m_area_lights_two_sided    = true;
 	bool      m_area_lights_geometry     = true;
 	bool      m_draw_aabb                = false;
@@ -236,9 +264,10 @@ private:
 	RGL::RenderTarget::Texture2d _final_rt;
 
     float m_background_lod_level;
+	// TODO: need to test with actual HDR jpeg xl image (converting from hdr wasn't successful)
 	std::string_view m_hdr_maps_names[5] = {
 		"../black.hdr",
-		"colorful_studio_4k.hdr", // TODO: add support for JPEG XL see Util::LoadTextureDataHdr()
+		"colorful_studio_4k.hdr",
 		"phalzer_forest_01_4k.hdr",
 		"sunset_fairway_4k.hdr",
 		"rogland_clear_night_2k.hdr",

@@ -100,7 +100,7 @@ ClusteredShading::~ClusteredShading()
 		m_debug_draw_vbo = 0;
 	}
 
-    glDeleteBuffers(1, &m_clusters_ssbo);
+	glDeleteBuffers(1, &m_clusterShading.ssbo.aabb);
     glDeleteBuffers(1, &m_cull_lights_dispatch_args_ssbo);
 	glDeleteBuffers(1, &m_nonempty_clusters_ssbo);
     glDeleteBuffers(1, &m_point_light_index_list_ssbo);
@@ -124,8 +124,9 @@ void ClusteredShading::init_app()
 	glClearColor(0.05f, 0.05f, 0.05f, 1);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
+	glCullFace(GL_BACK);
 
-	glLineWidth(2.f); // for wireframes (but >1 not commonly supported)
+	// glLineWidth(2.f); // for wireframes (but >1 not commonly supported)
 
     glEnable(GL_MULTISAMPLE);
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
@@ -137,8 +138,8 @@ void ClusteredShading::init_app()
 	m_camera.setSize(Window::getWidth(), Window::getHeight());
 	// m_camera.setPosition(-8.32222f, 4.5269f, -0.768721f);
 	// m_camera.setOrientation(glm::quat(0.634325f, 0.0407623f, 0.772209f, 0.0543523f));
-	m_camera.setPosition({ -10, 3.3f, 10 });
-	m_camera.setOrientationEuler({ 0, 45, 0 });
+	m_camera.setPosition({ -19, 3.3f, -15 });
+	m_camera.setOrientationEuler({ 0, 160, 0 });
 
     /// Randomly initialize lights
 	::srand(3281991);
@@ -357,11 +358,272 @@ void ClusteredShading::init_app()
     PrecomputeBRDF(m_brdf_lut_rt);
 
 	calculateShadingClusterGrid();  // will also call prepareClusterBuffers()
+
+	glGenBuffers(1, &m_debug_draw_vbo);
+
+
+	if(false) // transforming into camera/view space
+	{
+		m_camera.update(0);  // update the internal transforms
+
+		const auto &u_view = m_camera.viewTransform();
+		const auto &u_projection = m_camera.projectionTransform();
+		const auto u_inv_projection = glm::inverse(u_projection);
+		const auto u_inv_view = glm::inverse(u_view);
+		const auto u_cam_pos = m_camera.position();
+
+		const glm::uvec2 screen_size { Window::getWidth(), Window::getHeight() };
+		glm::uvec2 screen_pos { 0, 0 };//Window::getWidth()/2 + 1, Window::getHeight()/2 };
+		glm::vec2 coord = {
+			float(screen_pos.x) / float(screen_size.x),
+			float(screen_pos.y) / float(screen_size.y)
+		};
+		coord = coord*2.f - 1.f; // [ -1, 1 ]
+
+
+		auto target = u_inv_projection * glm::vec4(coord.x, coord.y, 1, 1);
+		auto direction = glm::vec3(u_inv_view * glm::vec4(glm::normalize(glm::vec3(target) / target.w), 0)); // World space
+
+		std::printf("        target: %.5f; %.5f; %.5f; %.5f\n", target.x, target.y, target.z, target.w);
+		const auto far_depth = target.z / target.w;
+		target = glm::normalize(target);
+		std::printf("   norm.target: %.5f; %.5f; %.5f   (max depth: %.1f)\n", target.x, target.y, target.z, far_depth);
+		std::printf("     direction: %.5f; %.5f; %.5f\n", direction.x, direction.y, direction.z);
+
+		// std::printf("   u_view: %s\n", glm::to_string(u_view).c_str());
+
+		const glm::vec3 light_pos { -10, 2.f, 0 };
+		std::printf("  camera[ws]: %.5f; %.5f; %.5f\n", u_cam_pos.x, u_cam_pos.y, u_cam_pos.z);
+		std::printf("   light[ws]: %.5f; %.5f; %.5f\n", light_pos.x, light_pos.y, light_pos.z);
+		auto light_pos_cs = glm::vec3(u_view * glm::vec4(light_pos, 1));
+		std::printf("   light[cs]: %.5f; %.5f; %.5f\n", light_pos_cs.x, light_pos_cs.y, light_pos_cs.z);
+
+
+		std::exit(EXIT_SUCCESS);
+	}
+
+	if(false)  // create space vectors to define transform test
+	{
+		glm::vec3 light_center { 1, 2, 3 };
+		glm::vec3 light_direction { 1, 0, 0 };
+
+		glm::vec3 space_x;
+		glm::vec3 space_y;
+		glm::vec3 space_z = light_direction;
+		if(space_z == AXIS_Y)
+		{
+			space_y = glm::cross(AXIS_X, space_z);
+			space_x = glm::cross(space_z, space_y);
+		}
+		else
+		{
+			space_y = glm::cross(AXIS_Y, space_z);
+			space_x = glm::cross(space_z, space_y);
+		}
+		glm::mat4 cone_space{
+			glm::vec4(space_x, 0),
+			glm::vec4(space_y, 0),
+			glm::vec4(space_z, 0),
+			glm::vec4(light_center, 1)
+		};
+
+		std::printf("        X = %.3f; %.3f; %.3f\n", space_x.x, space_x.y, space_x.z);
+		std::printf("        Y = %.3f; %.3f; %.3f\n", space_y.x, space_y.y, space_y.z);
+		std::printf("        Z = %.3f; %.3f; %.3f\n", space_z.x, space_z.y, space_z.z);
+
+		glm::vec3 ray_direction = glm::normalize(glm::vec3(1, 0, 0));
+
+		auto cone_ray = cone_space * glm::vec4(ray_direction, 0);
+
+		std::printf(" cone ray = %.3f; %.3f; %.3f\n", cone_ray.x, cone_ray.y, cone_ray.z);
+		std::exit(EXIT_SUCCESS);
+	}
+
+	if(false)
+	{
+		const auto space = make_common_space_from_direction({ 0, 0, -1 });
+		std::printf("        X = %.3f; %.3f; %.3f\n", space[0].x, space[0].y, space[0].z);
+		std::printf("        Y = %.3f; %.3f; %.3f\n", space[1].x, space[1].y, space[1].z);
+		std::printf("        Z = %.3f; %.3f; %.3f\n", space[2].x, space[2].y, space[2].z);
+		std::exit(EXIT_SUCCESS);
+	}
+
+	if(false)  // cone intersection test
+	{
+		struct Cone
+		{
+			glm::vec3 center;
+			float radius;
+			glm::vec3 axis;
+			float angle;
+		};
+		const Cone cone {
+			.center = { 0, 0, 0 },
+			.radius = 10,   // not used in this test
+			.axis = glm::vec3{0, 0, 1},
+			.angle = glm::radians(45.f),
+		};
+		const glm::vec3 ray_start { 2, 0, -5 };
+		const auto ray_dir = glm::normalize(glm::vec3{ 0, 0, -1 });
+
+		std::puts("-----------------------------------------------------");
+
+		std::printf("cone center : %.1f; %.1f; %.1f\n", cone.center.x, cone.center.y, cone.center.z);
+		std::printf("cone axis   : %.1f; %.1f; %.1f\n", cone.axis.x, cone.axis.y, cone.axis.z);
+		std::printf("cone angle  : %.1f\n", glm::degrees(cone.angle));
+		std::printf("ray start   : %.1f; %.1f; %.1f\n", ray_start.x, ray_start.y, ray_start.z);
+		std::printf("ray dir     : %.1f; %.1f; %.1f\n", ray_dir.x, ray_dir.y, ray_dir.z);
+
+		glm::vec3 center_to_ray = ray_start - cone.center; // aka CO
+		float distance_sq = glm::dot(center_to_ray, center_to_ray);
+
+		float cos_theta = std::cos(cone.angle);
+		float cos_theta_sq = cos_theta*cos_theta;
+		float dir_axis_dot = glm::dot(ray_dir, cone.axis);
+		float CO_axis_dot = glm::dot(center_to_ray, cone.axis);
+
+		float A = dir_axis_dot*dir_axis_dot - cos_theta_sq;
+		float B = 2 * (dir_axis_dot*CO_axis_dot - glm::dot(ray_dir, center_to_ray)*cos_theta_sq);
+		float C = CO_axis_dot*CO_axis_dot - distance_sq*cos_theta_sq;
+
+		std::printf("    A = %.3f\n", A);
+		std::printf("    B = %.3f\n", B);
+		std::printf("    C = %.3f\n", C);
+
+		float discriminant = B*B - 4*A*C;
+		if(discriminant < 0)
+			std::printf("no intersection\n");
+		else
+		{
+			std::printf("discriminant = %.3f\n", discriminant);
+			float sqrt_discriminant = std::sqrt(discriminant);
+			float t1 = (-B - sqrt_discriminant) / (2*A);
+			float t2 = (-B + sqrt_discriminant) / (2*A);
+
+			auto ray_point = [&ray_start, &ray_dir](float t) {
+				return ray_start + ray_dir*t;
+			};
+			auto p1 = ray_point(t1);
+			std::printf("  t1 = %.3f  ->  %.2f; %.2f; %.2f\n", t1, p1.x, p1.y, p1.z);
+			auto p2 = ray_point(t2);
+			std::printf("  t2 = %.3f  ->  %.2f; %.2f; %.2f\n", t2, p2.x, p2.y, p2.z);
+		}
+
+
+		std::exit(EXIT_SUCCESS);
+	}
+
+	if(false)  // cone spherical cap intersection test
+	{
+		struct Cone
+		{
+			glm::vec3 center;
+			float radius;
+			glm::vec3 axis;
+			float angle;
+		};
+		const Cone cone {
+			.center = { 0, 0, 0 },
+			.radius = 30,
+			.axis = glm::vec3{0, 0, 1},
+			.angle = glm::radians(30.f),
+		};
+		const glm::vec3 ray_start { -12, 0, -10 };
+		const auto ray_dir = glm::normalize(glm::vec3{ 0, 0, 1 }) * glm::angleAxis(glm::radians(-20.f), AXIS_Y);
+
+		auto ray_point = [&ray_start, &ray_dir](float t)
+		{
+			return ray_start + ray_dir*t;
+		};
+
+		std::puts("-----------------------------------------------------");
+
+		std::printf("cone center  : %.1f; %.1f; %.1f\n", cone.center.x, cone.center.y, cone.center.z);
+		std::printf("cone axis    : %.1f; %.1f; %.1f\n", cone.axis.x, cone.axis.y, cone.axis.z);
+		std::printf("cone angle   : %.1f   radius: %.1f\n", glm::degrees(cone.angle), cone.radius);
+		std::printf("ray start    : %.1f; %.1f; %.1f\n", ray_start.x, ray_start.y, ray_start.z);
+		std::printf("ray dir      : %.1f; %.1f; %.1f\n", ray_dir.x, ray_dir.y, ray_dir.z);
+		const auto ray_end = ray_point(50);
+		std::printf("ray end @ 50 : %.1f; %.1f; %.1f\n", ray_end.x, ray_end.y, ray_end.z);
+
+		glm::vec3 center_to_ray = ray_start - cone.center; // aka CO
+
+		float A = 1;
+		float B = 2 * glm::dot(center_to_ray, ray_dir);
+		float C = glm::dot(center_to_ray, center_to_ray) - cone.radius*cone.radius;
+
+		std::printf("    A = %.3f\n", A);
+		std::printf("    B = %.3f\n", B);
+		std::printf("    C = %.3f\n", C);
+
+		float discriminant = B*B - 4*A*C;
+		if(discriminant < 0)
+			std::printf("NO INTERSECTION\n");
+		else
+		{
+			std::printf("discriminant = %.3f\n", discriminant);
+			float sqrt_discriminant = std::sqrt(discriminant);
+			float t1 = (-B - sqrt_discriminant) / (2*A);
+			float t2 = (-B + sqrt_discriminant) / (2*A);
+
+			auto point_inside_cone = [&cone](const glm::vec3 &point)
+			{
+				//    point
+				//   /
+				//  C--------| axis
+				//           ^ radius
+
+				glm::vec3 to_center = point - cone.center;
+				float len = length(to_center);
+
+					   // outside the entire sphere?
+				if(len > cone.radius)
+					return false;
+
+					   // cos of the angle between the vector and the cone's axis
+				float cos_theta = glm::dot(to_center, cone.axis) / len;
+
+					   // compare with the cosine of the cone's half-angle (i.e. must be less than 90 degrees)
+					   // (larger cos value means sharper angle)
+				return cos_theta >= std::cos(cone.angle);
+			};
+
+			bool got_point = false;
+
+			if(t1 >= 0)
+			{
+				auto p1 = ray_point(t1);
+				if(point_inside_cone(p1))
+				{
+					std::printf("  t1 = %.3f  ->  %.2f; %.2f; %.2f\n", t1, p1.x, p1.y, p1.z);
+					got_point = true;
+				}
+			}
+			if(t2 >= 0)
+			{
+				auto p2 = ray_point(t2);
+				if(point_inside_cone(p2))
+				{
+					std::printf("  t2 = %.3f  ->  %.2f; %.2f; %.2f\n", t2, p2.x, p2.y, p2.z);
+					got_point = true;
+				}
+			}
+			if(got_point)
+				std::printf("INTERSECTION\n");
+			else
+				std::printf("NO INTERSECTION\n");
+		}
+
+		std::exit(EXIT_SUCCESS);
+	}
+
 }
 
 void ClusteredShading::calculateShadingClusterGrid()
 {
 	const auto cluster_count_before = m_clusters_count;
+
+	// TODO: these should be properties of the camera  (a component!)
 
 	/// Init clustered shading variables.
 	m_cluster_grid_dim.x = uint32_t(glm::ceil(float(Window::getWidth())  / float(m_cluster_grid_block_size)));
@@ -429,7 +691,7 @@ void ClusteredShading::	prepareClusterBuffers()
 void ClusteredShading::input()
 {
     /* Close the application when Esc is released. */
-    if (Input::getKeyUp(KeyCode::Escape))
+	if (Input::getKeyDown(KeyCode::Escape))
     {
         stop();
     }
@@ -477,23 +739,42 @@ void ClusteredShading::update(double delta_time)
 	m_camera.update(delta_time);
 
 	// static float     rotation_speed = 1;
-	static float     time_accum     = 0;
-	static glm::mat4 rotation_mat   = glm::mat4(1);
+	// static float     time_accum     = 0;
 
     if (m_animate_lights)
     {
-		time_accum  += float(delta_time * m_animation_speed);
-		rotation_mat = glm::rotate(glm::mat4(1), glm::radians(60.0f * float(delta_time)) * 2.0f * m_animation_speed, glm::vec3(0, 1, 0));
+		// time_accum  += float(delta_time * m_animation_speed);
+		auto spin_mat  = glm::rotate(glm::mat4(1), glm::radians(60.f * float(delta_time)) * 2.f * m_animation_speed, AXIS_Y);
+		auto orbit_mat = glm::rotate(glm::mat4(1), glm::radians(-23.f * float(delta_time)) * 2.f * m_animation_speed, AXIS_Y);
 
-        m_update_lights_shader->bind();
-		m_update_lights_shader->setUniform("u_time"sv,                 time_accum);
-		m_update_lights_shader->setUniform("u_area_two_sided"sv,       m_area_lights_two_sided);
-		m_update_lights_shader->setUniform("u_area_rotation_matrix"sv, rotation_mat);
+		for(auto &spot: m_spot_lights)
+		{
+			// spin on its own axis
+			spot.direction = spin_mat * glm::vec4(spot.direction, 0);
+			// orbit aounr the orgin
+			spot.point.position = orbit_mat * glm::vec4(spot.point.position, 1);
+		}
 
-		auto max_lights_count = glm::max(m_point_lights.size(), glm::max(m_spot_lights.size(), glm::max(m_directional_lights.size(), m_area_lights.size())));
-		glDispatchCompute(GLuint(glm::ceil(float(max_lights_count) / 1024.f)), 1, 1);
-        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-    }
+		for(auto &point: m_point_lights)
+		{
+			// orbit aounr the orgin
+			point.position = orbit_mat * glm::vec4(point.position, 1);
+		}
+
+
+
+  //       m_update_lights_shader->bind();
+		// m_update_lights_shader->setUniform("u_time"sv,                 time_accum);
+		// m_update_lights_shader->setUniform("u_area_two_sided"sv,       m_area_lights_two_sided);
+		// m_update_lights_shader->setUniform("u_area_rotation_matrix"sv, rotation_mat);
+
+		// auto max_lights_count = glm::max(m_point_lights.size(), glm::max(m_spot_lights.size(), glm::max(m_directional_lights.size(), m_area_lights.size())));
+		// glDispatchCompute(GLuint(glm::ceil(float(max_lights_count) / 1024.f)), 1, 1);
+  //       glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+		UpdateLightsSSBOs();
+	}
+
 }
 
 void ClusteredShading::GenerateAreaLights()
@@ -634,14 +915,14 @@ void ClusteredShading::GenerateSpotLights()
 		.point = {
 			.base = {
 				.color = { 1.0f, 1.0f, 0.2f },
-				.intensity = 100
+				.intensity = 5000
 			},
-			.position = { 0, 3.f, 0 },
-			.radius = 15
+			.position = { 0, 3.f, -8 },
+			.radius = 35
 		},
 		.direction = { 0, 0, 1 },
-		.inner_angle = glm::radians(30.f),
-		.outer_angle = glm::radians(40.f)
+		.inner_angle = glm::radians(25.f),
+		.outer_angle = glm::radians(30.f)
 	});
 	return;
 
@@ -880,7 +1161,7 @@ void ClusteredShading::render()
 
 
 	// 1. Depth pre-pass  (only if camera/meshes moved, probably always)
-	renderDepthPass();
+	renderDepth(m_camera, m_depth_pass_rt);
 
 
 	// 2. Blit depth info to our main render target
@@ -888,6 +1169,12 @@ void ClusteredShading::render()
 
 	auto T1 = steady_clock::now();
 	m_depth_time = duration_cast<microseconds>(T1 - T0);
+
+
+	// TODO: generate SSAO (texture)
+	//   use as input to pbr lighting calculations
+
+
 
 	T0 = steady_clock::now();
 
@@ -950,7 +1237,7 @@ void ClusteredShading::render()
 
     // 6. Render lighting
 	_rt.bindRenderTarget(RGL::RenderTarget::ColorBuffer);
-    renderLighting();
+	renderLighting(m_camera);
 
 
     // 7. Render area lights geometry
@@ -983,29 +1270,24 @@ void ClusteredShading::render()
 	// TODO: Render atmospheric/fog light scattering (i.e. volumetric lights)
 	//    - lights culled into screen tiles (i.e. only 2d)
 	//    - (optional) grid/voxel-based atmospheric density; otherwise, just use a constant
+	m_scattering_pp.shader().setUniform("u_cam_pos"sv,         m_camera.position());
+	m_scattering_pp.shader().setUniform("u_near_z"sv,          m_camera.nearPlane());
+	m_scattering_pp.shader().setUniform("u_far_z"sv,           m_camera.farPlane());
+	m_scattering_pp.shader().setUniform("u_projection"sv,      m_camera.projectionTransform()); // not used ?
+	m_scattering_pp.shader().setUniform("u_view"sv,            m_camera.viewTransform());       // not used ?
+	m_scattering_pp.shader().setUniform("u_inv_projection"sv,  glm::inverse(m_camera.projectionTransform()));
+	m_scattering_pp.shader().setUniform("u_inv_view"sv,        glm::inverse(m_camera.viewTransform()));
+	// TODO: m_camera.setUniforms(m_scattering_pp.shader());  // could even cache the uniform locations (per shader)
+	m_scattering_pp.shader().setUniform("u_grid_dim"sv,        m_cluster_grid_dim);
+	m_scattering_pp.shader().setUniform("u_cluster_size_ss"sv, glm::uvec2(m_cluster_grid_block_size));
+	// m_scattering_pp.shader().setUniform("u_log_grid_dim_y"sv,  m_log_grid_dim_y);
 	m_scattering_pp.shader().setUniform("u_fog_color"sv,       glm::vec3(1, 1, 1));
 	m_scattering_pp.shader().setUniform("u_fog_density"sv,     m_fog_density);
 	m_scattering_pp.shader().setUniform("u_fog_falloff_blend"sv, m_fog_falloff_blend);
 
-	m_scattering_pp.shader().setUniform("u_grid_dim"sv,        m_cluster_grid_dim);
-	m_scattering_pp.shader().setUniform("u_cluster_size_ss"sv, glm::uvec2(m_cluster_grid_block_size));
-	// m_scattering_pp.shader().setUniform("u_log_grid_dim_y"sv,  m_log_grid_dim_y);
-	m_scattering_pp.shader().setUniform("u_cam_pos"sv,         m_camera.position());
-	m_scattering_pp.shader().setUniform("u_cam_forward"sv,     m_camera.forwardVector());
-	m_scattering_pp.shader().setUniform("u_cam_right"sv,       m_camera.rightVector());
-	m_scattering_pp.shader().setUniform("u_cam_up"sv,          m_camera.upVector());
-	m_scattering_pp.shader().setUniform("u_near_z"sv,          m_camera.nearPlane());
-	m_scattering_pp.shader().setUniform("u_far_z"sv,           m_camera.farPlane());
-	m_scattering_pp.shader().setUniform("u_projection"sv,      m_camera.projectionTransform());
-	m_scattering_pp.shader().setUniform("u_view"sv,            m_camera.viewTransform());
-	m_scattering_pp.shader().setUniform("u_inv_projection"sv,  glm::inverse(m_camera.projectionTransform()));
-	m_scattering_pp.shader().setUniform("u_inv_view"sv,        glm::inverse(m_camera.viewTransform()));
-
-
-
-	// TODO: m_camera.setUniforms(m_scattering_pp.shader());  // could even cache the uniform locations (per shader)
-
 	m_depth_pass_rt.bindTextureSampler(2);
+	// TODO: render to a separate target (thus also need to render it w/ additive blend to the final image)
+	//   this allows to render at different (lower) resolution, if it becomes slow
 	m_scattering_pp.render(_rt, _rt);
 
 	T1 = steady_clock::now();
@@ -1051,14 +1333,11 @@ void ClusteredShading::render()
 	m_pp_time = duration_cast<microseconds>(T1 - T0);
 
 	if(m_draw_aabb)
-		renderSceneAABB();
+		renderSceneBounds();
 }
 
-void ClusteredShading::renderSceneAABB()
+void ClusteredShading::renderSceneBounds()
 {
-	if(not m_debug_draw_vbo)
-		glGenBuffers(1, &m_debug_draw_vbo);
-
 	const auto view_projection = m_camera.projectionTransform() * m_camera.viewTransform();
 
 	// if using VBO, generate the data into a single VBO then draw using a single call
@@ -1115,36 +1394,180 @@ void ClusteredShading::renderSceneAABB()
 	}
 
 
-	// // draw the three "camera space vectors"
+	// restore some states
+	glDepthMask(GL_TRUE);
+	glEnable(GL_DEPTH_TEST);
+	glDisableVertexAttribArray(0);
+
+
+	for(const auto &spot: m_spot_lights)
+	{
+		const auto color = glm::vec4(glm::normalize(spot.point.base.color), 1);
+		debugDrawSpotLight(spot, color);
+	}
+
+	// for(const auto &point: m_point_lights)
 	// {
-	// 	// TODO: move the axes off-center so the 'forward' vector becomes visible
-	// 	const auto axis_origin = m_camera.position() + m_camera.forwardVector()*2.f;
-
-	// 	m_line_draw_shader->setUniform("u_line_color"sv, glm::vec4(0.2f, 1, 0.2f, 1));
-	// 	std::uint16_t indices[] { 0, 1 };
-	// 	glm::vec3 vertices[2];
-	// 	vertices[0] = axis_origin;
-
-	// 	vertices[1] = axis_origin + m_camera.upVector();
-	// 	glNamedBufferData(m_debug_draw_vbo, 2*sizeof(vertices[0]), &vertices[0], GL_STREAM_DRAW);
-	// 	glDrawElements(GL_LINES, 2, GL_UNSIGNED_SHORT, &indices[0]);
-
-	// 	vertices[1] = axis_origin + m_camera.rightVector();
-	// 	m_line_draw_shader->setUniform("u_line_color"sv, glm::vec4(1.f, 0.3f, 0.3f, 1));
-	// 	glNamedBufferData(m_debug_draw_vbo, 2*sizeof(vertices[0]), &vertices[0], GL_STREAM_DRAW);
-	// 	glDrawElements(GL_LINES, 2, GL_UNSIGNED_SHORT, &indices[0]);
-
-	// 	vertices[1] = axis_origin + m_camera.forwardVector();
-	// 	m_line_draw_shader->setUniform("u_line_color"sv, glm::vec4(1.f, 0.3f, 0.3f, 1));
-	// 	glNamedBufferData(m_debug_draw_vbo, 2*sizeof(vertices[0]), &vertices[0], GL_STREAM_DRAW);
-	// 	glDrawElements(GL_LINES, 2, GL_UNSIGNED_SHORT, &indices[0]);
+	// 	const auto color = glm::vec4(glm::normalize(point.base.color), 1);
+	// 	debugDrawSphere(point.position, point.radius, color);
 	// }
+}
+
+void ClusteredShading::debugDrawLine(const glm::vec3 &p1, const glm::vec3 &p2, const glm::vec4 &color)
+{
+	const auto view_projection = m_camera.projectionTransform() * m_camera.viewTransform();
+
+	m_line_draw_shader->bind();
+	m_line_draw_shader->setUniform("u_line_color"sv, color);
+	m_line_draw_shader->setUniform("u_mvp"sv, view_projection); // no model transform needed; we'll generate vertices in world-space
+
+	glDisable(GL_DEPTH_TEST);
+	glEnable(GL_LINE_SMOOTH);
+	glDepthMask(GL_FALSE);
+
+	glBindBuffer(GL_ARRAY_BUFFER, m_debug_draw_vbo);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), nullptr);
+
+
+	const std::array<glm::vec3, 2> vertices { p1, p2 };
+
+	glNamedBufferData(m_debug_draw_vbo, GLsizeiptr(vertices.size()*sizeof(vertices[0])), &vertices[0], GL_STREAM_DRAW);
+	glDrawArrays(GL_LINES, 0, vertices.size());
 
 
 	// restore some states
 	glDepthMask(GL_TRUE);
 	glEnable(GL_DEPTH_TEST);
 	glDisableVertexAttribArray(0);
+}
+
+void ClusteredShading::debugDrawSphere(const glm::vec3 &center, float radius, const glm::vec4 &color)
+{
+	debugDrawSphere(center, radius, 8, 10, color);
+}
+
+void ClusteredShading::debugDrawSphere(const glm::vec3 &center, float radius, size_t rings, size_t slices, const glm::vec4 &color)
+{
+	auto view_projection = m_camera.projectionTransform() * m_camera.viewTransform();
+	auto transform = view_projection * glm::translate(glm::mat4(1), center) * glm::scale(glm::mat4(1), { radius, radius, radius });
+
+	m_line_draw_shader->bind();
+	m_line_draw_shader->setUniform("u_line_color"sv, color);
+	m_line_draw_shader->setUniform("u_mvp"sv, transform);
+
+	glDisable(GL_DEPTH_TEST);
+	glEnable(GL_LINE_SMOOTH);
+	glDepthMask(GL_FALSE);
+
+	glBindBuffer(GL_ARRAY_BUFFER, m_debug_draw_vbo);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), nullptr);
+
+
+	static std::vector<glm::vec3> vertices;
+	vertices.reserve(6 * (rings + 1) * slices);
+	vertices.clear();
+
+	// this bit was "borrowed" from Raylib's DrawSphereEx()  (c++-ified)
+
+	const auto ring_step = glm::radians(180.f/float(rings + 1));
+	const auto slice_step = glm::radians(360.f/float(slices));
+
+	const auto ring_cos = std::cos(ring_step);
+	const auto ring_sin = std::sin(ring_step);
+	const auto slice_cos = std::cos(slice_step);
+	const auto slice_sin = std::sin(slice_step);
+
+	// rotation matrix around z axis
+	// const auto ring_rotate = glm::rotate(glm::mat4(1),  ring_step, AXIS_Z);
+	// rotation matrix around y axis
+	// const auto slice_rotate = glm::rotate(glm::mat4(1), slice_step, AXIS_Y);
+
+	std::array<glm::vec3, 4> base_verts;
+	base_verts[2] = AXIS_Y;
+	base_verts[3] = { ring_sin, ring_cos, 0 };
+
+	for(auto ring = 0u; ring < rings + 1; ++ring)
+	{
+		for(auto slice = 0u; slice < slices; ++slice)
+		{
+			// rotate around y axis to set up vertices for next face
+			base_verts[0] = base_verts[2];
+			base_verts[1] = base_verts[3];
+			// base_verts[2] = slice_rotate * glm::vec4(base_verts[2], 0);
+			// base_verts[3] = slice_rotate * glm::vec4(base_verts[3], 0);
+			base_verts[2] = {
+				slice_cos*base_verts[2].x - slice_sin*base_verts[2].z,
+				base_verts[2].y,
+				slice_sin*base_verts[2].x + slice_cos*base_verts[2].z
+			};
+			base_verts[3] = {
+				slice_cos*base_verts[3].x - slice_sin*base_verts[3].z,
+				base_verts[3].y,
+				slice_sin*base_verts[3].x + slice_cos*base_verts[3].z
+			};
+
+			vertices.push_back(base_verts[0]);
+			vertices.push_back(base_verts[3]);
+			vertices.push_back(base_verts[1]);
+
+			vertices.push_back(base_verts[0]);
+			vertices.push_back(base_verts[2]);
+			vertices.push_back(base_verts[3]);
+		}
+
+		// rotate around z axis to set up  starting vertices for next ring
+		base_verts[2] = base_verts[3];
+		// base_verts[3] = ring_rotate * glm::vec4(base_verts[3], 0);
+		base_verts[3] = { // rotation matrix around z axis
+			ring_cos*base_verts[3].x + ring_sin*base_verts[3].y,
+			-ring_sin*base_verts[3].x + ring_cos*base_verts[3].y,
+			base_verts[3].z
+		};
+	}
+
+	// TODO: cache vertices? (key: rings + slices)
+
+	glNamedBufferData(m_debug_draw_vbo, GLsizeiptr(vertices.size()*sizeof(vertices[0])), &vertices[0], GL_STREAM_DRAW);
+	glDrawArrays(GL_LINES, 0, GLsizei(vertices.size()));
+
+
+	// restore some states
+	glDepthMask(GL_TRUE);
+	glEnable(GL_DEPTH_TEST);
+	glDisableVertexAttribArray(0);
+}
+
+void ClusteredShading::debugDrawSpotLight(const SpotLight &light, const glm::vec4 &color)
+{
+	const auto &L = light;
+
+	const auto dir_space = make_common_space_from_direction(L.direction);
+	const auto line_rot = glm::rotate(glm::mat4(1), -L.outer_angle, dir_space[0]);
+	const glm::vec3 dir_line = line_rot * glm::vec4(L.direction, 0)*L.point.radius;
+
+	static constexpr auto num_lines = 24;
+	const auto rot_angle = glm::radians(360.f / float(num_lines));
+	glm::vec3 first_end;
+	glm::vec3 last_end;
+	for(int idx = 0; idx < num_lines; ++idx)
+	{
+		glm::vec3 end_point = L.point.position + glm::vec3(glm::rotate(glm::mat4(1), rot_angle*float(idx), L.direction) * glm::vec4(dir_line, 0));
+
+		debugDrawLine(L.point.position, end_point, color);
+		if(idx > 0)
+			debugDrawLine(end_point, last_end, color);
+		else
+			first_end = end_point;
+		last_end = end_point;
+	}
+
+	// center/axis
+	debugDrawLine(first_end, last_end, color);
+	debugDrawLine(L.point.position, L.point.position + L.direction*L.point.radius, color);
+
+	// TODO: draw cap
 }
 
 void ClusteredShading::draw2d(const Texture &texture)
@@ -1166,6 +1589,9 @@ void ClusteredShading::draw2d(const RGL::Texture &texture, const glm::uvec2 &top
 
 	// m_2d_shader->bind();
 	texture.Bind();
+
+	(void)top_left;
+	(void)bottom_right;
 
 	// glBindVertexArray(_rect_vao_id);
 	// glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -1230,21 +1656,21 @@ const std::vector<StaticObject> &ClusteredShading::cullScene()
 	return _scenePvs;
 }
 
-void ClusteredShading::renderScene(RGL::Shader &shader, bool use_material)
+void ClusteredShading::renderScene(const Camera &camera, RGL::Shader &shader, MaterialCtrl materialCtrl)
 {
 	// TODO: for each model:
 	//   this should frustum cull models (and cache the result for other passes)
 	//   this would also include skinned meshes (don't want to do the skinning computations multiple times)
 	//   (AnimatedMode::BoneTransform() genereates a list of bone transforms, done once, but the actual skinning is in the shader)
 
-	const auto view_projection = m_camera.projectionTransform() * m_camera.viewTransform();
+	const auto view_projection = camera.projectionTransform() * camera.viewTransform();
 
 	for(const auto &obj: _scenePvs)
 	{
 		shader.setUniform("u_mvp"sv,   view_projection * obj.transform);
 		shader.setUniform("u_model"sv, obj.transform);
 
-		if(use_material)
+		if(materialCtrl == UseMaterials)
 		{
 			shader.setUniform("u_normal_matrix"sv, glm::mat3(glm::transpose(glm::inverse(obj.transform))));
 			obj.model->Render(shader);
@@ -1254,9 +1680,9 @@ void ClusteredShading::renderScene(RGL::Shader &shader, bool use_material)
 	}
 }
 
-void ClusteredShading::renderDepthPass()
+void ClusteredShading::renderDepth(const Camera &camera, RenderTarget::Texture2d &target)
 {
-	m_depth_pass_rt.bindRenderTarget(RGL::RenderTarget::DepthBuffer);
+	target.bindRenderTarget(RGL::RenderTarget::DepthBuffer);
 
 	glDepthMask(GL_TRUE);
     glColorMask(0, 0, 0, 0);
@@ -1264,10 +1690,10 @@ void ClusteredShading::renderDepthPass()
 
     m_depth_prepass_shader->bind();
 
-	renderScene(*m_depth_prepass_shader, false);
+	renderScene(camera, *m_depth_prepass_shader, NoMaterials);
 }
 
-void ClusteredShading::renderLighting()
+void ClusteredShading::renderLighting(const Camera &camera)
 {
 	glDepthMask(GL_FALSE);
     glColorMask(1, 1, 1, 1);
@@ -1275,15 +1701,15 @@ void ClusteredShading::renderLighting()
 
     m_clustered_pbr_shader->bind();
 
-	m_clustered_pbr_shader->setUniform("u_cam_pos"sv,                               m_camera.position());
-	m_clustered_pbr_shader->setUniform("u_near_z"sv,                                m_camera.nearPlane());
+	m_clustered_pbr_shader->setUniform("u_cam_pos"sv,                               camera.position());
+	m_clustered_pbr_shader->setUniform("u_near_z"sv,                                camera.nearPlane());
 	m_clustered_pbr_shader->setUniform("u_grid_dim"sv,                              m_cluster_grid_dim);
 	m_clustered_pbr_shader->setUniform("u_cluster_size_ss"sv,                       glm::uvec2(m_cluster_grid_block_size));
 	m_clustered_pbr_shader->setUniform("u_log_grid_dim_y"sv,                        m_log_grid_dim_y);
 	m_clustered_pbr_shader->setUniform("u_debug_slices"sv,                          m_debug_slices);
 	m_clustered_pbr_shader->setUniform("u_debug_clusters_occupancy"sv,              m_debug_clusters_occupancy);
 	m_clustered_pbr_shader->setUniform("u_debug_clusters_occupancy_blend_factor"sv, m_debug_clusters_occupancy_blend_factor);
-	m_clustered_pbr_shader->setUniform("u_view"sv,                                  m_camera.viewTransform());
+	m_clustered_pbr_shader->setUniform("u_view"sv,                                  camera.viewTransform());
 
     m_irradiance_cubemap_rt->bindTexture(6);
     m_prefiltered_env_map_rt->bindTexture(7);
@@ -1291,7 +1717,7 @@ void ClusteredShading::renderLighting()
     m_ltc_mat_lut->Bind(9);
     m_ltc_amp_lut->Bind(10);
 
-	renderScene(*m_clustered_pbr_shader);
+	renderScene(m_camera, *m_clustered_pbr_shader);
 
 	// Enable writing to the depth buffer
 	glDepthMask(GL_TRUE);
@@ -1302,7 +1728,7 @@ void ClusteredShading::render_gui()
 {
     /* This method is responsible for rendering GUI using ImGUI. */
 
-    /* 
+    /*
      * It's possible to call render_gui() from the base class.
      * It renders performance info overlay.
      */
@@ -1344,12 +1770,15 @@ void ClusteredShading::render_gui()
 			const auto cam_right = m_camera.rightVector();
 			const auto cam_up    = m_camera.upVector();
 
+			const auto fwd_xz = glm::normalize(glm::vec3(cam_fwd.x, 0.f, cam_fwd.z));
+			const float heading_angle = std::acos(glm::clamp(glm::dot(AXIS_Z, fwd_xz), -1.f, 1.f));
+
 			ImGui::Text("Position : %.2f ; %.2f ; %.2f\n"
-						"Forward  : %.2f ; %.2f ; %.2f\n"
+						"Forward  : %.2f ; %.2f ; %.2f  (%.1f°)\n"
 						"Right    : %.2f ; %.2f ; %.2f\n"
 						"Up       : %.2f ; %.2f ; %.2f\n",
-                         cam_pos.x, cam_pos.y, cam_pos.z, 
-						 cam_fwd.x, cam_fwd.y, cam_fwd.z,
+                         cam_pos.x, cam_pos.y, cam_pos.z,
+						 cam_fwd.x, cam_fwd.y, cam_fwd.z, glm::degrees(heading_angle),
 						 cam_right.x, cam_right.y, cam_right.z,
 						 cam_up.x, cam_up.y, cam_up.z);
 			ImGui::Text("Visible  : %lu", _scenePvs.size());
@@ -1518,10 +1947,18 @@ void ClusteredShading::render_gui()
         }
 		if(ImGui::CollapsingHeader("Fog / Scattering", ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			ImGui::SliderFloat("Fog density", &m_fog_density, 0.f, 0.1f);
+			{
+				float density = m_fog_density;
+				if(ImGui::SliderFloat("Fog density", &density, 0.f, 0.5f))
+					m_fog_density = density;
+			}
 			ImGui::SliderFloat("Fog falloff blend", &m_fog_falloff_blend, 0, 1);
 		}
 
+		// if(ImGui::CollapsingHeader("Framebuffers"))
+		// {
+		// 	ImGui::Image(ImTextureID(int64_t(_rt.texture_id())), { 256, 256 });
+		// }
     }
     ImGui::End();
 }
