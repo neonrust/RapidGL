@@ -1813,16 +1813,6 @@ void ClusteredShading::render_gui()
 
     ImGui::Begin("Settings");
     {
-		// if (ImGui::CollapsingHeader("Help"))
-		// {
-		//     ImGui::Text("Controls info: \n\n"
-		//                 "F1     - take a screenshot\n"
-		//                 "F2     - toggle wireframe rendering\n"
-		//                 "WASDQE - control camera movement\n"
-		//                 "RMB    - press to rotate the camera\n"
-		//                 "Esc    - close the app\n\n");
-		// }
-
 		if (ImGui::CollapsingHeader("Camera Info", ImGuiTreeNodeFlags_DefaultOpen))
         {
 			const auto cam_pos   = m_camera.position();
@@ -1833,17 +1823,17 @@ void ClusteredShading::render_gui()
 			const auto fwd_xz = glm::normalize(glm::vec3(cam_fwd.x, 0.f, cam_fwd.z));
 			const float heading_angle = std::acos(glm::clamp(glm::dot(AXIS_Z, fwd_xz), -1.f, 1.f));
 
-			ImGui::Text("Position : %.2f ; %.2f ; %.2f\n"
+			ImGui::Text("      Yaw: %.1f    Pitch: %.1f\n"
+						"Position : %.2f ; %.2f ; %.2f\n"
 						"Forward  : %.2f ; %.2f ; %.2f  (%.1f°)\n"
 						"Right    : %.2f ; %.2f ; %.2f\n"
-						"Up       : %.2f ; %.2f ; %.2f\n"
-						"      Yaw: %.1f    Pitch: %.1f",
-                         cam_pos.x, cam_pos.y, cam_pos.z,
-						 cam_fwd.x, cam_fwd.y, cam_fwd.z, glm::degrees(heading_angle),
-						 cam_right.x, cam_right.y, cam_right.z,
-						 cam_up.x, cam_up.y, cam_up.z,
-						 glm::degrees(m_camera.yaw()), glm::degrees(m_camera.pitch()));
-			ImGui::Text("Visible  : %lu", _scenePvs.size());
+						"Up       : %.2f ; %.2f ; %.2f",
+						glm::degrees(m_camera.yaw()), glm::degrees(m_camera.pitch()),
+						cam_pos.x, cam_pos.y, cam_pos.z,
+						cam_fwd.x, cam_fwd.y, cam_fwd.z, glm::degrees(heading_angle),
+						cam_right.x, cam_right.y, cam_right.z,
+						cam_up.x, cam_up.y, cam_up.z);
+			ImGui::Text("PVS size : %lu", _scenePvs.size());
 
 			ImGui::Checkbox("Draw AABB", &m_draw_aabb);
 			if(ImGui::SliderFloat("FOV", &m_camera_fov, 25.f, 150.f))
