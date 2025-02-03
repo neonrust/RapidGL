@@ -76,7 +76,8 @@ ClusteredShading::ClusteredShading() :
 	m_bloom_dirt_intensity(0),
 	m_bloom_enabled       (false),
 	m_fog_density         (0.2f), // [ 0, 0.5 ]   nice-ish value: 0.015
-	m_fog_falloff_blend   (0.05f)
+	m_fog_falloff_blend   (0.05f),
+	m_ray_march_stride    (0.2f)
 {
 }
 
@@ -617,6 +618,61 @@ void ClusteredShading::init_app()
 		std::exit(EXIT_SUCCESS);
 	}
 
+	if(false)
+	{
+		const float u_near_z = 0.1f;
+		const float u_far_z = 200.f;
+		auto linear_depth = [u_near_z, u_far_z](float depth) -> float {
+			// convert a depth texture sample in range (-1, 1) to linear depth, ranged (near_z, far_z).
+			float ndc          = depth * 2.f - 1.f;
+			float linear_depth = 2.f * u_near_z * u_far_z / (u_far_z + u_near_z - ndc * (u_far_z - u_near_z));
+
+			return linear_depth;
+		};
+
+		const auto inv_projection = glm::inverse(m_camera.projectionTransform());
+		float linearDepth = linear_depth(-1.f);
+		glm::vec2 texCoord { 0.25f, 0.25f };
+		auto pos = glm::vec4(texCoord * 2.f - 1.f, linearDepth * 2.f - 1.f, 1);
+		glm::vec4 wpos = inv_projection * pos;
+		wpos /= wpos.w;
+
+		std::printf("depth pos  : %.1f; %.1f; %.1f\n", pos.x, pos.y, pos.z);
+
+		std::printf("world  pos : %.5f; %.5f; %.5f\n", wpos.x, wpos.y, wpos.z);
+
+		std::exit(EXIT_SUCCESS);
+	}
+
+	if(false)
+	{
+		glm::vec3 center { 3, 0, 0 };
+		glm::vec3 spot_dir { 0, 0, 1 };
+		glm::vec3 point { 3.2f, 0, 5.f };
+		float outer_angle = glm::radians(30.f);
+		float inner_angle = glm::radians(25.f);
+
+		auto spot_angle_att = [](glm::vec3 to_light, glm::vec3 spot_dir, float outer_angle, float inner_angle) {
+			float cos_outer   = std::cos(outer_angle);
+			float spot_scale  = 1.f / std::max(std::cos(inner_angle) - cos_outer, 1e-5f);
+			float spot_offset = -cos_outer * spot_scale;
+
+			float cd          = glm::dot(-spot_dir, to_light);
+			float attenuation = glm::clamp(cd * spot_scale + spot_offset, 0.f, 1.f);
+
+			return attenuation * attenuation;
+		};
+
+		auto to_point = point - center;
+
+		float att = spot_angle_att(glm::normalize(to_point), spot_dir, outer_angle, inner_angle);
+
+		std::printf("spot  : %.1f; %.1f; %.1f\n", center.x, center.y, center.z);
+		std::printf("point : %.1f; %.1f; %.1f\n", point.x, point.y, point.z);
+		std::printf("attenuation: %f\n", att);
+
+		std::exit(EXIT_SUCCESS);
+	}
 }
 
 void ClusteredShading::calculateShadingClusterGrid()
@@ -1284,6 +1340,7 @@ void ClusteredShading::render()
 	m_scattering_pp.shader().setUniform("u_fog_color"sv,       glm::vec3(1, 1, 1));
 	m_scattering_pp.shader().setUniform("u_fog_density"sv,     m_fog_density);
 	m_scattering_pp.shader().setUniform("u_fog_falloff_blend"sv, m_fog_falloff_blend);
+	m_scattering_pp.shader().setUniform("u_ray_march_stride"sv, m_ray_march_stride);
 
 	m_depth_pass_rt.bindTextureSampler(2);
 	// TODO: render to a separate target (thus also need to render it w/ additive blend to the final image)
@@ -1776,11 +1833,13 @@ void ClusteredShading::render_gui()
 			ImGui::Text("Position : %.2f ; %.2f ; %.2f\n"
 						"Forward  : %.2f ; %.2f ; %.2f  (%.1f°)\n"
 						"Right    : %.2f ; %.2f ; %.2f\n"
-						"Up       : %.2f ; %.2f ; %.2f\n",
+						"Up       : %.2f ; %.2f ; %.2f\n"
+						"      Yaw: %.1f    Pitch: %.1f",
                          cam_pos.x, cam_pos.y, cam_pos.z,
 						 cam_fwd.x, cam_fwd.y, cam_fwd.z, glm::degrees(heading_angle),
 						 cam_right.x, cam_right.y, cam_right.z,
-						 cam_up.x, cam_up.y, cam_up.z);
+						 cam_up.x, cam_up.y, cam_up.z,
+						 glm::degrees(m_camera.yaw()), glm::degrees(m_camera.pitch()));
 			ImGui::Text("Visible  : %lu", _scenePvs.size());
 
 			ImGui::Checkbox("Draw AABB", &m_draw_aabb);
@@ -1953,6 +2012,7 @@ void ClusteredShading::render_gui()
 					m_fog_density = density;
 			}
 			ImGui::SliderFloat("Fog falloff blend", &m_fog_falloff_blend, 0, 1);
+			ImGui::SliderFloat("Ray march stride", &m_ray_march_stride, 0.05f, 2.f);
 		}
 
 		// if(ImGui::CollapsingHeader("Framebuffers"))

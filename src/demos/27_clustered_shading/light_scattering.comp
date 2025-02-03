@@ -22,6 +22,7 @@ uniform mat4  u_inv_view;
 uniform uvec3 u_grid_dim;
 uniform uvec2 u_cluster_size_ss;
 uniform float u_log_grid_dim_y;
+uniform float u_ray_march_stride;
 
 const float FOG_RADIANCE_SCALE = 0.01;
 const float FOG_DISTANCE_SCALE = 0.7;  // [ 0, 1 ]
@@ -84,6 +85,7 @@ float linearDepth(float depth);
 uint computeClusterIndex(uvec3 cluster_coord);
 uvec3 computeClusterCoord(vec2 screen_pos, float view_z);
 float getSquareFalloffAttenuation(float distance_sq, float light_radius);
+float getSpotAngleAttenuation(vec3 to_light, vec3 spot_axis, float outer_angle, float inner_angle);
 
 // vec3 scatterLightsInCluster(Ray eye_ray, uvec3 cluster_coord, float max_depth);
 
@@ -98,8 +100,15 @@ vec3 rayPoint(Ray ray, float fraction);
 void rayRayDistance(Ray ray1, Ray ray2, out RayResult result);
 float rayPointDistance(Ray ray, vec3 point, out float ray_dist);
 float vectorVectorAngle(vec3 v1_norm, vec3 v2_norm);
-float capDepth(Ray ray, float fraction, float max_depth, out bool capped);
-float rayFraction(Ray ray, vec3 point);
+
+float depthWorldSpaceDistance(vec2 texCoord, float depth)
+{
+    vec4 pos = vec4(texCoord*2 - 1, depth, 1);
+    vec4 viewPos = u_inv_projection * pos;
+    viewPos /= viewPos.w;
+
+	return length(viewPos.xyz);
+}
 
 layout(std430, binding = POINT_LIGHTS_SSBO_BINDING_INDEX) buffer PointLightSSBO
 {
@@ -137,20 +146,20 @@ void main()
 
 	vec2 screen_pos  = vec2(pixel_id) + vec2(0.5); // pointing at the center of each pixel
 	vec2 screen_norm = (screen_pos*2 - vec2(screen_size)) / vec2(screen_size); // [ -1, 1 ]
+	vec2 screen_uv = screen_pos/screen_size;
 
-	float view_z     = texture(u_input_depth, screen_pos/screen_size).r;
-	float frag_depth = linearDepth(view_z);
+	float view_z     = texture(u_input_depth, screen_uv).r;
+	// float frag_depth = linearDepth(view_z);
+	float frag_dist = depthWorldSpaceDistance(screen_uv, view_z);
 
-	vec4 target = u_inv_projection * vec4(screen_norm, 1, 1); // camera-space
-	// float far_depth = target.z / target.w;
-	Ray eye_ray;
 	// camera-space
-	eye_ray.start = vec3(0);
-	eye_ray.direction = normalize(target.xyz / target.w);
+	vec4 target = u_inv_projection * vec4(screen_norm, 1, 1); // camera-space
+	vec3 direction_cs = normalize(target.xyz / target.w);
 	// world-space
+	Ray eye_ray;
 	eye_ray.start = u_cam_pos;
-	eye_ray.direction = vec3(u_inv_view * vec4(eye_ray.direction, 0));
-	eye_ray.max_length = frag_depth; // TODO: transform into view-space
+	eye_ray.direction = vec3(u_inv_view * vec4(direction_cs, 0));
+	eye_ray.max_length = frag_dist;
 
 
 	vec3 fog_radiance = vec3(0);
@@ -259,31 +268,62 @@ vec3 scatterPointLight(Ray ray, PointLight light)
 	return max(vec3(0), radiance);
 }
 
-vec3 scatterSpotLight(Ray ray, SpotLight light)
-{
-	vec3 radiance = vec3(0);
+vec3 sampleSpot(SpotLight spot, vec3 point);
 
+vec3 scatterSpotLight(Ray ray, SpotLight spot)
+{
 	SphericalCone outer_cone;
-	outer_cone.sphere.center  = light.point.position;
-	outer_cone.sphere.radius  = light.point.radius;
-	outer_cone.axis           = light.direction;
-	outer_cone.angle          = light.outer_angle;
+	outer_cone.sphere.center  = spot.point.position;
+	outer_cone.sphere.radius  = spot.point.radius;
+	outer_cone.axis           = spot.direction;
+	outer_cone.angle          = spot.outer_angle;
 
 	RayResult result;
 	if(! testRayCone(ray, outer_cone, result))
 		return vec3(0);  // missed the entire cone
 
-	return vec3(1 * u_fog_density);
-
-	// float cone_enter = min(result.dist_enter, ray.max_length);
-	// float cone_exit = min(result.dist_exit, ray.max_length);
+	float cone_enter = min(result.dist_enter, ray.max_length);
+	float cone_exit = min(result.dist_exit, ray.max_length);
 
 	// TODO: perform raymarching between 'cone_enter' & 'cone_exit' in X steps
-	//   and accumulate the irradiance along the way (integating, really)
+	//   and accumulate the irradiance along the way (integrating, really)
 	//   can probably scale the number of steps by how far apart tenter & exit are.
 	//   and by how far away from the camera it is. (and a global step count scale, naturally)
 	// OR is it possible to build a "curve" of the brightness along the ray, and integrate that?
 	//   hm, maybe that will result in the same thing... ;)
+
+	vec3 radiance = vec3(0);
+
+	// TODO: compute number of steps based on fixed step size
+	const int numSteps = int(ceil((cone_exit - cone_enter)/u_ray_march_stride));
+	vec3 stride = ray.direction * u_ray_march_stride;
+
+	// start point
+	vec3 p_sample = rayPoint(ray, cone_enter);
+
+	for(int step = 0; step < numSteps; ++step)
+	{
+		radiance += sampleSpot(spot, p_sample)/float(numSteps);
+		// TODO: apply 3d noise (at 'p_sample')
+		p_sample += stride;
+	}
+
+	return radiance * u_fog_color * u_fog_density * spot.point.base.color;
+}
+
+vec3 sampleSpot(SpotLight spot, vec3 point)
+{
+	vec3 to_point = point - spot.point.position;
+	float center_distance_sq =  dot(to_point, to_point);
+
+	float dummy;
+	float ray_dist = rayPointDistance(Ray(spot.point.position, spot.direction, 0), point, dummy);
+	float axis_distance_sq = ray_dist*ray_dist;
+
+	float atten_center = getSquareFalloffAttenuation(center_distance_sq, spot.point.radius*spot.point.radius);
+	float atten_axis = 1;//getSpotAngleAttenuation(normalize(to_point), spot.direction, spot.outer_angle, spot.inner_angle);
+
+	return vec3(spot.point.base.intensity * atten_center * atten_axis);
 }
 
 float atan_approx(float x)
@@ -309,6 +349,7 @@ uvec3 computeClusterCoord(vec2 screen_pos, float view_z)
 
 float linearDepth(float depth)
 {
+	// convert a depth texture sample in range (-1, 1) to linear depth, ranged (near_z, far_z).
 	float ndc          = depth * 2.0 - 1.0;
 	float linear_depth = 2.0 * u_near_z * u_far_z / (u_far_z + u_near_z - ndc * (u_far_z - u_near_z));
 
@@ -596,30 +637,6 @@ vec3 rayPoint(Ray ray, float fraction)
 	return ray.start + ray.direction*fraction;
 }
 
-float rayFraction(Ray ray, vec3 point)
-{
-	// reeturn the fraction alonf 'ray' that is closest to 'point'
-	vec3 v = point - ray.start;
-	return max(dot(v, ray.direction), 0);
-}
-
-float capDepth(Ray ray, float fraction, float max_depth, out bool capped)
-{
-	vec3 p = rayPoint(ray, fraction);
-	vec3 p_cs = (u_view * vec4(p, 1)).xyz;
-
-	capped = -p_cs.z > max_depth;
-	if(capped)
-	{
-		p_cs.z = -max_depth;  // this isn't strictly correct (doesn't take the projection into account)
-
-		// find closest point on the ray to the capped point (expected to be *very* close)
-		p = (u_inv_view * vec4(p_cs, 1)).xyz;
-		fraction = rayFraction(ray, p);
-	}
-	return fraction;
-}
-
 // from pbr_lighting.glh (slightly modified)
 float getSquareFalloffAttenuation(float distance_sq, float light_radius_squared)
 {
@@ -628,6 +645,19 @@ float getSquareFalloffAttenuation(float distance_sq, float light_radius_squared)
     float smooth_factor   = max(1.0 - factor * factor, 0.0);
 
     return (smooth_factor * smooth_factor) / max(distance_sq, 1e-5);
+}
+
+float getSpotAngleAttenuation(vec3 to_light, vec3 spot_dir, float outer_angle, float inner_angle)
+{
+    // the scale and offset computations can be done CPU-side
+    float cos_outer   = cos(outer_angle);
+    float spot_scale  = 1.0 / max(cos(inner_angle) - cos_outer, 1e-5);
+    float spot_offset = -cos_outer * spot_scale;
+
+    float cd          = dot(-spot_dir, to_light);
+    float attenuation = clamp(cd * spot_scale + spot_offset, 0.0, 1.0);
+
+    return attenuation * attenuation;
 }
 
 bool isPointInsideCone(vec3 point, SphericalCone cone)
@@ -700,7 +730,7 @@ float rayPointDistance(Ray ray, vec3 point, out float ray_dist)
 	    return length(point - p_closest);
 	}
 
-    // Closest point is along the ray
+    // Closest point along the ray
     vec3 p_closest = rayPoint(ray, ray_dist);
     return length(point - p_closest);
 }

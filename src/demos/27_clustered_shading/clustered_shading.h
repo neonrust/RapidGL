@@ -286,6 +286,7 @@ private:
 
 	float m_fog_density;
 	float m_fog_falloff_blend;
+	float m_ray_march_stride;
 
 	std::chrono::microseconds m_cull_time;
 	std::chrono::microseconds m_depth_time;
