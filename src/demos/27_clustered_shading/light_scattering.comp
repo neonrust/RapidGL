@@ -152,8 +152,11 @@ void main()
 	vec2 screen_uv = screen_pos/screen_size;
 
 	float view_z     = texture(u_input_depth, screen_uv).r;
-	// float frag_depth = linearDepth(view_z);
+	float frag_depth = linearDepth(view_z);
+
+	// NO this is f-ing wrong!
 	float frag_dist = depthWorldSpaceDistance(screen_uv, view_z);
+
 
 	// camera-space
 	vec4 target = u_inv_projection * vec4(screen_norm, 1, 1); // camera-space
@@ -162,7 +165,7 @@ void main()
 	Ray eye_ray;
 	eye_ray.start = u_cam_pos;
 	eye_ray.direction = vec3(u_inv_view * vec4(direction_cs, 0));
-	eye_ray.max_length = frag_dist;
+	eye_ray.max_length = frag_depth;
 
 
 	vec3 fog_radiance = vec3(0);
@@ -176,10 +179,10 @@ void main()
 
 
 
-	if(point_lights.length() == 0 && pixel_id.x < 45 && pixel_id.y < 50)
-		fog_radiance += vec3(1, 0, 0);
-	if(spot_lights.length() == 0 && pixel_id.x >= 55 && pixel_id.x < 100 && pixel_id.y < 50)
-		fog_radiance += vec3(1, 0, 0);
+	// if(point_lights.length() == 0 && pixel_id.x < 45 && pixel_id.y < 50)
+	// 	fog_radiance += vec3(1, 0, 0);
+	// if(spot_lights.length() == 0 && pixel_id.x >= 55 && pixel_id.x < 100 && pixel_id.y < 50)
+	// 	fog_radiance += vec3(1, 0, 0);
 
 	// TODO: area lights
 	//   I guess area light scattering could be approximated using a frustum (the shape, i.e. a cropped pyramid),
@@ -311,20 +314,20 @@ vec3 scatterSpotLight(Ray ray, SpotLight spot)
 		p_sample += stride;
 	}
 
-	return radiance * u_fog_color * u_fog_density * spot.point.base.color;
+	return radiance * u_fog_color * u_fog_density * spot.point.base.color * FOG_RADIANCE_SCALE;
 }
 
 vec3 sampleSpot(SpotLight spot, vec3 point)
 {
-	vec3 to_point = point - spot.point.position;
-	float center_distance_sq =  dot(to_point, to_point);
+	vec3 to_light = point - spot.point.position;
+	float center_distance_sq =  dot(to_light, to_light);
 
 	float dummy;
-	float ray_dist = rayPointDistance(Ray(spot.point.position, spot.direction, 0), point, dummy);
+	float ray_dist = rayPointDistance(Ray(spot.point.position, spot.direction, 0), point, dummy) * FOG_DISTANCE_SCALE;
 	float axis_distance_sq = ray_dist*ray_dist;
 
 	float atten_center = getSquareFalloffAttenuation(center_distance_sq, spot.point.radius*spot.point.radius);
-	float atten_axis = 1;//getSpotAngleAttenuation(normalize(to_point), spot.direction, spot.outer_angle, spot.inner_angle);
+	float atten_axis = getSpotAngleAttenuation(normalize(to_light), spot.direction, spot.outer_angle, spot.inner_angle);
 
 	return vec3(spot.point.base.intensity * atten_center * atten_axis);
 }
@@ -657,7 +660,7 @@ float getSpotAngleAttenuation(vec3 to_light, vec3 spot_dir, float outer_angle, f
     float spot_scale  = 1.0 / max(cos(inner_angle) - cos_outer, 1e-5);
     float spot_offset = -cos_outer * spot_scale;
 
-    float cd          = dot(-spot_dir, to_light);
+    float cd          = dot(spot_dir, to_light);
     float attenuation = clamp(cd * spot_scale + spot_offset, 0.0, 1.0);
 
     return attenuation * attenuation;

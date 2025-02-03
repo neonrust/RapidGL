@@ -77,7 +77,7 @@ ClusteredShading::ClusteredShading() :
 	m_bloom_enabled       (false),
 	m_fog_density         (0.2f), // [ 0, 0.5 ]   nice-ish value: 0.015
 	m_fog_falloff_blend   (0.05f),
-	m_ray_march_stride    (0.2f)
+	m_ray_march_stride    (0.01f)
 {
 }
 
@@ -646,30 +646,33 @@ void ClusteredShading::init_app()
 
 	if(false)
 	{
-		glm::vec3 center { 3, 0, 0 };
+		glm::vec3 spot_pos { 0, 0, 0 };
 		glm::vec3 spot_dir { 0, 0, 1 };
-		glm::vec3 point { 3.2f, 0, 5.f };
-		float outer_angle = glm::radians(30.f);
-		float inner_angle = glm::radians(25.f);
+		glm::vec3 point { 0.f, 0, 5.f };
+		float outer_angle = glm::radians(45.f);
+		float inner_angle = glm::radians(22.5f);
 
-		auto spot_angle_att = [](glm::vec3 to_light, glm::vec3 spot_dir, float outer_angle, float inner_angle) {
+		auto spot_angle_att = [](glm::vec3 to_point, glm::vec3 spot_dir, float outer_angle, float inner_angle) {
 			float cos_outer   = std::cos(outer_angle);
 			float spot_scale  = 1.f / std::max(std::cos(inner_angle) - cos_outer, 1e-5f);
 			float spot_offset = -cos_outer * spot_scale;
 
-			float cd          = glm::dot(-spot_dir, to_light);
+			float cd          = glm::dot(spot_dir, to_point);
 			float attenuation = glm::clamp(cd * spot_scale + spot_offset, 0.f, 1.f);
 
 			return attenuation * attenuation;
 		};
 
-		auto to_point = point - center;
 
-		float att = spot_angle_att(glm::normalize(to_point), spot_dir, outer_angle, inner_angle);
+		std::printf("spot  : %.1f; %.1f; %.1f  %.0f° - %.0f°\n", spot_pos.x, spot_pos.y, spot_pos.z, glm::degrees(inner_angle), glm::degrees(outer_angle));
 
-		std::printf("spot  : %.1f; %.1f; %.1f\n", center.x, center.y, center.z);
-		std::printf("point : %.1f; %.1f; %.1f\n", point.x, point.y, point.z);
-		std::printf("attenuation: %f\n", att);
+		for(float x = 0.f; x <= 8.f; x += 0.2f)
+		{
+			point.x = x;
+			auto to_point = glm::normalize(point - spot_pos);
+			float att = spot_angle_att(to_point, spot_dir, outer_angle, inner_angle);
+			std::printf("point : %.1f; %.1f; %.1f  --> %f\n", point.x, point.y, point.z, att);
+		}
 
 		std::exit(EXIT_SUCCESS);
 	}
@@ -977,7 +980,7 @@ void ClusteredShading::GenerateSpotLights()
 			.radius = 35
 		},
 		.direction = { 0, 0, 1 },
-		.inner_angle = glm::radians(25.f),
+		.inner_angle = glm::radians(5.f),
 		.outer_angle = glm::radians(30.f)
 	});
 	return;
@@ -2012,7 +2015,7 @@ void ClusteredShading::render_gui()
 					m_fog_density = density;
 			}
 			ImGui::SliderFloat("Fog falloff blend", &m_fog_falloff_blend, 0, 1);
-			ImGui::SliderFloat("Ray march stride", &m_ray_march_stride, 0.05f, 2.f);
+			ImGui::SliderFloat("Ray march stride", &m_ray_march_stride, 0.01f, 1.f);
 		}
 
 		// if(ImGui::CollapsingHeader("Framebuffers"))
