@@ -49,6 +49,9 @@ public:
 	void setOrientation(const glm::vec3& axis, float angle);
 	void setOrientation(const glm::quat& quat);
 
+	inline float yaw() const { return _yaw; }
+	inline float pitch() const { return _pitch; }
+
 	void setFov(float fov);
 	void setFarPlane(float f);
 	void setNearPlane(float n);
@@ -95,8 +98,12 @@ private:
 	void updateDirection();
 	void updateFrustum();
 	void move(const glm::vec3 & position, const glm::vec3& dir, float amount);
+	void addYaw(float angle);
+	void addPitch(float angle);
 
 private:
+	float _yaw;
+	float _pitch;
 	Frustum _frustum;
 
 	glm::quat m_orientation;

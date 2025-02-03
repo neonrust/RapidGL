@@ -20,6 +20,8 @@ Camera::Camera(bool is_ortho)
 	m_right_key             (KeyCode::D),
 	m_up_key                (KeyCode::E),
 	m_down_key              (KeyCode::Q),
+	_yaw                    (0),
+	_pitch                  (0),
 	m_orientation           (glm::vec3(0)),
 	m_position              (glm::vec3(0)),
 	m_direction             (-AXIS_Z),
@@ -107,8 +109,10 @@ void Camera::update(double dt)
 		if (not m_is_mouse_move)
 		{
 			m_mouse_pressed_position = glm::ivec2(Input::getMousePosition());
+			// TODO: see raylib's EnableCursor()/DisableCursor()
+			//   also: https://www.glfw.org/docs/3.1/input.html#input_cursor_mode
 			Input::setMouseCursorVisibility(false);
-			//Input::setMousePosition( center of the screen )
+			Input::setMousePosition({ m_width/2, m_height/2 });
 			m_is_mouse_move = true;
 		}
 	}
@@ -121,36 +125,38 @@ void Camera::update(double dt)
 
 	if (m_is_mouse_move)
 	{
-		auto mouse_pos = glm::ivec2(Input::getMousePosition());
-		auto delta_pos = mouse_pos - m_mouse_pressed_position; // TODO: actually, subtract the center of the screen
-		Input::setMousePosition(m_mouse_pressed_position); // TODO: actually, to the center of the screen
+		const auto mouse_pos = glm::ivec2(Input::getMousePosition());
+		const auto delta_pos = mouse_pos - glm::ivec2{ m_width/2, m_height/2 };
+		Input::setMousePosition({ m_width/2, m_height/2 });
 
-		// TODO: probably, this should instead keep track of yaw & pitch (as floats)
+		// TODO: This should instead keep track of yaw & pitch (as floats)
 		//   and here just update those, and at the end build 'm_orientation' from those
-		//   and of course, this all should be in a "controller" class, not in the camera itself
+		//   Also, this all should be in a "controller" class, not in the camera itself.
 
 		// yaw   (rotation around the Y axis)
 		if (delta_pos.x)
 		{
-			const auto angle = glm::radians(float(delta_pos.x) * m_sensitivity);
-			setOrientation(m_orientation * glm::angleAxis(angle, AXIS_Y));
+			addYaw(glm::radians(float(delta_pos.x) * m_sensitivity));
+			// setOrientation(m_orientation * glm::angleAxis(angle, AXIS_Y));
 		}
 
 		// pitch  (rotation around the X axis)
 		if (delta_pos.y)
 		{
-			const auto angle = glm::radians(float(delta_pos.y) * m_sensitivity);
-			setOrientation(glm::angleAxis(angle, AXIS_X) * m_orientation);
+			addPitch(glm::radians(float(delta_pos.y) * m_sensitivity));
+			// setOrientation(glm::angleAxis(angle, AXIS_X) * m_orientation);
 		}
 	}
 
 	if (m_is_dirty)
 	{
+		m_orientation = glm::angleAxis(_pitch, AXIS_X) * glm::angleAxis(_yaw, AXIS_Y);
 		const auto R = glm::mat4_cast(m_orientation);
 		const auto T = glm::translate(glm::mat4(1), -m_position);
 
 		m_view = R * T;
 
+		updateDirection();
 		updateFrustum();
 
 		m_is_dirty = false;
@@ -170,9 +176,15 @@ void Camera::setPosition(const glm::vec3 &position)
 
 void Camera::setOrientationEuler(const glm::vec3 &euler)
 {
-	m_orientation = glm::angleAxis(glm::radians(euler.x), glm::vec3(1, 0, 0)) *
-		glm::angleAxis(glm::radians(euler.y), glm::vec3(0, 1, 0)) *
-		glm::angleAxis(glm::radians(euler.z), glm::vec3(0, 0, 1));
+	m_orientation = glm::angleAxis(glm::radians(euler.x), AXIS_X) *
+		glm::angleAxis(glm::radians(euler.y), AXIS_Y) *
+		glm::angleAxis(glm::radians(euler.z), AXIS_Z);
+
+	_yaw = glm::radians(euler.y); // best we can do
+	_pitch = glm::radians(euler.x);
+	// to apply limits
+	addYaw(0);
+	addPitch(0);
 
 	updateDirection();
 	m_is_dirty  = true;
@@ -180,7 +192,10 @@ void Camera::setOrientationEuler(const glm::vec3 &euler)
 
 void Camera::setOrientation(const glm::vec3 &direction)
 {
-	m_orientation = glm::quatLookAt(glm::normalize(direction), glm::vec3(0, 1, 0));
+	// TODO: _yaw, _pitch
+	m_orientation = glm::quatLookAt(glm::normalize(direction), AXIS_Y);
+	_yaw = std::acos(glm::dot(glm::normalize(glm::vec3{direction.x, 0, direction.z}), AXIS_Z));
+	_pitch = std::acos(glm::dot(glm::normalize(glm::vec3{0, direction.y, direction.z}), AXIS_Z));
 	updateDirection();
 	m_is_dirty  = true;
 }
@@ -188,6 +203,7 @@ void Camera::setOrientation(const glm::vec3 &direction)
 void Camera::setOrientation(const glm::vec3 &axis, float angle)
 {
 	m_orientation = glm::angleAxis(glm::radians(angle), glm::normalize(axis));
+	// TODO: _yaw, _pitch
 	updateDirection();
 	m_is_dirty    = true;
 }
@@ -195,6 +211,7 @@ void Camera::setOrientation(const glm::vec3 &axis, float angle)
 void Camera::setOrientation(const glm::quat &quat)
 {
 	m_orientation = quat;
+	// TODO: _yaw, _pitch
 	updateDirection();
 	m_is_dirty    = true;
 }
@@ -209,6 +226,23 @@ void Camera::move(const glm::vec3& position, const glm::vec3& dir, float amount)
 	setPosition(position + (dir * amount));
 }
 
+void Camera::addYaw(float angle)
+{
+	m_is_dirty = angle != 0;
+	_yaw += angle;
+
+	if(_yaw > std::numbers::pi_v<float>)
+		_yaw -= std::numbers::pi_v<float>*2;
+	else if(_yaw < -std::numbers::pi_v<float>)
+		_yaw += std::numbers::pi_v<float>*2;
+}
+
+void Camera::addPitch(float angle)
+{
+	m_is_dirty = angle != 0;
+	_pitch = glm::clamp(_pitch + angle, -std::numbers::pi_v<float>/2, std::numbers::pi_v<float>/2);
+}
+
 void Camera::setFov(float fov)
 {
 	if(m_is_ortho)
@@ -218,7 +252,7 @@ void Camera::setFov(float fov)
 	}
 
 	if(auto changed = fov != m_fovy; changed)
-		setPerspective(fov, m_width, m_height, m_near, m_far);
+		setPerspective(fov, int(m_width), int(m_height), m_near, m_far);
 }
 
 void RGL::Camera::setFarPlane(float f)
