@@ -132,9 +132,12 @@ void main()
 	// this should not be in the final version!  ;)
 	ivec2 vec_to_enter = ivec2(int(pixel_id.x) - screen_size.x/2, int(pixel_id.y) - screen_size.y/2);
 	float distance_from_center = dot(vec_to_enter, vec_to_enter);
-	if(distance_from_center < 8)
+	if(distance_from_center < 10)
 	{
-		imageStore(u_output_color, ivec2(pixel_id), vec4(10, 10, 10, 1));
+		if(distance_from_center > 6)
+			imageStore(u_output_color, ivec2(pixel_id), vec4(0, 0, 0, 1));
+		else
+			imageStore(u_output_color, ivec2(pixel_id), vec4(10, 10, 10, 1));
 		return;
 	}
 
