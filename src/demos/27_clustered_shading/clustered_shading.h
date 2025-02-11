@@ -10,6 +10,7 @@
 #include "shared.h"
 #include "rendertarget_2d.h"
 #include "rendertarget_cube.h"
+#include "GLTimer.h"
 
 #include <memory>
 #include <pp_bloom.h>
@@ -228,6 +229,7 @@ private:
 	bool      m_draw_aabb                = false;
 	// GLuint    m_debug_draw_vao           = 0;
 	GLuint    m_debug_draw_vbo           = 0;
+	GLuint    _gl_time_query             = 0;
 
 
 	std::vector<DirectionalLight> m_directional_lights;
@@ -257,6 +259,7 @@ private:
 
     /* Tonemapping variables */
 	RGL::RenderTarget::Texture2d _rt;
+	RGL::RenderTarget::Texture2d _pp_rt;
 	RGL::PP::Tonemapping m_tmo_pp;
 	float m_exposure;
 	float m_gamma;
@@ -296,5 +299,7 @@ private:
 	std::chrono::microseconds m_lighting_time;
 	std::chrono::microseconds m_skybox_time;
 	std::chrono::microseconds m_scatter_time;
-	std::chrono::microseconds m_pp_time;
+	// std::chrono::microseconds m_pp_time;
+
+	RGL::GLTimer _gl_timer;
 };

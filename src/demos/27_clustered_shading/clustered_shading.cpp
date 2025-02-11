@@ -23,6 +23,9 @@ using namespace std::literals;
 #define IMAGE_UNIT_WRITE 0
 
 
+static float s_spot_inner_angle = 3.f;
+static float s_spot_outer_angle = 30.f;
+
 
 glm::mat3 make_common_space_from_direction(const glm::vec3 &direction)
 {
@@ -331,6 +334,11 @@ void ClusteredShading::init_app()
 	_rt.SetWrapping (RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
 	_rt.SetWrapping (RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
 
+	_pp_rt.create(size_t(Window::getWidth()/2), size_t(Window::getHeight()/2), RGL::RenderTarget::ColorFloat | RGL::RenderTarget::Depth);
+	_pp_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LINEAR_MIP_NEAREST);
+	_pp_rt.SetWrapping (RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
+	_pp_rt.SetWrapping (RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
+
 	// TODO: final_rt.cloneFrom(_rt);
 	_final_rt.create(size_t(Window::getWidth()), size_t(Window::getHeight()), RGL::RenderTarget::ColorFloat);
 	_final_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LINEAR_MIP_NEAREST);
@@ -361,6 +369,8 @@ void ClusteredShading::init_app()
 	calculateShadingClusterGrid();  // will also call prepareClusterBuffers()
 
 	glGenBuffers(1, &m_debug_draw_vbo);
+
+	glGenQueries(1, &_gl_time_query);
 
 
 	if(false) // transforming into camera/view space
@@ -755,6 +765,19 @@ void ClusteredShading::input()
         stop();
     }
 
+	if(Input::getKey(KeyCode::RightArrow))
+		s_spot_outer_angle = glm::clamp(s_spot_outer_angle + 0.3f, 0.f, 90.f);
+	else if(Input::getKey(KeyCode::LeftArrow))
+		s_spot_outer_angle = glm::clamp(s_spot_outer_angle - 0.3f, 0.f, 90.f);
+
+	if(Input::getKey(KeyCode::UpArrow))
+		s_spot_inner_angle = glm::clamp(s_spot_inner_angle + 0.3f, 0.f, 90.f);
+	else if(Input::getKey(KeyCode::DownArrow))
+		s_spot_inner_angle = glm::clamp(s_spot_inner_angle - 0.3f, 0.f, 90.f);
+
+	if(s_spot_inner_angle > s_spot_outer_angle)
+		s_spot_inner_angle = s_spot_outer_angle;
+
     /* Toggle between wireframe and solid rendering */
 	// if (Input::getKeyUp(KeyCode::F2))
 	// {
@@ -800,6 +823,9 @@ void ClusteredShading::update(double delta_time)
 	// static float     rotation_speed = 1;
 	// static float     time_accum     = 0;
 
+	m_spot_lights[0].outer_angle = glm::radians(s_spot_outer_angle);
+	m_spot_lights[0].inner_angle = glm::radians(s_spot_inner_angle);
+
     if (m_animate_lights)
     {
 		// time_accum  += float(delta_time * m_animation_speed);
@@ -833,6 +859,7 @@ void ClusteredShading::update(double delta_time)
 
 		UpdateLightsSSBOs();
 	}
+	UpdateLightsSSBOs();
 
 }
 
@@ -973,16 +1000,68 @@ void ClusteredShading::GenerateSpotLights()
 	m_spot_lights.push_back({
 		.point = {
 			.base = {
-				.color = { 1.0f, 1.0f, 0.2f },
+				.color = { 1.0f, 0.8f, 0.2f },
 				.intensity = 5000
 			},
 			.position = { 0, 3.f, -8 },
 			.radius = 35
 		},
 		.direction = { 0, 0, 1 },
-		.inner_angle = glm::radians(5.f),
+		.inner_angle = glm::radians(s_spot_inner_angle),//5.f),
 		.outer_angle = glm::radians(30.f)
 	});
+	// m_spot_lights.push_back({
+	// 	.point = {
+	// 		.base = {
+	// 			.color = { 1.0f, 0.2f, 0.2f },
+	// 			.intensity = 5000
+	// 		},
+	// 		.position = { 4, 3.f, -8 },
+	// 		.radius = 35
+	// 	},
+	// 	.direction = { 0, 0, 1 },
+	// 	.inner_angle = glm::radians(s_spot_inner_angle),//5.f),
+	// 	.outer_angle = glm::radians(30.f)
+	// });
+	// m_spot_lights.push_back({
+	// 	.point = {
+	// 		.base = {
+	// 			.color = { 1.0f, 0.2f, 0.6f },
+	// 			.intensity = 5000
+	// 		},
+	// 		.position = { 8, 3.f, -8 },
+	// 		.radius = 35
+	// 	},
+	// 	.direction = { 0, 0, 1 },
+	// 	.inner_angle = glm::radians(s_spot_inner_angle),//5.f),
+	// 	.outer_angle = glm::radians(30.f)
+	// });
+	// m_spot_lights.push_back({
+	// 	.point = {
+	// 		.base = {
+	// 			.color = { 0.2f, 1.0f, 0.2f },
+	// 			.intensity = 5000
+	// 		},
+	// 		.position = { -4, 3.f, -8 },
+	// 		.radius = 35
+	// 	},
+	// 	.direction = { 0, 0, 1 },
+	// 	.inner_angle = glm::radians(s_spot_inner_angle),//5.f),
+	// 	.outer_angle = glm::radians(30.f)
+	// });
+	// m_spot_lights.push_back({
+	// 	.point = {
+	// 		.base = {
+	// 			.color = { 0.2f, 0.4f, 1.0f },
+	// 			.intensity = 5000
+	// 		},
+	// 		.position = { -8, 3.f, -8 },
+	// 		.radius = 35
+	// 	},
+	// 	.direction = { 0, 0, 1 },
+	// 	.inner_angle = glm::radians(s_spot_inner_angle),//5.f),
+	// 	.outer_angle = glm::radians(30.f)
+	// });
 	return;
 
 	m_spot_lights.resize(m_spot_lights_count);
@@ -1206,7 +1285,6 @@ void ClusteredShading::render()
 {
 	m_camera.setFov(m_camera_fov);
 
-	auto T0 = steady_clock::now();
 
 
 	// determine visible meshes  (only if camera or meshes moved (much))
@@ -1218,6 +1296,8 @@ void ClusteredShading::render()
 	//   need to limit to only "a few" lights, basically strongest lights (as perceived by the camera)
 
 
+	_gl_timer.start();
+
 
 	// 1. Depth pre-pass  (only if camera/meshes moved, probably always)
 	renderDepth(m_camera, m_depth_pass_rt);
@@ -1226,16 +1306,13 @@ void ClusteredShading::render()
 	// 2. Blit depth info to our main render target
 	m_depth_pass_rt.copyTo(_rt, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 
-	auto T1 = steady_clock::now();
-	m_depth_time = duration_cast<microseconds>(T1 - T0);
+	m_depth_time = _gl_timer.elapsed<microseconds>();
+	_gl_timer.start();
 
 
 	// TODO: generate SSAO (texture)
 	//   use as input to pbr lighting calculations
 
-
-
-	T0 = steady_clock::now();
 
 	static const uint32_t clear_val = 0;
 
@@ -1256,9 +1333,9 @@ void ClusteredShading::render()
 					  1);
     glMemoryBarrier  (GL_SHADER_STORAGE_BARRIER_BIT);
 
-	T1 = steady_clock::now();
-	m_cluster_time1 = duration_cast<microseconds>(T1 - T0);
-	T0 = T1;
+	m_cluster_time1 = _gl_timer.elapsed<microseconds>();
+	_gl_timer.start();
+
 
 	// 4. Find active clusters and update the indirect dispatch arguments buffer
 	glClearNamedBufferData(m_active_clusters_ssbo, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &clear_val);
@@ -1271,9 +1348,9 @@ void ClusteredShading::render()
     glDispatchCompute(1, 1, 1);
     glMemoryBarrier  (GL_SHADER_STORAGE_BARRIER_BIT);
 
-	T1 = steady_clock::now();
-	m_cluster_time2 = duration_cast<microseconds>(T1 - T0);
-	T0 = T1;
+	m_cluster_time2 = _gl_timer.elapsed<microseconds>();
+	_gl_timer.start();
+
 
 	// 5. Assign lights to clusters (cull lights)
 	glClearNamedBufferData(m_point_light_grid_ssbo,       GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &clear_val);
@@ -1290,9 +1367,9 @@ void ClusteredShading::render()
     glDispatchComputeIndirect(0);
     glMemoryBarrier          (GL_SHADER_STORAGE_BARRIER_BIT);
 
-	T1 = steady_clock::now();
-	m_cluster_time3 = duration_cast<microseconds>(T1 - T0);
-	T0 = T1;
+	m_cluster_time3 = _gl_timer.elapsed<microseconds>();
+	_gl_timer.start();
+
 
     // 6. Render lighting
 	_rt.bindRenderTarget(RGL::RenderTarget::ColorBuffer);
@@ -1307,9 +1384,8 @@ void ClusteredShading::render()
 		glDrawArrays(GL_TRIANGLES, 0, GLsizei(6 * m_area_lights.size()));
 	}
 
-	T1 = steady_clock::now();
-	m_lighting_time = duration_cast<microseconds>(T1 - T0);
-	T0 = T1;
+	m_lighting_time = _gl_timer.elapsed<microseconds>();
+	_gl_timer.start();
 
 
     // 8. Render skybox
@@ -1322,9 +1398,8 @@ void ClusteredShading::render()
     glBindVertexArray(m_skybox_vao);
     glDrawArrays     (GL_TRIANGLES, 0, 36);
 
-	T1 = steady_clock::now();
-	m_skybox_time = duration_cast<microseconds>(T1 - T0);
-	T0 = T1;
+	m_skybox_time = _gl_timer.elapsed<microseconds>();
+	_gl_timer.start();
 
 	// TODO: Render atmospheric/fog light scattering (i.e. volumetric lights)
 	//    - lights culled into screen tiles (i.e. only 2d)
@@ -1346,13 +1421,13 @@ void ClusteredShading::render()
 	m_scattering_pp.shader().setUniform("u_ray_march_stride"sv, m_ray_march_stride);
 
 	m_depth_pass_rt.bindTextureSampler(2);
+
 	// TODO: render to a separate target (thus also need to render it w/ additive blend to the final image)
 	//   this allows to render at different (lower) resolution, if it becomes slow
+	//   probably also blur the result
 	m_scattering_pp.render(_rt, _rt);
 
-	T1 = steady_clock::now();
-	m_scatter_time = duration_cast<microseconds>(T1 - T0);
-	T0 = T1;
+	m_scatter_time = _gl_timer.elapsed<microseconds>();
 
 
 	// TODO: compute average luminance of rendered image
@@ -1388,9 +1463,6 @@ void ClusteredShading::render()
 
 	draw2d(_final_rt);
 
-
-	T1 = steady_clock::now();
-	m_pp_time = duration_cast<microseconds>(T1 - T0);
 
 	if(m_draw_aabb)
 		renderSceneBounds();
@@ -1723,6 +1795,7 @@ void ClusteredShading::renderScene(const Camera &camera, RGL::Shader &shader, Ma
 	//   this would also include skinned meshes (don't want to do the skinning computations multiple times)
 	//   (AnimatedMode::BoneTransform() genereates a list of bone transforms, done once, but the actual skinning is in the shader)
 
+	return;
 	const auto view_projection = camera.projectionTransform() * camera.viewTransform();
 
 	for(const auto &obj: _scenePvs)
@@ -1808,7 +1881,7 @@ void ClusteredShading::render_gui()
 	// ImGui::Text("Clusters time 3: %ld us", m_cluster_time3.count());
 	ImGui::Text("   Shading: %3ld µs", m_lighting_time.count());
 	ImGui::Text("    Skybox: %3ld µs", m_skybox_time.count());
-	ImGui::Text("        PP: %3ld µs", m_pp_time.count());
+	// ImGui::Text("        PP: %3ld µs", m_pp_time.count());
 	ImGui::Text("Scattering: %3ld µs", m_scatter_time.count());
 
     ImGui::Begin("Settings");
