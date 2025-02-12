@@ -60,7 +60,16 @@ public:
 	void setUniform(const std::string_view & name, GLuint value);
 	void setUniform(const std::string_view & name, GLsizei count, const float * values);
 	void setUniform(const std::string_view & name, GLsizei count, const int * values);
+	void setUniform(const std::string_view & name, GLsizei count, const glm::vec2 * vectors);
 	void setUniform(const std::string_view & name, GLsizei count, const glm::vec3 * vectors);
+	void setUniform(const std::string_view & name, GLsizei count, const glm::mat4 * matrices);
+	void setUniform(const std::string_view & name, GLsizei count, const glm::mat2x4 * matrices);
+	void setUniform(const std::string_view & name, const std::vector<float> &values);
+	void setUniform(const std::string_view & name, const std::vector<int> &values);
+	void setUniform(const std::string_view & name, const std::vector<glm::vec2> &vectors);
+	void setUniform(const std::string_view & name, const std::vector<glm::vec3> &vectors);
+	void setUniform(const std::string_view & name, const std::vector<glm::mat4> &matrices);
+	void setUniform(const std::string_view & name, const std::vector<glm::mat2x4> &matrices);
 	void setUniform(const std::string_view & name, const glm::vec2 & vector);
 	void setUniform(const std::string_view & name, const glm::vec3 & vector);
 	void setUniform(const std::string_view & name, const glm::vec4 & vector);
@@ -68,10 +77,6 @@ public:
 	void setUniform(const std::string_view & name, const glm::uvec3 & vector);
 	void setUniform(const std::string_view & name, const glm::mat3 & matrix);
 	void setUniform(const std::string_view & name, const glm::mat4 & matrix);
-	void setUniform(const std::string_view & name, const float* values, GLsizei count);
-	void setUniform(const std::string_view & name, const glm::vec2* values, GLsizei count);
-	void setUniform(const std::string_view & name, const glm::mat4 * matrices, GLsizei count);
-	void setUniform(const std::string_view & name, const glm::mat2x4 * matrices, GLsizei count);
 
 	void setSubroutine(ShaderType shader_type, const std::string& subroutine_name);
 

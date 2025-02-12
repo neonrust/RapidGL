@@ -140,7 +140,7 @@ void MeshSkinning::render()
         m_lbs_skinning_shader->bind();
         m_lbs_skinning_shader->setUniform("mvp",   view_projection * m_object_model_matrix);
         m_lbs_skinning_shader->setUniform("model", m_object_model_matrix);
-        m_lbs_skinning_shader->setUniform("bones", m_bone_transforms.data(), m_bone_transforms.size());
+		m_lbs_skinning_shader->setUniform("bones", m_bone_transforms);
         m_lbs_skinning_shader->setUniform("gamma", m_gamma);
     }
 
@@ -149,7 +149,7 @@ void MeshSkinning::render()
         m_dqs_skinning_shader->bind();
         m_dqs_skinning_shader->setUniform("mvp",   view_projection * m_object_model_matrix);
         m_dqs_skinning_shader->setUniform("model", m_object_model_matrix);
-        m_dqs_skinning_shader->setUniform("bones", m_bone_transforms_dq.data(), m_bone_transforms_dq.size());
+		m_dqs_skinning_shader->setUniform("bones", m_bone_transforms_dq);
         m_dqs_skinning_shader->setUniform("gamma", m_gamma);
     }
 

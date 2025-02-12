@@ -250,7 +250,7 @@ namespace RGL
     {
 		assert(values);
 		glProgramUniform1fv(m_program_id, getUniformLocation(name), count, values);
-    }
+	}
 
 	void Shader::setUniform(const std::string_view & name, GLsizei count, const int *values)
     {
@@ -258,11 +258,58 @@ namespace RGL
 		glProgramUniform1iv(m_program_id, getUniformLocation(name), count, values);
     }
 
+	void Shader::setUniform(const std::string_view &name, GLsizei count, const glm::vec2 *vectors)
+	{
+		glProgramUniform2fv(m_program_id, getUniformLocation(name), count, glm::value_ptr(vectors[0]));
+	}
+
 	void Shader::setUniform(const std::string_view & name, GLsizei count, const glm::vec3 *vectors)
     {
 		assert(vectors);
 		glProgramUniform3fv(m_program_id, getUniformLocation(name), count, glm::value_ptr(vectors[0]));
     }
+
+	void Shader::setUniform(const std::string_view &name, GLsizei count, const glm::mat4 *matrices)
+	{
+		assert(matrices);
+		glProgramUniformMatrix4fv(m_program_id, getUniformLocation(name), count, GL_FALSE, glm::value_ptr(matrices[0]));
+	}
+
+	void Shader::setUniform(const std::string_view &name, GLsizei count, const glm::mat2x4 *matrices)
+	{
+		assert(matrices);
+		glProgramUniformMatrix2x4fv(m_program_id, getUniformLocation(name), count, GL_FALSE, glm::value_ptr(matrices[0]));
+	}
+
+	void Shader::setUniform(const std::string_view & name, const std::vector<float> &values)
+	{
+		glProgramUniform1fv(m_program_id, getUniformLocation(name), GLsizei(values.size()), values.data());
+	}
+
+	void Shader::setUniform(const std::string_view & name, const std::vector<int> &values)
+	{
+		glProgramUniform1iv(m_program_id, getUniformLocation(name), GLsizei(values.size()), &values[0]);
+	}
+
+	void Shader::setUniform(const std::string_view &name, const std::vector<glm::vec2> &vectors)
+	{
+		glProgramUniform2fv(m_program_id, getUniformLocation(name), GLsizei(vectors.size()), glm::value_ptr(vectors[0]));
+	}
+
+	void Shader::setUniform(const std::string_view & name, const std::vector<glm::vec3> &vectors)
+	{
+		glProgramUniform3fv(m_program_id, getUniformLocation(name), GLsizei(vectors.size()), glm::value_ptr(vectors[0]));
+	}
+
+	void Shader::setUniform(const std::string_view &name, const std::vector<glm::mat4> &matrices)
+	{
+		glProgramUniformMatrix4fv(m_program_id, getUniformLocation(name), GLsizei(matrices.size()), GL_FALSE, glm::value_ptr(matrices[0]));
+	}
+
+	void Shader::setUniform(const std::string_view &name, const std::vector<glm::mat2x4> &matrices)
+	{
+		glProgramUniformMatrix2x4fv(m_program_id, getUniformLocation(name), GLsizei(matrices.size()), GL_FALSE, glm::value_ptr(matrices[0]));
+	}
 
 	void Shader::setUniform(const std::string_view & name, const glm::vec2 & vector)
     {
@@ -299,25 +346,25 @@ namespace RGL
 		glProgramUniformMatrix4fv(m_program_id, getUniformLocation(name), 1, GL_FALSE, glm::value_ptr(matrix));
     }
 
-	void Shader::setUniform(const std::string_view & name, const float *values, GLsizei count)
-    {
-		glProgramUniform1fv(m_program_id, getUniformLocation(name), count, &values[0]);
-    }
+	// void Shader::setUniform(const std::string_view & name, const float *values, GLsizei count)
+ //    {
+	// 	glProgramUniform1fv(m_program_id, getUniformLocation(name), count, &values[0]);
+ //    }
 
-	void Shader::setUniform(const std::string_view& name, const glm::vec2 *values, GLsizei count)
-    {
-		glProgramUniform2fv(m_program_id, getUniformLocation(name), count, &values[0][0]);
-    }
+	// void Shader::setUniform(const std::string_view& name, const glm::vec2 *values, GLsizei count)
+ //    {
+	// 	glProgramUniform2fv(m_program_id, getUniformLocation(name), count, &values[0][0]);
+ //    }
 
-	void Shader::setUniform(const std::string_view & name, const glm::mat4 *matrices, GLsizei count)
-    {
-		glProgramUniformMatrix4fv(m_program_id, getUniformLocation(name), count, GL_FALSE, &matrices[0][0][0]);
-    }
+	// void Shader::setUniform(const std::string_view & name, const glm::mat4 *matrices, GLsizei count)
+ //    {
+	// 	glProgramUniformMatrix4fv(m_program_id, getUniformLocation(name), count, GL_FALSE, &matrices[0][0][0]);
+ //    }
 
-	void Shader::setUniform(const std::string_view &name, const glm::mat2x4 *matrices, GLsizei count)
-    {
-		glProgramUniformMatrix2x4fv(m_program_id, getUniformLocation(name), count, GL_FALSE, &matrices[0][0][0]);
-    }
+	// void Shader::setUniform(const std::string_view &name, const glm::mat2x4 *matrices, GLsizei count)
+ //    {
+	// 	glProgramUniformMatrix2x4fv(m_program_id, getUniformLocation(name), count, GL_FALSE, &matrices[0][0][0]);
+ //    }
 
     void Shader::setSubroutine(ShaderType shader_type, const std::string & subroutine_name)
     {

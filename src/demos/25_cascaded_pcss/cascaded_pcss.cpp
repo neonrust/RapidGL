@@ -481,7 +481,7 @@ void CascadedPCSS::GenerateShadowMap(uint32_t width, uint32_t height)
     update_csm_splits();
     update_csm_frusta();
 
-    m_generate_shadow_map_shader->setUniform("u_light_view_projections", m_dir_light_view_projection_matrices.data(), m_dir_light_view_projection_matrices.size());
+	m_generate_shadow_map_shader->setUniform("u_light_view_projections", m_dir_light_view_projection_matrices);
 
     for (uint32_t i = 0; i < m_models_with_model_matrices.size(); ++i)
     {
@@ -720,12 +720,12 @@ void CascadedPCSS::RenderTexturedModels()
     m_directional_light_shader->setUniform("u_directional_light.base.color",     m_dir_light_properties.color);
     m_directional_light_shader->setUniform("u_directional_light.base.intensity", m_dir_light_properties.intensity);
     m_directional_light_shader->setUniform("u_directional_light.direction",      m_dir_light_properties.direction);
-    m_directional_light_shader->setUniform("u_light_view_projections",           m_dir_light_view_projection_matrices.data(), m_dir_light_view_projection_matrices.size());
-    m_directional_light_shader->setUniform("u_light_views",                      m_dir_light_view_matrices.data(), m_dir_light_view_matrices.size());
+	m_directional_light_shader->setUniform("u_light_view_projections",           m_dir_light_view_projection_matrices);
+	m_directional_light_shader->setUniform("u_light_views",                      m_dir_light_view_matrices);
     
     m_directional_light_shader->setUniform("u_blocker_search_samples", m_blocker_search_samples);
     m_directional_light_shader->setUniform("u_pcf_samples",            m_pcf_filter_samples);
-    m_directional_light_shader->setUniform("u_light_frustum_planes",   &m_dir_shadow_frustum_planes[0], std::size(m_dir_shadow_frustum_planes));
+	m_directional_light_shader->setUniform("u_light_frustum_planes",   GLsizei(std::size(m_dir_shadow_frustum_planes)), &m_dir_shadow_frustum_planes[0]);
     m_directional_light_shader->setUniform("u_show_cascades",          m_show_cascades);
     m_directional_light_shader->setUniform("u_hard_shadows",           m_hard_shadows);
 
