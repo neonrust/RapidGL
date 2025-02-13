@@ -13,8 +13,8 @@ public:
 	operator bool() const override;
 
 	inline Shader &shader() { return _shader; }
-
-	void render(const RenderTarget::Texture2d &in, RenderTarget::Texture2d &out) override;
+	
+	void render(const RenderTarget::Texture2d &, RenderTarget::Texture2d &out) override;
 
 private:
 	Shader _shader;

@@ -39,6 +39,7 @@ Bloom::operator bool() const
 
 void Bloom::render(const RenderTarget::Texture2d &in, RenderTarget::Texture2d &out)
 {
+	// Bloom: downscale
 	_downscale_shader.bind();
 	_downscale_shader.setUniform("u_threshold"sv, glm::vec4(
 														_threshold,

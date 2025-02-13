@@ -334,10 +334,15 @@ void ClusteredShading::init_app()
 	_rt.SetWrapping (RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
 	_rt.SetWrapping (RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
 
-	_pp_rt.create(size_t(Window::getWidth()/2), size_t(Window::getHeight()/2), RGL::RenderTarget::ColorFloat | RGL::RenderTarget::Depth);
-	_pp_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LINEAR_MIP_NEAREST);
-	_pp_rt.SetWrapping (RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
-	_pp_rt.SetWrapping (RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
+	_pp_half_rt.create(size_t(Window::getWidth()/2), size_t(Window::getHeight()/2), RGL::RenderTarget::ColorFloat);
+	_pp_half_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LINEAR_MIP_NEAREST);
+	_pp_half_rt.SetWrapping (RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
+	_pp_half_rt.SetWrapping (RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
+
+	_pp_full_rt.create(size_t(Window::getWidth()), size_t(Window::getHeight()), RGL::RenderTarget::ColorFloat);
+	_pp_full_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LINEAR_MIP_NEAREST);
+	_pp_full_rt.SetWrapping (RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
+	_pp_full_rt.SetWrapping (RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
 
 	// TODO: final_rt.cloneFrom(_rt);
 	_final_rt.create(size_t(Window::getWidth()), size_t(Window::getHeight()), RGL::RenderTarget::ColorFloat);
@@ -1421,11 +1426,19 @@ void ClusteredShading::render()
 	m_scattering_pp.shader().setUniform("u_ray_march_stride"sv, m_ray_march_stride);
 
 	m_depth_pass_rt.bindTextureSampler(2);
+	// TODO: bind 2d noise texture (for ray randomization)
 
-	// TODO: render to a separate target (thus also need to render it w/ additive blend to the final image)
-	//   this allows to render at different (lower) resolution, if it becomes slow
-	//   probably also blur the result
-	m_scattering_pp.render(_rt, _rt);
+	m_scattering_pp.render(_rt, _pp_half_rt);
+
+	// TODO: render '_pp_half_rt' additive on to '_rt' (blurred)
+	// m_blur_pp.setSigma(1.5f);
+	// m_blur_pp.setRadius(2.f);
+	// m_blur_pp.setWeights({ 0.2f, 0.3f, 0.4f, ... }));
+	// m_blur_pp.render(_pp_half_rt, _full_rt);
+
+	// TODO: render _pp__full_rt onto _rt in additive mode
+	draw2d(_pp_half_rt, _rt, BlendMode::Add);
+
 
 	m_scatter_time = _gl_timer.elapsed<microseconds>();
 
@@ -1441,7 +1454,7 @@ void ClusteredShading::render()
 	// TODO: compute new desired exposure, blend 'm_eposure' over time towards that value
 
 
-    // 9. Bloom: downscale
+	// 9. Bloom
     if (m_bloom_enabled)
     {
 		m_bloom_pp.setThreshold(m_bloom_threshold);
@@ -1449,7 +1462,6 @@ void ClusteredShading::render()
 		m_bloom_pp.setKnee(m_bloom_knee);
 		m_bloom_pp.setDirtIntensity(m_bloom_dirt_intensity);
 
-		// m_bloom_pp.render(m_tmo_pp->renderTarget(), m_tmo_pp->renderTarget());
 		m_bloom_pp.render(_rt, _rt);
 	}
 
@@ -1461,7 +1473,8 @@ void ClusteredShading::render()
 	m_tmo_pp.render(_rt, _final_rt);
 
 
-	draw2d(_final_rt);
+	// draw the final result on the screen
+	draw2d(_final_rt, BlendMode::Replace);
 
 
 	if(m_draw_aabb)
@@ -1702,10 +1715,41 @@ void ClusteredShading::debugDrawSpotLight(const SpotLight &light, const glm::vec
 	// TODO: draw cap
 }
 
-void ClusteredShading::draw2d(const Texture &texture)
+void ClusteredShading::draw2d(const Texture &texture, BlendMode blend)
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	if(blend != BlendMode::Replace)
+		glEnable(GL_BLEND);
+
+	switch(blend)
+	{
+	case BlendMode::Replace: glDisable(GL_BLEND); break;
+	case BlendMode::Add:     glBlendFunc(GL_ONE, GL_ONE); break;
+	case BlendMode::Alpha:   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); break;
+	}
+
+	m_fsq_shader->bind();
+	texture.Bind();
+
+	glBindVertexArray(_dummy_vao_id);
+	glDrawArrays(GL_TRIANGLES, 0, 3);
+}
+
+void ClusteredShading::draw2d(const RGL::Texture &texture, RGL::Texture &target, BlendMode blend)
+{
+	target.Bind();
+
+	if(blend != BlendMode::Replace)
+		glEnable(GL_BLEND);
+
+	switch(blend)
+	{
+	case BlendMode::Replace: glDisable(GL_BLEND); break;
+	case BlendMode::Add:     glBlendFunc(GL_ONE, GL_ONE); break;
+	case BlendMode::Alpha:   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); break;
+	}
 
 	m_fsq_shader->bind();
 	texture.Bind();
@@ -1724,6 +1768,7 @@ void ClusteredShading::draw2d(const RGL::Texture &texture, const glm::uvec2 &top
 
 	(void)top_left;
 	(void)bottom_right;
+	// m_2d_shader.setUniform("u_source_rect"sv, glm::vec4(top_left, bottom_right));
 
 	// glBindVertexArray(_rect_vao_id);
 	// glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -1795,7 +1840,6 @@ void ClusteredShading::renderScene(const Camera &camera, RGL::Shader &shader, Ma
 	//   this would also include skinned meshes (don't want to do the skinning computations multiple times)
 	//   (AnimatedMode::BoneTransform() genereates a list of bone transforms, done once, but the actual skinning is in the shader)
 
-	return;
 	const auto view_projection = camera.projectionTransform() * camera.viewTransform();
 
 	for(const auto &obj: _scenePvs)

@@ -83,6 +83,13 @@ struct StaticObject
 	std::shared_ptr<RGL::StaticModel> model;
 };
 
+enum struct BlendMode
+{
+	Replace,
+	Add,
+	Alpha,
+};
+
 class ClusteredShading : public RGL::CoreApp
 {
 public:
@@ -116,7 +123,8 @@ private:
 	void renderDepth(const RGL::Camera &camera, RGL::RenderTarget::Texture2d &target);
 	void renderLighting(const RGL::Camera &camera);
 	void renderSceneBounds();
-	void draw2d(const RGL::Texture &texture); // TODO: move to CoreApp
+	void draw2d(const RGL::Texture &texture, BlendMode mode=BlendMode::Replace); // TODO: move to CoreApp
+	void draw2d(const RGL::Texture &texture, RGL::Texture &target, BlendMode blend=BlendMode::Replace); // TODO: move to CoreApp
 	void draw2d(const RGL::Texture &texture, const glm::uvec2 &top_left, const glm::uvec2 &bottom_right); // TODO: move to CoreApp
 
 	void debugDrawLine(const glm::vec3 &p1, const glm::vec3 &p2, const glm::vec4 &color={1,1,1,1});
@@ -259,7 +267,8 @@ private:
 
     /* Tonemapping variables */
 	RGL::RenderTarget::Texture2d _rt;
-	RGL::RenderTarget::Texture2d _pp_rt;
+	RGL::RenderTarget::Texture2d _pp_half_rt;
+	RGL::RenderTarget::Texture2d _pp_full_rt;
 	RGL::PP::Tonemapping m_tmo_pp;
 	float m_exposure;
 	float m_gamma;
