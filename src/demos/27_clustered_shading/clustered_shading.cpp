@@ -1918,15 +1918,15 @@ void ClusteredShading::render_gui()
     ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
     ImGui::SetNextWindowSize({ 400, 0 });
 
-	ImGui::Text("   Culling: %3ld µs", m_cull_time.count());
-	ImGui::Text("    Z-pass: %3ld µs", m_depth_time.count());
-	ImGui::Text("  Clusters: %3ld µs", m_cluster_time1.count() + m_cluster_time2.count() + m_cluster_time3.count());
+	ImGui::Text("   Culling: %4ld µs", m_cull_time.count());
+	ImGui::Text("    Z-pass: %4ld µs", m_depth_time.count());
+	ImGui::Text("  Clusters: %4ld µs", m_cluster_time1.count() + m_cluster_time2.count() + m_cluster_time3.count());
 	// ImGui::Text("Clusters time 2: %ld us", m_cluster_time2.count());
 	// ImGui::Text("Clusters time 3: %ld us", m_cluster_time3.count());
-	ImGui::Text("   Shading: %3ld µs", m_lighting_time.count());
-	ImGui::Text("    Skybox: %3ld µs", m_skybox_time.count());
+	ImGui::Text("   Shading: %4ld µs", m_lighting_time.count());
+	ImGui::Text("    Skybox: %4ld µs", m_skybox_time.count());
 	// ImGui::Text("        PP: %3ld µs", m_pp_time.count());
-	ImGui::Text("Scattering: %3ld µs", m_scatter_time.count());
+	ImGui::Text("Scattering: %4ld µs", m_scatter_time.count());
 
     ImGui::Begin("Settings");
     {
