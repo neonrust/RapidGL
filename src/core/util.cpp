@@ -132,6 +132,8 @@ namespace RGL
 			data = stbi_load(filepath.generic_string().c_str(), (int *)&image_data.width, (int *)&image_data.height, (int *)&channels_in_file, desired_number_of_channels);
 			if (data)
 				image_data.channels = desired_number_of_channels == 0 ? GLuint(channels_in_file) : GLuint(desired_number_of_channels);
+			else
+				std::fprintf(stderr, "Load failed: %s\n", stbi_failure_reason());
 			// data.size = image_data.width * image_data.height * image_data.channels;
 		}
 
