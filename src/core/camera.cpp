@@ -1,5 +1,10 @@
 #include "camera.h"
 
+#include "shader.h"
+
+using namespace std::literals;
+
+
 namespace RGL
 {
 
@@ -74,6 +79,19 @@ const Frustum &Camera::frustum()
 	if(m_is_dirty)
 		updateFrustum();
 	return _frustum;
+}
+
+void Camera::setUniforms(Shader &shader) const
+{
+	// TODO: cache locations per shader?
+
+	shader.setUniform("u_cam_pos"sv,         position());
+	shader.setUniform("u_projection"sv,      projectionTransform()); // not used ?
+	shader.setUniform("u_inv_projection"sv,  glm::inverse(projectionTransform()));
+	shader.setUniform("u_view"sv,            viewTransform());       // not used ?
+	shader.setUniform("u_inv_view"sv,        glm::inverse(viewTransform()));
+	shader.setUniform("u_near_z"sv,          nearPlane());
+	shader.setUniform("u_far_z"sv,           farPlane());
 }
 
 void Camera::update(double dt)

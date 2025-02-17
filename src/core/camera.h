@@ -11,6 +11,8 @@
 namespace RGL
 {
 
+class Shader;
+
 class Camera
 {
 public:
@@ -74,6 +76,7 @@ public:
 	inline const glm::mat4 &viewTransform() const { return m_view; }
 
 
+	void setUniforms(Shader &shader) const;
 
 	// TODO: this shouldn't be here (better in a controller-type thing)
 	void update(double dt);
