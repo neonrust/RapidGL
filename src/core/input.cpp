@@ -126,7 +126,7 @@ namespace RGL
     {
         for (auto & kv : m_last_keys_states)
         {
-            kv.second = getKey(kv.first);
+			kv.second = isKeyDown(kv.first);
         }
 
         for (auto & kv : m_last_mouse_states)
@@ -135,19 +135,19 @@ namespace RGL
         }
     }
 
-    bool Input::getKey(KeyCode keyCode)
+	bool Input::isKeyDown(KeyCode keyCode)
     {
         return glfwGetKey(m_window, static_cast<int>(keyCode)) == GLFW_PRESS;
     }
 
-    bool Input::getKeyDown(KeyCode keyCode)
+	bool Input::wasKeyPressed(KeyCode keyCode)
     {
-        return getKey(keyCode) && !m_last_keys_states[keyCode];
+		return isKeyDown(keyCode) && !m_last_keys_states[keyCode];
     }
 
-    bool Input::getKeyUp(KeyCode keyCode)
+	bool Input::wasKeyReleased(KeyCode keyCode)
     {
-        return !getKey(keyCode) && m_last_keys_states[keyCode];
+		return !isKeyDown(keyCode) && m_last_keys_states[keyCode];
     }
 
     bool Input::getMouse(KeyCode keyCode)

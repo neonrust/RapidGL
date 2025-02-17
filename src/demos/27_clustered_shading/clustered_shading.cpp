@@ -765,19 +765,19 @@ void ClusteredShading::	prepareClusterBuffers()
 void ClusteredShading::input()
 {
     /* Close the application when Esc is released. */
-	if (Input::getKeyDown(KeyCode::Escape))
+	if (Input::wasKeyPressed(KeyCode::Escape))
     {
         stop();
     }
 
-	if(Input::getKey(KeyCode::RightArrow))
+	if(Input::isKeyDown(KeyCode::RightArrow))
 		s_spot_outer_angle = glm::clamp(s_spot_outer_angle + 0.3f, 0.f, 90.f);
-	else if(Input::getKey(KeyCode::LeftArrow))
+	else if(Input::isKeyDown(KeyCode::LeftArrow))
 		s_spot_outer_angle = glm::clamp(s_spot_outer_angle - 0.3f, 0.f, 90.f);
 
-	if(Input::getKey(KeyCode::UpArrow))
+	if(Input::isKeyDown(KeyCode::UpArrow))
 		s_spot_inner_angle = glm::clamp(s_spot_inner_angle + 0.3f, 0.f, 90.f);
-	else if(Input::getKey(KeyCode::DownArrow))
+	else if(Input::isKeyDown(KeyCode::DownArrow))
 		s_spot_inner_angle = glm::clamp(s_spot_inner_angle - 0.3f, 0.f, 90.f);
 
 	if(s_spot_inner_angle > s_spot_outer_angle)
@@ -801,7 +801,7 @@ void ClusteredShading::input()
 	// }
 
     /* It's also possible to take a screenshot. */
-	if (Input::getKeyUp(KeyCode::F12))
+	if (Input::wasKeyReleased(KeyCode::F12))
     {
 		/* Specify filename of Sthe screenshot. */
         std::string filename = "27_clustered_shading";
@@ -816,7 +816,7 @@ void ClusteredShading::input()
         }
     }
 
-    if (Input::getKeyUp(KeyCode::Space))
+	if (Input::wasKeyReleased(KeyCode::Space))
         m_animate_lights = !m_animate_lights;
 }
 

@@ -154,13 +154,13 @@ void Terrain::init_app()
 void Terrain::input()
 {
     /* Close the application when Esc is released. */
-    if (RGL::Input::getKeyUp(RGL::KeyCode::Escape))
+    if (RGL::Input::wasKeyReleased(RGL::KeyCode::Escape))
     {
         stop();
     }
 
     /* Toggle between wireframe and solid rendering */
-    if (RGL::Input::getKeyUp(RGL::KeyCode::F2))
+    if (RGL::Input::wasKeyReleased(RGL::KeyCode::F2))
     {
         static bool toggle_wireframe = false;
 
@@ -177,7 +177,7 @@ void Terrain::input()
     }
 
     /* It's also possible to take a screenshot. */
-    if (RGL::Input::getKeyUp(RGL::KeyCode::F1))
+    if (RGL::Input::wasKeyReleased(RGL::KeyCode::F1))
     {
         /* Specify filename of the screenshot. */
         std::string filename = "04_terrain";
@@ -193,7 +193,7 @@ void Terrain::input()
     }
 
     /* Toggle between wireframe and solid rendering */
-    if (RGL::Input::getKeyUp(RGL::KeyCode::T))
+    if (RGL::Input::wasKeyReleased(RGL::KeyCode::T))
     {
         m_snap_camera_to_ground = !m_snap_camera_to_ground;
     }

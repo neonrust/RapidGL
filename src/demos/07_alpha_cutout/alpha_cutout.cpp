@@ -88,13 +88,13 @@ void AlphaCutout::init_app()
 void AlphaCutout::input()
 {
     /* Close the application when Esc is released. */
-    if (RGL::Input::getKeyUp(RGL::KeyCode::Escape))
+    if (RGL::Input::wasKeyReleased(RGL::KeyCode::Escape))
     {
         stop();
     }
 
     /* Toggle between wireframe and solid rendering */
-    if (RGL::Input::getKeyUp(RGL::KeyCode::F2))
+    if (RGL::Input::wasKeyReleased(RGL::KeyCode::F2))
     {
         static bool toggle_wireframe = false;
 
@@ -111,7 +111,7 @@ void AlphaCutout::input()
     }
 
     /* It's also possible to take a screenshot. */
-    if (RGL::Input::getKeyUp(RGL::KeyCode::F1))
+    if (RGL::Input::wasKeyReleased(RGL::KeyCode::F1))
     {
         /* Specify filename of the screenshot. */
         std::string filename = "07_alpha_cutout";

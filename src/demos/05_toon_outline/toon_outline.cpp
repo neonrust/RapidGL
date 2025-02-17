@@ -225,13 +225,13 @@ void ToonOutline::init_app()
 void ToonOutline::input()
 {
     /* Close the application when Esc is released. */
-    if (RGL::Input::getKeyUp(RGL::KeyCode::Escape))
+    if (RGL::Input::wasKeyReleased(RGL::KeyCode::Escape))
     {
         stop();
     }
 
     /* It's also possible to take a screenshot. */
-    if (RGL::Input::getKeyUp(RGL::KeyCode::F1))
+    if (RGL::Input::wasKeyReleased(RGL::KeyCode::F1))
     {
         /* Specify filename of the screenshot. */
         std::string filename = "05_toon_outline";

@@ -137,19 +137,19 @@ namespace RGL
          * @brief Check if key is pressed
          * @param KeyCode keycode
          */
-        static bool getKey(KeyCode keyCode);
+        static bool isKeyDown(KeyCode keyCode);
 
         /**
          * @brief Check if key was pressed
          * @param KeyCode keycode
          */
-        static bool getKeyDown(KeyCode keyCode);
+        static bool wasKeyPressed(KeyCode keyCode);
 
         /**
          * @brief Check if key was released
          * @param KeyCode keycode
          */
-        static bool getKeyUp(KeyCode keyCode);
+        static bool wasKeyReleased(KeyCode keyCode);
 
         /**
          * @brief Check if mouse button is pressed
