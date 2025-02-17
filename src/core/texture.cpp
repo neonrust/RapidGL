@@ -281,7 +281,7 @@ bool Texture2D::Load(const std::filesystem::path& filepath, bool is_srgb, uint32
 
 	if (!data)
 	{
-		fprintf(stderr, "Texture failed to load at path: %s\n", filepath.string().c_str());
+		fprintf(stderr, "Texture failed to load: %s\n", filepath.string().c_str());
 		return false;
 	}
 
@@ -383,7 +383,7 @@ bool Texture2D::LoadHdr(const std::filesystem::path & filepath, uint32_t num_mip
 
 	if (not data)
 	{
-		fprintf(stderr, "Texture failed to load at path: %s\n", filepath.generic_string().c_str());
+		fprintf(stderr, "Texture failed to load: %s\n", filepath.generic_string().c_str());
 		return false;
 	}
 
@@ -421,7 +421,7 @@ bool Texture2D::LoadDds(const std::filesystem::path& filepath)
 		std::cout << "Failed to load.[" << filepath << "]\n";
 		std::cout << "Result : " << int(ret) << "\n";
 
-		fprintf(stderr, "Texture failed to load at path: %s\n", filepath.string().c_str());
+		fprintf(stderr, "Texture failed to load: %s\n", filepath.string().c_str());
 		fprintf(stderr, "Result: %d", int(ret));
 		return false;
 	}
@@ -493,7 +493,7 @@ bool TextureCubeMap::Load(const std::filesystem::path* filepaths, bool is_srgb, 
 
 		if (not images_data[idx])
 		{
-			fprintf(stderr, "Texture failed to load at path: %s\n", filepaths[idx].string().c_str());
+			fprintf(stderr, "Texture failed to load: %s\n", filepaths[idx].string().c_str());
 			return false;
 		}
 	}
