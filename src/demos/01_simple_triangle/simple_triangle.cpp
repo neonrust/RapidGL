@@ -44,12 +44,12 @@ void SimpleTriangle::init_app()
 
 void SimpleTriangle::input()
 {
-    if (RGL::Input::getKeyUp(RGL::KeyCode::Escape))
+    if (RGL::Input::wasKeyReleased(RGL::KeyCode::Escape))
     {
         stop();
     }
 
-    if (RGL::Input::getKeyUp(RGL::KeyCode::F1))
+    if (RGL::Input::wasKeyReleased(RGL::KeyCode::F1))
     {
         std::string filename = "01_simple_triangle";
         if (take_screenshot_png(filename, RGL::Window::getWidth() / 2.0, RGL::Window::getHeight() / 2.0))

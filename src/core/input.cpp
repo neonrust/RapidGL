@@ -124,45 +124,41 @@ namespace RGL
 
     void Input::update()
     {
-        for (auto & kv : m_last_keys_states)
-        {
-            kv.second = getKey(kv.first);
-        }
+		for (auto &[key, state] : m_last_keys_states)
+			state = isKeyDown(key);
 
-        for (auto & kv : m_last_mouse_states)
-        {
-            kv.second = getMouse(kv.first);
-        }
+		for (auto &[button, state] : m_last_mouse_states)
+			state = isMouseDown(button);
     }
 
-    bool Input::getKey(KeyCode keyCode)
+	bool Input::isKeyDown(KeyCode keyCode)
     {
         return glfwGetKey(m_window, static_cast<int>(keyCode)) == GLFW_PRESS;
     }
 
-    bool Input::getKeyDown(KeyCode keyCode)
+	bool Input::wasKeyPressed(KeyCode keyCode)
     {
-        return getKey(keyCode) && !m_last_keys_states[keyCode];
+		return isKeyDown(keyCode) and not m_last_keys_states[keyCode];
     }
 
-    bool Input::getKeyUp(KeyCode keyCode)
+	bool Input::wasKeyReleased(KeyCode keyCode)
     {
-        return !getKey(keyCode) && m_last_keys_states[keyCode];
+		return !isKeyDown(keyCode) and m_last_keys_states[keyCode];
     }
 
-    bool Input::getMouse(KeyCode keyCode)
+	bool Input::isMouseDown(KeyCode keyCode)
     {
         return glfwGetMouseButton(m_window, static_cast<int>(keyCode)) == GLFW_PRESS;
     }
 
-    bool Input::getMouseDown(KeyCode keyCode)
+	bool Input::wasMousePressed(KeyCode keyCode)
     {
-        return getMouse(keyCode) && !m_last_mouse_states[keyCode];
+		return isMouseDown(keyCode) and not m_last_mouse_states[keyCode];
     }
 
-    bool Input::getMouseUp(KeyCode keyCode)
+	bool Input::wasMouseReleased(KeyCode keyCode)
     {
-        return !getMouse(keyCode) && m_last_mouse_states[keyCode];
+		return !isMouseDown(keyCode) and m_last_mouse_states[keyCode];
     }
 
 	glm::uvec2 Input::getMousePosition()

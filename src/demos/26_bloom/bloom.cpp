@@ -248,13 +248,13 @@ void Bloom::init_app()
 void Bloom::input()
 {
     /* Close the application when Esc is released. */
-    if (RGL::Input::getKeyUp(RGL::KeyCode::Escape))
+    if (RGL::Input::wasKeyReleased(RGL::KeyCode::Escape))
     {
         stop();
     }
 
     /* Toggle between wireframe and solid rendering */
-    if (RGL::Input::getKeyUp(RGL::KeyCode::F2))
+    if (RGL::Input::wasKeyReleased(RGL::KeyCode::F2))
     {
         static bool toggle_wireframe = false;
 
@@ -271,7 +271,7 @@ void Bloom::input()
     }
 
     /* It's also possible to take a screenshot. */
-    if (RGL::Input::getKeyUp(RGL::KeyCode::F1))
+    if (RGL::Input::wasKeyReleased(RGL::KeyCode::F1))
     {
         /* Specify filename of the screenshot. */
         std::string filename = "26_bloom";
@@ -286,7 +286,7 @@ void Bloom::input()
         }
     }
 
-    if (RGL::Input::getKeyUp(RGL::KeyCode::F3))
+    if (RGL::Input::wasKeyReleased(RGL::KeyCode::F3))
     {
         std::cout << "******** Camera properties : ********\n"
                   << " Position:    [" << m_camera->position().x << ", " << m_camera->position().y << ", " << m_camera->position().z << "]\n"

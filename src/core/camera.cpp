@@ -81,30 +81,30 @@ void Camera::update(double dt)
 	// Camera Movement
 	const auto movement_amount = float(m_move_speed * dt);
 
-	if (Input::getKey(m_forward_key))
+	if (Input::isKeyDown(m_forward_key))
 		// move(m_position, glm::conjugate(m_orientation) * glm::vec3(0, 0, -1), movement_amount);
 		move(m_position, forwardVector(), movement_amount);
 
-	if (Input::getKey(m_backward_key))
+	if (Input::isKeyDown(m_backward_key))
 		// move(m_position, glm::conjugate(m_orientation) * glm::vec3(0, 0, 1), movement_amount);
 		move(m_position, -forwardVector(), movement_amount);
 
-	if (Input::getKey(m_right_key))
+	if (Input::isKeyDown(m_right_key))
 		// move(m_position, glm::conjugate(m_orientation) * glm::vec3(1, 0, 0), movement_amount);
 		move(m_position, rightVector(), movement_amount);
 
-	if (Input::getKey(m_left_key))
+	if (Input::isKeyDown(m_left_key))
 		// move(m_position, glm::conjugate(m_orientation) * glm::vec3(-1, 0, 0), movement_amount);
 		move(m_position, -rightVector(), movement_amount);
 
-	if (Input::getKey(m_up_key))
+	if (Input::isKeyDown(m_up_key))
 		move(m_position, AXIS_Y, movement_amount); // regardless of orientation
 
-	if (Input::getKey(m_down_key))
+	if (Input::isKeyDown(m_down_key))
 		move(m_position, -AXIS_Y, movement_amount); // regardless of orientation
 
 	/* Camera Rotation */
-	if (Input::getMouse(m_unlock_mouse_key))
+	if (Input::isMouseDown(m_unlock_mouse_key))
 	{
 		if (not m_is_mouse_move)
 		{
