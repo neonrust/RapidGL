@@ -18,8 +18,9 @@ public:
 
 private:
 	Shader _shader;
+	Texture2D _blue_noise;
 
 	GLuint _dummy_vao_id;
 };
 
-} // RGL::PostProcess
+} // RGL::PP
