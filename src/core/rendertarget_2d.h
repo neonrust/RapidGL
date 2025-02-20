@@ -69,6 +69,8 @@ private:
 	GLenum _internal_format { 0 };
 
 	uint_fast8_t _mip_levels { 1 };
+	bool _has_color { false };
+	bool _has_depth { false };
 };
 
 } // RGL::RenderTarget

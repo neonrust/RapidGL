@@ -20,14 +20,22 @@ void Texture2d::create(size_t width, size_t height, Format format)
 
 	bool depthOnly = false;
 	if(format & ColorFloat)
+	{
 		_internal_format = GL_RGBA32F;
+		_has_color = true;
+	}
 	else if(format & Color)
+	{
 		_internal_format = GL_RGBA;
+		_has_color = true;
+	}
 	else if(format & Depth)
 	{
 		_internal_format = GL_DEPTH_COMPONENT32F;
 		depthOnly = true;
 		_mip_levels = 1;
+		_has_color = false;
+		_has_depth = true;
 	}
 	else
 		assert(false);
@@ -57,6 +65,7 @@ void Texture2d::create(size_t width, size_t height, Format format)
 		glCreateRenderbuffers(1, &_rbo_id);
 		glNamedRenderbufferStorage(_rbo_id, GL_DEPTH_COMPONENT32F, GLsizei(width), GLsizei(height));
 		glNamedFramebufferRenderbuffer(_fbo_id, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _rbo_id);
+		_has_depth = true;
 	}
 }
 
@@ -99,6 +108,11 @@ void Texture2d::bindImageRead(GLuint image_unit, GLint mip_level) const
 
 void Texture2d::copyTo(Texture2d &dest, GLbitfield mask, GLenum filter) const
 {
+	if(not _has_depth)
+		mask &= ~GLbitfield(GL_DEPTH_BUFFER_BIT);
+	if(not _has_color)
+		mask &= ~GLbitfield(GL_COLOR_BUFFER_BIT);
+
 	glBlitNamedFramebuffer(_fbo_id,
 						   dest._fbo_id,
 						   0, 0, GLint(width()), GLint(height()),
@@ -109,12 +123,7 @@ void Texture2d::copyTo(Texture2d &dest, GLbitfield mask, GLenum filter) const
 
 void Texture2d::copyFrom(const Texture2d &source, GLbitfield mask, GLenum filter)
 {
-	glBlitNamedFramebuffer(source._fbo_id,
-						   _fbo_id,
-						   0, 0, GLint(source.width()), GLint(source.height()),
-						   0, 0, GLint(width()), GLint(height()),
-						   mask,
-						   filter);
+	source.copyTo(*this, mask, filter);
 }
 
 } // RGL::RenderTarget
