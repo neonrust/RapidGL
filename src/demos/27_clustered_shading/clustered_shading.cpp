@@ -78,9 +78,10 @@ ClusteredShading::ClusteredShading() :
 	m_bloom_intensity     (1.5f),
 	m_bloom_dirt_intensity(0),
 	m_bloom_enabled       (false),
-	m_fog_density         (0.2f), // [ 0, 0.5 ]   nice-ish value: 0.015
+	m_fog_density         (0.1f), // [ 0, 0.5 ]   nice-ish value: 0.015
 	m_fog_falloff_blend   (0.05f),
-	m_ray_march_stride    (0.01f)
+	m_ray_march_stride    (1.f),
+	_ray_march_noise      (2)
 {
 }
 
@@ -783,6 +784,12 @@ void ClusteredShading::input()
 	if(s_spot_inner_angle > s_spot_outer_angle)
 		s_spot_inner_angle = s_spot_outer_angle;
 
+	if(Input::wasKeyPressed(KeyCode::N))
+	{
+		_ray_march_noise = (_ray_march_noise + 1) % 3;
+		std::printf("ray_march_noise: %d\n", _ray_march_noise);
+	}
+
     /* Toggle between wireframe and solid rendering */
 	// if (Input::getKeyUp(KeyCode::F2))
 	// {
@@ -822,6 +829,8 @@ void ClusteredShading::input()
 
 void ClusteredShading::update(double delta_time)
 {
+	_running_time += seconds_f(delta_time);
+
     /* Update variables here. */
 	m_camera.update(delta_time);
 
@@ -1005,68 +1014,123 @@ void ClusteredShading::GenerateSpotLights()
 	m_spot_lights.push_back({
 		.point = {
 			.base = {
-				.color = { 1.0f, 0.8f, 0.2f },
+				.color = { 1.0f, 0.1f, 0.5f },
 				.intensity = 5000
 			},
-			.position = { 0, 3.f, -8 },
+			.position = { -16, 3, -8 },
 			.radius = 35
 		},
 		.direction = { 0, 0, 1 },
 		.inner_angle = glm::radians(s_spot_inner_angle),//5.f),
 		.outer_angle = glm::radians(30.f)
 	});
-	// m_spot_lights.push_back({
-	// 	.point = {
-	// 		.base = {
-	// 			.color = { 1.0f, 0.2f, 0.2f },
-	// 			.intensity = 5000
-	// 		},
-	// 		.position = { 4, 3.f, -8 },
-	// 		.radius = 35
-	// 	},
-	// 	.direction = { 0, 0, 1 },
-	// 	.inner_angle = glm::radians(s_spot_inner_angle),//5.f),
-	// 	.outer_angle = glm::radians(30.f)
-	// });
-	// m_spot_lights.push_back({
-	// 	.point = {
-	// 		.base = {
-	// 			.color = { 1.0f, 0.2f, 0.6f },
-	// 			.intensity = 5000
-	// 		},
-	// 		.position = { 8, 3.f, -8 },
-	// 		.radius = 35
-	// 	},
-	// 	.direction = { 0, 0, 1 },
-	// 	.inner_angle = glm::radians(s_spot_inner_angle),//5.f),
-	// 	.outer_angle = glm::radians(30.f)
-	// });
-	// m_spot_lights.push_back({
-	// 	.point = {
-	// 		.base = {
-	// 			.color = { 0.2f, 1.0f, 0.2f },
-	// 			.intensity = 5000
-	// 		},
-	// 		.position = { -4, 3.f, -8 },
-	// 		.radius = 35
-	// 	},
-	// 	.direction = { 0, 0, 1 },
-	// 	.inner_angle = glm::radians(s_spot_inner_angle),//5.f),
-	// 	.outer_angle = glm::radians(30.f)
-	// });
-	// m_spot_lights.push_back({
-	// 	.point = {
-	// 		.base = {
-	// 			.color = { 0.2f, 0.4f, 1.0f },
-	// 			.intensity = 5000
-	// 		},
-	// 		.position = { -8, 3.f, -8 },
-	// 		.radius = 35
-	// 	},
-	// 	.direction = { 0, 0, 1 },
-	// 	.inner_angle = glm::radians(s_spot_inner_angle),//5.f),
-	// 	.outer_angle = glm::radians(30.f)
-	// });
+	m_spot_lights.push_back({
+		.point = {
+			.base = {
+				.color = { 1.0f, 0.1f, 0.1f },
+				.intensity = 5000
+			},
+			.position = { -12, 3, -8 },
+			.radius = 35
+		},
+		.direction = { 0, 0, 1 },
+		.inner_angle = glm::radians(s_spot_inner_angle),//5.f),
+		.outer_angle = glm::radians(30.f)
+	});
+	m_spot_lights.push_back({
+		.point = {
+			.base = {
+				.color = { 1.f, 0.6f, 0.1f },
+				.intensity = 5000
+			},
+			.position = { -8, 3, -8 },
+			.radius = 35
+		},
+		.direction = { 0, 0, 1 },
+		.inner_angle = glm::radians(s_spot_inner_angle),//5.f),
+		.outer_angle = glm::radians(30.f)
+	});
+	m_spot_lights.push_back({
+		.point = {
+			.base = {
+				.color = { 1.0f, 1.0f, 0.f },
+				.intensity = 5000
+			},
+			.position = { -4, 3, -8 },
+			.radius = 35
+		},
+		.direction = { 0, 0, 1 },
+		.inner_angle = glm::radians(s_spot_inner_angle),//5.f),
+		.outer_angle = glm::radians(30.f)
+	});
+
+	m_spot_lights.push_back({
+		.point = {
+			.base = {
+				.color = { 1.0f, 1.0f, 1.0f },
+				.intensity = 5000
+			},
+			.position = { 0, 3, -8 },
+			.radius = 35
+		},
+		.direction = { 0, 0, 1 },
+		.inner_angle = glm::radians(s_spot_inner_angle),//5.f),
+		.outer_angle = glm::radians(30.f)
+	});
+
+	m_spot_lights.push_back({
+		.point = {
+			.base = {
+				.color = { 0.5f, 1.f, 0.8f },
+				.intensity = 5000
+			},
+			.position = { 4, 3, -8 },
+			.radius = 35
+		},
+		.direction = { 0, 0, 1 },
+		.inner_angle = glm::radians(s_spot_inner_angle),//5.f),
+		.outer_angle = glm::radians(30.f)
+	});
+	m_spot_lights.push_back({
+		.point = {
+			.base = {
+				.color = { 0.3f, 1.f, 0.6f },
+				.intensity = 5000
+			},
+			.position = { 8, 3, -8 },
+			.radius = 35
+		},
+		.direction = { 0, 0, 1 },
+		.inner_angle = glm::radians(s_spot_inner_angle),//5.f),
+		.outer_angle = glm::radians(30.f)
+	});
+	m_spot_lights.push_back({
+		.point = {
+			.base = {
+				.color = { 0.1f, 1.f, 0.3f },
+				.intensity = 5000
+			},
+			.position = { 12, 3, -8 },
+			.radius = 35
+		},
+		.direction = { 0, 0, 1 },
+		.inner_angle = glm::radians(s_spot_inner_angle),//5.f),
+		.outer_angle = glm::radians(30.f)
+	});
+	m_spot_lights.push_back({
+		.point = {
+			.base = {
+				.color = { 0.1f, 0.8f, 1.f },
+				.intensity = 5000
+			},
+			.position = { 16, 3, -8 },
+			.radius = 35
+		},
+		.direction = { 0, 0, 1 },
+		.inner_angle = glm::radians(s_spot_inner_angle),//5.f),
+		.outer_angle = glm::radians(30.f)
+	});
+
 	return;
 
 	m_spot_lights.resize(m_spot_lights_count);
@@ -1326,8 +1390,9 @@ void ClusteredShading::render()
 	glClearNamedBufferData(m_nonempty_clusters_ssbo, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &clear_val);
 
 	m_flag_nonempty_clusters_shader->bind();
-	m_flag_nonempty_clusters_shader->setUniform("u_near_z"sv,          m_camera.nearPlane());
-	m_flag_nonempty_clusters_shader->setUniform("u_far_z"sv,           m_camera.farPlane());
+	m_camera.setUniforms(*m_flag_nonempty_clusters_shader);
+	// m_flag_nonempty_clusters_shader->setUniform("u_near_z"sv,          m_camera.nearPlane());
+	// m_flag_nonempty_clusters_shader->setUniform("u_far_z"sv,           m_camera.farPlane());
 	m_flag_nonempty_clusters_shader->setUniform("u_log_grid_dim_y"sv,  m_log_grid_dim_y);
 	m_flag_nonempty_clusters_shader->setUniform("u_cluster_size_ss"sv, glm::uvec2(m_cluster_grid_block_size));
 	m_flag_nonempty_clusters_shader->setUniform("u_grid_dim"sv,        m_cluster_grid_dim);
@@ -1395,7 +1460,8 @@ void ClusteredShading::render()
 
     // 8. Render skybox
     m_background_shader->bind();
-	m_background_shader->setUniform("u_projection"sv, m_camera.projectionTransform());
+	m_camera.setUniforms(*m_background_shader);
+	// specialized 'u_view'; only rotation part
 	m_background_shader->setUniform("u_view"sv,       glm::mat4(glm::mat3(m_camera.viewTransform())));
 	m_background_shader->setUniform("u_lod_level"sv,  m_background_lod_level);
     m_env_cubemap_rt->bindTexture();
@@ -1409,14 +1475,8 @@ void ClusteredShading::render()
 	// TODO: Render atmospheric/fog light scattering (i.e. volumetric lights)
 	//    - lights culled into screen tiles (i.e. only 2d)
 	//    - (optional) grid/voxel-based atmospheric density; otherwise, just use a constant
-	m_scattering_pp.shader().setUniform("u_cam_pos"sv,         m_camera.position());
-	m_scattering_pp.shader().setUniform("u_near_z"sv,          m_camera.nearPlane());
-	m_scattering_pp.shader().setUniform("u_far_z"sv,           m_camera.farPlane());
-	m_scattering_pp.shader().setUniform("u_projection"sv,      m_camera.projectionTransform()); // not used ?
-	m_scattering_pp.shader().setUniform("u_view"sv,            m_camera.viewTransform());       // not used ?
-	m_scattering_pp.shader().setUniform("u_inv_projection"sv,  glm::inverse(m_camera.projectionTransform()));
-	m_scattering_pp.shader().setUniform("u_inv_view"sv,        glm::inverse(m_camera.viewTransform()));
-	// TODO: m_camera.setUniforms(m_scattering_pp.shader());  // could even cache the uniform locations (per shader)
+	m_scattering_pp.setCameraUniforms(m_camera);
+	m_scattering_pp.shader().setUniform("u_time"sv,            _running_time.count());
 	m_scattering_pp.shader().setUniform("u_grid_dim"sv,        m_cluster_grid_dim);
 	m_scattering_pp.shader().setUniform("u_cluster_size_ss"sv, glm::uvec2(m_cluster_grid_block_size));
 	// m_scattering_pp.shader().setUniform("u_log_grid_dim_y"sv,  m_log_grid_dim_y);
@@ -1424,20 +1484,20 @@ void ClusteredShading::render()
 	m_scattering_pp.shader().setUniform("u_fog_density"sv,     m_fog_density);
 	m_scattering_pp.shader().setUniform("u_fog_falloff_blend"sv, m_fog_falloff_blend);
 	m_scattering_pp.shader().setUniform("u_ray_march_stride"sv, m_ray_march_stride);
+	m_scattering_pp.shader().setUniform("u_ray_march_noise",    _ray_march_noise);
 
 	m_depth_pass_rt.bindTextureSampler(2);
 	// TODO: bind 2d noise texture (for ray randomization)
 
 	m_scattering_pp.render(_rt, _pp_half_rt);
 
-	// TODO: render '_pp_half_rt' additive on to '_rt' (blurred)
-	// m_blur_pp.setSigma(1.5f);
+	// TODO: apply blur
 	// m_blur_pp.setRadius(2.f);
-	// m_blur_pp.setWeights({ 0.2f, 0.3f, 0.4f, ... }));
 	// m_blur_pp.render(_pp_half_rt, _full_rt);
+	_pp_half_rt.copyTo(_pp_full_rt);  // for now. just copy (upscale)
 
-	// TODO: render _pp__full_rt onto _rt in additive mode
-	draw2d(_pp_half_rt, _rt, BlendMode::Add);
+
+	draw2d(_pp_full_rt, _rt, BlendMode::Add);
 
 
 	m_scatter_time = _gl_timer.elapsed<microseconds>();
@@ -1916,7 +1976,7 @@ void ClusteredShading::render_gui()
 	ImVec2 window_pos_pivot = ImVec2(1.0f, 0.0f);
 
     ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
-    ImGui::SetNextWindowSize({ 400, 0 });
+	ImGui::SetNextWindowSize({ 50, 200 });
 
 	ImGui::Text("   Culling: %4ld µs", m_cull_time.count());
 	ImGui::Text("    Z-pass: %4ld µs", m_depth_time.count());
@@ -1939,6 +1999,8 @@ void ClusteredShading::render_gui()
 
 			const auto fwd_xz = glm::normalize(glm::vec3(cam_fwd.x, 0.f, cam_fwd.z));
 			const float heading_angle = std::acos(glm::clamp(glm::dot(AXIS_Z, fwd_xz), -1.f, 1.f));
+
+			ImGui::Text("T: %.3f", _running_time.count());
 
 			ImGui::Text("      Yaw: %.1f    Pitch: %.1f\n"
 						"Position : %.2f ; %.2f ; %.2f\n"
@@ -2123,6 +2185,7 @@ void ClusteredShading::render_gui()
 			}
 			ImGui::SliderFloat("Fog falloff blend", &m_fog_falloff_blend, 0, 1);
 			ImGui::SliderFloat("Ray march stride", &m_ray_march_stride, 0.01f, 1.f);
+			ImGui::Text("Ray march noise (N): %d", _ray_march_noise);
 		}
 
 		// if(ImGui::CollapsingHeader("Framebuffers"))

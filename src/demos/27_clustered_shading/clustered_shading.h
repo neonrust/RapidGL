@@ -16,6 +16,8 @@
 #include <pp_bloom.h>
 #include <vector>
 
+using seconds_f = std::chrono::duration<float, std::ratio<1>>;
+
 namespace
 {
 	[[maybe_unused]] void setLightDirection(glm::vec3& direction, float azimuth, float elevation)
@@ -290,6 +292,8 @@ private:
 
 	RGL::PP::Bloom m_bloom_pp;
 
+	seconds_f _running_time { 0 };
+
 	float m_bloom_threshold;
 	float m_bloom_knee;
     float m_bloom_intensity;
@@ -299,6 +303,7 @@ private:
 	float m_fog_density;
 	float m_fog_falloff_blend;
 	float m_ray_march_stride;
+	int _ray_march_noise { 0 };  // 0 - 2
 
 	std::chrono::microseconds m_cull_time;
 	std::chrono::microseconds m_depth_time;

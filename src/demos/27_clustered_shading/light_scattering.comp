@@ -7,6 +7,7 @@
 layout(rgba32f, binding = 0) uniform image2D   u_input_color;
 layout(rgba32f, binding = 1) uniform image2D   u_output_color;
 layout(binding = 2)          uniform sampler2D u_input_depth;
+layout(binding = 3)          uniform sampler2D u_blue_noise;
 
 uniform vec3 u_fog_color;
 uniform float u_fog_density;       // [ 0, 0.1 ]   (sensible)
@@ -23,9 +24,11 @@ uniform uvec3 u_grid_dim;
 uniform uvec2 u_cluster_size_ss;
 uniform float u_log_grid_dim_y;
 uniform float u_ray_march_stride;
+uniform float u_time;
+uniform int u_ray_march_noise;
 
 const float FOG_RADIANCE_SCALE = 0.01;
-const float FOG_DISTANCE_SCALE = 0.7;  // [ 0, 1 ]
+//const float FOG_DISTANCE_SCALE = 0.7;  // [ 0, 1 ]
 
 const int _RED = 1;
 const int _ORANGE = 2;
@@ -102,6 +105,8 @@ float rayPointNearest(Ray ray, vec3 point);  // returns distance on 'ray' that i
 float vectorVectorAngle(vec3 v1_norm, vec3 v2_norm);
 uint pcg_hash(uint seed);
 float depthWorldSpaceDistance(vec2 texCoord, float depth);
+float hash13(vec2 uv, float time);
+float interleavedGradientNoise(vec2 pixel, int frame);
 
 layout(std430, binding = POINT_LIGHTS_SSBO_BINDING_INDEX) buffer PointLightSSBO
 {
@@ -113,52 +118,54 @@ layout(std430, binding = SPOT_LIGHTS_SSBO_BINDING_INDEX) buffer SpotLightsSSBO
     SpotLight spot_lights[];
 };
 
+vec3 fakeSphere(Ray ray, Sphere sphere);
+
+float g_noise_offset = 0;
+vec2 screen_uv;
+uvec2 pixel_id;
+
 layout(local_size_x = GROUP_SIZE, local_size_y = GROUP_SIZE, local_size_z = 1) in;
 void main()
 {
 	vec2 screen_size = vec2(imageSize(u_output_color));
-	uvec2 pixel_id   = gl_GlobalInvocationID.xy;
+	pixel_id   = gl_GlobalInvocationID.xy;
+
+	// skip invocations for pixels outside the screen
+	if(pixel_id.x >= screen_size.x || pixel_id.y >= screen_size.y)
+		return;
 
 	vec2 screen_pos  = vec2(pixel_id) + vec2(0.5); // pointing at the center of each pixel
 	// vec4 src_color = imageLoad(u_input_color, ivec2(screen_pos));
 
-	// draw "aiming dot" at the center of the screen, with a bit of anti-aliasing :)
-	// this should not be in the final version!  ;)
-	ivec2 vec_to_enter = ivec2(int(pixel_id.x) - screen_size.x/2, int(pixel_id.y) - screen_size.y/2);
-	float distance_from_center = length(vec_to_enter) + 0.5;
-	if(distance_from_center > 6 && distance_from_center <= 11)
-	{
-		vec3 src_color = vec3(0);  // TODO
-		float dc = distance_from_center;
-		const vec3 black = vec3(0);
-		const vec3 white = vec3(10);
-		vec3 color = vec3(0);
-		if(dc > 9)
-			color = mix(src_color.rgb, black, dc > 10 ? 1 -fract(dc): 1);
-		else if(dc > 8 && dc <= 9)
-			color = mix(black, white, dc > 9? 1 - fract(dc): 1);
-		else if (dc > 6 && dc <= 8)
-			color = mix(white, black, dc > 7? 1 - fract(dc): 1);
 
-		imageStore(u_output_color, ivec2(pixel_id), vec4(color, 1));
-		return;
+
+	// draw "reticle" at the center of the screen, with some effort for "anti-aliasing" :)
+	// this should not be in the final version!  ;)
+	ivec2 center = ivec2(int(screen_size.x/2), int(screen_size.y/2));
+	ivec2 diff = center - ivec2(screen_pos);
+	if(abs(diff.x) < 8 && abs(diff.y) < 8)
+	{
+		vec3 color;
+		if(abs(diff.x) == 8 || abs(diff.y) == 8)
+			imageStore(u_output_color, ivec2(pixel_id), vec4(1, 1, 1, 1));
 	}
 
 
 
-	// skip invocations that operate outside the screen
-	if(pixel_id.x >= screen_size.x || pixel_id.y >= screen_size.y)
-		return;
-
 	vec2 screen_norm = (screen_pos*2 - vec2(screen_size)) / vec2(screen_size); // [ -1, 1 ]
-	vec2 screen_uv = screen_pos/screen_size;
+	screen_uv = screen_pos/screen_size;
 
-	float view_z     = texture(u_input_depth, screen_uv).r;
+	// g_noise_offset = fract(texture(u_blue_noise, screen_uv).r) + u_time * 2.5); // [ 0, 1 ]
+	g_noise_offset = texture(u_blue_noise, screen_uv).r; // [ 0, 1 ]
+
+	float view_z = texture(u_input_depth, screen_uv).r; // [ 0, 1 ]
 	float frag_depth = linearDepth(view_z);
-
-	// NO this is f-ing wrong!
-	float frag_dist = depthWorldSpaceDistance(screen_uv, view_z);
-
+	float frag_dist = depthWorldSpaceDistance(screen_uv, view_z); // [ 0, u_far_z - u_near_z ]
+	// if(frag_dist > (u_far_z - u_near_z - 1))
+	// {
+	// 	imageStore(u_output_color, ivec2(pixel_id), vec4(1, 0, 0, 1));
+	// 	return;
+	// }
 
 	// camera-space
 	vec4 target = u_inv_projection * vec4(screen_norm, 1, 1); // camera-space
@@ -167,7 +174,9 @@ void main()
 	Ray eye_ray;
 	eye_ray.start = u_cam_pos;
 	eye_ray.direction = vec3(u_inv_view * vec4(direction_cs, 0));
-	eye_ray.max_length = frag_depth;
+	// hmm 'frag_dist' looks almost good (rotation-agnostic)
+	//    but kind of strange when translating the camera
+	eye_ray.max_length = frag_dist;
 
 	vec3 fog_radiance = vec3(0);
 
@@ -177,11 +186,8 @@ void main()
 	for(int idx = 0; idx < spot_lights.length(); ++idx)
 		fog_radiance += scatterSpotLight(eye_ray, spot_lights[idx]);
 
-
-	// if(point_lights.length() == 0 && pixel_id.x < 45 && pixel_id.y < 50)
-	// 	fog_radiance += vec3(1, 0, 0);
-	// if(spot_lights.length() == 0 && pixel_id.x >= 55 && pixel_id.x < 100 && pixel_id.y < 50)
-	// 	fog_radiance += vec3(1, 0, 0);
+	// Sphere sphere = Sphere(vec3(0, 2, 0), 2.f);
+	// fog_radiance += fakeSphere(eye_ray, sphere);
 
 	// TODO: area lights
 	//   I guess area light scattering could be approximated using a frustum (the shape, i.e. a cropped pyramid),
@@ -204,7 +210,7 @@ void main()
 /*
 	// TODO: perform scattering per screen tile (frustlet)
 	for(uint cluster_index = 0; cluster_index < u_grid_dim.x * u_grid_dim.y; ++cluster_index)
-		fog_radiance += scatterLightsInCluster(eye_ray, cluster_index, frag_depth);
+		fog_radiance += scatterLightsInCluster(eye_ray, cluster_index);
 */
 
 	// this multiplier be computed CPU-side
@@ -218,7 +224,37 @@ void main()
 	imageStore(u_output_color, ivec2(screen_pos), final_color);
 }
 
-// vec3 scatterLightsInCluster(Ray eye_ray, uvec3 cluster_coord, float frag_depth)
+vec3 fakeSphere(Ray ray, Sphere sphere)
+{
+	vec3 radiance = vec3(0);
+
+	const float numSteps = 16;
+
+	float stride = u_ray_march_stride * ray.max_length / numSteps;
+
+	float noise = 0;
+	int noise_anim = int(u_time * 60) % 64;
+	if(u_ray_march_noise == 1)
+		noise = hash13(screen_uv, float(noise_anim));
+	else if(u_ray_march_noise == 2)
+		noise = interleavedGradientNoise(pixel_id, noise_anim);
+
+	float t = 0;
+	while(t <= ray.max_length)
+	{
+		vec3 p = rayPoint(ray, t + noise);
+		t += stride;
+
+		float dist = length(sphere.center - p);
+
+		if(dist < sphere.radius)
+			radiance += vec3(1) * stride;
+	}
+
+	return radiance;
+}
+
+// vec3 scatterLightsInCluster(Ray eye_ray, uvec3 cluster_coord)
 // {
 // 	uint cluster_index = computeClusterIndex(cluster_coord);
 
@@ -293,41 +329,46 @@ vec3 scatterSpotLight(Ray ray, SpotLight spot)
 	float cone_enter = min(outer_result.dist_enter, ray.max_length);
 	float cone_exit = min(outer_result.dist_exit, ray.max_length);
 
-	// return vec3((cone_exit - cone_enter) / spot.point.radius);
-
-	// TODO: perform raymarching between 'cone_enter' & 'cone_exit' in X steps
-	//   and accumulate the irradiance along the way (integrating, really)
-	//   can probably scale the number of steps by how far apart tenter & exit are.
-	//   and by how far away from the camera it is. (and a global step count scale, naturally)
-	// OR is it possible to build a "curve" of the brightness along the ray, and integrate that?
-	//   hm, maybe that will result in the same thing... ;)
-
 	float radiance = 0;
 
-	const float dist_stride_near = 0.01;
-	const float dist_stride_far = 1;
+	const float dist_stride_near = 0.1;
+	const float dist_stride_far = 10;
 
 	// compute number of steps based on fixed step size
 	//   - initial stride should be scaled by distance
 	//   - steadily increase stride for each step (i.e. getting further away from camera)
 	// OR does it look better if the number of points are evenly spaced?
 
-	float shortest_stride = u_ray_march_stride;    // at near clip plane
-	float longest_stride = u_ray_march_stride*10;  // at far clip plane
+	float shortest_stride = dist_stride_near * u_ray_march_stride;  // at near clip plane
+	float longest_stride = dist_stride_far * u_ray_march_stride;    // at far clip plane
 
 	uint numSteps = 0;
 
-	const float NUM_STEPS = 10;
+	const float NUM_STEPS = 8;
 	// float stride = u_ray_march_stride*(cone_exit - cone_enter)/NUM_STEPS;
-	float stride = mix(shortest_stride, longest_stride, cone_enter/u_far_z);
+	// float stride = mix(shortest_stride, longest_stride, cone_enter/u_far_z);
+	float ray_distance = cone_exit - cone_enter;
+	if(ray_distance < 1e-2)
+		return vec3(0);
+
+	float stride = u_ray_march_stride * ray_distance / NUM_STEPS;
+
 
 	// TODO: maybe take a peek at: https://www.shadertoy.com/view/ssV3zh
 	//   take inspiration from the "noise" aspect  (it uses only 16 samples!)
 	//   also animate the noise (this might require TAA though)
 
+	float noise = 0;
+	int noise_anim = 0;//int(u_time * 120) % 64;
+	if(u_ray_march_noise == 1)
+		noise = hash13(screen_uv, float(noise_anim));
+	else if(u_ray_march_noise == 2)
+		noise = interleavedGradientNoise(pixel_id, noise_anim);
+
+	// for(float ray_t = cone_enter; ray_t <= cone_exit; ray_t += stride)
 	for(float ray_t = cone_enter; ray_t <= cone_exit; ray_t += stride)
 	{
-		vec3 p_sample = rayPoint(ray, ray_t);
+		vec3 p_sample = rayPoint(ray, ray_t + noise*stride);
 
 		radiance += sampleSpot(spot, p_sample)*stride;
 
@@ -341,7 +382,7 @@ vec3 scatterSpotLight(Ray ray, SpotLight spot)
 			break;
 		}
 
-		stride = mix(shortest_stride, longest_stride, ray_t/u_far_z);
+		//stride = mix(shortest_stride, longest_stride, ray_t/u_far_z);
 	}
 
 	// TODO: intensify (near center) if rays are inside cone and towards the light
@@ -678,7 +719,8 @@ float getSpotAngleAttenuation(vec3 to_light, vec3 spot_dir, float outer_angle, f
 {
     // the scale and offset computations can be done CPU-side
     float cos_outer   = cos(outer_angle);
-    float spot_scale  = 1.0 / max(cos(inner_angle) - cos_outer, 1e-5);
+    // NOTE: in actual real-world scene, the inner angle will MOST likely be zero
+    float spot_scale  = 1.0 / max(1/*cos(inner_angle)*/ - cos_outer, 1e-5);
     float spot_offset = -cos_outer * spot_scale;
 
     float cd          = dot(spot_dir, to_light);
@@ -794,4 +836,19 @@ uint pcg_hash(uint seed)
 	seed = seed * 747796405u + 2891336453u;
 	seed = ((seed >> ((seed >> 28u) + 4u)) ^ seed) * 277803737u;
 	return (seed >> 22u) ^ seed;
+}
+
+// from https://www.shadertoy.com/view/4djSRW
+float hash13(vec2 uv, float time)
+{
+	vec3 p3 = vec3(uv, time);
+	p3  = fract(p3 * .1031);
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.x + p3.y) * p3.z);
+}
+
+float interleavedGradientNoise(vec2 pixel, int frame)
+{
+    pixel += vec2(float(frame) * 5.588238f);
+    return fract(52.9829189f * fract(0.06711056f*float(pixel.x) + 0.00583715f*float(pixel.y)));
 }
