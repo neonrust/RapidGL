@@ -1,5 +1,7 @@
 ﻿#include "util.h"
 
+#include "zstr.h"
+
 #include <cstring>
 #include <fstream>
 #include <sstream>
@@ -11,6 +13,8 @@
 #include <jxl/resizable_parallel_runner_cxx.h>
 
 #include "filesystem.h"
+
+using namespace std::literals;
 
 namespace RGL
 {
@@ -72,45 +76,118 @@ namespace RGL
         return data;
     }
 
-	std::string Util::PreprocessShaderSource(const std::string& shader_code, const std::filesystem::path& dir)
+	std::string Util::PreprocessShaderSource(const std::string& shader_source, const std::filesystem::path& dir, const string_set &conditionals)
     {
-		static const std::string include_phrase = "#include ";
+		static const auto phrase_include = "#include "sv;
 
-		std::istringstream ss(shader_code);
+		static const auto condition_phrase_if = "#if "sv;
+		static const auto condition_phrase_else = "#else"sv;
+		static const auto condition_phrase_end = "#endif"sv;
 
-		std::string line, new_shader_code;
+		std::vector<bool> _condition_stack {};
+		_condition_stack.reserve(16); // TODO: probably, a 'small vector' type is better here
+		auto cond_including = [&stack=std::as_const(_condition_stack)]() { return stack.empty() or stack.back(); };
+		auto cond_push = [&stack=_condition_stack](bool include) { stack.push_back(include); };
+		auto cond_pop = [&stack=_condition_stack]() { assert(not stack.empty()); return stack.pop_back(); };
+		auto cond_invert = [&stack=_condition_stack]() { assert(not stack.empty()); stack.back() = not stack.back(); };
+		auto cond_size = [&stack=_condition_stack]() { return stack.size(); };
+
+		// #if NAME
+		//  ...  (ignored if 'NAME' is not defined)
+		// #endif
+
+		std::istringstream ss(shader_source);
+
+		std::string line, new_source;
+		new_source.reserve(shader_source.size());
 		size_t line_num = 0;
 
-        bool included = false;
+		bool files_included = false;
 
-        while (std::getline(ss, line))
+		while (std::getline(ss, line))
         {
-			bool file_loaded = false;
-			if (line.starts_with(include_phrase))
-            {
-				auto include_file_name = line.substr(include_phrase.size() + 1, line.size() - include_phrase .size() - 2);
-                
-                line     = LoadFile(dir / include_file_name);
-				file_loaded = true;
-                included = true;
-            }
-
-            new_shader_code.append(line + "\n");
 			++line_num;
 
-			if(file_loaded)
+			const auto non_space = line.find_first_not_of(" \t");
+			const auto is_preproc = non_space != std::string::npos and line[non_space] == '#';
+
+			std::string_view line_clean; // used when it's a preprocessor instruction
+			if(is_preproc)
 			{
-				new_shader_code.append("#line ");
-				new_shader_code.append(std::to_string(line_num));
-				new_shader_code.append("\n");
+				std::string_view line_clean = line;
+				{
+					// clean up the line to simplify parsing
+					const auto comment = line_clean.find("//");
+					if(comment != std::string_view::npos)
+						line_clean = line_clean.substr(0, comment);
+					line_clean = zstr::strip(line_clean);
+				}
+
+				if(line_clean.empty())
+					continue;
+
+				if(line_clean.starts_with(condition_phrase_if))
+				{
+					const auto name = zstr::strip(line_clean.substr(condition_phrase_if.size()));
+					cond_push(conditionals.contains(name));
+					continue;
+				}
+				else if(line_clean == condition_phrase_else)
+				{
+					// TODO: check if 'else' was already done
+					if(not cond_size())
+					{
+						std::fprintf(stderr, "[%lu] Preprocessing error: %s not preceeded by #if\n", line_num, condition_phrase_else.data());
+						return {};
+					}
+					cond_invert();
+					continue;
+				}
+				else if(line_clean == condition_phrase_end)
+				{
+					if(not cond_size())
+					{
+						std::fprintf(stderr, "[%lu] Preprocessing error: %s not preceeded by #if\n", line_num, condition_phrase_end.data());
+						return {};
+					}
+					cond_pop();
+					continue;
+				}
+			}
+
+			if(not cond_including())
+				continue;
+
+			if (cond_including() and is_preproc and line_clean.starts_with(phrase_include))
+			{
+				// extract filename, cutting off quotes (or brackets)
+				auto include_file_name = line_clean.substr(phrase_include.size() + 1, line_clean.size() - phrase_include .size() - 2);
+				// always relative the current file
+				const auto included_file = LoadFile(dir / include_file_name);
+				if(not included_file.empty())
+				{
+					new_source.append(included_file);
+					new_source.append("\n"sv);
+
+					new_source.append("#line ");
+					new_source.append(std::to_string(line_num));
+					new_source.append("\n");
+
+					files_included = true;
+				}
+			}
+			else
+			{
+				new_source.append(line);
+				new_source.append("\n"sv);
 			}
 		}
 
-		// Preprocess the processed source (i.e. recursively)
-        if (included)
-			new_shader_code = PreprocessShaderSource(new_shader_code, dir);
+		// we included files, need to re-run this preprocess
+		if (files_included)
+			new_source = PreprocessShaderSource(new_source, dir, conditionals);
 
-        return new_shader_code;
+		return new_source;
     }
 
 	static Util::TextureData mk_tx_data(void *data);

@@ -8,55 +8,64 @@
 
 namespace RGL
 {
-    Shader::Shader()
-		: m_program_id(0),   // allocated in first call to addShader()
-          m_is_linked(false)
-    {
-    }
+	Shader::Shader() :
+		m_program_id(0),   // allocated in first call to addShader()
+		m_is_linked(false)
+	{
+	}
 
-    Shader::Shader(const std::filesystem::path& compute_shader_filepath)
+	Shader::Shader(const std::filesystem::path& compute_shader_filepath, const string_set &conditionals)
         : Shader()
     {
-        addShader(compute_shader_filepath, GL_COMPUTE_SHADER);
+		addShader(compute_shader_filepath, GL_COMPUTE_SHADER, conditionals);
     }
 
     Shader::Shader(const std::filesystem::path & vertex_shader_filepath,
-                   const std::filesystem::path & fragment_shader_filepath)
+				   const std::filesystem::path & fragment_shader_filepath,
+				   const string_set &conditionals)
         : Shader()
     {
-        addShader(vertex_shader_filepath, GL_VERTEX_SHADER);
-        addShader(fragment_shader_filepath, GL_FRAGMENT_SHADER);
+		addShader(vertex_shader_filepath, GL_VERTEX_SHADER, conditionals);
+		addShader(fragment_shader_filepath, GL_FRAGMENT_SHADER, conditionals);
     }
 
     Shader::Shader(const std::filesystem::path & vertex_shader_filepath,
                    const std::filesystem::path & fragment_shader_filepath,
-                   const std::filesystem::path & geometry_shader_filepath)
-        : Shader(vertex_shader_filepath, fragment_shader_filepath)
+				   const std::filesystem::path & geometry_shader_filepath,
+				   const string_set &conditionals)
+		: Shader(vertex_shader_filepath,
+				 fragment_shader_filepath,
+				 conditionals)
     {
-        addShader(geometry_shader_filepath, GL_GEOMETRY_SHADER);
+		addShader(geometry_shader_filepath, GL_GEOMETRY_SHADER, conditionals);
     }
 
     Shader::Shader(const std::filesystem::path & vertex_shader_filepath,
                    const std::filesystem::path & fragment_shader_filepath,
                    const std::filesystem::path & tessellation_control_shader_filepath,
-                   const std::filesystem::path & tessellation_evaluation_shader_filepath)
-        : Shader(vertex_shader_filepath, fragment_shader_filepath)
+				   const std::filesystem::path & tessellation_evaluation_shader_filepath,
+				   const string_set &conditionals)
+		: Shader(vertex_shader_filepath,
+				 fragment_shader_filepath,
+				 conditionals)
     {
-        addShader(tessellation_control_shader_filepath, GL_TESS_CONTROL_SHADER);
-        addShader(tessellation_evaluation_shader_filepath, GL_TESS_EVALUATION_SHADER);
+		addShader(tessellation_control_shader_filepath, GL_TESS_CONTROL_SHADER, conditionals);
+		addShader(tessellation_evaluation_shader_filepath, GL_TESS_EVALUATION_SHADER, conditionals);
     }
 
     Shader::Shader(const std::filesystem::path & vertex_shader_filepath,
                    const std::filesystem::path & fragment_shader_filepath,
                    const std::filesystem::path & geometry_shader_filepath,
                    const std::filesystem::path & tessellation_control_shader_filepath,
-                   const std::filesystem::path & tessellation_evaluation_shader_filepath)
+				   const std::filesystem::path & tessellation_evaluation_shader_filepath,
+				   const string_set &conditionals)
         : Shader(vertex_shader_filepath,
                  fragment_shader_filepath,
                  tessellation_control_shader_filepath,
-                 tessellation_evaluation_shader_filepath)
+				 tessellation_evaluation_shader_filepath,
+				 conditionals)
     {
-        addShader(geometry_shader_filepath, GL_GEOMETRY_SHADER);
+		addShader(geometry_shader_filepath, GL_GEOMETRY_SHADER, conditionals);
     }
 
     Shader::~Shader()
@@ -68,7 +77,7 @@ namespace RGL
         }
     }
 
-	bool Shader::addShader(const std::filesystem::path & filepath, GLuint type)
+	bool Shader::addShader(const std::filesystem::path & filepath, GLuint type, const string_set &conditionals)
     {
         if (filepath.empty())
         {
@@ -94,7 +103,7 @@ namespace RGL
         }
 
 		const auto  dir = FileSystem::rootPath() / filepath.parent_path();
-		const auto code = Util::PreprocessShaderSource(Util::LoadFile(filepath), dir);
+		const auto code = Util::PreprocessShaderSource(Util::LoadFile(filepath), dir, conditionals);
 
 		const char * shader_code = code.c_str();
 

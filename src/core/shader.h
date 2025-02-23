@@ -9,6 +9,7 @@
 #include <glm/vec3.hpp>
 #include <glm/mat3x3.hpp>
 #include <glm/mat4x4.hpp>
+
 #include "container_types.h"
 
 namespace RGL
@@ -28,25 +29,29 @@ public:
 	};
 
 	Shader();
-	explicit Shader(const std::filesystem::path & compute_shader_filepath);
-
-	Shader(const std::filesystem::path & vertex_shader_filepath,
-		   const std::filesystem::path & fragment_shader_filepath);
+	explicit Shader(const std::filesystem::path & compute_shader_filepath, const string_set &conditionals={});
 
 	Shader(const std::filesystem::path & vertex_shader_filepath,
 		   const std::filesystem::path & fragment_shader_filepath,
-		   const std::filesystem::path & geometry_shader_filepath);
+		   const string_set &conditionals={});
+
+	Shader(const std::filesystem::path & vertex_shader_filepath,
+		   const std::filesystem::path & fragment_shader_filepath,
+		   const std::filesystem::path & geometry_shader_filepath,
+		   const string_set &conditionals={});
 
 	Shader(const std::filesystem::path & vertex_shader_filepath,
 		   const std::filesystem::path & fragment_shader_filepath,
 		   const std::filesystem::path & tessellation_control_shader_filepath,
-		   const std::filesystem::path & tessellation_evaluation_shader_filepath);
+		   const std::filesystem::path & tessellation_evaluation_shader_filepath,
+		   const string_set &conditionals={});
 
 	Shader(const std::filesystem::path & vertex_shader_filepath,
 		   const std::filesystem::path & fragment_shader_filepath,
 		   const std::filesystem::path & geometry_shader_filepath,
 		   const std::filesystem::path & tessellation_control_shader_filepath,
-		   const std::filesystem::path & tessellation_evaluation_shader_filepath);
+		   const std::filesystem::path & tessellation_evaluation_shader_filepath,
+		   const string_set &conditionals={});
 
 	~Shader();
 
@@ -84,8 +89,8 @@ public:
 
 private:
 	void addAllSubroutines();
-
-	bool addShader(const std::filesystem::path & filepath, GLuint type);
+	
+	bool addShader(const std::filesystem::path & filepath, GLuint type, const string_set &conditionals);
 	void logLineErrors(const std::filesystem::path &filepath, const std::string &log) const;
 	void add_name(const std::filesystem::path &filepath);
 	std::tuple<bool, std::string> getStatusLog(GLuint object, GLenum statusType) const;
