@@ -28,3 +28,5 @@ using dense_map = ankerl::unordered_dense::map<KeyT, ValueT>;
 template<typename ValueT>
 using string_map = ankerl::unordered_dense::map<std::string, ValueT, hash::stringv, hash::stringv>;
 
+using string_set = ankerl::unordered_dense::set<std::string, hash::stringv, hash::stringv>;
+
