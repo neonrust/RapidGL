@@ -84,8 +84,7 @@ namespace RGL
 		static const auto condition_phrase_else = "#else"sv;
 		static const auto condition_phrase_end = "#endif"sv;
 
-		std::vector<bool> _condition_stack {};
-		_condition_stack.reserve(16); // TODO: probably, a 'small vector' type is better here
+		small_vec<bool, 16> _condition_stack {};
 		auto cond_including = [&stack=std::as_const(_condition_stack)]() { return stack.empty() or stack.back(); };
 		auto cond_push = [&stack=_condition_stack](bool include) { stack.push_back(include); };
 		auto cond_pop = [&stack=_condition_stack]() { assert(not stack.empty()); return stack.pop_back(); };
