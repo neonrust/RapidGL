@@ -76,24 +76,9 @@ namespace RGL
         return data;
     }
 
-	std::string Util::PreprocessShaderSource(const std::string& shader_source, const std::filesystem::path& dir, const string_set &conditionals)
+	std::string Util::PreprocessShaderSource(const std::string& shader_source, const std::filesystem::path& dir)
     {
 		static const auto phrase_include = "#include "sv;
-
-		static const auto condition_phrase_if = "#if "sv;
-		static const auto condition_phrase_else = "#else"sv;
-		static const auto condition_phrase_end = "#endif"sv;
-
-		small_vec<bool, 16> _condition_stack {};
-		auto cond_including = [&stack=std::as_const(_condition_stack)]() { return stack.empty() or stack.back(); };
-		auto cond_push = [&stack=_condition_stack](bool include) { stack.push_back(include); };
-		auto cond_pop = [&stack=_condition_stack]() { assert(not stack.empty()); return stack.pop_back(); };
-		auto cond_invert = [&stack=_condition_stack]() { assert(not stack.empty()); stack.back() = not stack.back(); };
-		auto cond_size = [&stack=_condition_stack]() { return stack.size(); };
-
-		// #if NAME
-		//  ...  (ignored if 'NAME' is not defined)
-		// #endif
 
 		std::istringstream ss(shader_source);
 
@@ -108,74 +93,47 @@ namespace RGL
 			++line_num;
 
 			const auto non_space = line.find_first_not_of(" \t");
-			const auto is_preproc = non_space != std::string::npos and line[non_space] == '#';
+			auto is_preproc = non_space != std::string::npos and line[non_space] == '#';
 
-			std::string_view line_clean; // used when it's a preprocessor instruction
+			std::string_view preproc_instruction; // used when it's a preprocessor instruction
 			if(is_preproc)
 			{
-				std::string_view line_clean = line;
+				preproc_instruction = line;
 				{
 					// clean up the line to simplify parsing
-					const auto comment = line_clean.find("//");
+					const auto comment = preproc_instruction.find("//");
 					if(comment != std::string_view::npos)
-						line_clean = line_clean.substr(0, comment);
-					line_clean = zstr::strip(line_clean);
+						preproc_instruction = preproc_instruction.substr(0, comment);
+					preproc_instruction = zstr::strip(preproc_instruction);
 				}
 
-				if(line_clean.empty())
+				if(preproc_instruction.empty())
 					continue;
 
-				if(line_clean.starts_with(condition_phrase_if))
+				if (preproc_instruction.starts_with(phrase_include))
 				{
-					const auto name = zstr::strip(line_clean.substr(condition_phrase_if.size()));
-					cond_push(conditionals.contains(name));
-					continue;
-				}
-				else if(line_clean == condition_phrase_else)
-				{
-					// TODO: check if 'else' was already done
-					if(not cond_size())
+					// extract filename, cutting off quotes (or brackets)
+					auto include_file_name = preproc_instruction.substr(phrase_include.size() + 1, preproc_instruction.size() - phrase_include .size() - 2);
+					// always relative the current file
+					const auto include_data = LoadFile(dir / include_file_name);
+					if(not include_data.empty())
 					{
-						std::fprintf(stderr, "[%lu] Preprocessing error: %s not preceeded by #if\n", line_num, condition_phrase_else.data());
-						return {};
+						new_source.append(include_data);
+						new_source.append("\n"sv);
+
+						new_source.append("#line ");
+						new_source.append(std::to_string(line_num));
+						new_source.append("\n");
+
+						files_included = true;
 					}
-					cond_invert();
-					continue;
 				}
-				else if(line_clean == condition_phrase_end)
-				{
-					if(not cond_size())
-					{
-						std::fprintf(stderr, "[%lu] Preprocessing error: %s not preceeded by #if\n", line_num, condition_phrase_end.data());
-						return {};
-					}
-					cond_pop();
-					continue;
-				}
+				else
+					is_preproc = false; // make sure the non-processed line get forwarded to 'new_source'
 			}
 
-			if(not cond_including())
-				continue;
 
-			if (cond_including() and is_preproc and line_clean.starts_with(phrase_include))
-			{
-				// extract filename, cutting off quotes (or brackets)
-				auto include_file_name = line_clean.substr(phrase_include.size() + 1, line_clean.size() - phrase_include .size() - 2);
-				// always relative the current file
-				const auto included_file = LoadFile(dir / include_file_name);
-				if(not included_file.empty())
-				{
-					new_source.append(included_file);
-					new_source.append("\n"sv);
-
-					new_source.append("#line ");
-					new_source.append(std::to_string(line_num));
-					new_source.append("\n");
-
-					files_included = true;
-				}
-			}
-			else
+			if(not is_preproc)
 			{
 				new_source.append(line);
 				new_source.append("\n"sv);
@@ -184,7 +142,7 @@ namespace RGL
 
 		// we included files, need to re-run this preprocess
 		if (files_included)
-			new_source = PreprocessShaderSource(new_source, dir, conditionals);
+			new_source = PreprocessShaderSource(new_source, dir);
 
 		return new_source;
     }

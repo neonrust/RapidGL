@@ -103,13 +103,22 @@ namespace RGL
         }
 
 		const auto  dir = FileSystem::rootPath() / filepath.parent_path();
-		const auto code = Util::PreprocessShaderSource(Util::LoadFile(filepath), dir, conditionals);
-
-		const char * shader_code = code.c_str();
+		const auto code = Util::PreprocessShaderSource(Util::LoadFile(filepath), dir);
 
 		add_name(filepath);
 
-		glShaderSource(shaderObject, 1, &shader_code, nullptr);
+		std::string macros;
+		if(not conditionals.empty())
+			macros.reserve(conditionals.size() * 16);
+		for(const auto &cond: conditionals)
+			macros.append("#define " + cond + " 1\n");
+
+		const char *shader_sources[2] = {
+			macros.c_str(),
+			code.c_str(),
+		};
+
+		glShaderSource(shaderObject, 2, shader_sources, nullptr);
         glCompileShader(shaderObject);
 
 		const auto &[ok, log] = getStatusLog(shaderObject, GL_COMPILE_STATUS);
@@ -413,7 +422,7 @@ namespace RGL
 				glGetProgramResourceiv(m_program_id, program_interface, sub_idx, properties_size, properties, properties_size, &length, values);
 
 				std::vector<char> name_data(static_cast<unsigned int>(values[0]));
-				glGetProgramResourceName(m_program_id, program_interface, sub_idx, name_data.size(), nullptr, &name_data[0]);
+				glGetProgramResourceName(m_program_id, program_interface, sub_idx, GLsizei(name_data.size()), nullptr, &name_data[0]);
                 std::string subroutine_name(name_data.begin(), name_data.end() - 1);
 
 				GLuint subroutine_index = glGetSubroutineIndex(m_program_id, shader_stages[if_idx], subroutine_name.c_str());
