@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ankerl/unordered_dense.h>
+#include <ankerl/svector.h>
 
 namespace hash
 {
@@ -30,3 +31,5 @@ using string_map = ankerl::unordered_dense::map<std::string, ValueT, hash::strin
 
 using string_set = ankerl::unordered_dense::set<std::string, hash::stringv, hash::stringv>;
 
+template<typename T, size_t InlineCapacity=16>
+using small_vec = ankerl::svector<T, InlineCapacity>;
