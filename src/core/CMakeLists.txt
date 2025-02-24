@@ -31,6 +31,7 @@ target_include_directories(${CORE_LIB_NAME}
 	${stb_image_SOURCE_DIR}
 	${imgui_SOURCE_DIR}
 	${unordered_dense_SOURCE_DIR}/include
+	${svector_SOURCE_DIR}/include
 )
 
 target_link_libraries(${CORE_LIB_NAME}

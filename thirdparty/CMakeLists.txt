@@ -25,6 +25,7 @@ CPMAddPackage("gh:g-truc/glm#1.0.1")
 CPMAddPackage("gh:ocornut/imgui@1.91.8")
 #CPMAddPackage("gh:gabime/spdlog@1.10.0")
 CPMAddPackage("gh:martinus/unordered_dense@4.4.0")
+CPMAddPackage("gh:martinus/svector@1.0.3")
 #CPMAddPackage("gh:libjxl/libjxl@0.7.2")   TODO fails with "set_target_properties can not be used on an ALIAS target"
 
 CPMAddPackage(
@@ -52,6 +53,7 @@ set_target_properties(glad
                       glm 
                       imgui 
 					  unordered_dense
+					  svector
 					  tinyddsloader
 					  PROPERTIES FOLDER "thirdparty")
 
