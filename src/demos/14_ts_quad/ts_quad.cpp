@@ -106,7 +106,7 @@ void Tessellation2D::input()
     {
         /* Specify filename of the screenshot. */
         std::string filename = "14_ts_quad";
-        if (take_screenshot_png(filename, RGL::Window::getWidth() / 2.0, RGL::Window::getHeight() / 2.0))
+        if (take_screenshot_png(filename, RGL::Window::width() / 2.0, RGL::Window::height() / 2.0))
         {
             /* If specified folders in the path are not already created, they'll be created automagically. */
             std::cout << "Saved " << filename << ".png to " << RGL::FileSystem::rootPath() / "screenshots/" << std::endl;
@@ -139,7 +139,7 @@ void Tessellation2D::render()
     m_quad_tessellation_shader->setUniform("line_color", m_line_color);
     m_quad_tessellation_shader->setUniform("line_width", m_line_width * 0.5f);
     m_quad_tessellation_shader->setUniform("mvp", view_projection);
-    m_quad_tessellation_shader->setUniform("viewport_matrix", RGL::Window::getViewportMatrix());
+    m_quad_tessellation_shader->setUniform("viewport_matrix", RGL::Window::viewportMatrix());
 
     glDrawArrays(GL_PATCHES, 0, m_no_quad_points);
 }
@@ -155,7 +155,7 @@ void Tessellation2D::render_gui()
     CoreApp::render_gui();
 
     /* Create your own GUI using ImGUI here. */
-    ImVec2 window_pos       = ImVec2(RGL::Window::getWidth() - 10.0, 10.0);
+    ImVec2 window_pos       = ImVec2(RGL::Window::width() - 10.0, 10.0);
     ImVec2 window_pos_pivot = ImVec2(1.0f, 0.0f);
 
     ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);

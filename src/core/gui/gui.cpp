@@ -25,7 +25,7 @@ namespace RGL
         ImGui_ImplGlfw_InitForOpenGL(window, true);
         ImGui_ImplOpenGL3_Init("#version 460");
 
-        m_window_size = glm::vec2(Window::getWidth(), Window::getHeight());
+        m_window_size = glm::vec2(Window::width(), Window::height());
 
         ImGui::GetIO().Fonts->AddFontDefault();
     }

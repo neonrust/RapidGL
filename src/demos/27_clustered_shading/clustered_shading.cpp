@@ -140,7 +140,7 @@ void ClusteredShading::init_app()
 
 	// Create camera
 	m_camera = Camera(m_camera_fov, 0.1f, 200);
-	m_camera.setSize(Window::getWidth(), Window::getHeight());
+	m_camera.setSize(Window::width(), Window::height());
 	// m_camera.setPosition(-8.32222f, 4.5269f, -0.768721f);
 	// m_camera.setOrientation(glm::quat(0.634325f, 0.0407623f, 0.772209f, 0.0543523f));
 	m_camera.setPosition({ -19, 3.3f, -15 });
@@ -171,7 +171,7 @@ void ClusteredShading::init_app()
 	}
 
 	// Create depth pre-pass render target
-	m_depth_pass_rt.create(size_t(Window::getWidth()), size_t(Window::getHeight()), RGL::RenderTarget::Depth);
+	m_depth_pass_rt.create(Window::width(), Window::height(), RGL::RenderTarget::Depth);
 
     /// Prepare lights' SSBOs.
 	UpdateLightsSSBOs();  // initial update will create the GL buffers
@@ -330,23 +330,23 @@ void ClusteredShading::init_app()
 	const auto shader_init_time = duration_cast<microseconds>(T1 - T0);
 	std::printf("Shader init time: %.1f ms\n", float(shader_init_time.count())/1000.f);
 
-	_rt.create(size_t(Window::getWidth()), size_t(Window::getHeight()), RGL::RenderTarget::ColorFloat | RGL::RenderTarget::Depth);
+	_rt.create(Window::width(), Window::height(), RGL::RenderTarget::ColorFloat | RGL::RenderTarget::Depth);
 	_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LINEAR_MIP_NEAREST);
 	_rt.SetWrapping (RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
 	_rt.SetWrapping (RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
 
-	_pp_half_rt.create(size_t(Window::getWidth()/2), size_t(Window::getHeight()/2), RGL::RenderTarget::ColorFloat);
+	_pp_half_rt.create(Window::width()/2, Window::height()/2, RGL::RenderTarget::ColorFloat);
 	_pp_half_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LINEAR_MIP_NEAREST);
 	_pp_half_rt.SetWrapping (RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
 	_pp_half_rt.SetWrapping (RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
 
-	_pp_full_rt.create(size_t(Window::getWidth()), size_t(Window::getHeight()), RGL::RenderTarget::ColorFloat);
+	_pp_full_rt.create(Window::width(), Window::height(), RGL::RenderTarget::ColorFloat);
 	_pp_full_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LINEAR_MIP_NEAREST);
 	_pp_full_rt.SetWrapping (RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
 	_pp_full_rt.SetWrapping (RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
 
 	// TODO: final_rt.cloneFrom(_rt);
-	_final_rt.create(size_t(Window::getWidth()), size_t(Window::getHeight()), RGL::RenderTarget::ColorFloat);
+	_final_rt.create(Window::width(), Window::height(), RGL::RenderTarget::ColorFloat);
 	_final_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LINEAR_MIP_NEAREST);
 	_final_rt.SetWrapping (RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
 	_final_rt.SetWrapping (RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
@@ -389,7 +389,7 @@ void ClusteredShading::init_app()
 		const auto u_inv_view = glm::inverse(u_view);
 		const auto u_cam_pos = m_camera.position();
 
-		const glm::uvec2 screen_size { Window::getWidth(), Window::getHeight() };
+		const glm::uvec2 screen_size { Window::width(), Window::height() };
 		glm::uvec2 screen_pos { 0, 0 };//Window::getWidth()/2 + 1, Window::getHeight()/2 };
 		glm::vec2 coord = {
 			float(screen_pos.x) / float(screen_size.x),
@@ -701,8 +701,8 @@ void ClusteredShading::calculateShadingClusterGrid()
 	// TODO: these should be properties of the camera  (a component!)
 
 	/// Init clustered shading variables.
-	m_cluster_grid_dim.x = uint32_t(glm::ceil(float(Window::getWidth())  / float(m_cluster_grid_block_size)));
-	m_cluster_grid_dim.y = uint32_t(glm::ceil(float(Window::getHeight()) / float(m_cluster_grid_block_size)));
+	m_cluster_grid_dim.x = uint32_t(glm::ceil(float(Window::width())  / float(m_cluster_grid_block_size)));
+	m_cluster_grid_dim.y = uint32_t(glm::ceil(float(Window::height()) / float(m_cluster_grid_block_size)));
 
 	// The depth of the cluster grid during clustered rendering is dependent on the
 	// number of clusters subdivisions in the screen Y direction.
@@ -758,7 +758,7 @@ void ClusteredShading::	prepareClusterBuffers()
 	m_generate_clusters_shader->setUniform("u_near_k"sv,             m_near_k);
 	m_generate_clusters_shader->setUniform("u_near_z"sv,             m_camera.nearPlane());
 	m_generate_clusters_shader->setUniform("u_inverse_projection"sv, glm::inverse(m_camera.projectionTransform()));
-	m_generate_clusters_shader->setUniform("u_pixel_size"sv,         1.0f / glm::vec2(RGL::Window::getWidth(), RGL::Window::getHeight()));
+	m_generate_clusters_shader->setUniform("u_pixel_size"sv,         1.0f / glm::vec2(Window::width(), Window::height()));
 	glDispatchCompute(GLuint(glm::ceil(float(m_clusters_count) / 1024.0f)), 1, 1);
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }
@@ -812,7 +812,7 @@ void ClusteredShading::input()
     {
 		/* Specify filename of Sthe screenshot. */
         std::string filename = "27_clustered_shading";
-		if (take_screenshot_png(filename, size_t(Window::getWidth() / 2), size_t(Window::getHeight() / 2)))
+		if (take_screenshot_png(filename, Window::width() / 2, Window::height() / 2))
         {
             /* If specified folders in the path are not already created, they'll be created automagically. */
 			std::cout << "Saved " << filename << ".png to " << (FileSystem::rootPath() / "screenshots/") << std::endl;
@@ -1177,8 +1177,6 @@ void ClusteredShading::HdrEquirectangularToCubemap(const std::shared_ptr<RenderT
 	m_equirectangular_to_cubemap_shader->setUniform("u_projection"sv, cubemap_rt->projection());
 
 	cubemap_rt->bindRenderTarget();
-	// glViewport(0, 0, GLsizei(cubemap_rt->m_width), GLsizei(cubemap_rt->m_height));
- //    glBindFramebuffer(GL_FRAMEBUFFER, cubemap_rt->m_fbo_id);
     m_equirectangular_map->Bind(1);
 
     glBindVertexArray(m_skybox_vao);
@@ -1190,7 +1188,7 @@ void ClusteredShading::HdrEquirectangularToCubemap(const std::shared_ptr<RenderT
 
         glDrawArrays(GL_TRIANGLES, 0, 36);
     }
-    glViewport(0, 0, Window::getWidth(), Window::getHeight());
+	glViewport(0, 0, GLsizei(Window::width()), GLsizei(Window::height()));
 }
 
 void ClusteredShading::IrradianceConvolution(const std::shared_ptr<RenderTargetCube>& cubemap_rt)
@@ -1200,8 +1198,6 @@ void ClusteredShading::IrradianceConvolution(const std::shared_ptr<RenderTargetC
 	m_irradiance_convolution_shader->setUniform("u_projection"sv, cubemap_rt->projection());
 
 	cubemap_rt->bindRenderTarget();
-	// glViewport(0, 0, GLsizei(cubemap_rt->m_width), GLsizei(cubemap_rt->m_height));
- //    glBindFramebuffer(GL_FRAMEBUFFER, cubemap_rt->m_fbo_id);
     m_env_cubemap_rt->bindTexture(1);
 
     for (uint8_t side = 0; side < 6; ++side)
@@ -1213,7 +1209,7 @@ void ClusteredShading::IrradianceConvolution(const std::shared_ptr<RenderTargetC
         glBindVertexArray(m_skybox_vao);
         glDrawArrays(GL_TRIANGLES, 0, 36);
     }
-    glViewport(0, 0, Window::getWidth(), Window::getHeight());
+	glViewport(0, 0, GLsizei(Window::width()), GLsizei(Window::height()));
 }
 
 void ClusteredShading::PrefilterCubemap(const std::shared_ptr<RenderTargetCube>& cubemap_rt)
@@ -1224,7 +1220,6 @@ void ClusteredShading::PrefilterCubemap(const std::shared_ptr<RenderTargetCube>&
     m_env_cubemap_rt->bindTexture(1);
 
 	cubemap_rt->bindRenderTarget();
-	// glBindFramebuffer(GL_FRAMEBUFFER, cubemap_rt->m_fbo_id);
 
 	auto max_mip_levels = uint8_t(glm::log2(float(cubemap_rt->width())));
     for (uint8_t mip = 0; mip < max_mip_levels; ++mip)
@@ -1282,7 +1277,7 @@ void ClusteredShading::PrecomputeBRDF(const std::shared_ptr<RGL::RenderTarget::T
 void ClusteredShading::bindScreenRenderTarget()
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glViewport(0, 0, Window::getWidth(), Window::getHeight());
+	glViewport(0, 0, GLsizei(Window::width()), GLsizei(Window::height()));
 }
 
 void ClusteredShading::GenSkyboxGeometry()
@@ -1972,7 +1967,7 @@ void ClusteredShading::render_gui()
     CoreApp::render_gui();
 
     /* Create your own GUI using ImGUI here. */
-	ImVec2 window_pos       = ImVec2(float(Window::getWidth()) - 10.f, 10.f);
+	ImVec2 window_pos       = ImVec2(float(Window::width()) - 10.f, 10.f);
 	ImVec2 window_pos_pivot = ImVec2(1.0f, 0.0f);
 
     ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);

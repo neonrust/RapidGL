@@ -87,8 +87,8 @@ namespace RGL
 
     bool CoreApp::take_screenshot_png(const std::string & filename, size_t dst_width, size_t dst_height)
     {
-		auto width  = Window::getWidth();
-		auto height = Window::getHeight();
+		auto width  = Window::width();
+		auto height = Window::height();
         bool   resize = true;
 
         if (dst_width == 0 || dst_height == 0)

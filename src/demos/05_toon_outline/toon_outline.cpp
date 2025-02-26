@@ -90,7 +90,7 @@ void ToonOutline::init_app()
 
     /* Create virtual camera. */
 	m_camera = std::make_shared<RGL::Camera>(60.0, 0.01, 100.0);
-	m_camera->setSize(RGL::Window::getWidth(), RGL::Window::getHeight());
+	m_camera->setSize(RGL::Window::width(), RGL::Window::height());
 	m_camera->setPosition({ 1.5, 0.0, 10.0 });
 
     /* Create models. */
@@ -174,7 +174,7 @@ void ToonOutline::init_app()
 
     glGenTextures(1, &m_normals_depth_tex_buffer);
     glBindTexture(GL_TEXTURE_2D, m_normals_depth_tex_buffer);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, RGL::Window::getWidth(), RGL::Window::getHeight(), 0 /* border */, GL_RGBA, GL_FLOAT, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, RGL::Window::width(), RGL::Window::height(), 0 /* border */, GL_RGBA, GL_FLOAT, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -184,7 +184,7 @@ void ToonOutline::init_app()
 
     glGenRenderbuffers(1, &m_rbo);
     glBindRenderbuffer(GL_RENDERBUFFER, m_rbo);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, RGL::Window::getWidth(), RGL::Window::getHeight());
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, RGL::Window::width(), RGL::Window::height());
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_rbo);
 
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
@@ -197,7 +197,7 @@ void ToonOutline::init_app()
 
     glGenTextures(1, &m_shading_tex_buffer);
     glBindTexture(GL_TEXTURE_2D, m_shading_tex_buffer);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, RGL::Window::getWidth(), RGL::Window::getHeight(), 0 /* border */, GL_RGBA, GL_FLOAT, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, RGL::Window::width(), RGL::Window::height(), 0 /* border */, GL_RGBA, GL_FLOAT, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -235,7 +235,7 @@ void ToonOutline::input()
     {
         /* Specify filename of the screenshot. */
         std::string filename = "05_toon_outline";
-        if (take_screenshot_png(filename, RGL::Window::getWidth() / 2.0, RGL::Window::getHeight() / 2.0))
+        if (take_screenshot_png(filename, RGL::Window::width() / 2.0, RGL::Window::height() / 2.0))
         {
             /* If specified folders in the path are not already created, they'll be created automagically. */
             std::cout << "Saved " << filename << ".png to " << RGL::FileSystem::rootPath() / "screenshots/" << std::endl;
@@ -284,7 +284,7 @@ void ToonOutline::stencil_outline()
     m_stencil_outline_shader->bind();
     m_stencil_outline_shader->setUniform("outline_width", 0.1f * m_stencil_outline_width);
     m_stencil_outline_shader->setUniform("outline_color", m_outline_color);
-    m_stencil_outline_shader->setUniform("screen_resolution", RGL::Window::getSize());
+    m_stencil_outline_shader->setUniform("screen_resolution", RGL::Window::size());
 
 	const auto view_projection = m_camera->projectionTransform() * m_camera->viewTransform();
 
@@ -425,7 +425,7 @@ void ToonOutline::render_gui()
     CoreApp::render_gui();
 
 /* Create your own GUI using ImGUI here. */
-    ImVec2 window_pos       = ImVec2(RGL::Window::getWidth() - 10.0, 10.0);
+    ImVec2 window_pos       = ImVec2(RGL::Window::width() - 10.0, 10.0);
     ImVec2 window_pos_pivot = ImVec2(1.0f, 0.0f);
 
     ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);

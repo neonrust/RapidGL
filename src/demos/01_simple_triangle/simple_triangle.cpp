@@ -52,7 +52,7 @@ void SimpleTriangle::input()
     if (RGL::Input::wasKeyReleased(RGL::KeyCode::F1))
     {
         std::string filename = "01_simple_triangle";
-        if (take_screenshot_png(filename, RGL::Window::getWidth() / 2.0, RGL::Window::getHeight() / 2.0))
+        if (take_screenshot_png(filename, RGL::Window::width() / 2.0, RGL::Window::height() / 2.0))
         {
             std::cout << "Saved " << filename << ".png to " << RGL::FileSystem::rootPath() / "screenshots/" << std::endl;
         }

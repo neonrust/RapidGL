@@ -49,7 +49,7 @@ void Bloom::init_app()
 
     /* Create virtual camera. */
 	m_camera = std::make_shared<RGL::Camera>(60.0, 0.01, 100.0);
-	m_camera->setSize(RGL::Window::getWidth(), RGL::Window::getHeight());
+	m_camera->setSize(RGL::Window::width(), RGL::Window::height());
 	m_camera->setPosition({ -8.32222, 1.9269, -0.768721 });
     m_camera->setOrientation(glm::quat(0.634325, 0.0407623, 0.772209, 0.0543523));
    
@@ -210,7 +210,7 @@ void Bloom::init_app()
     m_background_shader = std::make_shared<RGL::Shader>(dir + "background.vert", dir + "background.frag");
     m_background_shader->link();
 
-    m_tmo_ps = std::make_shared<PostprocessFilter>(RGL::Window::getWidth(), RGL::Window::getHeight());
+    m_tmo_ps = std::make_shared<PostprocessFilter>(RGL::Window::width(), RGL::Window::height());
 
     /* Bloom shaders. */
     dir = "src/demos/26_bloom/";
@@ -275,7 +275,7 @@ void Bloom::input()
     {
         /* Specify filename of the screenshot. */
         std::string filename = "26_bloom";
-        if (take_screenshot_png(filename, RGL::Window::getWidth() / 2.0, RGL::Window::getHeight() / 2.0))
+        if (take_screenshot_png(filename, RGL::Window::width() / 2.0, RGL::Window::height() / 2.0))
         {
             /* If specified folders in the path are not already created, they'll be created automagically. */
             std::cout << "Saved " << filename << ".png to " << RGL::FileSystem::rootPath() / "screenshots/" << std::endl;
@@ -320,7 +320,7 @@ void Bloom::HdrEquirectangularToCubemap(const std::shared_ptr<CubeMapRenderTarge
         glBindVertexArray(m_skybox_vao);
         glDrawArrays(GL_TRIANGLES, 0, 36);
     }
-    glViewport(0, 0, RGL::Window::getWidth(), RGL::Window::getHeight());
+    glViewport(0, 0, RGL::Window::width(), RGL::Window::height());
 }
 
 void Bloom::IrradianceConvolution(const std::shared_ptr<CubeMapRenderTarget>& cubemap_rt)
@@ -342,7 +342,7 @@ void Bloom::IrradianceConvolution(const std::shared_ptr<CubeMapRenderTarget>& cu
         glBindVertexArray(m_skybox_vao);
         glDrawArrays(GL_TRIANGLES, 0, 36);
     }
-    glViewport(0, 0, RGL::Window::getWidth(), RGL::Window::getHeight());
+    glViewport(0, 0, RGL::Window::width(), RGL::Window::height());
 }
 
 void Bloom::PrefilterCubemap(const std::shared_ptr<CubeMapRenderTarget>& cubemap_rt)
@@ -379,7 +379,7 @@ void Bloom::PrefilterCubemap(const std::shared_ptr<CubeMapRenderTarget>& cubemap
         }
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0, 0, RGL::Window::getWidth(), RGL::Window::getHeight());
+    glViewport(0, 0, RGL::Window::width(), RGL::Window::height());
 }
 
 void Bloom::PrecomputeIndirectLight(const std::filesystem::path& hdri_map_filepath)
@@ -412,7 +412,7 @@ void Bloom::PrecomputeBRDF(const std::shared_ptr<Texture2DRenderTarget>& rt)
     glDeleteVertexArrays(1, &m_dummy_vao_id);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0, 0, RGL::Window::getWidth(), RGL::Window::getHeight());
+    glViewport(0, 0, RGL::Window::width(), RGL::Window::height());
 }
 
 void Bloom::GenSkyboxGeometry()
@@ -636,7 +636,7 @@ void Bloom::render_gui()
     CoreApp::render_gui();
 
     /* Create your own GUI using ImGUI here. */
-    ImVec2 window_pos       = ImVec2(RGL::Window::getWidth() - 10.0, 10.0);
+    ImVec2 window_pos       = ImVec2(RGL::Window::width() - 10.0, 10.0);
     ImVec2 window_pos_pivot = ImVec2(1.0f, 0.0f);
 
     ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);

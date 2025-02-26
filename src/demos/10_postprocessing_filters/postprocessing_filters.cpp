@@ -29,7 +29,7 @@ void PostprocessingFilters::init_app()
 
     /* Create virtual camera. */
 	m_camera = std::make_shared<RGL::Camera>(60.0, 0.01, 100.0);
-	m_camera->setSize(RGL::Window::getWidth(), RGL::Window::getHeight());
+	m_camera->setSize(RGL::Window::width(), RGL::Window::height());
 	m_camera->setPosition({ -6, 5.0, 10.0 });
 	m_camera->setOrientationEuler({ 20.0f, 30.0f, 0.0f });
 
@@ -85,7 +85,7 @@ void PostprocessingFilters::init_app()
     m_directional_light_shader = std::make_shared<RGL::Shader>(dir + "lighting.vert", dir2 + "lighting-directional.frag");
     m_directional_light_shader->link();
 
-    m_postprocess_filter = std::make_shared<PostprocessFilter>(RGL::Window::getWidth(), RGL::Window::getHeight());
+    m_postprocess_filter = std::make_shared<PostprocessFilter>(RGL::Window::width(), RGL::Window::height());
     m_current_ps_filter_name = m_ps_filter_names_list[0];
 }
 
@@ -119,7 +119,7 @@ void PostprocessingFilters::input()
     {
         /* Specify filename of the screenshot. */
         std::string filename = "10_postprocessing_filters";
-        if (take_screenshot_png(filename, RGL::Window::getWidth() / 2.0, RGL::Window::getHeight() / 2.0))
+        if (take_screenshot_png(filename, RGL::Window::width() / 2.0, RGL::Window::height() / 2.0))
         {
             /* If specified folders in the path are not already created, they'll be created automagically. */
             std::cout << "Saved " << filename << ".png to " << RGL::FileSystem::rootPath() / "screenshots/" << std::endl;
@@ -205,7 +205,7 @@ void PostprocessingFilters::render_gui()
     CoreApp::render_gui();
 
     /* Create your own GUI using ImGUI here. */
-    ImVec2 window_pos       = ImVec2(RGL::Window::getWidth() - 10.0, 10.0);
+    ImVec2 window_pos       = ImVec2(RGL::Window::width() - 10.0, 10.0);
     ImVec2 window_pos_pivot = ImVec2(1.0f, 0.0f);
 
     ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);

@@ -67,7 +67,7 @@ void PCSS::init_app()
 
     /* Create virtual camera. */
 	m_camera = std::make_shared<RGL::Camera>(60.0, 0.01, 100.0);
-	m_camera->setSize(RGL::Window::getWidth(), RGL::Window::getHeight());
+	m_camera->setSize(RGL::Window::width(), RGL::Window::height());
 	m_camera->setPosition({ -10.3, 7.6, -5.42 });
     m_camera->setOrientation(glm::quat(-0.3, -0.052, -0.931, -0.165));
    
@@ -167,7 +167,7 @@ void PCSS::init_app()
     m_background_shader = std::make_shared<RGL::Shader>(dir + "background.vert", dir + "background.frag");
     m_background_shader->link();
 
-    m_tmo_ps = std::make_shared<PostprocessFilter>(RGL::Window::getWidth(), RGL::Window::getHeight());
+    m_tmo_ps = std::make_shared<PostprocessFilter>(RGL::Window::width(), RGL::Window::height());
 
     // IBL precomputations
     GenSkyboxGeometry();
@@ -247,7 +247,7 @@ void PCSS::input()
     {
         /* Specify filename of the screenshot. */
         std::string filename = "24_pcss";
-        if (take_screenshot_png(filename, RGL::Window::getWidth() / 2.0, RGL::Window::getHeight() / 2.0))
+        if (take_screenshot_png(filename, RGL::Window::width() / 2.0, RGL::Window::height() / 2.0))
         {
             /* If specified folders in the path are not already created, they'll be created automagically. */
             std::cout << "Saved " << filename << ".png to " << RGL::FileSystem::rootPath() / "screenshots/" << std::endl;
@@ -292,7 +292,7 @@ void PCSS::HdrEquirectangularToCubemap(const std::shared_ptr<CubeMapRenderTarget
         glBindVertexArray(m_skybox_vao);
         glDrawArrays(GL_TRIANGLES, 0, 36);
     }
-    glViewport(0, 0, RGL::Window::getWidth(), RGL::Window::getHeight());
+    glViewport(0, 0, RGL::Window::width(), RGL::Window::height());
 }
 
 void PCSS::IrradianceConvolution(const std::shared_ptr<CubeMapRenderTarget>& cubemap_rt)
@@ -314,7 +314,7 @@ void PCSS::IrradianceConvolution(const std::shared_ptr<CubeMapRenderTarget>& cub
         glBindVertexArray(m_skybox_vao);
         glDrawArrays(GL_TRIANGLES, 0, 36);
     }
-    glViewport(0, 0, RGL::Window::getWidth(), RGL::Window::getHeight());
+    glViewport(0, 0, RGL::Window::width(), RGL::Window::height());
 }
 
 void PCSS::PrefilterCubemap(const std::shared_ptr<CubeMapRenderTarget>& cubemap_rt)
@@ -351,7 +351,7 @@ void PCSS::PrefilterCubemap(const std::shared_ptr<CubeMapRenderTarget>& cubemap_
         }
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0, 0, RGL::Window::getWidth(), RGL::Window::getHeight());
+    glViewport(0, 0, RGL::Window::width(), RGL::Window::height());
 }
 
 void PCSS::PrecomputeIndirectLight(const std::filesystem::path& hdri_map_filepath)
@@ -384,7 +384,7 @@ void PCSS::PrecomputeBRDF(const std::shared_ptr<Texture2DRenderTarget>& rt)
     glDeleteVertexArrays(1, &m_dummy_vao_id);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0, 0, RGL::Window::getWidth(), RGL::Window::getHeight());
+    glViewport(0, 0, RGL::Window::width(), RGL::Window::height());
 }
 
 void PCSS::GenSkyboxGeometry()
@@ -629,7 +629,7 @@ void PCSS::render()
 
     /* Put render specific code here. Don't update variables here! */
     m_tmo_ps->bindFilterFBO();
-    glViewport(0, 0, RGL::Window::getWidth(), RGL::Window::getHeight());
+    glViewport(0, 0, RGL::Window::width(), RGL::Window::height());
 
     RenderTexturedModels();
 
@@ -658,7 +658,7 @@ void PCSS::render_gui()
     CoreApp::render_gui();
 
     /* Create your own GUI using ImGUI here. */
-    ImVec2 window_pos       = ImVec2(RGL::Window::getWidth() - 10.0, 10.0);
+    ImVec2 window_pos       = ImVec2(RGL::Window::width() - 10.0, 10.0);
     ImVec2 window_pos_pivot = ImVec2(1.0f, 0.0f);
 
     ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);

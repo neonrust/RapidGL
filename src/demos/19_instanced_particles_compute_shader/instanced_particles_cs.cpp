@@ -42,7 +42,7 @@ void InstancedParticlesCS::init_app()
 
     /* Create virtual camera. */
 	m_camera = std::make_shared<RGL::Camera>(60.0, 0.01, 100.0);
-	m_camera->setSize(RGL::Window::getWidth(), RGL::Window::getHeight());
+	m_camera->setSize(RGL::Window::width(), RGL::Window::height());
 	m_camera->setPosition({ 4.0, 1.5, -4.0 });
 	m_camera->setOrientationEuler({ 5.0f, 225.0f, 0.0f });
     m_camera->update(0.0);
@@ -149,7 +149,7 @@ void InstancedParticlesCS::input()
     {
         /* Specify filename of the screenshot. */
         std::string filename = "19_instanced_particles_compute_shader";
-        if (take_screenshot_png(filename, RGL::Window::getWidth() / 2.0, RGL::Window::getHeight() / 2.0))
+        if (take_screenshot_png(filename, RGL::Window::width() / 2.0, RGL::Window::height() / 2.0))
         {
             /* If specified folders in the path are not already created, they'll be created automagically. */
             std::cout << "Saved " << filename << ".png to " << RGL::FileSystem::rootPath() / "screenshots/" << std::endl;
@@ -221,7 +221,7 @@ void InstancedParticlesCS::render_gui()
     CoreApp::render_gui();
 
     /* Create your own GUI using ImGUI here. */
-    ImVec2 window_pos       = ImVec2(RGL::Window::getWidth() - 10.0, 10.0);
+    ImVec2 window_pos       = ImVec2(RGL::Window::width() - 10.0, 10.0);
     ImVec2 window_pos_pivot = ImVec2(1.0f, 0.0f);
 
     ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);

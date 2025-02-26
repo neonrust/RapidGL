@@ -40,7 +40,7 @@ void EnvironmentMapping::init_app()
 
     /* Create virtual camera. */
 	m_camera = std::make_shared<RGL::Camera>(60.0, 0.01, 100.0);
-	m_camera->setSize(RGL::Window::getWidth(), RGL::Window::getHeight());
+	m_camera->setSize(RGL::Window::width(), RGL::Window::height());
 	m_camera->setPosition({ 0.0, 5.0, 9.0 });
     m_camera->setOrientation(glm::vec3(0.0, 3.0, -9.0));
 
@@ -181,7 +181,7 @@ void EnvironmentMapping::input()
     {
         /* Specify filename of the screenshot. */
         std::string filename = "08_enviro_mapping";
-		if (take_screenshot_png(filename, size_t(RGL::Window::getWidth()/2), size_t(RGL::Window::getHeight()/2)))
+		if (take_screenshot_png(filename, size_t(RGL::Window::width()/2), size_t(RGL::Window::height()/2)))
         {
             /* If specified folders in the path are not already created, they'll be created automagically. */
             std::cout << "Saved " << filename << ".png to " << RGL::FileSystem::rootPath() / "screenshots/" << std::endl;
@@ -225,7 +225,7 @@ void EnvironmentMapping::render()
     }
 
     /* Second pass: render scene normally */
-    glViewport(0, 0, RGL::Window::getWidth(), RGL::Window::getHeight());
+    glViewport(0, 0, RGL::Window::width(), RGL::Window::height());
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	render_objects(m_camera->viewTransform(), m_camera->projectionTransform(), m_camera->position());
@@ -304,7 +304,7 @@ void EnvironmentMapping::render_gui()
     CoreApp::render_gui();
 
     /* Create your own GUI using ImGUI here. */
-	ImVec2 window_pos       = ImVec2(float(RGL::Window::getWidth() - 10), 10);
+	ImVec2 window_pos       = ImVec2(float(RGL::Window::width() - 10), 10);
     ImVec2 window_pos_pivot = ImVec2(1.0f, 0.0f);
 
     ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);

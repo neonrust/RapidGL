@@ -40,7 +40,7 @@ void OIT::init_app()
 
     /* Create virtual camera. */
 	m_camera = std::make_shared<RGL::Camera>(60.0, 0.01, 100.0);
-	m_camera->setSize(RGL::Window::getWidth(), RGL::Window::getHeight());
+	m_camera->setSize(RGL::Window::width(), RGL::Window::height());
 	m_camera->setPosition({ -15.0, 0.0, 20.0 });
 	m_camera->setOrientationEuler({ 0, 37.0, 0.0 });
 
@@ -83,7 +83,7 @@ void OIT::init_app()
     m_oit_render_shader->link();
 
     /* Prepare GL objects */
-          m_max_nodes    = 20 * RGL::Window::getWidth() * RGL::Window::getHeight();
+          m_max_nodes    = 20 * RGL::Window::width() * RGL::Window::height();
     GLint list_node_size = sizeof(ListNode) + sizeof(uint32_t);
 
     glCreateBuffers(1, &m_linked_lists_buffer);
@@ -95,10 +95,10 @@ void OIT::init_app()
     glNamedBufferStorage(m_list_info_buffer, sizeof(uint32_t) * 2, list_info_data, GL_DYNAMIC_STORAGE_BIT);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_list_info_buffer);
 
-    m_head_pointers_clear_data = std::vector<uint32_t>(RGL::Window::getWidth() * RGL::Window::getHeight(), 0xffffffff);
+    m_head_pointers_clear_data = std::vector<uint32_t>(RGL::Window::width() * RGL::Window::height(), 0xffffffff);
 
     glCreateTextures(GL_TEXTURE_2D, 1, &m_head_pointers_image2d);
-    glTextureStorage2D(m_head_pointers_image2d, 1, GL_R32UI, RGL::Window::getWidth(), RGL::Window::getHeight());
+    glTextureStorage2D(m_head_pointers_image2d, 1, GL_R32UI, RGL::Window::width(), RGL::Window::height());
     
     glTextureParameteri(m_head_pointers_image2d, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTextureParameteri(m_head_pointers_image2d, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -141,7 +141,7 @@ void OIT::input()
     {
         /* Specify filename of the screenshot. */
         std::string filename = "21_oit";
-        if (take_screenshot_png(filename, RGL::Window::getWidth() / 2.0, RGL::Window::getHeight() / 2.0))
+        if (take_screenshot_png(filename, RGL::Window::width() / 2.0, RGL::Window::height() / 2.0))
         {
             /* If specified folders in the path are not already created, they'll be created automagically. */
             std::cout << "Saved " << filename << ".png to " << RGL::FileSystem::rootPath() / "screenshots/" << std::endl;
@@ -222,7 +222,7 @@ void OIT::render_gui()
     CoreApp::render_gui();
 
     /* Create your own GUI using ImGUI here. */
-    ImVec2 window_pos = ImVec2(RGL::Window::getWidth() - 10.0, 10.0);
+    ImVec2 window_pos = ImVec2(RGL::Window::width() - 10.0, 10.0);
     ImVec2 window_pos_pivot = ImVec2(1.0f, 0.0f);
 
     ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);

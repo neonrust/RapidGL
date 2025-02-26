@@ -1,6 +1,5 @@
 #include "window.h"
-#include "core_app.h"
-#include "debug_output_gl.h"
+#include "common.h"
 #include "input.h"
 #include "gui/gui.h"
 
@@ -10,8 +9,8 @@ namespace RGL
     std::string  Window::m_title           = "";
     glm::mat4    Window::m_viewport_matrix = glm::mat4(1.0);
     glm::ivec2   Window::m_window_pos      = glm::ivec2(0);
-    glm::ivec2   Window::m_window_size     = glm::ivec2(0);
-    glm::ivec2   Window::m_viewport_size   = glm::ivec2(0);
+	glm::uvec2   Window::m_window_size     = glm::uvec2(0);
+	glm::uvec2   Window::m_viewport_size   = glm::uvec2(0);
 
     Window::Window()
     {
@@ -46,7 +45,7 @@ namespace RGL
         glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
         #endif
 
-        m_window = glfwCreateWindow(m_window_size.x, m_window_size.y, title.c_str(), nullptr, nullptr);
+		m_window = glfwCreateWindow(int(m_window_size.x), int(m_window_size.y), title.c_str(), nullptr, nullptr);
 
         if (!m_window)
         {
@@ -107,9 +106,9 @@ namespace RGL
 
         /* Set the viewport */
         glfwGetWindowPos(m_window, &m_window_pos.x, &m_window_pos.y);
-        glfwGetFramebufferSize(m_window, &m_viewport_size.x, &m_viewport_size.y);
+		glfwGetFramebufferSize(m_window, (int *)&m_viewport_size.x, (int *)&m_viewport_size.y);
 
-        glViewport(0, 0, m_viewport_size.x, m_viewport_size.y);
+		glViewport(0, 0, GLsizei(m_viewport_size.x), GLsizei(m_viewport_size.y));
         setViewportMatrix(m_viewport_size.x, m_viewport_size.y);
 
         setVSync(false);
@@ -133,22 +132,22 @@ namespace RGL
         return glfwWindowShouldClose(m_window);
     }
 
-    int Window::getWidth()
+	size_t Window::width()
     {
         return m_viewport_size.x;
     }
 
-    int Window::getHeight()
+	size_t Window::height()
     {
         return m_viewport_size.y;
     }
-
-    glm::vec2 Window::getCenter()
+	
+	glm::uvec2 Window::center()
     {
         return glm::vec2(m_viewport_size) / 2.0f;
     }
-
-    glm::vec2 Window::getSize()
+	
+	glm::uvec2 Window::size()
     {
         return m_viewport_size;
     }
@@ -158,7 +157,7 @@ namespace RGL
         return float(m_viewport_size.x) / float(m_viewport_size.y);
     }
 
-    glm::mat4 Window::getViewportMatrix()
+    glm::mat4 Window::viewportMatrix()
     {
         return m_viewport_matrix;
     }
@@ -178,13 +177,13 @@ namespace RGL
     void Window::bindDefaultFramebuffer()
     {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glViewport(0, 0, m_viewport_size.x, m_viewport_size.y);
-    }
+		glViewport(0, 0, GLsizei(m_viewport_size.x), GLsizei(m_viewport_size.y));
+	}
 
-    void Window::setViewportMatrix(int width, int height)
+	void Window::setViewportMatrix(size_t width, size_t height)
     {
-        float w2 = width  / 2.0f;
-        float h2 = height / 2.0f;
+		float w2 = float(width) / 2.f;
+		float h2 = float(height) / 2.f;
 
         m_viewport_matrix = glm::mat4(glm::vec4(w2,  0.0, 0.0, 0.0), 
                                       glm::vec4(0.0, h2,  0.0, 0.0), 
@@ -192,15 +191,14 @@ namespace RGL
                                       glm::vec4(w2,  h2,  0.0, 1.0));
     }
 
-    void Window::framebuffer_size_callback(GLFWwindow * window, int width, int height)
+	void Window::framebuffer_size_callback(GLFWwindow *, int width, int height)
     {
         m_viewport_size = { width, height };
 
-        glViewport(0, 0, m_viewport_size.x, m_viewport_size.y);
+		glViewport(0, 0, GLsizei(m_viewport_size.x), GLsizei(m_viewport_size.y));
         setViewportMatrix(m_viewport_size.x, m_viewport_size.y);
 
-        m_window_size.x = width;
-        m_window_size.y = height;
+		m_window_size = { size_t(width), size_t(height) };
 
         GUI::updateWindowSize(float(m_viewport_size.x), float(m_viewport_size.y));
     }

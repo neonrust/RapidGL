@@ -21,12 +21,12 @@ namespace RGL
 
         static int isCloseRequested();
 
-        static int       getWidth();
-        static int       getHeight();
-        static glm::vec2 getCenter();
-        static glm::vec2 getSize();
-        static float     aspectRatio();
-        static glm::mat4 getViewportMatrix();
+		static size_t     width();
+		static size_t     height();
+		static glm::uvec2 center();
+		static glm::uvec2 size();
+		static float      aspectRatio();
+		static glm::mat4  viewportMatrix();
 
         static const std::string & getTitle();
 
@@ -38,10 +38,10 @@ namespace RGL
         static std::string  m_title;
         static glm::mat4    m_viewport_matrix;
         static glm::ivec2   m_window_pos;
-        static glm::ivec2   m_window_size;
-        static glm::ivec2   m_viewport_size;
+		static glm::uvec2   m_window_size;
+		static glm::uvec2   m_viewport_size;
 
-        static void setViewportMatrix(int width, int height);
+		static void setViewportMatrix(size_t width, size_t height);
 
 		static void error_callback([[maybe_unused]] int error, const char* description)
         {

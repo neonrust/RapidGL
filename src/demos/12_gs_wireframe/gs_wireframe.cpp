@@ -30,7 +30,7 @@ void GSWireframe::init_app()
 
     /* Create virtual camera. */
 	m_camera = std::make_shared<RGL::Camera>(60.0, 0.01, 100.0);
-	m_camera->setSize(RGL::Window::getWidth(), RGL::Window::getHeight());
+	m_camera->setSize(RGL::Window::width(), RGL::Window::height());
 	m_camera->setPosition({ -1, 1.0, 2.0 });
 	m_camera->setOrientationEuler({ 0.0f, 35.0f, 0.0f });
 
@@ -84,7 +84,7 @@ void GSWireframe::input()
     {
         /* Specify filename of the screenshot. */
         std::string filename = "12_gs_wireframe";
-        if (take_screenshot_png(filename, RGL::Window::getWidth() / 2.0, RGL::Window::getHeight() / 2.0))
+        if (take_screenshot_png(filename, RGL::Window::width() / 2.0, RGL::Window::height() / 2.0))
         {
             /* If specified folders in the path are not already created, they'll be created automagically. */
             std::cout << "Saved " << filename << ".png to " << RGL::FileSystem::rootPath() / "screenshots/" << std::endl;
@@ -115,7 +115,7 @@ void GSWireframe::render()
     m_directional_light_shader->setUniform("ambient",                          m_ambient_color);
     m_directional_light_shader->setUniform("specular_intensity",               m_specular_intenstiy.x);
     m_directional_light_shader->setUniform("specular_power",                   m_specular_power.x);
-    m_directional_light_shader->setUniform("viewport_matrix",                  RGL::Window::getViewportMatrix());
+    m_directional_light_shader->setUniform("viewport_matrix",                  RGL::Window::viewportMatrix());
     m_directional_light_shader->setUniform("line_info.width",                  m_line_width * 0.5f);
     m_directional_light_shader->setUniform("line_info.color",                  m_line_color);
 
@@ -142,7 +142,7 @@ void GSWireframe::render_gui()
     CoreApp::render_gui();
 
     /* Create your own GUI using ImGUI here. */
-    ImVec2 window_pos = ImVec2(RGL::Window::getWidth() - 10.0, 10.0);
+    ImVec2 window_pos = ImVec2(RGL::Window::width() - 10.0, 10.0);
     ImVec2 window_pos_pivot = ImVec2(1.0f, 0.0f);
 
     ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
