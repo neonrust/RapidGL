@@ -319,6 +319,9 @@ void ClusteredShading::init_app()
 	m_scattering_pp.create();
 	assert(m_scattering_pp);
 
+	m_blur_pp.create(Window::width(), Window::height());
+	assert(m_blur_pp);
+
 	m_line_draw_shader = std::make_shared<Shader>(dir + "line_draw.vert", dir + "line_draw.frag");
 	m_line_draw_shader->link();
 	assert(*m_line_draw_shader);
@@ -1482,17 +1485,15 @@ void ClusteredShading::render()
 	m_scattering_pp.shader().setUniform("u_ray_march_noise",    _ray_march_noise);
 
 	m_depth_pass_rt.bindTextureSampler(2);
-	// TODO: bind 2d noise texture (for ray randomization)
 
-	m_scattering_pp.render(_rt, _pp_half_rt);
+	m_scattering_pp.render(_rt, _pp_half_rt);  // '_rt' actually isn't used but the API expects an argument
 
-	// TODO: apply blur
-	// m_blur_pp.setRadius(2.f);
-	// m_blur_pp.render(_pp_half_rt, _full_rt);
 	_pp_half_rt.copyTo(_pp_full_rt);  // for now. just copy (upscale)
+	m_blur_pp.setSigma(3.f);
+	m_blur_pp.render(_pp_full_rt, _rt);
 
-
-	draw2d(_pp_full_rt, _rt, BlendMode::Add);
+	// add the scattering effect on to the final image
+	// draw2d(_pp_full_rt, _rt, BlendMode::Add);
 
 
 	m_scatter_time = _gl_timer.elapsed<microseconds>();
