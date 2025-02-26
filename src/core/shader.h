@@ -62,13 +62,13 @@ public:
 
 	void setUniform(const std::string_view & name, float value);
 	void setUniform(const std::string_view & name, int value);
-	void setUniform(const std::string_view & name, GLuint value);
-	void setUniform(const std::string_view & name, GLsizei count, const float * values);
-	void setUniform(const std::string_view & name, GLsizei count, const int * values);
-	void setUniform(const std::string_view & name, GLsizei count, const glm::vec2 * vectors);
-	void setUniform(const std::string_view & name, GLsizei count, const glm::vec3 * vectors);
-	void setUniform(const std::string_view & name, GLsizei count, const glm::mat4 * matrices);
-	void setUniform(const std::string_view & name, GLsizei count, const glm::mat2x4 * matrices);
+	void setUniform(const std::string_view & name, unsigned int value);
+	void setUniform(const std::string_view & name, size_t count, const float * values);
+	void setUniform(const std::string_view & name, size_t count, const int * values);
+	void setUniform(const std::string_view & name, size_t count, const glm::vec2 * vectors);
+	void setUniform(const std::string_view & name, size_t count, const glm::vec3 * vectors);
+	void setUniform(const std::string_view & name, size_t count, const glm::mat4 * matrices);
+	void setUniform(const std::string_view & name, size_t count, const glm::mat2x4 * matrices);
 	void setUniform(const std::string_view & name, const std::vector<float> &values);
 	void setUniform(const std::string_view & name, const std::vector<int> &values);
 	void setUniform(const std::string_view & name, const std::vector<glm::vec2> &vectors);
