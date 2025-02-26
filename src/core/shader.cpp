@@ -103,15 +103,29 @@ namespace RGL
         }
 
 		const auto  dir = FileSystem::rootPath() / filepath.parent_path();
-		const auto code = Util::PreprocessShaderSource(Util::LoadFile(filepath), dir);
+		auto code = Util::PreprocessShaderSource(Util::LoadFile(filepath), dir);
 
 		add_name(filepath);
 
 		std::string macros;
 		if(not conditionals.empty())
+		{
 			macros.reserve(conditionals.size() * 16);
-		for(const auto &cond: conditionals)
-			macros.append("#define " + cond + " 1\n");
+			for(const auto &cond: conditionals)
+				macros.append("#define " + cond + " 1\n");
+
+			// move #version statement to 'macros' (it must be first in the concatenated source string)
+			const auto version_at = code.find("#version");
+			if(version_at != std::string::npos)
+			{
+				const auto version_end = code.find('\n', version_at);
+				const auto version = code.substr(version_at, version_end - version_at + 1);
+				code[version_at] = '/';
+				code[version_at + 1] = '/';
+
+				macros.insert(0, version);
+			}
+		}
 
 		const char *shader_sources[2] = {
 			macros.c_str(),
@@ -124,7 +138,6 @@ namespace RGL
 		const auto &[ok, log] = getStatusLog(shaderObject, GL_COMPILE_STATUS);
 		if(not ok)
 		{
-
 			if(not log.empty())
 			{
 				logLineErrors(filepath, log);
