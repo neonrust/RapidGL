@@ -74,10 +74,10 @@ void Blur::computeWeights(float sigma, size_t kernelSize)
 
 		// store in edge-to-center order
 		_weights[kernelSize - idx] = w;
-		sum += 2.f * w; // symmetric
+		sum += 2.f * w; // on either side of the center sample
 	}
 
-	// center pixel last
+	// center pixel last  (last in the array)
 	_weights[kernelSize - 1] = 1.f; // center pixel is always 1 (before normalization); e^0 == 1
 	sum += 1.f;
 
