@@ -41,9 +41,9 @@ Camera::Camera(bool is_ortho)
 {
 }
 
-void Camera::setSize(int width, int height)
+void Camera::setSize(size_t width, size_t height)
 {
-	if(size_t(width) == m_width and size_t(height) == m_height)
+	if(width == m_width and height == m_height)
 		return;
 
 	if(m_is_ortho)
@@ -52,12 +52,12 @@ void Camera::setSize(int width, int height)
 		setPerspective(m_fovy, width, height, m_near, m_far);
 }
 
-void Camera::setPerspective(float fovy, int width, int height, float z_near, float z_far)
+void Camera::setPerspective(float fovy, size_t width, size_t height, float z_near, float z_far)
 {
 	m_projection   = glm::perspectiveFov(glm::radians(fovy), float(width), float(height), z_near, z_far);
 	m_is_ortho     = false;
-	m_width        = size_t(width);
-	m_height       = size_t(height);
+	m_width        = width;
+	m_height       = height;
 	m_near         = z_near;
 	m_far          = z_far;
 	m_fovy         = fovy;

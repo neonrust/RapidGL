@@ -34,10 +34,10 @@ public:
 	}
 
 	Camera(bool is_ortho=false);
-
-
-	void setSize(int width, int height);
-	void setPerspective(float fovy, int width, int height, float z_near, float z_far);
+	
+	
+	void setSize(size_t width, size_t height);
+	void setPerspective(float fovy, size_t width, size_t height, float z_near, float z_far);
 	void setOrtho(float left, float right, float bottom, float top, float z_near, float z_far);
 
 
