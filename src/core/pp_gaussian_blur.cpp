@@ -30,7 +30,7 @@ void Blur::setSigma(float sigma)
 {
 	// build weights for a blur kernel with 'sigma'; set 'u_weights' and 'u_num_weights'
 
-	static constexpr float sigma_kernel_factor = 2.7f;  // maybe 3.0
+	static constexpr float sigma_kernel_factor = 3.f;  // maybe 3.0
 
 	auto kernelSize = size_t(std::floor(sigma_kernel_factor * sigma)); // nice, round approximation
 
