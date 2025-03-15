@@ -130,6 +130,10 @@ void main()
 	vec2 screen_size = vec2(imageSize(u_output_color));
 	pixel_id   = gl_GlobalInvocationID.xy;
 
+	// stagger pixels (chess board pattern) -> cut number of pixels in half
+	pixel_id.x *= 2;
+	pixel_id.x -= (pixel_id.y % 2);
+
 	// skip invocations for pixels outside the screen
 	if(pixel_id.x >= screen_size.x || pixel_id.y >= screen_size.y)
 		return;

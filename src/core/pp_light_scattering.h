@@ -2,6 +2,12 @@
 
 #include "postprocess.h"
 #include "shader.h"
+#include "texture.h"
+
+namespace RGL
+{
+class Camera;
+} // RGL
 
 namespace RGL::PP
 {
@@ -13,6 +19,7 @@ public:
 	operator bool() const override;
 
 	inline Shader &shader() { return _shader; }
+	void setCameraUniforms(const Camera &camera);
 	
 	void render(const RenderTarget::Texture2d &, RenderTarget::Texture2d &out) override;
 
