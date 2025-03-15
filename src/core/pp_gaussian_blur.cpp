@@ -63,13 +63,14 @@ void Blur::computeWeights(float sigma, size_t kernelSize)
 	_weights.resize(kernelSize);
 
 	const float sigma_sq = sigma*sigma;
+	static constexpr float steepocity = 0.5f;  // 0.5 = standard gauss
 
 	auto sum = 0.f;
 
 	for (auto idx = 1u; idx <= kernelSize; idx++)
 	{
 		float x2 = float(idx * idx);
-		float w = std::exp(-0.5f * x2 / sigma_sq); // e^(-0.5x^2/σ^2)
+		float w = std::exp(-steepocity * x2 / sigma_sq); // e^(-0.5x^2/σ^2)
 
 		// store in edge-to-center order
 		_weights[kernelSize - idx] = w;
