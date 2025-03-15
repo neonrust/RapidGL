@@ -125,6 +125,7 @@ bool StaticModel::Load(const std::filesystem::path& filepath)
 
 	/* Load model */
 	Assimp::Importer importer;
+	// TODO: importer.SetIOHandler(compressionLayer);
 	const aiScene* scene = importer.ReadFile(filepath.generic_string(), aiProcess_Triangulate              |
 												 aiProcess_GenSmoothNormals         |
 												 aiProcess_GenUVCoords              |
