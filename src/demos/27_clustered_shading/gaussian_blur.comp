@@ -16,11 +16,6 @@ layout(rgba32f, binding = 1) uniform image2D  u_output_color;
 uniform float u_weights[MAX_SIZE + 1];
 uniform uint u_num_weights; // size of 'u_weights'
 
-const uint MAX_CACHE_SIZE = GROUP_SIZE + MAX_SIZE;
-shared vec4 cache[8 + 2*MAX_CACHE_SIZE];
-
-//const int LOAD = (MAX_CACHE_SIZE + (GROUP_SIZE - 1)) / GROUP_SIZE;
-
 #ifdef HORIZONTAL
 layout(local_size_x = GROUP_SIZE, local_size_y = 1) in;
 #else
@@ -29,88 +24,46 @@ layout(local_size_x = 1, local_size_y = GROUP_SIZE) in;
 
 void main()
 {
-	uint M = u_num_weights - 1;
-	uint N = 2*M + 1;
-	uint cache_size = GROUP_SIZE + 2*M;
-	uint load_size = (cache_size + (GROUP_SIZE - 1)) / GROUP_SIZE;
+	int M = int(u_num_weights - 1); // number of pixels sampled on each side of the target pixel
 
 	ivec2 screen_size = imageSize(u_input_color);
 	uvec2 pixel_id = gl_GlobalInvocationID.xy;
-	ivec2 screen_pos = ivec2(pixel_id) + ivec2(0.5);
+	ivec2 screen_pos = ivec2(pixel_id);
 
-	// vec4 src_pixel = imageLoad(u_input_color, screen_pos);
-	// imageStore(u_output_color, screen_pos, src_pixel.gbra);
-	// return;
-
-	uint origin = uint(gl_WorkGroupID.x) * GROUP_SIZE - M;
-
-#ifdef HORIZONTAL
-	uint screen_limit = screen_size.x;
-#else
-	uint screen_limit = screen_size.y;
-#endif
-
-	for (uint idx = 0; idx < load_size; ++idx)
-	{
-#ifdef HORIZONTAL
-		uint local = pixel_id.x;
-#else
-		uint local = pixel_id.y;
-#endif
-		local = local * load_size + idx;
-
-		if (local < cache_size)
-		{
-			int pc = int(origin) + int(local);
-#ifdef HORIZONTAL
-			ivec2 sample_pos = ivec2(pc, screen_pos.y);
-#else
-			ivec2 sample_pos = ivec2(screen_pos.x, pc);
-#endif
-			if (pc >= 0 && pc < screen_limit)
-				cache[local] = imageLoad(u_input_color, sample_pos);
-		}
-	}
-
-	memoryBarrierShared();
-	barrier();
-
-	if (screen_pos.x >= screen_size.x || screen_pos.y >= screen_size.y)
+	if(pixel_id.x >= screen_size.x || pixel_id.y >= screen_size.y)
 		return;
 
-	vec4 sum = vec4(0);
+  	vec4 sum = vec4(0.0);
 
-	float _weights[MAX_SIZE + 1];
-	for(int idx = 0; idx < MAX_SIZE + 1; ++idx)
-		_weights[idx] = float(idx)/(MAX_SIZE + 1);
-
-	for (int idx = 0; idx < N; ++idx)
-	{
-		ivec2 pos = screen_pos;
+   	// left/below of center pixel
+	for (int offset = -M; offset <= -1; ++offset)
+    {
+		ivec2 pos_offset;
 #ifdef HORIZONTAL
-		pos += ivec2(idx - M, 0);
-		pos.x = clamp(pos.x, 0, screen_size.x - 1);
-		uint local = pos.x - origin;
+		pos_offset = ivec2(offset, 0);
 #else
-		pos += ivec2(0, idx - M);
-		pos.y = clamp(pos.y, 0, screen_size.y - 1);
-		uint local = pos.y - origin;
+		pos_offset = ivec2(0, offset);
+#endif
+        sum += u_weights[M + offset + 1] * imageLoad(u_input_color, max(screen_pos + pos_offset, ivec2(0)));
+    }
+
+   	// center pixel
+  	sum += u_weights[M] * imageLoad(u_input_color, screen_pos);
+
+	ivec2 max_pos = screen_size - ivec2(-1);
+
+	// right/above of center pixel
+   	for (int offset = 1; offset <= M; ++offset)
+    {
+		ivec2 pos_offset;
+#ifdef HORIZONTAL
+		pos_offset = ivec2(offset, 0);
+#else
+		pos_offset = ivec2(0, offset);
 #endif
 
-		float weight;
-		if(idx < u_num_weights)
-			weight = _weights[idx];
-		else
-			weight = _weights[2*u_num_weights - idx];
-
-		sum += weight * cache[local];
+        sum += u_weights[M - offset + 1] * imageLoad(u_input_color, min(screen_pos + pos_offset, max_pos));
 	}
 
-#ifdef HORIZONTAL
-	sum = imageLoad(u_input_color, screen_pos) + vec4(u_weights[pixel_id.x % u_num_weights]);
-#else
-	sum = imageLoad(u_input_color, screen_pos) + vec4(u_weights[pixel_id.y % u_num_weights]);
-#endif
-
-	imageStore(u_output_color, screen_pos, sum);
+    imageStore(u_output_color, screen_pos, sum);
 }
