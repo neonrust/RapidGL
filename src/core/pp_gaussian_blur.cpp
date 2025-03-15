@@ -34,6 +34,9 @@ void Blur::setSigma(float sigma)
 
 	auto kernelSize = size_t(std::floor(sigma_kernel_factor * sigma)); // nice, round approximation
 
+	if(not kernelSize)
+		kernelSize = 1;
+
 	if(kernelSize > MAX_WEIGHTS)
 	{
 		auto new_sigma = float(MAX_WEIGHTS) / sigma_kernel_factor;
