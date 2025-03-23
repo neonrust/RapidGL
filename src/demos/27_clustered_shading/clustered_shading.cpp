@@ -23,8 +23,8 @@ using namespace std::literals;
 #define IMAGE_UNIT_WRITE 0
 
 
-static float s_spot_inner_angle = 3.f;
 static float s_spot_outer_angle = 30.f;
+static float s_spot_intensity = 100.f;
 
 
 glm::mat3 make_common_space_from_direction(const glm::vec3 &direction)
@@ -80,8 +80,8 @@ ClusteredShading::ClusteredShading() :
 	m_bloom_enabled       (false),
 	m_fog_density         (0.1f), // [ 0, 0.5 ]   nice-ish value: 0.015
 	m_fog_falloff_blend   (0.05f),
-	m_ray_march_stride    (1.f),
-	_ray_march_noise      (2)
+	m_ray_march_stride    (.1f),
+	_ray_march_noise      (1)
 {
 }
 
@@ -338,10 +338,11 @@ void ClusteredShading::init_app()
 	_rt.SetWrapping (RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
 	_rt.SetWrapping (RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
 
-	_pp_half_rt.create(Window::width()/2, Window::height()/2, RGL::RenderTarget::ColorFloat);
-	_pp_half_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LINEAR_MIP_NEAREST);
-	_pp_half_rt.SetWrapping (RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
-	_pp_half_rt.SetWrapping (RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
+	static constexpr size_t low_scale = 4;
+	_pp_low_rt.create(Window::width()/low_scale, Window::height()/low_scale, RGL::RenderTarget::ColorFloat);
+	_pp_low_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LINEAR_MIP_NEAREST);
+	_pp_low_rt.SetWrapping (RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
+	_pp_low_rt.SetWrapping (RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
 
 	_pp_full_rt.create(Window::width(), Window::height(), RGL::RenderTarget::ColorFloat);
 	_pp_full_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LINEAR_MIP_NEAREST);
@@ -695,6 +696,7 @@ void ClusteredShading::init_app()
 
 		std::exit(EXIT_SUCCESS);
 	}
+
 }
 
 void ClusteredShading::calculateShadingClusterGrid()
@@ -770,22 +772,33 @@ void ClusteredShading::input()
 {
     /* Close the application when Esc is released. */
 	if (Input::wasKeyPressed(KeyCode::Escape))
-    {
         stop();
-    }
 
 	if(Input::isKeyDown(KeyCode::RightArrow))
-		s_spot_outer_angle = glm::clamp(s_spot_outer_angle + 0.3f, 0.f, 90.f);
+		s_spot_outer_angle = std::min(s_spot_outer_angle + 0.3f, 89.9f);
 	else if(Input::isKeyDown(KeyCode::LeftArrow))
-		s_spot_outer_angle = glm::clamp(s_spot_outer_angle - 0.3f, 0.f, 90.f);
+		s_spot_outer_angle = std::max(s_spot_outer_angle - 0.3f, 0.1f);
 
 	if(Input::isKeyDown(KeyCode::UpArrow))
-		s_spot_inner_angle = glm::clamp(s_spot_inner_angle + 0.3f, 0.f, 90.f);
+		s_spot_intensity = std::min(s_spot_intensity + 5.f, 5000.0f);
 	else if(Input::isKeyDown(KeyCode::DownArrow))
-		s_spot_inner_angle = glm::clamp(s_spot_inner_angle - 0.3f, 0.f, 90.f);
+		s_spot_intensity = std::max(s_spot_intensity - 5.f, 10.f);
 
-	if(s_spot_inner_angle > s_spot_outer_angle)
-		s_spot_inner_angle = s_spot_outer_angle;
+	if(Input::isKeyDown(KeyCode::PageDown))
+	{
+		m_ray_march_stride = std::min(m_ray_march_stride + 0.1f, 2.f);
+		std::printf("ray_march_stride: %.1f\n", m_ray_march_stride);
+	}
+	else if(Input::isKeyDown(KeyCode::PageUp))
+	{
+		m_ray_march_stride = std::max(m_ray_march_stride - 0.1f, 0.1f);
+		std::printf("ray_march_stride: %.1f\n", m_ray_march_stride);
+	}
+
+	if(Input::isKeyDown(KeyCode::Equals))
+		m_camera_fov = std::min(m_camera_fov + 0.5f, 140.f);
+	else if(Input::isKeyDown(KeyCode::Minus))
+		m_camera_fov = std::max(m_camera_fov - 0.5f, 3.f);
 
 	if(Input::wasKeyPressed(KeyCode::N))
 	{
@@ -840,8 +853,13 @@ void ClusteredShading::update(double delta_time)
 	// static float     rotation_speed = 1;
 	// static float     time_accum     = 0;
 
-	m_spot_lights[0].outer_angle = glm::radians(s_spot_outer_angle);
-	m_spot_lights[0].inner_angle = glm::radians(s_spot_inner_angle);
+
+	for(auto &spot: m_spot_lights)
+	{
+		spot.outer_angle = glm::radians(s_spot_outer_angle);
+		spot.point.base.intensity = s_spot_intensity;
+	}
+
 
     if (m_animate_lights)
     {
@@ -874,7 +892,7 @@ void ClusteredShading::update(double delta_time)
 		// glDispatchCompute(GLuint(glm::ceil(float(max_lights_count) / 1024.f)), 1, 1);
   //       glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-		UpdateLightsSSBOs();
+		// UpdateLightsSSBOs();
 	}
 	UpdateLightsSSBOs();
 
@@ -975,14 +993,14 @@ void ClusteredShading::GeneratePointLights()
 		.radius = 10,
 	});
 
-	// m_point_lights.push_back({
-	// 	.base = {
-	// 		.color = { 1.0f, 0.1f, 0.05f },
-	// 		.intensity = 100
-	// 	},
-	// 	.position = { 0, 2.f, 10 },
-	// 	.radius = 10,
-	// });
+	m_point_lights.push_back({
+		.base = {
+			.color = { 1.0f, 0.1f, 0.05f },
+			.intensity = 100
+		},
+		.position = { 0, 2.f, 10 },
+		.radius = 10,
+	});
 	return;
 
 	m_point_lights.resize(m_point_lights_count);
@@ -1017,120 +1035,121 @@ void ClusteredShading::GenerateSpotLights()
 	m_spot_lights.push_back({
 		.point = {
 			.base = {
-				.color = { 1.0f, 0.1f, 0.5f },
-				.intensity = 5000
+				// .color = { 10f, 0.1f, 0.5f },
+				.color = { 1.f, 1.f, 1.f },
+				.intensity = 3000
 			},
 			.position = { -16, 3, -8 },
 			.radius = 35
 		},
 		.direction = { 0, 0, 1 },
-		.inner_angle = glm::radians(s_spot_inner_angle),//5.f),
-		.outer_angle = glm::radians(30.f)
+		.inner_angle = 0.f,
+		.outer_angle = glm::radians(30.f),
 	});
 	m_spot_lights.push_back({
 		.point = {
 			.base = {
-				.color = { 1.0f, 0.1f, 0.1f },
-				.intensity = 5000
+				.color = { 1.f, 0.1f, 0.1f },
+				.intensity = 300
 			},
 			.position = { -12, 3, -8 },
 			.radius = 35
 		},
 		.direction = { 0, 0, 1 },
-		.inner_angle = glm::radians(s_spot_inner_angle),//5.f),
+		.inner_angle = 0.f,
 		.outer_angle = glm::radians(30.f)
 	});
 	m_spot_lights.push_back({
 		.point = {
 			.base = {
 				.color = { 1.f, 0.6f, 0.1f },
-				.intensity = 5000
+				.intensity = 300
 			},
 			.position = { -8, 3, -8 },
 			.radius = 35
 		},
 		.direction = { 0, 0, 1 },
-		.inner_angle = glm::radians(s_spot_inner_angle),//5.f),
+		.inner_angle = 0.f,
 		.outer_angle = glm::radians(30.f)
 	});
 	m_spot_lights.push_back({
 		.point = {
 			.base = {
-				.color = { 1.0f, 1.0f, 0.f },
-				.intensity = 5000
+				.color = { 1.f, 1.f, 0.f },
+				.intensity = 300
 			},
 			.position = { -4, 3, -8 },
 			.radius = 35
 		},
 		.direction = { 0, 0, 1 },
-		.inner_angle = glm::radians(s_spot_inner_angle),//5.f),
+		.inner_angle = 0.f,
 		.outer_angle = glm::radians(30.f)
 	});
 
 	m_spot_lights.push_back({
 		.point = {
 			.base = {
-				.color = { 1.0f, 1.0f, 1.0f },
-				.intensity = 5000
+				.color = { 1.f, 1.f, 1.0f },
+				.intensity = 300
 			},
 			.position = { 0, 3, -8 },
 			.radius = 35
 		},
 		.direction = { 0, 0, 1 },
-		.inner_angle = glm::radians(s_spot_inner_angle),//5.f),
+		.inner_angle = 0.f,
 		.outer_angle = glm::radians(30.f)
 	});
 
 	m_spot_lights.push_back({
 		.point = {
 			.base = {
-				.color = { 0.5f, 1.f, 0.8f },
-				.intensity = 5000
+				.color = { 0.5f, 1.f, 0.f },
+				.intensity = 300
 			},
 			.position = { 4, 3, -8 },
 			.radius = 35
 		},
 		.direction = { 0, 0, 1 },
-		.inner_angle = glm::radians(s_spot_inner_angle),//5.f),
+		.inner_angle = 0.f,
 		.outer_angle = glm::radians(30.f)
 	});
 	m_spot_lights.push_back({
 		.point = {
 			.base = {
 				.color = { 0.3f, 1.f, 0.6f },
-				.intensity = 5000
+				.intensity = 300
 			},
 			.position = { 8, 3, -8 },
 			.radius = 35
 		},
 		.direction = { 0, 0, 1 },
-		.inner_angle = glm::radians(s_spot_inner_angle),//5.f),
+		.inner_angle = 0.f,
 		.outer_angle = glm::radians(30.f)
 	});
 	m_spot_lights.push_back({
 		.point = {
 			.base = {
 				.color = { 0.1f, 1.f, 0.3f },
-				.intensity = 5000
+				.intensity = 300
 			},
 			.position = { 12, 3, -8 },
 			.radius = 35
 		},
 		.direction = { 0, 0, 1 },
-		.inner_angle = glm::radians(s_spot_inner_angle),//5.f),
+		.inner_angle = 0.f,
 		.outer_angle = glm::radians(30.f)
 	});
 	m_spot_lights.push_back({
 		.point = {
 			.base = {
 				.color = { 0.1f, 0.8f, 1.f },
-				.intensity = 5000
+				.intensity = 300
 			},
 			.position = { 16, 3, -8 },
 			.radius = 35
 		},
 		.direction = { 0, 0, 1 },
-		.inner_angle = glm::radians(s_spot_inner_angle),//5.f),
+		.inner_angle = 0.f,
 		.outer_angle = glm::radians(30.f)
 	});
 
@@ -1373,8 +1392,7 @@ void ClusteredShading::render()
 	// 2. Blit depth info to our main render target
 	m_depth_pass_rt.copyTo(_rt, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 
-	m_depth_time = _gl_timer.elapsed<microseconds>();
-	_gl_timer.start();
+	m_depth_time = _gl_timer.elapsed<microseconds>(true);
 
 
 	// TODO: generate SSAO (texture)
@@ -1401,8 +1419,7 @@ void ClusteredShading::render()
 					  1);
     glMemoryBarrier  (GL_SHADER_STORAGE_BARRIER_BIT);
 
-	m_cluster_time1 = _gl_timer.elapsed<microseconds>();
-	_gl_timer.start();
+	m_cluster_time1 = _gl_timer.elapsed<microseconds>(true);
 
 
 	// 4. Find active clusters and update the indirect dispatch arguments buffer
@@ -1416,8 +1433,7 @@ void ClusteredShading::render()
     glDispatchCompute(1, 1, 1);
     glMemoryBarrier  (GL_SHADER_STORAGE_BARRIER_BIT);
 
-	m_cluster_time2 = _gl_timer.elapsed<microseconds>();
-	_gl_timer.start();
+	m_cluster_time2 = _gl_timer.elapsed<microseconds>(true);
 
 
 	// 5. Assign lights to clusters (cull lights)
@@ -1435,8 +1451,7 @@ void ClusteredShading::render()
     glDispatchComputeIndirect(0);
     glMemoryBarrier          (GL_SHADER_STORAGE_BARRIER_BIT);
 
-	m_cluster_time3 = _gl_timer.elapsed<microseconds>();
-	_gl_timer.start();
+	m_cluster_time3 = _gl_timer.elapsed<microseconds>(true);
 
 
     // 6. Render lighting
@@ -1452,8 +1467,7 @@ void ClusteredShading::render()
 		glDrawArrays(GL_TRIANGLES, 0, GLsizei(6 * m_area_lights.size()));
 	}
 
-	m_lighting_time = _gl_timer.elapsed<microseconds>();
-	_gl_timer.start();
+	m_lighting_time = _gl_timer.elapsed<microseconds>(true);
 
 
     // 8. Render skybox
@@ -1467,8 +1481,7 @@ void ClusteredShading::render()
     glBindVertexArray(m_skybox_vao);
     glDrawArrays     (GL_TRIANGLES, 0, 36);
 
-	m_skybox_time = _gl_timer.elapsed<microseconds>();
-	_gl_timer.start();
+	m_skybox_time = _gl_timer.elapsed<microseconds>(true);
 
 	// TODO: Render atmospheric/fog light scattering (i.e. volumetric lights)
 	//    - lights culled into screen tiles (i.e. only 2d)
@@ -1486,17 +1499,21 @@ void ClusteredShading::render()
 
 	m_depth_pass_rt.bindTextureSampler(2);
 
-	m_scattering_pp.render(_rt, _pp_half_rt);  // '_rt' actually isn't used but the API expects an argument
+	m_scattering_pp.render(_rt, _pp_low_rt);  // '_rt' actually isn't used but the API expects an argument
 
-	_pp_half_rt.copyTo(_pp_full_rt);  // for now. just copy (upscale)
-	m_blur_pp.setSigma(3.f);
-	m_blur_pp.render(_pp_full_rt, _rt);
+	m_scatter_time = _gl_timer.elapsed<microseconds>(true);
+
+	_pp_low_rt.copyTo(_pp_full_rt);  // first copy (and upscale)
+#if 1
+	m_blur_pp.setSigma(3.f);//s_blur_sigma);
+	m_blur_pp.render(_pp_full_rt, _pp_full_rt);
+	// m_blur_pp.render(_pp_full_rt, _pp_full_rt);
+#endif
 
 	// add the scattering effect on to the final image
-	// draw2d(_pp_full_rt, _rt, BlendMode::Add);
+	draw2d(_pp_full_rt, _rt);//, BlendMode::Add);
+	m_pp_blur_time = _gl_timer.elapsed<microseconds>();
 
-
-	m_scatter_time = _gl_timer.elapsed<microseconds>();
 
 
 	// TODO: compute average luminance of rendered image
@@ -1983,6 +2000,7 @@ void ClusteredShading::render_gui()
 	ImGui::Text("    Skybox: %4ld µs", m_skybox_time.count());
 	// ImGui::Text("        PP: %3ld µs", m_pp_time.count());
 	ImGui::Text("Scattering: %4ld µs", m_scatter_time.count());
+	ImGui::Text("   PP blur: %4ld µs", m_pp_blur_time.count());
 
     ImGui::Begin("Settings");
     {

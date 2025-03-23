@@ -270,7 +270,7 @@ private:
 
     /* Tonemapping variables */
 	RGL::RenderTarget::Texture2d _rt;
-	RGL::RenderTarget::Texture2d _pp_half_rt;
+	RGL::RenderTarget::Texture2d _pp_low_rt;
 	RGL::RenderTarget::Texture2d _pp_full_rt;
 	RGL::PP::Tonemapping m_tmo_pp;
 	float m_exposure;
@@ -315,6 +315,7 @@ private:
 	std::chrono::microseconds m_lighting_time;
 	std::chrono::microseconds m_skybox_time;
 	std::chrono::microseconds m_scatter_time;
+	std::chrono::microseconds m_pp_blur_time;
 	// std::chrono::microseconds m_pp_time;
 
 	RGL::GLTimer _gl_timer;
