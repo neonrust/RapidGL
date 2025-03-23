@@ -59,6 +59,7 @@ struct Texture2d : public RGL::Texture
 	void copyTo(Texture2d &dest, GLbitfield mask=GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GLenum filter=GL_LINEAR) const;
 	void copyFrom(const Texture2d &source, GLbitfield mask=GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GLenum filter=GL_LINEAR);
 
+	void clear();
 
 private:
 	uint8_t calculateMipmapLevels();

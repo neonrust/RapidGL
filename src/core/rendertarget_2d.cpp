@@ -126,4 +126,19 @@ void Texture2d::copyFrom(const Texture2d &source, GLbitfield mask, GLenum filter
 	source.copyTo(*this, mask, filter);
 }
 
+void Texture2d::clear()
+{
+	// TODO
+	if(_has_color)
+	{
+		const GLfloat clearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f}; // RGBA
+		glClearNamedFramebufferfv(_fbo_id, GL_COLOR, 0, clearColor);
+	}
+	if(_has_depth)
+	{
+		const GLfloat clearDepth = 1.0f;
+		glClearNamedFramebufferfv(_fbo_id, GL_DEPTH, 0, &clearDepth);
+	}
+}
+
 } // RGL::RenderTarget
