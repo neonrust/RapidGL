@@ -29,6 +29,7 @@ void LightScattering::setCameraUniforms(const Camera &camera)
 
 void LightScattering::render(const RenderTarget::Texture2d &, RenderTarget::Texture2d &out)
 {
+	out.clear();
 	out.bindImage(1, RenderTarget::Write);
 
 	_shader.bind();
