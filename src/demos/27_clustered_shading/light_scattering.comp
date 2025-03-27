@@ -61,8 +61,6 @@ struct SphericalCone
 	Sphere sphere;
 	vec3 axis;
 	float angle;   // radians
-	float cap_sphere_t;
-	float cap_sphere_radius;
 };
 
 struct RayResult
@@ -88,7 +86,6 @@ float getSpotAngleAttenuation(vec3 to_light, vec3 spot_axis, float outer_angle, 
 
 vec3 scatterPointLight(Ray ray, PointLight light);
 vec3 scatterSpotLight(Ray ray, SpotLight light);
-bool isPointInside(vec3 point, SphericalCone cone);
 
 bool castRay(Ray ray, Sphere sphere, out RayResult result);
 bool castRay(Ray ray, SphericalCone cone, out RayResult result);
@@ -725,52 +722,6 @@ float getSpotAngleAttenuation(vec3 to_light, vec3 spot_dir, float outer_angle, f
     return attenuation * attenuation;
 }
 
-/*bool isPointInside(vec3 point, SphericalCone cone)
-{
-	//    point
-	//   /
-	//  C--------| axis
-	//           ^ radius
-
-	vec3 to_center = point - cone.sphere.center;
-	float len_sq = dot(to_center, to_center);
-
-	// outside the entire sphere?
-	if(len_sq > (cone.sphere.radius*cone.sphere.radius + 1e-1))
-		return false;
-
-	// cos of the angle between the vector and the cone's axis
-	float cos_theta = dot(to_center, cone.axis) / sqrt(len_sq);
-
-	// compare with the cosine of the cone's half-angle (i.e. must be less than 90 degrees)
-	// (larger cos value means sharper angle)
-	return cos_theta >= cos(cone.angle);
-}
-*/
-// Returns true if pos is inside the union volume (inside the cone or inside the sphere).
-bool isPointInside(vec3 pos, SphericalCone cone)
-{
-	vec3 S = cone.sphere.center + cone.axis*cone.cap_sphere_t;
-	float R = cone.cap_sphere_radius;
-
-	// Test if inside sphere:
-	vec3 pos_to_sphere = pos - S;
-	if(dot(pos_to_sphere, pos_to_sphere) <= R*R)
-	    return true;
-
-    // Test if inside cone:
-    float x = dot(pos - cone.sphere.center, cone.axis);
-    if(x >= 0 && x <= cone.sphere.radius)
-    {
-    	vec3 v = pos - cone.sphere.center - x * cone.axis;
-        float r2 = dot(v, v);
-        float tan_theta = tan(cone.angle);
-        if(r2 <= x * x * tan_theta * tan_theta)
-            return true;
-    }
-    return false;
-}
-
 float rayDistanceSq(Ray ray, vec3 point)
 {
     vec3 v = cross(point - ray.start, ray.direction);
@@ -949,121 +900,4 @@ Sphere computeConeCapSphere(SphericalCone cone)
     sphere.center = cone.sphere.center + cone.axis * T;
     sphere.radius = R;
     return sphere;
-}
-
-
-bool definitelyMiss(Ray ray, SphericalCone cone)
-{
-	vec3 boundingSphereCenter = cone.sphere.center;
-
-	// bounding sphere rejection
-
-    // Compute vector from ray origin to bounding sphere center.
-    vec3 L = boundingSphereCenter - ray.start;
-    float tca = dot(L, ray.direction);
-    // If tca is negative, the sphere is behind the ray.
-    if(tca < 0)
-        return true; // early reject
-
-    float boundingSphereRadius = cone.sphere.radius;
-
-    // Compute the squared distance from the center to the ray.
-    float d2 = dot(L, L) - tca * tca;
-    // If d2 is larger than the squared radius, the ray misses the sphere.
-    if (d2 > boundingSphereRadius * boundingSphereRadius)
-        return true;
-
-
-    // directional rejection
-
-    // If the ray is moving away from the volume (using a point inside the union, say the cone apex or sphere center),
-    // then the dot product of the ray direction with (referencePoint - rayOrigin) should be positive.
-    vec3 referencePoint = (boundingSphereCenter - cone.sphere.center) / 2;
-    return dot(referencePoint - ray.start, ray.direction) < 0;
-}
-
-bool castRay2(Ray ray, SphericalCone cone, out RayResult result)
-{
-	bool inside = isPointInside(ray.start, cone);
-
-	if(! inside && definitelyMiss(ray, cone))
-		return false;
-
-    // Get candidate intersections from cone and sphere tests.
-    RayResult cone_result;
-    bool cone_hit = castRay(ray, cone, cone_result);
-    Sphere sphere;
-    sphere.center = cone.sphere.center + cone.axis * cone.cap_sphere_t;
-    sphere.radius = cone.cap_sphere_radius;
-    RayResult sphere_result;
-    bool sphere_hit = castRay(ray, sphere, sphere_result);
-
-    float theta = cone.angle;
-	float cos_theta = cos(theta);
-
-    // The divider along the axis: sphere intersections are only valid if they lie
-    // beyond this distance (measured from the apex along D).
-    float divider = cone.cap_sphere_t * cos_theta * cos_theta;
-
-    // We will collect valid candidate t values, both shapes
-    float candidates[4];
-    int count = 0;
-
-    // Test the cone intersections.
-    // For each candidate from the cone, check if the corresponding point is inside the cone.
-    for (int i = 0; i < 2; i++)
-    {
-        float t = (i == 0) ? cone_result.dist_enter : cone_result.dist_exit;
-        if(t > 0)
-        {
-            vec3 P = rayPoint(ray, t);
-            // Compute projection along the cone axis.
-            float x = dot(P - cone.sphere.center, cone.axis);
-            // Radial distance from the axis.
-            float r = length(P - cone.sphere.center - x * cone.axis);
-            // The cone interior: 0 <= x <= L and r <= x * tan(theta)
-            if (x >= 0 && x <= cone.sphere.radius && r <= x * tan(theta))
-                candidates[count++] = t;
-        }
-    }
-
-    // Test the sphere intersections.
-    // Only consider sphere intersections that lie on the "cap" side.
-    for (int i = 0; i < 2; i++)
-    {
-        float t = (i == 0) ? sphere_result.dist_enter : sphere_result.dist_exit;
-        if (t > 0)
-        {
-            vec3 P = rayPoint(ray, t);
-            // Check that P is inside the sphere.
-            if (length(P - sphere.center) <= sphere.radius)
-            {
-                // Compute the distance along the cone axis.
-                float x = dot(P - cone.sphere.center, cone.axis);
-                // Only accept if P is on the cap side.
-                if (x > divider)
-                    candidates[count++] = t;
-            }
-        }
-    }
-
-    // If no candidate intersections are valid, return a miss.
-    if (count == 0)
-        return false;
-
-    // Determine the union's entry and exit distances.
-    // If the ray starts inside the volume, entry should be 0.
-	result.dist_enter = inside ? 0 : 1e20;
-    result.dist_exit  = -1e20;
-    for(int i = 0; i < count; i++)
-    {
-        if(!inside)
-            result.dist_enter = min(result.dist_enter, candidates[i]);
-        result.dist_exit = max(result.dist_exit, candidates[i]);
-    }
-
-	result.p_enter = rayPoint(ray, result.dist_enter);
-	result.p_exit = rayPoint(ray, result.dist_exit);
-
-    return true;
 }
