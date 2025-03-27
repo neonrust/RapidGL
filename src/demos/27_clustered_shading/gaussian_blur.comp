@@ -5,7 +5,9 @@
 // This source contains CONDITIONALcode:
 //    if HORIZONTAL is defined includes code for the horizontal pass
 //    if not defined, includes code for the vertical pass
-// These must be processed by the host application; it's not supported by GLSL.
+//    Define NUM_WEIGHTS N, depending on kernel size.
+//    Define WEIGHTS_(3|4|6|9) should be defined, depending on kernel size.
+//    Define SAMPLES_(10|15|20|30) should be defined, depending on filter sigma.
 
 const uint GROUP_SIZE = 64;
 const uint MAX_SIZE = 32;
@@ -13,8 +15,56 @@ const uint MAX_SIZE = 32;
 layout(rgba32f, binding = 0) uniform image2D  u_input_color;
 layout(rgba32f, binding = 1) uniform image2D  u_output_color;
 
-uniform float u_weights[MAX_SIZE + 1];
-uniform uint u_num_weights; // size of 'u_weights'
+const int num_weights = NUM_WEIGHTS;
+
+const float weights[num_weights] = {
+#ifdef WEIGHTS_9  // 3.0 pixels
+	0.00147945,
+	0.00380424,
+	0.00875346,
+	0.0180234,
+	0.0332077,
+	0.0547503,
+	0.0807753,
+	0.106639,
+	0.133176
+#endif
+#ifdef WEIGHTS_6  // 2.0 pixels
+	0.0022182,
+	0.00877314,
+	0.0270232,
+	0.0648252,
+	0.121109,
+	0.199676
+#endif
+#ifdef WEIGHTS_4  // 1.5 pixels
+	0.00761442,
+	0.036075,
+	0.109586,
+	0.26656
+#endif
+#ifdef WEIGHTS_3  // 1.0 pixel
+	0.00443305,
+	0.0540056,
+	0.39905
+#endif
+};
+
+#ifdef HORIZONTAL
+const ivec2 offset_base = ivec2(1, 0);
+#else
+const ivec2 offset_base = ivec2(0, 1);
+#endif
+
+const ivec2 off_1 = offset_base*1;
+const ivec2 off_2 = offset_base*2;
+const ivec2 off_3 = offset_base*3;
+const ivec2 off_4 = offset_base*4;
+const ivec2 off_5 = offset_base*5;
+const ivec2 off_6 = offset_base*6;
+const ivec2 off_7 = offset_base*7;
+const ivec2 off_8 = offset_base*8;
+
 
 #ifdef HORIZONTAL
 layout(local_size_x = GROUP_SIZE, local_size_y = 1) in;
@@ -24,7 +74,7 @@ layout(local_size_x = 1, local_size_y = GROUP_SIZE) in;
 
 void main()
 {
-	int M = int(u_num_weights - 1); // number of pixels sampled on each side of the target pixel
+	int M = num_weights - 1; // number of pixels sampled on each side of the target pixel
 
 	ivec2 screen_size = imageSize(u_input_color);
 	uvec2 pixel_id = gl_GlobalInvocationID.xy;
@@ -33,37 +83,44 @@ void main()
 	if(pixel_id.x >= screen_size.x || pixel_id.y >= screen_size.y)
 		return;
 
-  	vec4 sum = vec4(0.0);
-
-   	// left/below of center pixel
-	for (int offset = -M; offset <= -1; ++offset)
-    {
-		ivec2 pos_offset;
-#ifdef HORIZONTAL
-		pos_offset = ivec2(offset, 0);
-#else
-		pos_offset = ivec2(0, offset);
-#endif
-        sum += u_weights[M + offset + 1] * imageLoad(u_input_color, max(screen_pos + pos_offset, ivec2(0)));
-    }
-
-   	// center pixel
-  	sum += u_weights[M] * imageLoad(u_input_color, screen_pos);
-
+	ivec2 min_pos = ivec2(0);
 	ivec2 max_pos = screen_size - ivec2(-1);
 
-	// right/above of center pixel
-   	for (int offset = 1; offset <= M; ++offset)
-    {
-		ivec2 pos_offset;
-#ifdef HORIZONTAL
-		pos_offset = ivec2(offset, 0);
-#else
-		pos_offset = ivec2(0, offset);
-#endif
+	vec4 sum = vec4(0);
 
-        sum += u_weights[M - offset + 1] * imageLoad(u_input_color, min(screen_pos + pos_offset, max_pos));
-	}
+#ifdef SAMPLES_30
+	sum += weights[M - 8] * imageLoad(u_input_color, max(screen_pos - off_8, min_pos));
+	sum += weights[M - 7] * imageLoad(u_input_color, max(screen_pos - off_7, min_pos));
+	sum += weights[M - 6] * imageLoad(u_input_color, max(screen_pos - off_6, min_pos));
+#endif
+#ifdef SAMPLES_20
+	sum += weights[M - 5] * imageLoad(u_input_color, max(screen_pos - off_5, min_pos));
+	sum += weights[M - 4] * imageLoad(u_input_color, max(screen_pos - off_4, min_pos));
+#endif
+#ifdef SAMPLES_15
+	sum += weights[M - 3] * imageLoad(u_input_color, max(screen_pos - off_3, min_pos));
+#endif
+#ifdef SAMPLES_10
+	sum += weights[M - 2] * imageLoad(u_input_color, max(screen_pos - off_2, min_pos));
+	sum += weights[M - 1] * imageLoad(u_input_color, max(screen_pos - off_1, min_pos));
+
+	sum += weights[M - 0] * imageLoad(u_input_color, screen_pos);
+
+	sum += weights[M - 1] * imageLoad(u_input_color, min(screen_pos + off_1, max_pos));
+	sum += weights[M - 2] * imageLoad(u_input_color, min(screen_pos + off_2, max_pos));
+#endif
+#ifdef SAMPLES_15
+	sum += weights[M - 3] * imageLoad(u_input_color, min(screen_pos + off_3, max_pos));
+#endif
+#ifdef SAMPLES_20
+	sum += weights[M - 4] * imageLoad(u_input_color, min(screen_pos + off_4, max_pos));
+	sum += weights[M - 5] * imageLoad(u_input_color, min(screen_pos + off_5, max_pos));
+#endif
+#ifdef SAMPLES_30
+	sum += weights[M - 6] * imageLoad(u_input_color, min(screen_pos + off_6, max_pos));
+	sum += weights[M - 7] * imageLoad(u_input_color, min(screen_pos + off_7, max_pos));
+	sum += weights[M - 8] * imageLoad(u_input_color, min(screen_pos + off_8, max_pos));
+#endif
 
     imageStore(u_output_color, screen_pos, sum);
 }

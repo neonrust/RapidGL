@@ -2,8 +2,6 @@
 #include "core_app.h"
 
 #include "camera.h"
-#include "pp_light_scattering.h"
-#include "pp_tonemapping.h"
 #include "ssbo.h"
 #include "static_model.h"
 #include "shader.h"
@@ -12,7 +10,9 @@
 #include "rendertarget_cube.h"
 #include "GLTimer.h"
 #include "pp_bloom.h"
-#include "pp_gaussian_blur.h"
+#include "pp_gaussian_blur_fixed.h"
+#include "pp_light_scattering.h"
+#include "pp_tonemapping.h"
 
 #include <memory>
 #include <vector>
@@ -292,7 +292,7 @@ private:
     GLuint m_skybox_vao, m_skybox_vbo;
 
 	RGL::PP::Bloom m_bloom_pp;
-	RGL::PP::Blur m_blur_pp;
+	RGL::PP::BlurFixed<3.f> m_blur3_pp;
 
 	seconds_f _running_time { 0 };
 

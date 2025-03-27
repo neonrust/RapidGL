@@ -1,0 +1,69 @@
+#version 460 core
+
+// https://lisyarus.github.io/blog/posts/compute-blur.html
+//
+// This source contains CONDITIONALcode:
+//    if HORIZONTAL is defined includes code for the horizontal pass
+//    if not defined, includes code for the vertical pass
+// These must be processed by the host application; it's not supported by GLSL.
+
+const uint GROUP_SIZE = 64;
+const uint MAX_SIZE = 32;
+
+layout(rgba32f, binding = 0) uniform image2D  u_input_color;
+layout(rgba32f, binding = 1) uniform image2D  u_output_color;
+
+uniform float u_weights[MAX_SIZE + 1];
+uniform uint u_num_weights; // size of 'u_weights'
+
+#ifdef HORIZONTAL
+layout(local_size_x = GROUP_SIZE, local_size_y = 1) in;
+#else
+layout(local_size_x = 1, local_size_y = GROUP_SIZE) in;
+#endif
+
+void main()
+{
+	int M = int(u_num_weights - 1); // number of pixels sampled on each side of the target pixel
+
+	ivec2 screen_size = imageSize(u_input_color);
+	uvec2 pixel_id = gl_GlobalInvocationID.xy;
+	ivec2 screen_pos = ivec2(pixel_id);
+
+	if(pixel_id.x >= screen_size.x || pixel_id.y >= screen_size.y)
+		return;
+
+  	vec4 sum = vec4(0.0);
+
+   	// left/below of center pixel
+	for (int offset = -M; offset <= -1; ++offset)
+    {
+		ivec2 pos_offset;
+#ifdef HORIZONTAL
+		pos_offset = ivec2(offset, 0);
+#else
+		pos_offset = ivec2(0, offset);
+#endif
+        sum += u_weights[M + offset + 1] * imageLoad(u_input_color, max(screen_pos + pos_offset, ivec2(0)));
+    }
+
+   	// center pixel
+  	sum += u_weights[M] * imageLoad(u_input_color, screen_pos);
+
+	ivec2 max_pos = screen_size - ivec2(-1);
+
+	// right/above of center pixel
+   	for (int offset = 1; offset <= M; ++offset)
+    {
+		ivec2 pos_offset;
+#ifdef HORIZONTAL
+		pos_offset = ivec2(offset, 0);
+#else
+		pos_offset = ivec2(0, offset);
+#endif
+
+        sum += u_weights[M - offset + 1] * imageLoad(u_input_color, min(screen_pos + pos_offset, max_pos));
+	}
+
+    imageStore(u_output_color, screen_pos, sum);
+}

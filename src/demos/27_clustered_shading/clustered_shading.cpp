@@ -319,8 +319,8 @@ void ClusteredShading::init_app()
 	m_scattering_pp.create();
 	assert(m_scattering_pp);
 
-	m_blur_pp.create(Window::width(), Window::height());
-	assert(m_blur_pp);
+	m_blur3_pp.create(Window::width(), Window::height());
+	assert(m_blur3_pp);
 
 	m_line_draw_shader = std::make_shared<Shader>(dir + "line_draw.vert", dir + "line_draw.frag");
 	m_line_draw_shader->link();
@@ -1505,9 +1505,8 @@ void ClusteredShading::render()
 
 	_pp_low_rt.copyTo(_pp_full_rt);  // first copy (and upscale)
 #if 1
-	m_blur_pp.setSigma(3.f);//s_blur_sigma);
-	m_blur_pp.render(_pp_full_rt, _pp_full_rt);
-	// m_blur_pp.render(_pp_full_rt, _pp_full_rt);
+	m_blur3_pp.render(_pp_full_rt, _pp_full_rt);
+	// m_blur3_pp.render(_pp_full_rt, _pp_full_rt);
 #endif
 
 	// add the scattering effect on to the final image

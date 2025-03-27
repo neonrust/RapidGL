@@ -7,10 +7,10 @@ namespace RGL::PP
 
 bool Blur::create(size_t width, size_t height)
 {
-	new (&_blur_horizontal) Shader("src/demos/27_clustered_shading/gaussian_blur.comp", string_set{ "HORIZONTAL"s });
+	new (&_blur_horizontal) Shader("src/demos/27_clustered_shading/gaussian_blur_parametric.comp", string_set{ "HORIZONTAL"s });
 	_blur_horizontal.link();
 
-	new (&_blur_vertical) Shader("src/demos/27_clustered_shading/gaussian_blur.comp");
+	new (&_blur_vertical) Shader("src/demos/27_clustered_shading/gaussian_blur_parametric.comp");
 	_blur_vertical.link();
 
 	_temp.create(width, height, RenderTarget::ColorFloat);

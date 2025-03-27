@@ -140,7 +140,7 @@ void main()
 
 	screen_pos  = vec2(pixel_id) + vec2(0.5); // start at the center of each pixel
 
-	// if(pixel_id == ivec2(200, 200))
+	// if(pixel_id == ivec2(screen_size.x/2, screen_size.y/4))
 	// {
 	// 	imageStore(u_output_color, ivec2(screen_pos), vec4(100, 100, 100, 1));
 	// 	return;
