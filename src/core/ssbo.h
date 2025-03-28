@@ -29,6 +29,8 @@ public:
 
 	bool set(size_t index, const T &item);
 
+	void copyTo(ShaderStorageBuffer<T> &dest, size_t count=0, size_t readStart=0, size_t writeStart=0) const;
+
 private:
 	inline bool created() const { return _id != GLuint(-1); }
 
@@ -65,4 +67,13 @@ inline bool ShaderStorageBuffer<T>::set(size_t index, const T &item)
 		glNamedBufferSubData(_id, index*sizeof(T), sizeof(T), &item);
 
 	return index < _size;
+}
+
+template<typename T>
+inline void ShaderStorageBuffer<T>::copyTo(ShaderStorageBuffer<T> &dest, size_t count, size_t readStart, size_t writeStart) const
+{
+	assert(readStart + count < _size);
+	assert(writeStart + count < dest.size());
+
+	glCopyNamedBufferSubData(_id, dest._id, GLintptr(readStart*sizeof(T)), GLintptr(writeStart*sizeof(T)), GLsizeiptr(count*sizeof(T)));
 }
