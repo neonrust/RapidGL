@@ -28,6 +28,8 @@ public:
 		COMPUTE                = GL_COMPUTE_SHADER
 	};
 
+	void enableLiveReload();
+
 	Shader();
 	explicit Shader(const std::filesystem::path & compute_shader_filepath, const string_set &conditionals={});
 
@@ -85,12 +87,13 @@ public:
 
 	void setSubroutine(ShaderType shader_type, const std::string& subroutine_name);
 
-	inline operator bool () const { return m_program_id > 0 and m_is_linked > 0; }
+	inline operator bool () const { return m_program_id > 0 and m_failed_shaders == 0 and m_is_linked; }
 
 private:
 	void addAllSubroutines();
 	
 	bool addShader(const std::filesystem::path & filepath, GLuint type, const string_set &conditionals);
+	bool loadShader(GLuint shaderObject, const std::filesystem::path &filepath, const string_set &conditionals);
 	void logLineErrors(const std::filesystem::path &filepath, const std::string &log) const;
 	void add_name(const std::filesystem::path &filepath);
 	std::tuple<bool, std::string> getStatusLog(GLuint object, GLenum statusType) const;
@@ -103,8 +106,16 @@ private:
 
 	string_map<GLint> m_uniforms_locations;
 
+	struct ShaderItem
+	{
+		GLuint shaderObject;
+		string_set conditionals;
+	};
+	string_map<ShaderItem> _shaderFiles;
+
 	GLuint m_program_id;
 	bool m_is_linked;
+	size_t m_failed_shaders;
 	std::string _name;
 };
 
