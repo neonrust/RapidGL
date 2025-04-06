@@ -7,10 +7,10 @@
 #define vec3 alignas(16) glm::vec3
 #define vec4 alignas(16) glm::vec4
 #define uint alignas(4)  uint32_t
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wkeyword-macro"   // it's necessary evil
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wkeyword-macro"   // it's necessary evil
 #define bool alignas(4)  bool
-#pragma GCC diagnostic pop
+#pragma clang diagnostic pop
 #endif
 
 #define CLUSTERS_SSBO_BINDING_INDEX                    0
