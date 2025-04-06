@@ -270,7 +270,7 @@ void Camera::setFov(float fov)
 	}
 
 	if(auto changed = fov != m_fovy; changed)
-		setPerspective(fov, int(m_width), int(m_height), m_near, m_far);
+		setPerspective(fov, m_width, m_height, m_near, m_far);
 }
 
 void RGL::Camera::setFarPlane(float f)
