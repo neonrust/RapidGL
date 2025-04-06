@@ -170,7 +170,7 @@ void TextureSampler::Release()
 
 // --------------------- Texture -------------------------
 
-bool Texture::Create(GLuint width, GLuint height, GLuint depth, GLenum internalFormat, GLsizei num_mipmaps)
+bool Texture::Create(size_t width, size_t height, size_t depth, GLenum internalFormat, size_t num_mipmaps)
 {
 	if(m_obj_name)
 		Release();
@@ -178,11 +178,25 @@ bool Texture::Create(GLuint width, GLuint height, GLuint depth, GLenum internalF
 	if(not num_mipmaps)
 		num_mipmaps = calculateMipMapLevels(width, height, depth);
 
-	glCreateTextures  (GLenum(TextureType::Texture2D), 1, &m_obj_name);
-	glTextureStorage2D(m_obj_name, num_mipmaps, internalFormat, GLsizei(width), GLsizei(height));
+	if(height <= 1)
+	{
+		glCreateTextures(GLenum(TextureType::Texture1D), 1, &m_obj_name);
+		glTextureStorage1D(m_obj_name, num_mipmaps, internalFormat, GLsizei(width));
+	}
+	if(depth <= 1)
+	{
+		glCreateTextures(GLenum(TextureType::Texture2D), 1, &m_obj_name);
+		glTextureStorage2D(m_obj_name, num_mipmaps, internalFormat, GLsizei(width), GLsizei(height));
+	}
+	else
+	{
+		glCreateTextures(GLenum(TextureType::Texture3D), 1, &m_obj_name);
+		glTextureStorage3D(m_obj_name, num_mipmaps, internalFormat, GLsizei(width), GLsizei(height), GLsizei(depth));
+	}
 
-	m_metadata.width = width;
-	m_metadata.height = height;
+	m_metadata.width = GLuint(width);
+	m_metadata.height = GLuint(height);
+	m_metadata.depth = GLuint(depth);
 	m_metadata.channels = 0;
 	m_metadata.channel_type = 0;
 	m_metadata.channel_format = 0;
@@ -274,6 +288,11 @@ uint8_t Texture::calculateMipMapLevels(size_t width, size_t height, size_t depth
 }
 
 // --------------------- Texture2D -------------------------
+
+bool Texture2D::Create(size_t width, size_t height, GLenum internalFormat, size_t num_mipmaps)
+{
+	return Texture::Create(width, height, 0, internalFormat, num_mipmaps);
+}
 
 bool Texture2D::Load(const std::filesystem::path& filepath, bool is_srgb, uint32_t num_mipmaps)
 {
@@ -537,6 +556,16 @@ bool TextureCubeMap::Load(const std::filesystem::path* filepaths, bool is_srgb, 
 	}
 
 	return true;
+}
+
+bool Texture1D::Create(size_t width, GLenum internalFormat, size_t num_mipmaps)
+{
+	return Texture::Create(width, 0, 0, internalFormat, num_mipmaps);
+}
+
+bool Texture3D::Create(size_t width, size_t height, size_t depth, GLenum internalFormat, size_t num_mipmaps)
+{
+	return Texture::Create(width, height, depth, internalFormat, num_mipmaps);
 }
 
 }

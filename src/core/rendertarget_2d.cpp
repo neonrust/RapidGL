@@ -15,15 +15,13 @@ void Texture2d::create(size_t width, size_t height, Format format)
 	if(texture_id())
 		release();
 
-	m_metadata.width = GLuint(width);
-	m_metadata.height = GLuint(height);
-
 	bool depthOnly = false;
 	if(format & ColorFloat)
 	{
 		_internal_format = GL_RGBA32F;
 		_has_color = true;
 	}
+	// TODO: Color and Depth should both be possible
 	else if(format & Color)
 	{
 		_internal_format = GL_RGBA;
@@ -41,9 +39,10 @@ void Texture2d::create(size_t width, size_t height, Format format)
 		assert(false);
 
 	if(not depthOnly)
-		_mip_levels = Texture::calculateMipMapLevels(m_metadata.width, m_metadata.height, 0, s_downscale_limit, s_max_iterations);
+		_mip_levels = Texture::calculateMipMapLevels(width, height, 0, s_downscale_limit, s_max_iterations);
 
-	Create(GLuint(width), GLuint(height), 0, _internal_format, _mip_levels);
+	bool ok = Texture2D::Create(width, height, _internal_format, _mip_levels);
+	assert(ok);
 
 	SetFiltering(TextureFiltering::Minify, depthOnly? TextureFilteringParam::NEAREST: TextureFilteringParam::LINEAR);
 	SetFiltering(TextureFiltering::Magnify, depthOnly? TextureFilteringParam::NEAREST: TextureFilteringParam::LINEAR);

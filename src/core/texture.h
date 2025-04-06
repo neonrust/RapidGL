@@ -11,7 +11,9 @@ namespace RGL
 enum class TextureType
 {
 	NONE = 0,
+	Texture1D = GL_TEXTURE_1D,
 	Texture2D = GL_TEXTURE_2D,
+	Texture3D = GL_TEXTURE_3D,
 	TextureCubeMap = GL_TEXTURE_CUBE_MAP
 };
 
@@ -113,6 +115,8 @@ private:
 class Texture
 {
 public:
+	static constexpr size_t DefaultMipmaps = 0;
+
 	virtual ~Texture() { Release(); };
 
 	Texture             (const Texture&) = delete;
@@ -140,8 +144,6 @@ public:
 		return *this;
 	}
 
-	bool Create(GLuint width, GLuint height, GLuint depth, GLenum internalFormat, GLsizei num_mipmaps=0);
-
 	inline GLuint texture_id() const { return m_obj_name; }
 	inline TextureType texture_type() const { return m_type; }
 
@@ -163,6 +165,8 @@ public:
 	inline operator bool () const { return m_obj_name; }
 
 protected:
+	bool Create(size_t width, size_t height, size_t depth, GLenum internalFormat, size_t num_mipmaps);
+
 	Texture() : m_type(TextureType::NONE), m_obj_name(0) {}
 
 	void Release()
@@ -176,17 +180,27 @@ protected:
 	GLuint      m_obj_name;
 };
 
+class Texture1D : public Texture
+{
+public:
+	Texture1D() = default;
+
+	bool Create(size_t width, GLenum internalFormat, size_t num_mipmaps=DefaultMipmaps);
+};
+
 class Texture2D : public Texture
 {
 public:
 	Texture2D() = default;
 
+	bool Create(size_t width, size_t height, GLenum internalFormat, size_t num_mipmaps=DefaultMipmaps);
+
 	// TODO: convert to factory function
 	//   also, these should access a shared storage,
 	//   if the texture is already loaded, return the existing (a shread_ptr)
-	bool Load(const std::filesystem::path & filepath, bool is_srgb = false, uint32_t num_mipmaps = 0);
-	bool Load(unsigned char* memory_data, uint32_t data_size, bool is_srgb = false, uint32_t num_mipmaps = 0);
-	bool LoadHdr(const std::filesystem::path& filepath, uint32_t num_mipmaps = 0);
+	bool Load(const std::filesystem::path & filepath, bool is_srgb = false, uint32_t num_mipmaps=DefaultMipmaps);
+	bool Load(unsigned char* memory_data, uint32_t data_size, bool is_srgb = false, uint32_t num_mipmaps=DefaultMipmaps);
+	bool LoadHdr(const std::filesystem::path& filepath, uint32_t num_mipmaps=DefaultMipmaps);
 	bool LoadDds(const std::filesystem::path& filepath);
 };
 
@@ -196,7 +210,16 @@ public:
 	TextureCubeMap() = default;
 
 	// TODO: convert to factory function
-	bool Load(const std::filesystem::path * filepaths, bool is_srgb = false, uint32_t num_mipmaps = 0);
+	bool Load(const std::filesystem::path * filepaths, bool is_srgb = false, uint32_t num_mipmaps=DefaultMipmaps);
 };
+
+class Texture3D : public Texture
+{
+public:
+	Texture3D() = default;
+
+	bool Create(size_t width, size_t height, size_t depth, GLenum internalFormat, size_t num_mipmaps=DefaultMipmaps);
+};
+
 
 } // RGL

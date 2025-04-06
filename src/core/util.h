@@ -9,7 +9,6 @@
 #include <random>
 #include <string>
 
-#include "container_types.h"
 
 namespace RGL
 {
@@ -22,7 +21,8 @@ namespace RGL
         {}
 
         GLuint width;
-        GLuint height;
+		GLuint height;  // only 2d & 3d textures
+		GLuint depth;   // only 3d textures
         GLuint channels;
 		GLuint channel_format = GL_RGB;
 		GLuint channel_type = GL_UNSIGNED_INT;

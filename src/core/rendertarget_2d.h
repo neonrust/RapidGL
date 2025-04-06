@@ -27,7 +27,7 @@ enum Access : GLenum
 	ReadWrite = GL_READ_WRITE
 };
 
-struct Texture2d : public RGL::Texture
+struct Texture2d : public RGL::Texture2D
 {
 	void create(size_t width, size_t height, Format format=ColorFloat);
 
