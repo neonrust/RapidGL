@@ -4,34 +4,21 @@
 #pragma once
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
-#define vec3 alignas(16) glm::vec3
-#define vec4 alignas(16) glm::vec4
-#define uint alignas(4)  uint32_t
+#define vec3  alignas(16) glm::vec3
+#define vec4  alignas(16) glm::vec4
+#define uvec3 alignas(16) glm::uvec3
+#define uint  alignas(4)  uint32_t
 #pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wkeyword-macro"   // it's necessary evil
+#pragma clang diagnostic ignored "-Wkeyword-macro"   // it's a necessary evil
 #define bool alignas(4)  bool
 #pragma clang diagnostic pop
 #endif
 
-#define CLUSTERS_SSBO_BINDING_INDEX                    0
-#define DIRECTIONAL_LIGHTS_SSBO_BINDING_INDEX          1
-#define POINT_LIGHTS_SSBO_BINDING_INDEX                2
-#define SPOT_LIGHTS_SSBO_BINDING_INDEX                 3
-#define NONEMPTY_CLUSTERS_SSBO_BINDING_INDEX           4
-#define POINT_LIGHT_INDEX_LIST_SSBO_BINDING_INDEX      5
-#define SPOT_LIGHT_INDEX_LIST_SSBO_BINDING_INDEX       6
-#define POINT_LIGHT_GRID_SSBO_BINDING_INDEX            7
-#define SPOT_LIGHT_GRID_SSBO_BINDING_INDEX             8
-#define ACTIVE_CLUSTERS_SSBO_BINDING_INDEX             9
-#define CULL_LIGHTS_DISPATCH_ARGS_SSBO_BINDING_INDEX   10
-
-#define AREA_LIGHTS_SSBO_BINDING_INDEX                 11
-#define AREA_LIGHT_INDEX_LIST_SSBO_BINDING_INDEX       12
-#define AREA_LIGHT_GRID_SSBO_BINDING_INDEX             13
-
-// animating lights parameters
-#define POINT_LIGHTS_ORBIT_SSBO_BINDING_INDEX          14
-#define SPOT_LIGHTS_ORBIT_SSBO_BINDING_INDEX           15
+#define SSBO_BIND_CLUSTERS                    1
+#define SSBO_BIND_DIRECTIONAL_LIGHTS          2
+#define SSBO_BIND_POINT_LIGHTS                3
+#define SSBO_BIND_SPOT_LIGHTS                 4
+#define SSBO_BIND_AREA_LIGHTS                 5
 
 struct BaseLight
 {
@@ -74,6 +61,33 @@ struct ClusterAABB
     vec4 max;
 };
 
+struct AABB
+{
+	vec4 min;
+	vec4 max;
+};
+
+#define CLUSTER_MAX_POINT_LIGHTS 256
+#define CLUSTER_MAX_SPOT_LIGHTS 32
+#define CLUSTER_MAX_AREA_LIGHTS 8
+
+struct Cluster
+{
+	AABB aabb;
+
+	uint num_point_lights;   // if > CLUSTER_MAX_POINT_LIGHTS, too many lights affect the cluster
+	uint point_lights[CLUSTER_MAX_POINT_LIGHTS];
+
+	uint num_spot_lights;    // if > CLUSTER_MAX_SPOT_LIGHTS, too many lights affect the cluster
+	uint spot_lights[CLUSTER_MAX_SPOT_LIGHTS];
+
+	uint num_area_lights;    // if > CLUSTER_MAX_AREA_LIGHTS, too many lights affect the cluster
+	uint area_lights[CLUSTER_MAX_AREA_LIGHTS];
+
+	uvec3 coord;
+	bool visited;
+};
+
 struct LightGrid
 {
     uint offset;
@@ -81,8 +95,10 @@ struct LightGrid
 };
 
 #ifdef __cplusplus
+// remove the macros we defined at the top
 #undef vec3
 #undef vec4
+#undef uvec3
 #undef uint
 #undef bool
 #endif

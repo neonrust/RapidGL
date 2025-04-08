@@ -1,9 +1,20 @@
 #pragma once
 
 #include "glad/glad.h"
-#include <cassert>
-#include <vector>
 
+#include <memory>
+#include <vector>
+#include <cassert>
+#include <span>
+
+
+enum BufferUsage : GLenum
+{
+	DefaultUsage = 0,
+	DynamicDraw = GL_DYNAMIC_DRAW,
+	StaticRead  = GL_STATIC_READ,
+	StaticDraw  = GL_STATIC_DRAW,
+};
 
 template<typename T>
 class ShaderStorageBuffer
@@ -12,68 +23,170 @@ public:
 	using value_type = T;
 
 public:
-	ShaderStorageBuffer(GLuint bind_index=0, GLenum default_usage=GL_DYNAMIC_DRAW) :
-		_bind_index(bind_index),
+	ShaderStorageBuffer(BufferUsage default_usage=DynamicDraw) :
+		_bind_index(0),
 		_default_usage(default_usage)
 	{
 	}
 	~ShaderStorageBuffer()
 	{
-		if(created())
+		if(*this)
 			glDeleteBuffers(1, &_id);
-		_id = GLuint(-1);
+		_id = 0;
 	}
 
-	void set(const std::vector<T> &data, GLenum usage=0);
-	size_t size() const { return _size; }
+	void setBindIndex(GLuint index);
 
+	void bind();
+
+	void set(const std::vector<T> &data, BufferUsage usage=DefaultUsage);
 	bool set(size_t index, const T &item);
+
+	inline size_t size() const { return _size; }
+
+	void resize(size_t size);
 
 	void copyTo(ShaderStorageBuffer<T> &dest, size_t count=0, size_t readStart=0, size_t writeStart=0) const;
 
-private:
-	inline bool created() const { return _id != GLuint(-1); }
+	inline operator bool () const { return _id >= 0; }
+
+	class View : public std::span<const T, std::dynamic_extent>
+	{
+		friend class ShaderStorageBuffer;
+	public:
+		virtual ~View();
+	private:
+		View(ShaderStorageBuffer<T> *buffer, const T *start);
+	private:
+		ShaderStorageBuffer<T> *_buffer;
+	};
+
+	std::unique_ptr<const typename ShaderStorageBuffer<T>::View> view();
 
 private:
-	GLuint _id { GLuint(-1) };
+	bool ensureCreated();  // returns true if it was created
+	void releaseView();
+
+private:
+	GLuint _id { 0 };
 	GLuint _bind_index { 0 };
-	GLenum _default_usage;
+	BufferUsage _default_usage;
 	size_t _size;
+	bool _view_active { false };
 };
 
 
 template<typename T>
-void ShaderStorageBuffer<T>::set(const std::vector<T> &data, GLenum usage)
+inline void ShaderStorageBuffer<T>::setBindIndex(GLuint index)
 {
-	const auto create = not created();
-	if(create)
-		glCreateBuffers  (1, &_id);
-
-	glNamedBufferData(_id, GLsizeiptr(sizeof(T) * data.size()), data.data(), usage? usage: _default_usage);
-	_size = data.size();
-
-	// TODO: should use glNamedBufferSubData for updates
-	//   if so, the array data needs to have a "terminator" (so shader code can tell the size)
-	// glNamedBufferSubData(_id, 0,  GLsizeiptr(sizeof(T) * data.size()), data.data());
-
-	if(create)
+	_bind_index = index;
+	if(_id > 0)
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, _bind_index, _id);
+}
+
+template<typename T>
+void ShaderStorageBuffer<T>::set(const std::vector<T> &data, BufferUsage usage)
+{
+	if(data.empty())
+	{
+		if(_size == 0)
+			return;
+	}
+	else
+	{
+		ensureCreated();
+
+		glNamedBufferData(_id, data.size() * sizeof(T), data.data(), usage != DefaultUsage? usage: _default_usage);
+		_size = data.size();
+	}
 }
 
 template<typename T>
 inline bool ShaderStorageBuffer<T>::set(size_t index, const T &item)
 {
+	ensureCreated();
+
+	assert(index < _size);
 	if(index < _size)
-		glNamedBufferSubData(_id, index*sizeof(T), sizeof(T), &item);
+		glNamedBufferSubData(_id, index * sizeof(T), sizeof(T), &item);
 
 	return index < _size;
 }
 
 template<typename T>
-inline void ShaderStorageBuffer<T>::copyTo(ShaderStorageBuffer<T> &dest, size_t count, size_t readStart, size_t writeStart) const
+inline void ShaderStorageBuffer<T>::resize(size_t size)
 {
-	assert(readStart + count < _size);
-	assert(writeStart + count < dest.size());
+	ensureCreated();
+
+	assert(size > 0);
+	glNamedBufferData(_id, size * sizeof(T), nullptr, _default_usage);
+	_size = size;
+}
+
+template<typename T>
+void ShaderStorageBuffer<T>::copyTo(ShaderStorageBuffer<T> &dest, size_t count, size_t readStart, size_t writeStart) const
+{
+	ensureCreated();
+
+	if(not count)
+		count = _size;
+
+	assert(readStart + count <= _size);
+	assert(writeStart + count <= dest.size());
 
 	glCopyNamedBufferSubData(_id, dest._id, GLintptr(readStart*sizeof(T)), GLintptr(writeStart*sizeof(T)), GLsizeiptr(count*sizeof(T)));
+}
+
+template<typename T>
+bool ShaderStorageBuffer<T>::ensureCreated()
+{
+	if(_id == 0)
+	{
+		glCreateBuffers(1, &_id);
+		assert(_id > 0);
+
+		if(_bind_index > 0)
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, _bind_index, _id);
+
+		return true;
+	}
+
+	return false;
+}
+
+template<typename T>
+std::unique_ptr<const typename ShaderStorageBuffer<T>::View> ShaderStorageBuffer<T>::view()
+{
+	assert(_id and _size and not _view_active);
+	if(_view_active)
+	{
+		std::fprintf(stderr, "SSBO: Returning NULL view b/c a view already exists!\n");
+		return {};
+	}
+
+	// TODO: prevent multiple views
+	const T *start = static_cast<const T *>(glMapNamedBuffer(_id, GL_READ_ONLY));
+	auto *v = new View(this, start);
+	_view_active = true;
+	return std::unique_ptr<View>(v);
+}
+
+template<typename T>
+void ShaderStorageBuffer<T>::releaseView()
+{
+	glUnmapNamedBuffer(_id);
+	_view_active = false;
+}
+
+template<typename T>
+inline ShaderStorageBuffer<T>::View::View(ShaderStorageBuffer<T> *buffer, const T *start) :
+	std::span<const T, std::dynamic_extent>(start, buffer->size()),
+	_buffer(buffer)
+{
+}
+
+template<typename T>
+inline ShaderStorageBuffer<T>::View::~View()
+{
+	_buffer->releaseView();
 }

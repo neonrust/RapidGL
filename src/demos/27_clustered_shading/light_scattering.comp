@@ -106,12 +106,12 @@ float interleavedGradientNoise(vec2 pixel, int frame);
 
 vec3 falseColor(float value);
 
-layout(std430, binding = POINT_LIGHTS_SSBO_BINDING_INDEX) buffer PointLightSSBO
+layout(std430, binding = SSBO_BIND_POINT_LIGHTS) buffer PointLightSSBO
 {
     PointLight point_lights[];
 };
 
-layout(std430, binding = SPOT_LIGHTS_SSBO_BINDING_INDEX) buffer SpotLightsSSBO
+layout(std430, binding = SSBO_BIND_SPOT_LIGHTS) buffer SpotLightsSSBO
 {
     SpotLight spot_lights[];
 };
@@ -435,6 +435,15 @@ vec3 scatterSpotLight(Ray ray, SpotLight spot)
 	{
 		vec3 p_sample = rayPoint(ray, ray_t);
 		float intensity = sampleLight(spot, p_sample)*stride;
+
+
+		// EXPERIMENT
+		// dim points towards the direction of the light
+		float along_axis = dot(p_sample - spot.point.position, spot.direction)/spot.point.radius;
+		intensity *= 1 - along_axis;
+
+
+
 
 		radiance += transmittance * stepOpacity * intensity;
 		transmittance *= exp_absorption;

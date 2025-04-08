@@ -152,12 +152,12 @@ private:
     /// Clustered shading variables.
     std::shared_ptr<RGL::Shader> m_depth_prepass_shader;
     std::shared_ptr<RGL::Shader> m_generate_clusters_shader;
-	std::shared_ptr<RGL::Shader> m_flag_nonempty_clusters_shader;
-	std::shared_ptr<RGL::Shader> m_collect_active_clusters_shader;
-    std::shared_ptr<RGL::Shader> m_update_cull_lights_indirect_args_shader;
+	// std::shared_ptr<RGL::Shader> m_flag_nonempty_clusters_shader;
+	// std::shared_ptr<RGL::Shader> m_collect_active_clusters_shader;
+ //    std::shared_ptr<RGL::Shader> m_update_cull_lights_indirect_args_shader;
     std::shared_ptr<RGL::Shader> m_cull_lights_shader;
     std::shared_ptr<RGL::Shader> m_clustered_pbr_shader;
-    std::shared_ptr<RGL::Shader> m_update_lights_shader;
+	// std::shared_ptr<RGL::Shader> m_update_lights_shader;
 
     std::shared_ptr<RGL::Shader> m_draw_area_lights_geometry_shader;
 	std::shared_ptr<RGL::Shader> m_line_draw_shader;
@@ -170,52 +170,33 @@ private:
 	GLuint _dummy_vao_id;
 
 	// GLuint m_clusters_ssbo;
-	GLuint m_cull_lights_dispatch_args_ssbo;
-	GLuint m_nonempty_clusters_ssbo;
-	GLuint m_point_light_index_list_ssbo;
-	GLuint m_point_light_grid_ssbo;
-	GLuint m_spot_light_index_list_ssbo;
-	GLuint m_spot_light_grid_ssbo;
-	GLuint m_area_light_index_list_ssbo;
-	GLuint m_area_light_grid_ssbo;
-	GLuint m_active_clusters_ssbo;
+	// GLuint m_cull_lights_dispatch_args_ssbo;
+	// GLuint m_nonempty_clusters_ssbo;
+	// GLuint m_point_light_index_list_ssbo;
+	// GLuint m_point_light_grid_ssbo;
+	// GLuint m_spot_light_index_list_ssbo;
+	// GLuint m_spot_light_grid_ssbo;
+	// GLuint m_area_light_index_list_ssbo;
+	// GLuint m_area_light_grid_ssbo;
+	// GLuint m_active_clusters_ssbo;
 
-	struct
-	{
-		struct
-		{
-			GLuint aabb;
-			GLuint cull_lights_dispatch_args;
-			GLuint flags;
-			GLuint unique_active_clusters;
-
-			GLuint point_light_index_list;
-			GLuint point_light_grid;
-
-			GLuint spot_light_index_list;
-			GLuint spot_light_grid;
-
-			GLuint area_light_index_list;
-			GLuint area_light_grid;
-
-		} ssbo;
-	} m_clusterShading;
+   // GLuint m_shading_clusters;
 
     // Average number of overlapping lights per cluster AABB.
     // This variable matters when the lights are big and cover more than one cluster.
 	static constexpr uint32_t AVERAGE_OVERLAPPING_LIGHTS_PER_CLUSTER      = 50;
 	static constexpr uint32_t AVERAGE_OVERLAPPING_AREA_LIGHTS_PER_CLUSTER = 100;
 
-	uint32_t   m_cluster_grid_block_size = 64; // The size of a cluster in the screen space.(unit?)
-    glm::uvec3 m_cluster_grid_dim;             // 3D dimensions of the cluster grid.
+	uint32_t   m_cluster_grid_block_size = 96; // The size of a cluster in screen space.(pixels)
+	glm::uvec3 m_cluster_grid_dim;             // 3D dimensions of the cluster grid.
 	float      m_near_k;                       // ( 1 + ( 2 * tan( fov * 0.5 ) / ClusterGridDim.y ) ) // Used to compute the near plane for clusters at depth k.
     float      m_log_grid_dim_y;               // 1.0f / log( NearK )  // Used to compute the k index of the cluster from the view depth of a pixel sample.
 	uint32_t   m_clusters_count;
 
 
-    bool  m_debug_slices                          = false;
-    bool  m_debug_clusters_occupancy              = false;
-    float m_debug_clusters_occupancy_blend_factor = 0.9f;
+	bool  m_debug_cluster_size           = false;
+	bool  m_debug_clusters_occupancy     = false;
+	float m_debug_clusters_blend_factor  = 0.7f;
 
     /// Lights
 	uint32_t  m_point_lights_count       = 0;
@@ -247,22 +228,17 @@ private:
     std::vector<PointLight>       m_point_lights;
     std::vector<SpotLight>        m_spot_lights;
     std::vector<AreaLight>        m_area_lights;
-	// animating lights orbit parameters
-	std::vector<glm::vec4>        m_point_lights_orbit; // [x, y, z] => [ellipse a radius, ellipse b radius, light move speed]
-	std::vector<glm::vec4>        m_spot_lights_orbit;  // [x, y, z] => [ellipse a radius, ellipse b radius, light move speed]
 
 	std::vector<StaticObject> _scene;  // TODO: Scene _scene;
 	std::vector<StaticObject> _scenePvs;  // potentially visible set
 
 	// StaticObject m_sponza_static_object;
 
+	ShaderStorageBuffer<Cluster> m_shading_clusters_ssbo;
 	ShaderStorageBuffer<DirectionalLight> m_directional_lights_ssbo;
 	ShaderStorageBuffer<PointLight> m_point_lights_ssbo;
 	ShaderStorageBuffer<SpotLight> m_spot_lights_ssbo;
 	ShaderStorageBuffer<AreaLight> m_area_lights_ssbo;
-	// animating lights orbit parameters
-	ShaderStorageBuffer<glm::vec4> m_point_lights_orbit_ssbo;
-	ShaderStorageBuffer<glm::vec4> m_spot_lights_orbit_ssbo;
 
     /// Area lights variables
     std::shared_ptr<RGL::Texture2D> m_ltc_amp_lut;
@@ -309,10 +285,8 @@ private:
 
 	std::chrono::microseconds m_cull_time;
 	std::chrono::microseconds m_depth_time;
-	std::chrono::microseconds m_cluster_time3;
-	std::chrono::microseconds m_cluster_time2;
-	std::chrono::microseconds m_cluster_time1;
-	std::chrono::microseconds m_lighting_time;
+	std::chrono::microseconds m_light_cull_time;
+	std::chrono::microseconds m_shading_time;
 	std::chrono::microseconds m_skybox_time;
 	std::chrono::microseconds m_scatter_time;
 	std::chrono::microseconds m_pp_blur_time;

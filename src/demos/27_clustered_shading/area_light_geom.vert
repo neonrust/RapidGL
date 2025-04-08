@@ -1,7 +1,7 @@
 #version 460
 #include "shared.h"
 
-layout(std430, binding = AREA_LIGHTS_SSBO_BINDING_INDEX) buffer AreaLightsSSBO
+layout(std430, binding = SSBO_BIND_AREA_LIGHTS) buffer AreaLightsSSBO
 {
     AreaLight area_lights[];
 };

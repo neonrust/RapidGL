@@ -1,138 +1,98 @@
 #version 460 core
 #include "shared.h"
 
-layout(std430, binding = CLUSTERS_SSBO_BINDING_INDEX) buffer ClustersSSBO
+layout(std430, binding = SSBO_BIND_CLUSTERS) buffer ClustersSSBO
 {
-    ClusterAABB clusters[];
+	Cluster clusters[];
 };
 
-layout(std430, binding = POINT_LIGHTS_SSBO_BINDING_INDEX) buffer PointLightsSSBO
+layout(std430, binding = SSBO_BIND_POINT_LIGHTS) buffer PointLightsSSBO
 {
     PointLight point_lights[];
 };
 
-layout(std430, binding = POINT_LIGHT_INDEX_LIST_SSBO_BINDING_INDEX) buffer PointLightIndexListSSBO
-{
-    uint point_light_index_list[];
-};
-
-layout(std430, binding = POINT_LIGHT_GRID_SSBO_BINDING_INDEX) buffer PointLightGridSSBO
-{
-    uint point_light_index_counter;
-    LightGrid point_light_grid[];
-};
-
-layout(std430, binding = SPOT_LIGHTS_SSBO_BINDING_INDEX) buffer SpotLightsSSBO
+layout(std430, binding = SSBO_BIND_SPOT_LIGHTS) buffer SpotLightsSSBO
 {
     SpotLight spot_lights[];
 };
 
-layout(std430, binding = SPOT_LIGHT_INDEX_LIST_SSBO_BINDING_INDEX) buffer SpotLightIndexListSSBO
-{
-    uint spot_light_index_list[];
-};
-
-layout(std430, binding = SPOT_LIGHT_GRID_SSBO_BINDING_INDEX) buffer SpotLightGridSSBO
-{
-    uint spot_light_index_counter;
-    LightGrid spot_light_grid[];
-};
-
-layout(std430, binding = AREA_LIGHTS_SSBO_BINDING_INDEX) buffer AreaLightsSSBO
+layout(std430, binding = SSBO_BIND_AREA_LIGHTS) buffer AreaLightsSSBO
 {
     AreaLight area_lights[];
 };
 
-layout(std430, binding = AREA_LIGHT_INDEX_LIST_SSBO_BINDING_INDEX) buffer AreaLightIndexListSSBO
-{
-    uint area_light_index_list[];
-};
-
-layout(std430, binding = AREA_LIGHT_GRID_SSBO_BINDING_INDEX) buffer AreaLightGridSSBO
-{
-    uint area_light_index_counter;
-    LightGrid area_light_grid[];
-};
-
-layout(std430, binding = ACTIVE_CLUSTERS_SSBO_BINDING_INDEX) buffer UniqueActiveClustersSSBO
-{
-    uint active_clusters_count;
-    uint active_clusters[];
-};
-
 uniform mat4 u_view_matrix;
 
+shared Cluster s_cluster;
+
 shared uint s_cluster_index;
-shared ClusterAABB s_cluster_aabb;
+shared AABB s_cluster_aabb;
 
 shared uint s_point_lights_count;
-shared uint s_point_lights_start_offset;
-shared uint s_point_lights_list[1024];
-
+shared uint s_point_lights[CLUSTER_MAX_POINT_LIGHTS];
 shared uint s_spot_lights_count;
-shared uint s_spot_lights_start_offset;
-shared uint s_spot_lights_list[1024];
-
+shared uint s_spot_lights[CLUSTER_MAX_SPOT_LIGHTS];
 shared uint s_area_lights_count;
-shared uint s_area_lights_start_offset;
-shared uint s_area_lights_list[1024];
+shared uint s_area_lights[CLUSTER_MAX_AREA_LIGHTS];
 
-bool sphereInsideAABB(vec3 center, float radius, ClusterAABB aabb);
-float sqDistancePointAABB(vec3 point, ClusterAABB aabb);
+bool sphereInsideAABB(vec3 center, float radius, AABB aabb);
+float sqDistancePointAABB(vec3 point, AABB aabb);
 
+// layout(local_size_x = CULL_LIGHTS_LOCAL_SIZE, local_size_y = 1, local_size_z = 1) in;
 layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 void main()
 {
-    uint index = 0;
+	if(gl_LocalInvocationIndex == 0)
+	{
+		s_point_lights_count = 0;
+		s_spot_lights_count = 0;
+		s_area_lights_count = 0;
 
-    if (gl_LocalInvocationIndex == 0) // once per cluster
-    {
-        s_point_lights_count = 0;
-        s_spot_lights_count = 0;
-        s_area_lights_count = 0;
-
-        s_cluster_index = active_clusters[gl_WorkGroupID.x];
-        s_cluster_aabb = clusters[s_cluster_index];
-    }
-    barrier();
+		s_cluster_index = gl_WorkGroupID.x;
+		s_cluster_aabb = clusters[s_cluster_index].aabb;
+	}
+	barrier();
 
     const uint THREADS_COUNT = gl_WorkGroupSize.x;
 
+    // TODO: maybe divide the lights using some spatial partitioning
+
     // Intersect point lights against AABBs.
-    for (uint i = gl_LocalInvocationIndex; i < point_lights.length(); i += THREADS_COUNT)
+    for (uint idx = gl_LocalInvocationIndex; idx < point_lights.length(); idx += THREADS_COUNT)
     {
-        PointLight light = point_lights[i];
+        PointLight light = point_lights[idx];
 
         if (light.base.intensity > 0 && sphereInsideAABB(light.position, light.radius, s_cluster_aabb))
         {
-            index = atomicAdd(s_point_lights_count, 1);
+            uint last_index = atomicAdd(s_point_lights_count, 1);
 
-            if (index < 1024)
-                s_point_lights_list[index] = i;
+            if (last_index < CLUSTER_MAX_POINT_LIGHTS)
+                s_point_lights[last_index] = idx;
         }
     }
 
     // Intersect spot lights against AABBs
     // Treating spot lights as spheres not cones.
     // Feel free to make a pull request if you find any good cone-AABB intersection test.
-    for (uint i = gl_LocalInvocationIndex; i < spot_lights.length(); i += THREADS_COUNT)
+    for (uint idx = gl_LocalInvocationIndex; idx < spot_lights.length(); idx += THREADS_COUNT)
     {
-        SpotLight light = spot_lights[i];
+        SpotLight light = spot_lights[idx];
 
+        // TODO: more precise bounding volume than a sphere?
         if (light.point.base.intensity > 0 && sphereInsideAABB(light.point.position, light.point.radius, s_cluster_aabb))
         {
-            index = atomicAdd(s_spot_lights_count, 1);
+            uint last_index = atomicAdd(s_spot_lights_count, 1);
 
-            if (index < 1024)
-                s_spot_lights_list[index] = i;
+            if (last_index < CLUSTER_MAX_SPOT_LIGHTS)
+                s_spot_lights[last_index] = idx;
         }
     }
 
     // Intersect area lights against AABBs
     // Treating area lights as spheres not rectangles.
-    for (uint i = gl_LocalInvocationIndex; i < area_lights.length(); i += THREADS_COUNT)
+    for (uint idx = gl_LocalInvocationIndex; idx < area_lights.length(); idx += THREADS_COUNT)
     {
-        AreaLight light = area_lights[i];
+        AreaLight light = area_lights[idx];
 
         if (light.base.intensity > 0)
         {
@@ -141,10 +101,10 @@ void main()
 
             if (sphereInsideAABB(center, radius, s_cluster_aabb))
             {
-                index = atomicAdd(s_area_lights_count, 1);
+                uint last_index = atomicAdd(s_area_lights_count, 1);
 
-                if (index < 1024)
-                    s_area_lights_list[index] = i;
+                if (last_index < CLUSTER_MAX_AREA_LIGHTS)
+                    s_area_lights[last_index] = idx;
             }
         }
     }
@@ -152,62 +112,43 @@ void main()
     // We want all thread groups to have completed the light tests before continuing.
     barrier();
 
-    // Update the global light grids with the light lists and light counts.
-    if (gl_LocalInvocationIndex == 0)
-    {
-        // Update light grid for point lights.
-        s_point_lights_start_offset = atomicAdd(point_light_index_counter, s_point_lights_count);
-        point_light_grid[s_cluster_index].offset = s_point_lights_start_offset;
-        point_light_grid[s_cluster_index].count = s_point_lights_count;
+    if (gl_LocalInvocationIndex == 0) // only one thread needs to assign the result
+	{
+		clusters[s_cluster_index].visited = true;
+    	clusters[s_cluster_index].num_point_lights = s_point_lights_count;
+    	clusters[s_cluster_index].point_lights = s_point_lights;
 
-        // Update light grid for spot lights.
-        s_spot_lights_start_offset = atomicAdd(spot_light_index_counter, s_spot_lights_count);
-        spot_light_grid[s_cluster_index].offset = s_spot_lights_start_offset;
-        spot_light_grid[s_cluster_index].count = s_spot_lights_count;
+     	clusters[s_cluster_index].num_spot_lights = s_spot_lights_count;
+     	clusters[s_cluster_index].spot_lights = s_spot_lights;
 
-        // Update light grid for area lights.
-        s_area_lights_start_offset = atomicAdd(area_light_index_counter, s_area_lights_count);
-        area_light_grid[s_cluster_index].offset = s_area_lights_start_offset;
-        area_light_grid[s_cluster_index].count = s_area_lights_count;
-    }
-    barrier();
-
-    // Update the global light index lists with the shared light lists.
-    for (uint i = gl_LocalInvocationIndex; i < s_point_lights_count; i += THREADS_COUNT)
-    {
-        point_light_index_list[s_point_lights_start_offset + i] = s_point_lights_list[i];
-    }
-
-    for (uint i = gl_LocalInvocationIndex; i < s_spot_lights_count; i += THREADS_COUNT)
-    {
-        spot_light_index_list[s_spot_lights_start_offset + i] = s_spot_lights_list[i];
-    }
-
-    for (uint i = gl_LocalInvocationIndex; i < s_area_lights_count; i += THREADS_COUNT)
-    {
-        area_light_index_list[s_area_lights_start_offset + i] = s_area_lights_list[i];
-    }
+     	clusters[s_cluster_index].num_area_lights = s_area_lights_count;
+    	clusters[s_cluster_index].area_lights = s_area_lights;
+     }
 }
 
-bool sphereInsideAABB(vec3 center, float radius, ClusterAABB aabb)
+bool sphereInsideAABB(vec3 center, float radius, AABB aabb)
 {
-    center = vec3(u_view_matrix * vec4(center, 1.0));
-    float squared_distance = sqDistancePointAABB(center, aabb);
+    vec3 center_vs = vec3(u_view_matrix * vec4(center, 1));
+    float squared_distance = sqDistancePointAABB(center_vs, aabb);
 
     return squared_distance <= (radius * radius);
 }
 
-float sqDistancePointAABB(vec3 point, ClusterAABB aabb)
+float sqDistancePointAABB(vec3 point, AABB aabb)
 {
-    float sq_dist = 0.0;
+	float sq_dist = 0.0;
 
-    for (int i = 0; i < 3; ++i)
-    {
-        float v = point[i];
+	for (int idx = 0; idx < 3; ++idx)
+	{
+		float v = point[idx];
 
-        if (v < aabb.min[i]) sq_dist += pow(aabb.min[i] - v, 2);
-        if (v > aabb.max[i]) sq_dist += pow(v - aabb.max[i], 2);
-    }
+		float d;
+		if (v < aabb.min[idx])
+			d = aabb.min[idx] - v;
+		if (v > aabb.max[idx])
+			d = v - aabb.max[idx];
+		sq_dist += d*d;
+	}
 
-    return sq_dist;
+	return sq_dist;
 }
