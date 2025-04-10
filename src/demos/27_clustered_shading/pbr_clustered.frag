@@ -99,14 +99,15 @@ void main()
     }
     else if (u_debug_clusters_occupancy)
     {
-		vec3 heat_map_color = vec3(1e3, 0, 1e3); // debug" if no lights in the cluster -> HOT PINK
+		float points_full = float(cluster.num_point_lights)/float(CLUSTER_MAX_POINT_LIGHTS);
+		float spots_full = float(cluster.num_spot_lights)/float(CLUSTER_MAX_SPOT_LIGHTS);
+		float area_full = float(cluster.num_area_lights)/float(CLUSTER_MAX_AREA_LIGHTS);
+		float total_full = (points_full + spots_full + area_full)/3;
 
-	    // uint total_light_count = point_light_grid[cluster_index].count + spot_light_grid[cluster_index].count + area_light_grid[cluster_index].count;
-	    uint total_light_count = cluster.num_area_lights + cluster.num_spot_lights + cluster.num_area_lights;
-	    if (total_light_count > 0)
+		vec3 heat_map_color = vec3(0);
+	    if (total_full > 0)
 	    {
-	       	// TODO: normalize by theoretical max count?  (100 is just arbitrary)
-	        float normalized_light_count = float(total_light_count) / 100.0;
+	        float normalized_light_count = total_full;
 	        heat_map_color = heatMap(clamp(normalized_light_count, 0, 1));
 	    }
 
