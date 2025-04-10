@@ -256,6 +256,41 @@ void Shader::bind() const
 	}
 }
 
+void Shader::setPreBarrier(Barrier barrier_bits)
+{
+	_pre_barrier = barrier_bits;
+}
+
+void Shader::setPostBarrier(Barrier barrier_bits)
+{
+	_post_barrier = barrier_bits;
+}
+
+void Shader::invoke(size_t groups_x, size_t groups_y, size_t groups_z)
+{
+	if(_pre_barrier != Barrier::None)
+		glMemoryBarrier(GLbitfield(_pre_barrier));
+
+	bind();
+	glDispatchCompute(GLuint(groups_x), GLuint(groups_y), GLuint(groups_z));
+
+	if(_post_barrier != Barrier::None)
+		glMemoryBarrier(GLbitfield(_post_barrier));
+}
+
+void Shader::invoke(const GroupsBuffer &indirect_args, size_t offset)
+{
+	if(_pre_barrier != Barrier::None)
+		glMemoryBarrier(GLbitfield(_pre_barrier));
+
+	bind();
+	indirect_args.bindIndirect();
+	glDispatchComputeIndirect(GLintptr(offset));
+
+	if(_post_barrier != Barrier::None)
+		glMemoryBarrier(GLbitfield(_post_barrier));
+}
+
 GLint Shader::getUniformLocation(const std::string_view & name)
 {
 	GLint location = -1;

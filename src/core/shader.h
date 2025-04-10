@@ -12,8 +12,12 @@
 
 #include "container_types.h"
 
+#include "ssbo.h"
+
 namespace RGL
 {
+
+using GroupsBuffer = ShaderStorageBuffer<glm::uvec3>;
 
 class Shader final
 {
@@ -26,6 +30,11 @@ public:
 		TESSELATION_CONTROL    = GL_TESS_CONTROL_SHADER,
 		TESSELATION_EVALUATION = GL_TESS_EVALUATION_SHADER,
 		COMPUTE                = GL_COMPUTE_SHADER
+	};
+	enum class Barrier : GLbitfield
+	{
+		None = 0,
+		SSBO = GL_SHADER_STORAGE_BARRIER_BIT,
 	};
 
 	void enableLiveReload();
@@ -58,9 +67,15 @@ public:
 	~Shader();
 
 	bool link();
-	void setTransformFeedbackVaryings(const std::vector<const char*>& output_names, GLenum buffer_mode) const;
 	void bind() const;
+	void setTransformFeedbackVaryings(const std::vector<const char*>& output_names, GLenum buffer_mode) const;
 	std::string_view name() const { return _name; }
+
+	void setPreBarrier(Barrier barrier_bits);
+	void setPostBarrier(Barrier barrier_bits);
+
+	void invoke(size_t groups_x=1, size_t groups_y=1, size_t groups_z=1);
+	void invoke(const GroupsBuffer &indirect_args, size_t offset=0);
 
 	void setUniform(const std::string_view & name, float value);
 	void setUniform(const std::string_view & name, int value);
@@ -117,6 +132,9 @@ private:
 	bool m_is_linked;
 	size_t m_failed_shaders;
 	std::string _name;
+	Barrier _pre_barrier { Barrier::None };
+	Barrier _post_barrier { Barrier::None };
+
 };
 
 } // RGL
