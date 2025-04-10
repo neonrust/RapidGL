@@ -55,12 +55,6 @@ struct AreaLight
     bool two_sided;
 };
 
-struct ClusterAABB
-{
-    vec4 min;
-    vec4 max;
-};
-
 struct AABB
 {
 	vec4 min;
