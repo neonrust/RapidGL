@@ -38,9 +38,11 @@ public:
 	void setBindIndex(GLuint index);
 
 	void bind();
+	void bindIndirect() const;
 
 	void set(const std::vector<T> &data, BufferUsage usage=DefaultUsage);
 	bool set(size_t index, const T &item);
+	void clear();
 
 	inline size_t size() const { return _size; }
 
@@ -85,6 +87,18 @@ inline void ShaderStorageBuffer<T>::setBindIndex(GLuint index)
 }
 
 template<typename T>
+inline void ShaderStorageBuffer<T>::bind()
+{
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, _id);
+}
+
+template<typename T>
+inline void ShaderStorageBuffer<T>::bindIndirect() const
+{
+	glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, _id);
+}
+
+template<typename T>
 void ShaderStorageBuffer<T>::set(const std::vector<T> &data, BufferUsage usage)
 {
 	if(data.empty())
@@ -111,6 +125,15 @@ inline bool ShaderStorageBuffer<T>::set(size_t index, const T &item)
 		glNamedBufferSubData(_id, index * sizeof(T), sizeof(T), &item);
 
 	return index < _size;
+}
+
+template<typename T>
+inline void ShaderStorageBuffer<T>::clear()
+{
+	ensureCreated();
+
+	static constexpr uint32_t clear_val = 0;
+	glClearNamedBufferData(_id, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &clear_val);
 }
 
 template<typename T>
