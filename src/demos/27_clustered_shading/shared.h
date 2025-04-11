@@ -19,6 +19,9 @@
 #define SSBO_BIND_POINT_LIGHTS                3
 #define SSBO_BIND_SPOT_LIGHTS                 4
 #define SSBO_BIND_AREA_LIGHTS                 5
+#define SSBO_BIND_NONEMPTY_CLUSTERS           6
+#define SSBO_BIND_NONEMPTY_RANGE              7
+#define SSBO_BIND_CULL_DISPATCH_ARGS          8
 
 struct BaseLight
 {
@@ -80,6 +83,14 @@ struct Cluster
 
 	uvec3 coord;
 	bool visited;
+};
+
+#define NONEMPTY_CLUSTERS_END     999999
+
+struct ClusterNonempty
+{
+	uint cluster_index;
+	bool found;
 };
 
 struct LightGrid

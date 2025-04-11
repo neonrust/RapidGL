@@ -1,0 +1,51 @@
+#version 460 core
+#include "shared.h"
+
+layout(std430, binding = SSBO_BIND_NONEMPTY_CLUSTERS) buffer NonemptyClustersSSBO
+{
+	ClusterNonempty nonempty_clusters[];
+};
+
+layout(std430, binding = SSBO_BIND_NONEMPTY_RANGE) buffer NonemptyRangeSSBO
+{
+	uint first_index;
+	uint last_index;
+};
+
+layout(std430, binding = SSBO_BIND_CULL_DISPATCH_ARGS) buffer CullDispatchArgsSSBO
+{
+	uvec3 dispatch_args;
+};
+
+shared uint s_add_index;
+
+const uint NUM_THREADS = 1024;
+
+layout(local_size_x = NUM_THREADS, local_size_y = 1, local_size_z = 1) in;
+void main()
+{
+	if(gl_LocalInvocationIndex == 0)
+		s_add_index = 0;
+
+	// "negate" 'first_index'
+	uint first = NONEMPTY_CLUSTERS_END - first_index;
+
+	// fill '.cluster_index' with cluster indexes, marked as found using '.found'
+	for(uint idx = first + gl_LocalInvocationIndex; idx <= last_index; idx += NUM_THREADS)
+	{
+		if(nonempty_clusters[idx].found)
+		{
+			uint add_index = atomicAdd(s_add_index, 1);
+			nonempty_clusters[add_index - 1].cluster_index = idx;
+		}
+	}
+
+	if(gl_LocalInvocationIndex == 0)
+	{
+		nonempty_clusters[s_add_index].cluster_index = NONEMPTY_CLUSTERS_END; // mark end of array
+
+		// TODO: sort 'nonempty_clusters[].cluster_index' in some manner ?
+
+		dispatch_args = uvec3(s_add_index, 1, 1);
+	}
+}

@@ -24,7 +24,7 @@ using namespace std::literals;
 
 
 static float s_spot_outer_angle = 30.f;
-static float s_spot_intensity = 100.f;
+static float s_spot_intensity = 2000.f;
 
 
 glm::mat3 make_common_space_from_direction(const glm::vec3 &direction)
@@ -63,6 +63,7 @@ using namespace RGL;
 
 ClusteredShading::ClusteredShading() :
 	m_shading_clusters_ssbo(StaticRead),
+	m_cull_lights_dispatch_args_ssbo(StaticDraw),
 	m_exposure            (0.4f),
 	m_gamma               (2.2f),
 	m_background_lod_level(1.2f),
@@ -79,6 +80,9 @@ ClusteredShading::ClusteredShading() :
 	_ray_march_noise      (1)
 {
 	m_shading_clusters_ssbo.setBindIndex(SSBO_BIND_CLUSTERS);
+	m_nonempty_clusters_ssbo.setBindIndex(SSBO_BIND_NONEMPTY_CLUSTERS);
+	m_nonempty_range_ssbo.setBindIndex(SSBO_BIND_NONEMPTY_RANGE);
+	m_cull_lights_dispatch_args_ssbo.setBindIndex(SSBO_BIND_CULL_DISPATCH_ARGS);
 	m_directional_lights_ssbo.setBindIndex(SSBO_BIND_DIRECTIONAL_LIGHTS);
 	m_point_lights_ssbo.setBindIndex(SSBO_BIND_POINT_LIGHTS);
 	m_spot_lights_ssbo.setBindIndex(SSBO_BIND_SPOT_LIGHTS);
@@ -104,20 +108,6 @@ ClusteredShading::~ClusteredShading()
 		glDeleteBuffers(1, &m_debug_draw_vbo);
 		m_debug_draw_vbo = 0;
 	}
-
-	// glDeleteBuffers(1, &m_shading_clusters);
- //    glDeleteBuffers(1, &m_cull_lights_dispatch_args_ssbo);
-	// glDeleteBuffers(1, &m_nonempty_clusters_ssbo);
- //    glDeleteBuffers(1, &m_point_light_index_list_ssbo);
- //    glDeleteBuffers(1, &m_point_light_grid_ssbo);
- //    glDeleteBuffers(1, &m_spot_light_index_list_ssbo);
- //    glDeleteBuffers(1, &m_spot_light_grid_ssbo);
- //    glDeleteBuffers(1, &m_area_light_index_list_ssbo);
- //    glDeleteBuffers(1, &m_area_light_grid_ssbo);
-	// glDeleteBuffers(1, &m_active_clusters_ssbo);
-
-	// glDeleteTextures(1, &m_depth_tex2D_id);
-	// glDeleteFramebuffers(1, &m_depth_pass_fbo_id);
 }
 
 void ClusteredShading::init_app()
@@ -187,36 +177,6 @@ void ClusteredShading::init_app()
 	//   howevr, api surface-area would be pretty big; e.g. lights, shaders (& pbr), etc
 	// step 1: gather all these ssbo into a struct; clusterRendering.cluster_ssbo
 
-	// Create a buffer to hold (boolean) flags in the cluster grid that contain samples.
-
-	// glCreateBuffers(1, &m_shading_clusters);
-	// glBindBufferBase (GL_SHADER_STORAGE_BUFFER, SSBO_BIND_CLUSTERS, m_shading_clusters);
-
-	// glCreateBuffers(1, &m_nonempty_clusters_ssbo);
-	// glBindBufferBase (GL_SHADER_STORAGE_BUFFER, SSBO_BIND_NONEMPTY_CLUSTERS, m_nonempty_clusters_ssbo);
-
-	// A buffer (and internal counter) that holds a list of the active/used clusters (i.e. that contain fragments).
-	// glCreateBuffers(1, &m_active_clusters_ssbo);
-	// glBindBufferBase (GL_SHADER_STORAGE_BUFFER, SSBO_BIND_ACTIVE_CLUSTERS, m_active_clusters_ssbo);
-
-	// A buffer that stores number of work groups to be dispatched by cull lights shader
-	// glCreateBuffers(1, &m_cull_lights_dispatch_args_ssbo);
-	// glBindBufferBase (GL_SHADER_STORAGE_BUFFER, SSBO_BIND_CULL_LIGHTS_DISPATCH_ARGS, m_cull_lights_dispatch_args_ssbo);
-
-	// A list of indices to the lights that are active and intersect with a cluster
-	// glCreateBuffers(1, &m_point_light_index_list_ssbo);
-	// glBindBufferBase (GL_SHADER_STORAGE_BUFFER, SSBO_BIND_POINT_LIGHT_INDEX_LIST, m_point_light_index_list_ssbo);
-	// glCreateBuffers(1, &m_spot_light_index_list_ssbo);
-	// glBindBufferBase (GL_SHADER_STORAGE_BUFFER, SSBO_BIND_SPOT_LIGHT_INDEX_LIST, m_spot_light_index_list_ssbo);
-	// glCreateBuffers(1, &m_area_light_index_list_ssbo);
-	// glBindBufferBase (GL_SHADER_STORAGE_BUFFER, SSBO_BIND_AREA_LIGHT_INDEX_LIST, m_area_light_index_list_ssbo);
-	// glCreateBuffers(1, &m_point_light_grid_ssbo);
-	// glBindBufferBase (GL_SHADER_STORAGE_BUFFER, SSBO_BIND_POINT_LIGHT_GRID, m_point_light_grid_ssbo);
-	// glCreateBuffers(1, &m_spot_light_grid_ssbo);
-	// glBindBufferBase (GL_SHADER_STORAGE_BUFFER, SSBO_BIND_SPOT_LIGHT_GRID, m_spot_light_grid_ssbo);
-	// glCreateBuffers(1, &m_area_light_grid_ssbo);
-	// glBindBufferBase(GL_SHADER_STORAGE_BUFFER, SSBO_BIND_AREA_LIGHT_GRID, m_area_light_grid_ssbo);
-
 
     /// Load LTC look-up-tables for area lights rendering
 	const auto ltc_lut_path     = FileSystem::getResourcesPath() / "lut";
@@ -262,9 +222,20 @@ void ClusteredShading::init_app()
     m_generate_clusters_shader->link();
 	assert(*m_generate_clusters_shader);
 
+	m_find_nonempty_clusters_shader = std::make_shared<Shader>(dir + "find_nonempty_clusters.comp");
+	m_find_nonempty_clusters_shader->link();
+	assert(*m_find_nonempty_clusters_shader);
+	m_find_nonempty_clusters_shader->setPostBarrier(Shader::Barrier::SSBO);  // config, only once
+
+	m_collate_nonempty_index_shader = std::make_shared<Shader>(dir + "collate_nonempty_index.comp");
+	m_collate_nonempty_index_shader->link();
+	assert(*m_collate_nonempty_index_shader);
+	m_collate_nonempty_index_shader->setPostBarrier(Shader::Barrier::SSBO);  // config, only once
+
 	m_cull_lights_shader = std::make_shared<Shader>(dir + "cull_lights.comp");
     m_cull_lights_shader->link();
 	assert(*m_cull_lights_shader);
+	m_cull_lights_shader->setPostBarrier(Shader::Barrier::SSBO);  // config, only once
 
 	m_clustered_pbr_shader = std::make_shared<Shader>(dir + "pbr_lighting.vert", dir + "pbr_clustered.frag");
     m_clustered_pbr_shader->link();
@@ -293,7 +264,6 @@ void ClusteredShading::init_app()
     m_background_shader = std::make_shared<Shader>(dir + "background.vert", dir + "background.frag");
     m_background_shader->link();
 	assert(*m_background_shader);
-
 
 	// Post-processing steps
 	m_tmo_pp.create();
@@ -692,7 +662,9 @@ void ClusteredShading::calculateShadingClusterGrid()
 	// TODO: these should be properties related to the camera  (a component!)
 
 	/// Init clustered shading variables.
-	m_cluster_grid_dim.x = 20;//uint32_t(glm::ceil(float(Window::width())  / float(m_cluster_grid_block_size)));
+
+	m_cluster_grid_dim.x = 64; // around 20 is good enough
+
 	m_cluster_grid_block_size = uint32_t(std::ceil(float(Window::width()) / float(m_cluster_grid_dim.x)));
 	m_cluster_grid_dim.y = uint32_t(glm::ceil(float(Window::height()) / float(m_cluster_grid_block_size)));
 
@@ -763,46 +735,12 @@ void ClusteredShading::calculateShadingClusterGrid()
 	}
 }
 
-void ClusteredShading::	prepareClusterBuffers()
+void ClusteredShading::prepareClusterBuffers()
 {
-	// glNamedBufferData(m_shading_clusters, sizeof(Cluster) * m_clusters_count, nullptr, GL_STATIC_READ);
 	m_shading_clusters_ssbo.resize(m_clusters_count);
-
-	// glNamedBufferData(m_nonempty_clusters_ssbo, sizeof(uint32_t) * m_clusters_count, nullptr, GL_STATIC_READ);
-	// glNamedBufferData(m_active_clusters_ssbo, sizeof(uint32_t) * m_clusters_count + sizeof(uint32_t), nullptr, GL_STATIC_READ);
-	// glNamedBufferData(m_cull_lights_dispatch_args_ssbo, sizeof(uint32_t) * 3, nullptr, GL_STATIC_DRAW);
-	// glNamedBufferData(m_point_light_index_list_ssbo, sizeof(uint32_t) * m_clusters_count * AVERAGE_OVERLAPPING_LIGHTS_PER_CLUSTER, nullptr, GL_DYNAMIC_DRAW);
-	// glNamedBufferData(m_spot_light_index_list_ssbo, sizeof(uint32_t) * m_clusters_count * AVERAGE_OVERLAPPING_LIGHTS_PER_CLUSTER, nullptr, GL_DYNAMIC_DRAW);
-	// glNamedBufferData(m_area_light_index_list_ssbo, sizeof(uint32_t) * m_clusters_count * AVERAGE_OVERLAPPING_LIGHTS_PER_CLUSTER, nullptr, GL_DYNAMIC_DRAW);
-
-	// Every tile takes LightGrid struct that has two unsigned ints one to represent the number of lights in that grid
-	// Another to represent the offset to the light index list from where to begin reading light indexes from
-	// In this SSBO, atomic counter is also being stored (uint global_index_count)
-	// This implementation is straight up from Olsson paper
-
-	// glNamedBufferData(m_point_light_grid_ssbo, sizeof(uint32_t) + sizeof(LightGrid) * m_clusters_count, nullptr, GL_DYNAMIC_DRAW);
-	// glNamedBufferData(m_spot_light_grid_ssbo, sizeof(uint32_t) + sizeof(LightGrid) * m_clusters_count, nullptr, GL_DYNAMIC_DRAW);
-	// glNamedBufferData(m_area_light_grid_ssbo, sizeof(uint32_t) + sizeof(LightGrid) * m_clusters_count, nullptr, GL_DYNAMIC_DRAW);
-
-
-	// auto proj = m_camera.m_projection;
-	// auto inv_proj = glm::inverse(proj);
-
-
-
-
-
-
-
-
-
-	// GLuint ssbo;
-	// glCreateBuffers(1, &ssbo);
-	// glBindBufferBase (GL_SHADER_STORAGE_BUFFER, SSBO_BIND_CLUSTERS, ssbo);
-	// glNamedBufferData(ssbo, sizeof(Cluster) * m_clusters_count, nullptr, GL_STATIC_READ);
-
-
-
+	m_nonempty_clusters_ssbo.resize(m_clusters_count);
+	m_nonempty_range_ssbo.resize(1);
+	m_cull_lights_dispatch_args_ssbo.resize(1);
 
 
 	/// Generate clusters' AABBs
@@ -816,53 +754,6 @@ void ClusteredShading::	prepareClusterBuffers()
 	// glDispatchCompute(GLuint(glm::ceil(float(m_clusters_count) / 1024.0f)), 1, 1);
 	glDispatchCompute(m_cluster_grid_dim.x, m_cluster_grid_dim.y, m_cluster_grid_dim.z);
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-
-
-	if(0){
-		const size_t stride_y = m_cluster_grid_dim.x;
-		const size_t stride_z = stride_y*m_cluster_grid_dim.y;
-
-		const auto clusters = m_shading_clusters_ssbo.view();
-		assert(clusters->size() == m_clusters_count);
-
-		// verify clusters are all non-zero volumes and also different positioned (obvious, yes)
-		glm::uvec3 prev_coord { 0, 0, 0 };
-		AABB prev_aabb;
-		const auto num_clusters = m_cluster_grid_dim.x * m_cluster_grid_dim.y * m_cluster_grid_dim.z;
-		size_t idx = 0;
-		for(const auto &cluster: *clusters)
-		{
-			const auto &coord = cluster.coord;
-			if(idx > 0)
-			{
-				std::printf("  coord: %d; %d; %d\n", coord.x, coord.y, coord.z);
-				// assert(coord.x > prev_coord.x or coord.y > prev_coord.y or coord.z > prev_coord.z);
-			}
-			prev_coord = coord;
-
-			const auto &aabb = cluster.aabb;
-			if(idx > 0)
-			{
-				std::printf("  { %.2f; %.2f; %.2f } -> { %.2f; %.2f; %.2f }\n",
-							aabb.min.x,
-							aabb.min.y,
-							aabb.min.z,
-							aabb.max.x,
-							aabb.max.y,
-							aabb.max.z);
-
-				const auto wide = aabb.max.x - aabb.min.x;
-				const auto tall = aabb.max.y - aabb.min.y;
-				const auto deep = aabb.max.z - aabb.min.z;
-				assert(wide > 0 and tall > 0 and deep > 0);
-				assert(aabb.max.x > prev_aabb.max.x or aabb.max.y > prev_aabb.max.y or aabb.max.z < prev_aabb.max.z);
-			}
-			prev_aabb = aabb;
-			++idx;
-		}
-
-		// TODO: check width/volume of all clusters?
-	}
 }
 
 void ClusteredShading::input()
@@ -1062,6 +953,31 @@ void ClusteredShading::GenerateAreaLights()
 void ClusteredShading::GeneratePointLights()
 {
     m_point_lights.clear();
+
+
+	for(auto idx = 0u; idx < 256; ++idx)
+	{
+		glm::vec3 rand_color= hsv2rgb(
+			float(Util::RandomDouble(1, 360)),
+			float(Util::RandomDouble(0.1, 1.0)),
+			1.f//float(Util::RandomDouble(0.1, 1))
+		);
+		glm::vec3 rand_pos = Util::RandomVec3({ -20, 0, -20 }, { 20, 4, 20 });
+
+		auto rand_intensity = float(Util::RandomDouble(10, 100));
+
+		m_point_lights.push_back({
+			.base = {
+				.color = rand_color,
+				.intensity = rand_intensity,
+			},
+			.position = rand_pos,
+			.radius = std::pow(rand_intensity, 0.3f),
+		});
+	}
+	return;
+
+
 #if 1
 	m_point_lights.push_back({
 		.base = {
@@ -1124,7 +1040,7 @@ void ClusteredShading::GenerateSpotLights()
 		.point = {
 			.base = {
 				.color = { 1.f, 0.1f, 0.1f },
-				.intensity = 300
+				.intensity = 3000
 			},
 			.position = { -12, 3, -8 },
 			.radius = 35
@@ -1137,7 +1053,7 @@ void ClusteredShading::GenerateSpotLights()
 		.point = {
 			.base = {
 				.color = { 1.f, 0.6f, 0.1f },
-				.intensity = 300
+				.intensity = 3000
 			},
 			.position = { -8, 3, -8 },
 			.radius = 35
@@ -1150,7 +1066,7 @@ void ClusteredShading::GenerateSpotLights()
 		.point = {
 			.base = {
 				.color = { 1.f, 1.f, 0.f },
-				.intensity = 300
+				.intensity = 3000
 			},
 			.position = { -4, 3, -8 },
 			.radius = 35
@@ -1164,7 +1080,7 @@ void ClusteredShading::GenerateSpotLights()
 		.point = {
 			.base = {
 				.color = { 1.f, 1.f, 1.0f },
-				.intensity = 300
+				.intensity = 3000
 			},
 			.position = { 0, 3, -8 },
 			.radius = 35
@@ -1178,7 +1094,7 @@ void ClusteredShading::GenerateSpotLights()
 		.point = {
 			.base = {
 				.color = { 0.5f, 1.f, 0.f },
-				.intensity = 300
+				.intensity = 3000
 			},
 			.position = { 4, 3, -8 },
 			.radius = 35
@@ -1191,7 +1107,7 @@ void ClusteredShading::GenerateSpotLights()
 		.point = {
 			.base = {
 				.color = { 0.3f, 1.f, 0.6f },
-				.intensity = 300
+				.intensity = 3000
 			},
 			.position = { 8, 3, -8 },
 			.radius = 35
@@ -1204,7 +1120,7 @@ void ClusteredShading::GenerateSpotLights()
 		.point = {
 			.base = {
 				.color = { 0.1f, 1.f, 0.3f },
-				.intensity = 300
+				.intensity = 3000
 			},
 			.position = { 12, 3, -8 },
 			.radius = 35
@@ -1217,7 +1133,7 @@ void ClusteredShading::GenerateSpotLights()
 		.point = {
 			.base = {
 				.color = { 0.1f, 0.8f, 1.f },
-				.intensity = 300
+				.intensity = 3000
 			},
 			.position = { 16, 3, -8 },
 			.radius = 35
@@ -1430,22 +1346,64 @@ void ClusteredShading::render()
 	_gl_timer.start();
 
 
-	// 1. Depth pre-pass  (only if camera/meshes moved, probably always)
+	// Depth pre-pass  (only if camera/meshes moved, probably always)
 	renderDepth(m_camera, m_depth_pass_rt);
 
 
-	// 2. Blit depth info to our main render target
+	// Blit depth info to our main render target
 	m_depth_pass_rt.copyTo(_rt, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 
 	m_depth_time = _gl_timer.elapsed<microseconds>(true);
 
 
-	// 5. Assign lights to clusters (cull lights)
+	// find clusters with fragments in them (the only ones we need to process in the light culling step)
+	m_find_nonempty_clusters_shader->setUniform("u_near_z"sv,          m_camera.nearPlane());
+	m_find_nonempty_clusters_shader->setUniform("u_far_z"sv,           m_camera.farPlane());
+	m_find_nonempty_clusters_shader->setUniform("u_log_grid_dim_y"sv,  m_log_grid_dim_y);
+	m_find_nonempty_clusters_shader->setUniform("u_cluster_size_ss"sv, glm::uvec2(m_cluster_grid_block_size));
+	m_find_nonempty_clusters_shader->setUniform("u_grid_dim"sv,        m_cluster_grid_dim);
 
-    m_cull_lights_shader->bind();
+	m_nonempty_clusters_ssbo.clear();
+	m_nonempty_range_ssbo.clear();
+	m_depth_pass_rt.bindTextureSampler();
+	m_find_nonempty_clusters_shader->invoke(GLuint(glm::ceil(float(m_depth_pass_rt.width()) / 32.f)),
+											GLuint(glm::ceil(float(m_depth_pass_rt.height()) / 32.f)));
+
+	m_cluster_find_time = _gl_timer.elapsed<microseconds>(true);
+
+	if(0){
+		const auto indexes_view = m_nonempty_range_ssbo.view();
+		const auto &indexes = indexes_view->front();
+		const auto first_index = NONEMPTY_CLUSTERS_END - indexes.x;
+		const auto last_index = indexes.y;
+		std::printf("cluster range [%u - %u] -> %u\n", first_index, last_index, last_index - first_index + 1);
+	}
+
+	m_collate_nonempty_index_shader->invoke();
+
+	m_cluster_collate_time = _gl_timer.elapsed<microseconds>(true);
+
+#if 0
+	const auto nonempty_view = m_nonempty_clusters_ssbo.view();
+	size_t num_clusters = 0;
+	for(const auto &item: (*nonempty_view))
+	{
+		if(item.cluster_index == NONEMPTY_CLUSTERS_END)
+			break;
+		++num_clusters;
+		// std::printf("non-empty cluster: %u\n", item.cluster_index);
+	}
+	std::printf("non-empty clusters: %lu\n", num_clusters);
+	const auto cull_args_view = m_cull_lights_dispatch_args_ssbo.view();
+	const auto &args = cull_args_view->front();
+	std::printf("cull args: %u %u %u\n", args.x, args.y, args.z);
+	// assert(false);
+#endif
+
+	// Assign lights to clusters (cull lights)
+
 	m_cull_lights_shader->setUniform("u_view_matrix"sv, m_camera.viewTransform());
-	glDispatchCompute(m_cluster_grid_dim.x * m_cluster_grid_dim.y * m_cluster_grid_dim.z, 1, 1);
-	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+	m_cull_lights_shader->invoke(m_cull_lights_dispatch_args_ssbo); // number of clusters
 
 	m_light_cull_time = _gl_timer.elapsed<microseconds>(true);
 
@@ -1455,7 +1413,7 @@ void ClusteredShading::render()
 	renderLighting(m_camera);
 
 
-    // 7. Render area lights geometry
+	// Render area lights geometry
 	if(m_area_lights_geometry)
 	{
 		m_draw_area_lights_geometry_shader->bind();
@@ -1466,7 +1424,7 @@ void ClusteredShading::render()
 	m_shading_time = _gl_timer.elapsed<microseconds>(true);
 
 
-    // 8. Render skybox
+	// Render skybox
     m_background_shader->bind();
 	m_camera.setUniforms(*m_background_shader);
 	// specialized 'u_view'; only rotation part
@@ -1523,7 +1481,7 @@ void ClusteredShading::render()
 	// TODO: compute new desired exposure, blend 'm_eposure' over time towards that value
 
 
-	// 9. Bloom
+	// Bloom
     if (m_bloom_enabled)
     {
 		m_bloom_pp.setThreshold(m_bloom_threshold);
@@ -1534,7 +1492,7 @@ void ClusteredShading::render()
 		m_bloom_pp.render(_rt, _rt);
 	}
 
-    // 10. Apply tone mapping
+	// Apply tone mapping
 	// TODO: continuously adjust 'm_exposure' depending on how bright the image is
 
 	m_tmo_pp.setExposure(m_exposure);
@@ -1990,10 +1948,12 @@ void ClusteredShading::render_gui()
 	ImVec2 window_pos_pivot = ImVec2(1.0f, 0.0f);
 
     ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
-	ImGui::SetNextWindowSize({ 400, 800 });
+	ImGui::SetNextWindowSize({ 300, 800 });
 
 	ImGui::Text("   Culling: %4ld µs", m_cull_time.count());
 	ImGui::Text("    Z-pass: %4ld µs", m_depth_time.count());
+	ImGui::Text("Clstr.find: %4ld µs", m_cluster_find_time.count());
+	ImGui::Text("Clstr.coll: %4ld µs", m_cluster_collate_time.count());
 	ImGui::Text("Light cull: %4ld µs", m_light_cull_time.count());
 	ImGui::Text("   Shading: %4ld µs", m_shading_time.count());
 	ImGui::Text("    Skybox: %4ld µs", m_skybox_time.count());
@@ -2036,6 +1996,7 @@ void ClusteredShading::render_gui()
         {
             ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.5f);
 
+			ImGui::Text("Cluster  resolution: %u x %u x %u", m_cluster_grid_dim.x, m_cluster_grid_dim.y, m_cluster_grid_dim.z);
 			if (ImGui::Checkbox("Show Cluster size", &m_debug_cluster_size))
                 m_debug_clusters_occupancy = false;
 

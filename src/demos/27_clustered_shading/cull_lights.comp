@@ -6,6 +6,11 @@ layout(std430, binding = SSBO_BIND_CLUSTERS) buffer ClustersSSBO
 	Cluster clusters[];
 };
 
+layout(std430, binding = SSBO_BIND_NONEMPTY_CLUSTERS) buffer ClustersFlagsSSBO
+{
+	ClusterNonempty nonempty_clusters[];
+};
+
 layout(std430, binding = SSBO_BIND_POINT_LIGHTS) buffer PointLightsSSBO
 {
     PointLight point_lights[];
@@ -38,8 +43,9 @@ shared uint s_area_lights[CLUSTER_MAX_AREA_LIGHTS];
 bool sphereInsideAABB(vec3 center, float radius, AABB aabb);
 float sqDistancePointAABB(vec3 point, AABB aabb);
 
-// layout(local_size_x = CULL_LIGHTS_LOCAL_SIZE, local_size_y = 1, local_size_z = 1) in;
-layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
+const uint NUM_THREADS = 1024;
+
+layout(local_size_x = NUM_THREADS, local_size_y = 1, local_size_z = 1) in;
 void main()
 {
 	if(gl_LocalInvocationIndex == 0)
@@ -48,17 +54,21 @@ void main()
 		s_spot_lights_count = 0;
 		s_area_lights_count = 0;
 
+#ifdef ALL_CLUSTERS
 		s_cluster_index = gl_WorkGroupID.x;
+#else
+		s_cluster_index = nonempty_clusters[gl_WorkGroupID.x].cluster_index;
+#endif
 		s_cluster_aabb = clusters[s_cluster_index].aabb;
 	}
 	barrier();
 
-    const uint THREADS_COUNT = gl_WorkGroupSize.x;
 
-    // TODO: maybe divide the lights using some spatial partitioning
+    // TODO: maybe partition the lights using some spatial partitioning ?
+
 
     // Intersect point lights against AABBs.
-    for (uint idx = gl_LocalInvocationIndex; idx < point_lights.length(); idx += THREADS_COUNT)
+    for (uint idx = gl_LocalInvocationIndex; idx < point_lights.length(); idx += NUM_THREADS)
     {
         PointLight light = point_lights[idx];
 
@@ -72,9 +82,8 @@ void main()
     }
 
     // Intersect spot lights against AABBs
-    // Treating spot lights as spheres not cones.
-    // Feel free to make a pull request if you find any good cone-AABB intersection test.
-    for (uint idx = gl_LocalInvocationIndex; idx < spot_lights.length(); idx += THREADS_COUNT)
+    // Treating spot lights as spheres not cones (use something better?).
+    for (uint idx = gl_LocalInvocationIndex; idx < spot_lights.length(); idx += NUM_THREADS)
     {
         SpotLight light = spot_lights[idx];
 
@@ -88,9 +97,9 @@ void main()
         }
     }
 
-    // Intersect area lights against AABBs
+    // Intersect area lights against AABB
     // Treating area lights as spheres not rectangles.
-    for (uint idx = gl_LocalInvocationIndex; idx < area_lights.length(); idx += THREADS_COUNT)
+    for (uint idx = gl_LocalInvocationIndex; idx < area_lights.length(); idx += NUM_THREADS)
     {
         AreaLight light = area_lights[idx];
 
