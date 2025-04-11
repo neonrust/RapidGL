@@ -102,5 +102,11 @@ namespace RGL
             // Returns a random vec3 in [min, max).
             return glm::vec3(RandomDouble(min, max), RandomDouble(min, max), RandomDouble(min, max));
         }
+
+		static glm::vec3 RandomVec3(const glm::vec3 &min, const glm::vec3 &max)
+		{
+			// Returns a random vec3 inside the box defined by [min, max).
+			return glm::vec3(RandomDouble(min.x, max.x), RandomDouble(min.y, max.y), RandomDouble(min.z, max.z));
+		}
 	};
 }
