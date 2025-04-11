@@ -75,7 +75,9 @@ public:
 	void setPostBarrier(Barrier barrier_bits);
 
 	void invoke(size_t groups_x=1, size_t groups_y=1, size_t groups_z=1);
-	void invoke(const GroupsBuffer &indirect_args, size_t offset=0);
+	inline void invoke(glm::uvec2 groups) { invoke(groups.x, groups.y); }
+	inline void invoke(glm::uvec3 groups) { invoke(groups.x, groups.y, groups.z); }
+	void invoke(const GroupsBuffer &groups, size_t offset=0);
 
 	void setUniform(const std::string_view & name, float value);
 	void setUniform(const std::string_view & name, int value);
