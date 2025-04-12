@@ -227,10 +227,10 @@ void ClusteredShading::init_app()
 	assert(*m_find_nonempty_clusters_shader);
 	m_find_nonempty_clusters_shader->setPostBarrier(Shader::Barrier::SSBO);  // config, only once
 
-	m_collate_nonempty_index_shader = std::make_shared<Shader>(dir + "collate_nonempty_index.comp");
-	m_collate_nonempty_index_shader->link();
-	assert(*m_collate_nonempty_index_shader);
-	m_collate_nonempty_index_shader->setPostBarrier(Shader::Barrier::SSBO);  // config, only once
+	m_compile_nonempty_index_shader = std::make_shared<Shader>(dir + "compile_nonempty_index.comp");
+	m_compile_nonempty_index_shader->link();
+	assert(*m_compile_nonempty_index_shader);
+	m_compile_nonempty_index_shader->setPostBarrier(Shader::Barrier::SSBO);  // config, only once
 
 	m_cull_lights_shader = std::make_shared<Shader>(dir + "cull_lights.comp");
     m_cull_lights_shader->link();
@@ -1379,9 +1379,9 @@ void ClusteredShading::render()
 		std::printf("cluster range [%u - %u] -> %u\n", first_index, last_index, last_index - first_index + 1);
 	}
 
-	m_collate_nonempty_index_shader->invoke();
+	m_compile_nonempty_index_shader->invoke();
 
-	m_cluster_collate_time = _gl_timer.elapsed<microseconds>(true);
+	m_cluster_compile_time = _gl_timer.elapsed<microseconds>(true);
 
 #if 0
 	const auto nonempty_view = m_nonempty_clusters_ssbo.view();
@@ -1953,7 +1953,7 @@ void ClusteredShading::render_gui()
 	ImGui::Text("   Culling: %4ld µs", m_cull_time.count());
 	ImGui::Text("    Z-pass: %4ld µs", m_depth_time.count());
 	ImGui::Text("Clstr.find: %4ld µs", m_cluster_find_time.count());
-	ImGui::Text("Clstr.coll: %4ld µs", m_cluster_collate_time.count());
+	ImGui::Text("Clstr.comp: %4ld µs", m_cluster_compile_time.count());
 	ImGui::Text("Light cull: %4ld µs", m_light_cull_time.count());
 	ImGui::Text("   Shading: %4ld µs", m_shading_time.count());
 	ImGui::Text("    Skybox: %4ld µs", m_skybox_time.count());

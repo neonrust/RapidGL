@@ -153,7 +153,7 @@ private:
     std::shared_ptr<RGL::Shader> m_depth_prepass_shader;
     std::shared_ptr<RGL::Shader> m_generate_clusters_shader;
 	std::shared_ptr<RGL::Shader> m_find_nonempty_clusters_shader;
-	std::shared_ptr<RGL::Shader> m_collate_nonempty_index_shader;
+	std::shared_ptr<RGL::Shader> m_compile_nonempty_index_shader;
     std::shared_ptr<RGL::Shader> m_cull_lights_shader;
     std::shared_ptr<RGL::Shader> m_clustered_pbr_shader;
 
@@ -274,7 +274,7 @@ private:
 	std::chrono::microseconds m_cull_time;
 	std::chrono::microseconds m_depth_time;
 	std::chrono::microseconds m_cluster_find_time;
-	std::chrono::microseconds m_cluster_collate_time;
+	std::chrono::microseconds m_cluster_compile_time;
 	std::chrono::microseconds m_light_cull_time;
 	std::chrono::microseconds m_shading_time;
 	std::chrono::microseconds m_skybox_time;
