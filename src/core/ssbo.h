@@ -25,6 +25,7 @@ public:
 public:
 	ShaderStorageBuffer(BufferUsage default_usage=DynamicDraw) :
 		_bind_index(0),
+		_size(0),
 		_default_usage(default_usage)
 	{
 	}
