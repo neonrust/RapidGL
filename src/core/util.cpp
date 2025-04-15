@@ -18,12 +18,10 @@ using namespace std::literals;
 
 namespace RGL
 {
-    std::string Util::LoadFile(const std::filesystem::path & filename)
+	std::tuple<std::string, bool> Util::LoadFile(const std::filesystem::path & filename)
     {
         if (filename.empty())
-        {
-            return "";
-        }
+			return { {}, false };
 
         std::string filetext;
         std::string line;
@@ -36,8 +34,8 @@ namespace RGL
             fprintf(stderr, "Could not open file %s\n", filepath.string().c_str());
             inFile.close();
 
-            return "";
-        }
+			return { {}, false };
+		}
 
         while (getline(inFile, line))
         {
@@ -46,7 +44,7 @@ namespace RGL
 
         inFile.close();
 
-        return filetext;
+		return { filetext, true };
     }
 
 	std::vector<uint8_t> Util::LoadFileBinary(const std::filesystem::path& filename)
@@ -76,7 +74,7 @@ namespace RGL
         return data;
     }
 
-	std::string Util::PreprocessShaderSource(const std::string& shader_source, const std::filesystem::path& dir)
+	std::tuple<std::string, bool> Util::PreprocessShaderSource(const std::string& shader_source, const std::filesystem::path& dir)
     {
 		static const auto phrase_include = "#include "sv;
 
@@ -115,7 +113,12 @@ namespace RGL
 					// extract filename, cutting off quotes (or brackets)
 					auto include_file_name = preproc_instruction.substr(phrase_include.size() + 1, preproc_instruction.size() - phrase_include .size() - 2);
 					// always relative the current file
-					const auto include_data = LoadFile(dir / include_file_name);
+					const auto &[include_data, ok] = LoadFile(dir / include_file_name);
+					if(not ok)
+					{
+						std::fprintf(stderr, "(%lu): Preprocessor instruction failed: %s\n", line_num, preproc_instruction.data());
+						return { {}, false };
+					}
 					if(not include_data.empty())
 					{
 						new_source.append(include_data);
@@ -142,9 +145,9 @@ namespace RGL
 
 		// we included files, need to re-run this preprocess
 		if (files_included)
-			new_source = PreprocessShaderSource(new_source, dir);
+			return PreprocessShaderSource(new_source, dir);
 
-		return new_source;
+		return { new_source, true };
     }
 
 	static Util::TextureData mk_tx_data(void *data);

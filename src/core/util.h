@@ -38,7 +38,7 @@ namespace RGL
         *                                needs to be loaded.
         * @returns Full file's source as a std::string.
         */
-        static std::string LoadFile(const std::filesystem::path & filename);
+		static std::tuple<std::string, bool> LoadFile(const std::filesystem::path & filename);
 
         /**
         * @brief   Loads a file in a binary mode.
@@ -49,7 +49,7 @@ namespace RGL
         */
         static std::vector<uint8_t> LoadFileBinary(const std::filesystem::path& filename);
 		
-		static std::string PreprocessShaderSource(const std::string & shader_code, const std::filesystem::path& dir="shaders");
+		static std::tuple<std::string, bool> PreprocessShaderSource(const std::string & shader_code, const std::filesystem::path& dir="shaders");
         /**
         * @brief   Loads a file that contains an image data.
         * @param   std::string Relative path, with file name
