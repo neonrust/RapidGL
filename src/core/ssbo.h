@@ -2,6 +2,7 @@
 
 #include "glad/glad.h"
 
+#include <cstring>
 #include <memory>
 #include <vector>
 #include <cassert>
@@ -38,6 +39,7 @@ public:
 
 	void setBindIndex(GLuint index);
 
+	inline uint32_t id() const { return _id; }
 	void bind();
 	void bindIndirect() const;
 
@@ -46,6 +48,7 @@ public:
 	void clear();
 
 	inline size_t size() const { return _size; }
+	inline BufferUsage usage() const { return _default_usage; }
 
 	void resize(size_t size);
 
@@ -66,7 +69,7 @@ public:
 
 	std::unique_ptr<const typename ShaderStorageBuffer<T>::View> view();
 
-private:
+protected:
 	bool ensureCreated();  // returns true if it was created
 	void releaseView();
 
@@ -213,4 +216,56 @@ template<typename T>
 inline ShaderStorageBuffer<T>::View::~View()
 {
 	_buffer->releaseView();
+}
+
+// ============================================================================
+
+template<size_t count=1> requires (count <= 32)
+class AtomicCounterBuffer : protected ShaderStorageBuffer<uint32_t>
+{
+public:
+	AtomicCounterBuffer(BufferUsage usage=DefaultUsage);
+
+	void bindCounters();
+	void clear();
+
+	template<size_t index> requires (index < count)
+	void set(uint32_t value);
+};
+
+template<size_t count> requires (count <= 32)
+inline AtomicCounterBuffer<count>::AtomicCounterBuffer(BufferUsage usage) :
+	ShaderStorageBuffer<uint32_t>(usage)
+{
+}
+
+template<size_t count> requires (count <= 32)
+void AtomicCounterBuffer<count>::bindCounters()
+{
+	if(ensureCreated())
+		resize(count);
+
+	glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, id());
+}
+
+template<size_t count> requires (count <= 32)
+void AtomicCounterBuffer<count>::clear()
+{
+	if(ensureCreated())
+		resize(count);
+
+	GLuint values[count];
+	std::memset(&values, sizeof(uint32_t)*count, 0);
+
+	glNamedBufferData(id(), sizeof(values), values, usage());
+}
+
+template<size_t count> requires (count <= 32)
+template<size_t index> requires (index < count)
+void AtomicCounterBuffer<count>::set(uint32_t value)
+{
+	if(ensureCreated())
+		resize(count);
+
+	glNamedBufferSubData(id(), index + sizeof(uint32_t), sizeof(uint32_t), &value);
 }
