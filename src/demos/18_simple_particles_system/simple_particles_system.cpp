@@ -259,7 +259,7 @@ void SimpleParticlesSystem::render()
     m_particles_shader->setUniform("cone_angle",             glm::radians(m_cone_angle));
 
     /* Update pass */
-    m_particles_shader->setSubroutine(RGL::Shader::ShaderType::VERTEX, "update");
+    m_particles_shader->setSubroutine(RGL::Shader::ShaderType::Vertex, "update");
 
     glEnable(GL_RASTERIZER_DISCARD); // Turn off rasterization
     glBindTransformFeedback(GL_TRANSFORM_FEEDBACK, m_tfo_ids[m_draw_buffer_idx]);
@@ -288,7 +288,7 @@ void SimpleParticlesSystem::render()
 
     /* Draw particles */
     m_particles_shader->bind();
-    m_particles_shader->setSubroutine(RGL::Shader::ShaderType::VERTEX, "render");
+    m_particles_shader->setSubroutine(RGL::Shader::ShaderType::Vertex, "render");
     
     m_particle_texture.Bind(0);
     glBindTextureUnit(1, m_random_texture_1d);

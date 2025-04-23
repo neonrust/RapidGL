@@ -197,7 +197,7 @@ void ProceduralNoise::render()
 
     // Decal
     glBindTextureUnit(0, m_decal_texture);
-    m_noise_texturing_shader->setSubroutine(RGL::Shader::ShaderType::FRAGMENT, "disintegration");
+    m_noise_texturing_shader->setSubroutine(RGL::Shader::ShaderType::Fragment, "disintegration");
     m_noise_texturing_shader->setUniform("low_threshold", m_low_threshold);
     m_noise_texturing_shader->setUniform("high_threshold", m_high_threshold);
     m_noise_texturing_shader->setUniform("mvp", view_projection * m_objects_model_matrices[0]);
@@ -205,7 +205,7 @@ void ProceduralNoise::render()
 
     // Cloud
     glBindTextureUnit(0, m_cloud_texture);
-    m_noise_texturing_shader->setSubroutine(RGL::Shader::ShaderType::FRAGMENT, "cloud");
+    m_noise_texturing_shader->setSubroutine(RGL::Shader::ShaderType::Fragment, "cloud");
     m_noise_texturing_shader->setUniform("sky_color", m_sky_color);
     m_noise_texturing_shader->setUniform("cloud_color", m_cloud_color);
     m_noise_texturing_shader->setUniform("mvp", view_projection * m_objects_model_matrices[1]);
@@ -213,7 +213,7 @@ void ProceduralNoise::render()
 
     // Wood grain
     glBindTextureUnit(0, m_wood_grain_texture);
-    m_noise_texturing_shader->setSubroutine(RGL::Shader::ShaderType::FRAGMENT, "wood_grain");
+    m_noise_texturing_shader->setSubroutine(RGL::Shader::ShaderType::Fragment, "wood_grain");
     m_noise_texturing_shader->setUniform("dark_wood_color", m_dark_wood_color);
     m_noise_texturing_shader->setUniform("light_wood_color", m_light_wood_color);
     m_noise_texturing_shader->setUniform("slice_matrix", m_slice_matrix);

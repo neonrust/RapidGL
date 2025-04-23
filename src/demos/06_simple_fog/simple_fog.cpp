@@ -144,7 +144,7 @@ void SimpleFog::render()
 
     m_directional_light_shader->setUniform("fog_color",        m_fog_color);
 
-    m_directional_light_shader->setSubroutine(RGL::Shader::ShaderType::FRAGMENT, m_fog_equation_names[int(m_fog_equation)]);
+    m_directional_light_shader->setSubroutine(RGL::Shader::ShaderType::Fragment, m_fog_equation_names[int(m_fog_equation)]);
 
     if (m_fog_equation == FogEquation::LINEAR)
     {

@@ -107,7 +107,7 @@ struct PostprocessFilter
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         m_shader->bind();
-        m_shader->setSubroutine(RGL::Shader::ShaderType::FRAGMENT, filter_name);
+        m_shader->setSubroutine(RGL::Shader::ShaderType::Fragment, filter_name);
         bindTexture();
 
         glBindVertexArray(m_dummy_vao_id);

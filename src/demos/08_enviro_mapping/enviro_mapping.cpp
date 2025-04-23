@@ -269,7 +269,7 @@ void EnvironmentMapping::render_objects(const glm::mat4& camera_view, const glm:
     {
         if (m_dynamic_enviro_mapping_toggle) m_cubemap_rts[0].bindTexture(1);
 
-        m_enviro_mapping_shader->setSubroutine(RGL::Shader::ShaderType::FRAGMENT, "reflection");
+        m_enviro_mapping_shader->setSubroutine(RGL::Shader::ShaderType::Fragment, "reflection");
         m_enviro_mapping_shader->setUniform("model", m_objects_model_matrices[0]);
         m_enviro_mapping_shader->setUniform("normal_matrix", glm::mat3(glm::transpose(glm::inverse(m_objects_model_matrices[0]))));
         m_enviro_mapping_shader->setUniform("mvp", view_projection * m_objects_model_matrices[0]);
@@ -281,7 +281,7 @@ void EnvironmentMapping::render_objects(const glm::mat4& camera_view, const glm:
     {
         if (m_dynamic_enviro_mapping_toggle) m_cubemap_rts[1].bindTexture(1);
 
-        m_enviro_mapping_shader->setSubroutine(RGL::Shader::ShaderType::FRAGMENT, "refraction");
+        m_enviro_mapping_shader->setSubroutine(RGL::Shader::ShaderType::Fragment, "refraction");
         m_enviro_mapping_shader->setUniform("ior", m_ior);
         m_enviro_mapping_shader->setUniform("model", m_objects_model_matrices[1]);
         m_enviro_mapping_shader->setUniform("normal_matrix", glm::mat3(glm::transpose(glm::inverse(m_objects_model_matrices[1]))));
