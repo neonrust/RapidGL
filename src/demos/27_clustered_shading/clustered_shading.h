@@ -153,7 +153,8 @@ private:
     std::shared_ptr<RGL::Shader> m_depth_prepass_shader;
     std::shared_ptr<RGL::Shader> m_generate_clusters_shader;
 	std::shared_ptr<RGL::Shader> m_find_nonempty_clusters_shader;
-	std::shared_ptr<RGL::Shader> m_compile_nonempty_index_shader;
+	std::shared_ptr<RGL::Shader> m_collect_nonempty_clusters_shader;
+	std::shared_ptr<RGL::Shader> m_make_cull_lights_args_shader;
     std::shared_ptr<RGL::Shader> m_cull_lights_shader;
     std::shared_ptr<RGL::Shader> m_clustered_pbr_shader;
 
@@ -169,17 +170,16 @@ private:
 
     // Average number of overlapping lights per cluster AABB.
     // This variable matters when the lights are big and cover more than one cluster.
-	static constexpr uint32_t AVERAGE_OVERLAPPING_LIGHTS_PER_CLUSTER      = 50;
-	static constexpr uint32_t AVERAGE_OVERLAPPING_AREA_LIGHTS_PER_CLUSTER = 100;
+	static constexpr uint32_t AVERAGE_LIGHTS_PER_CLUSTER = 50;
 
-	uint32_t   m_cluster_grid_block_size;      // The size of a cluster in screen space.(pixels, x-axis)
-	glm::uvec3 m_cluster_grid_dim;             // 3D dimensions of the cluster grid.
+	uint32_t   m_cluster_block_size;      // The size of a cluster in screen space.(pixels, x-axis)
+	glm::uvec3 m_cluster_resolution;             // 3D dimensions of the cluster grid.
 	float      m_near_k;                       // ( 1 + ( 2 * tan( fov * 0.5 ) / ClusterGridDim.y ) ) // Used to compute the near plane for clusters at depth k.
-    float      m_log_grid_dim_y;               // 1.0f / log( NearK )  // Used to compute the k index of the cluster from the view depth of a pixel sample.
+	float      m_log_cluster_res_y;               // 1.0f / log( NearK )  // Used to compute the k index of the cluster from the view depth of a pixel sample.
 	uint32_t   m_clusters_count;
 
 
-	bool  m_debug_cluster_size           = false;
+	bool  m_debug_cluster_geom           = false;
 	bool  m_debug_clusters_occupancy     = false;
 	float m_debug_clusters_blend_factor  = 0.7f;
 
@@ -218,11 +218,16 @@ private:
 	std::vector<StaticObject> _scenePvs;  // potentially visible set
 
 	// StaticObject m_sponza_static_object;
-
-	ShaderStorageBuffer<Cluster> m_shading_clusters_ssbo;
-	ShaderStorageBuffer<ClusterNonempty> m_nonempty_clusters_ssbo;
-	ShaderStorageBuffer<glm::uvec2> m_nonempty_range_ssbo;
-	ShaderStorageBuffer<glm::uvec3> m_cull_lights_dispatch_args_ssbo;
+	ShaderStorageBuffer<ClusterAABB> m_shading_clusters_aabb_ssbo;
+	ShaderStorageBuffer<uint32_t> m_nonempty_clusters_ssbo;
+	ShaderStorageBuffer<uint32_t> m_active_clusters_ssbo;
+	ShaderStorageBuffer<glm::uvec3> m_cull_lights_args_ssbo;
+	ShaderStorageBuffer<IndexRange> m_cluster_point_lights_ssbo;
+	ShaderStorageBuffer<IndexRange> m_cluster_spot_lights_ssbo;
+	ShaderStorageBuffer<IndexRange> m_cluster_area_lights_ssbo;
+	ShaderStorageBuffer<uint32_t> m_point_lights_index_ssbo;
+	ShaderStorageBuffer<uint32_t> m_spot_lights_index_ssbo;
+	ShaderStorageBuffer<uint32_t> m_area_lights_index_ssbo;
 	ShaderStorageBuffer<DirectionalLight> m_directional_lights_ssbo;
 	ShaderStorageBuffer<PointLight> m_point_lights_ssbo;
 	ShaderStorageBuffer<SpotLight> m_spot_lights_ssbo;
@@ -274,7 +279,7 @@ private:
 	std::chrono::microseconds m_cull_time;
 	std::chrono::microseconds m_depth_time;
 	std::chrono::microseconds m_cluster_find_time;
-	std::chrono::microseconds m_cluster_compile_time;
+	std::chrono::microseconds m_cluster_index_time;
 	std::chrono::microseconds m_light_cull_time;
 	std::chrono::microseconds m_shading_time;
 	std::chrono::microseconds m_skybox_time;

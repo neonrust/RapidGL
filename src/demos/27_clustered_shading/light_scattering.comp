@@ -16,7 +16,6 @@ layout(binding = 3)          uniform sampler2D u_blue_noise;
 
 uniform vec3 u_fog_color;
 uniform float u_fog_density;       // [ 0, 0.1 ]   (sensible)
-uniform float u_fog_falloff_blend; // [ 0, 1 ]
 
 uniform vec3  u_cam_pos;
 uniform float u_near_z;
@@ -25,9 +24,9 @@ uniform mat4  u_projection;
 uniform mat4  u_view;
 uniform mat4  u_inv_projection;
 uniform mat4  u_inv_view;
-uniform uvec3 u_grid_dim;
+uniform uvec3 u_cluster_resolution;
 uniform uvec2 u_cluster_size_ss;
-uniform float u_log_grid_dim_y;
+uniform float u_log_cluster_res_y;
 uniform float u_ray_march_stride;
 uniform float u_time;
 uniform int u_ray_march_noise;
@@ -106,7 +105,7 @@ float interleavedGradientNoise(vec2 pixel, int frame);
 
 vec3 falseColor(float value);
 
-layout(std430, binding = SSBO_BIND_POINT_LIGHTS) buffer PointLightSSBO
+layout(std430, binding = SSBO_BIND_POINT_LIGHTS) buffer PointLightsSSBO
 {
     PointLight point_lights[];
 };
@@ -239,7 +238,7 @@ void main()
 
 /*
 	// TODO: perform scattering per screen tile (frustlet)
-	for(uint cluster_index = 0; cluster_index < u_grid_dim.x * u_grid_dim.y; ++cluster_index)
+	for(uint cluster_index = 0; cluster_index < u_cluster_resolution.x * u_cluster_resolution.y; ++cluster_index)
 		fog_radiance += scatterLightsInCluster(eye_ray, cluster_index);
 */
 
@@ -523,14 +522,14 @@ float atan_approx(float x)
 
 uint computeClusterIndex(uvec3 cluster_coord)
 {
-    return cluster_coord.x + (u_grid_dim.x * (cluster_coord.y + u_grid_dim.y * cluster_coord.z));
+    return cluster_coord.x + (u_cluster_resolution.x * (cluster_coord.y + u_cluster_resolution.y * cluster_coord.z));
 }
 
 uvec3 computeClusterCoord(vec2 screen_pos, float view_z)
 {
     uint x = uint(screen_pos.x / u_cluster_size_ss.x);
 	uint y = uint(screen_pos.y / u_cluster_size_ss.y);
-	uint z = uint(log(view_z / u_near_z) * u_log_grid_dim_y);
+	uint z = uint(log(view_z / u_near_z) * u_log_cluster_res_y);
 
     return uvec3(x, y, z);
 }

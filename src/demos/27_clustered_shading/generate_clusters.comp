@@ -1,14 +1,13 @@
 #version 460 core
 #include "shared.h"
 
-layout(std430, binding = SSBO_BIND_CLUSTERS) buffer ClustersSSBO
+layout(std430, binding = SSBO_BIND_CLUSTERS_AABB) buffer ClustersSSBO
 {
-	// ClusterAABB clusters[];
-	Cluster clusters[];
+    ClusterAABB clusters_aabb[];
 };
 
 // uniforms
-uniform uvec3 u_grid_dim;
+uniform uvec3 u_cluster_resolution;
 uniform uvec2 u_cluster_size_ss; // the size of the cluster in screen space (pixels)
 uniform float u_near_k;
 
@@ -27,18 +26,16 @@ struct Plane
 vec3  clipToView           (vec4 clip);
 vec3  screenToView         (vec4 screen);
 vec3  lineIntersectionPlane(vec3 a, vec3 b, Plane p);
-uvec3 computeClusterCoord  (uint cluster_index);
+uvec3 clusterCoordFromIndex(uint cluster_index);
 
 // all planes face the camera, in view-space so parallel to the near and far planes
 const vec3 AXIS_Z = vec3(0, 0, 1);
 
-layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 void main()
 {
-	// uint  cluster_index = gl_GlobalInvocationID.x;
-	uint cluster_index = gl_WorkGroupID.x + (gl_WorkGroupID.y * u_grid_dim.x) +
-        (gl_WorkGroupID.z * u_grid_dim.x * u_grid_dim.y);
-    uvec3 cluster_coord = gl_WorkGroupID;//computeClusterCoord(cluster_index);
+	uint  cluster_index = gl_GlobalInvocationID.x;
+    uvec3 cluster_coord = clusterCoordFromIndex(cluster_index);
 
 	// Near and far values of the cluster in view space
 	//   exponentially farther away
@@ -64,21 +61,15 @@ void main()
 	vec3 min_aabb = min(near_min, min(near_max, min(far_min, far_max)));
 	vec3 max_aabb = max(near_min, max(near_max, max(far_min, far_max)));
 
-	clusters[cluster_index].aabb = AABB(vec4(min_aabb, 1), vec4(max_aabb, 1));
-
-	// also reset the light counters here
-	clusters[cluster_index].num_point_lights = 0;
-	clusters[cluster_index].num_spot_lights = 0;
-	clusters[cluster_index].num_area_lights = 0;
-
-	clusters[cluster_index].coord = cluster_coord;
+	clusters_aabb[cluster_index].min = vec4(min_aabb.xyz, 1);
+	clusters_aabb[cluster_index].max = vec4(max_aabb.xyz, 1);
 }
 
-uvec3 computeClusterCoord(uint cluster_index)
+uvec3 clusterCoordFromIndex(uint cluster_index)
 {
-	uint x = cluster_index % u_grid_dim.x;
-	uint y = cluster_index % (u_grid_dim.x * u_grid_dim.y) / u_grid_dim.x;
-	uint z = cluster_index / (u_grid_dim.x * u_grid_dim.y);
+	uint x = cluster_index % u_cluster_resolution.x;
+	uint y = cluster_index % (u_cluster_resolution.x * u_cluster_resolution.y) / u_cluster_resolution.x;
+	uint z = cluster_index / (u_cluster_resolution.x * u_cluster_resolution.y);
 
 	return uvec3(x, y, z);
 }
@@ -91,12 +82,12 @@ uvec3 computeClusterCoord(uint cluster_index)
  */
 vec3 lineIntersectionPlane(vec3 a, vec3 b, Plane p)
 {
-	vec3 ab = b - a;
+    vec3 ab = b - a;
 
-	//Computing the intersection length for the line and the plane
+    //Computing the intersection length for the line and the plane
 	float t = (p.offset - dot(p.normal, a)) / dot(p.normal, ab);
 
-	//Computing the actual xyz position of the point along the line
+    //Computing the actual xyz position of the point along the line
 	vec3 q = vec3(0);
 	if (t >= 0 && t <= 1)  // there was an intersection
 		q = a + t * ab;
@@ -106,22 +97,22 @@ vec3 lineIntersectionPlane(vec3 a, vec3 b, Plane p)
 
 vec3 clipToView(vec4 clip)
 {
-	//View space transform
+    //View space transform
 	vec4 view = u_inv_projection * clip;
 
-	//Perspective projection
-	view = view / view.w;
+    //Perspective projection
+    view = view / view.w;
 
 	return vec3(view);
 }
 
 vec3 screenToView(vec4 screen)
 {
-	// Convert to NDC
-	vec2 texcoord = screen.xy * u_pixel_size;
+    // Convert to NDC
+    vec2 texcoord = screen.xy * u_pixel_size;
 
-	//Convert to clipSpace
+    //Convert to clipSpace
 	vec4 clip = vec4(vec2(texcoord.x, texcoord.y) * 2 - 1, screen.z, screen.w);
 
-	return clipToView(clip);
+    return clipToView(clip);
 }

@@ -62,8 +62,8 @@ void opengl_message_callback([[maybe_unused]] GLenum source,
 using namespace RGL;
 
 ClusteredShading::ClusteredShading() :
-	m_shading_clusters_ssbo(StaticRead),
-	m_cull_lights_dispatch_args_ssbo(StaticDraw),
+	m_shading_clusters_aabb_ssbo(StaticRead),
+	m_cull_lights_args_ssbo(StaticRead),
 	m_exposure            (0.4f),
 	m_gamma               (2.2f),
 	m_background_lod_level(1.2f),
@@ -79,11 +79,18 @@ ClusteredShading::ClusteredShading() :
 	m_ray_march_stride    (.1f),
 	_ray_march_noise      (1)
 {
-	m_shading_clusters_ssbo.setBindIndex(SSBO_BIND_CLUSTERS);
+	m_shading_clusters_aabb_ssbo.setBindIndex(SSBO_BIND_CLUSTERS_AABB);
 	m_nonempty_clusters_ssbo.setBindIndex(SSBO_BIND_NONEMPTY_CLUSTERS);
-	m_nonempty_range_ssbo.setBindIndex(SSBO_BIND_NONEMPTY_RANGE);
-	m_cull_lights_dispatch_args_ssbo.setBindIndex(SSBO_BIND_CULL_DISPATCH_ARGS);
+	m_active_clusters_ssbo.setBindIndex(SSBO_BIND_ACTIVE_CLUSTERS);
+	m_cull_lights_args_ssbo.setBindIndex(SSBO_BIND_CULL_DISPATCH_ARGS);
 	m_directional_lights_ssbo.setBindIndex(SSBO_BIND_DIRECTIONAL_LIGHTS);
+	m_cluster_point_lights_ssbo.setBindIndex(SSBO_BIND_CLUSTER_POINT_LIGHTS);
+	m_cluster_spot_lights_ssbo.setBindIndex(SSBO_BIND_CLUSTER_SPOT_LIGHTS);
+	m_cluster_area_lights_ssbo.setBindIndex(SSBO_BIND_CLUSTER_AREA_LIGHTS);
+	m_point_lights_index_ssbo.setBindIndex(SSBO_BIND_POINT_LIGHT_INDEX);
+	m_spot_lights_index_ssbo.setBindIndex(SSBO_BIND_SPOT_LIGHT_INDEX);
+	m_area_lights_index_ssbo.setBindIndex(SSBO_BIND_AREA_LIGHT_INDEX);
+
 	m_point_lights_ssbo.setBindIndex(SSBO_BIND_POINT_LIGHTS);
 	m_spot_lights_ssbo.setBindIndex(SSBO_BIND_SPOT_LIGHTS);
 	m_area_lights_ssbo.setBindIndex(SSBO_BIND_AREA_LIGHTS);
@@ -133,8 +140,8 @@ void ClusteredShading::init_app()
 	m_camera.setSize(Window::width(), Window::height());
 	// m_camera.setPosition(-8.32222f, 4.5269f, -0.768721f);
 	// m_camera.setOrientation(glm::quat(0.634325f, 0.0407623f, 0.772209f, 0.0543523f));
-	m_camera.setPosition({ -19, 3.3f, -15 });
-	m_camera.setOrientationEuler({ 0, 160, 0 });
+	m_camera.setPosition({ -8.5, 3.3f, 1.1f });
+	m_camera.setOrientationEuler({ 0, 117, -0.8f });
 
     /// Randomly initialize lights
 	::srand(3281991);
@@ -149,6 +156,8 @@ void ClusteredShading::init_app()
 		// auto sponza_model = std::make_shared<StaticModel>();
 		// sponza_model->Load(models_path / "sponza2/Sponza2.gltf");
 
+		const auto origin = glm::mat4(1);
+
 		// auto world_trans  = glm::mat4(1);
 		// 	 world_trans  = glm::scale(world_trans, glm::vec3(sponza_model->GetUnitScaleFactor() * 30.0f));
 		// // m_sponza_static_object = StaticObject(sponza_model, world_trans);
@@ -156,8 +165,15 @@ void ClusteredShading::init_app()
 
 		auto testroom_model = std::make_shared<StaticModel>();
 		testroom_model->Load(models_path / "testroom" / "testroom.gltf");
+		_scene.emplace_back(testroom_model, origin);
 
-		_scene.emplace_back(testroom_model, glm::mat4(1));
+		auto default_cube = std::make_shared<StaticModel>();
+		default_cube->Load(models_path / "default-cube.gltf");
+		_scene.emplace_back(default_cube, origin);
+
+		// auto floor = std::make_shared<StaticModel>();
+		// floor->Load(models_path / "floor.gltf");
+		// _scene.emplace_back(floor, glm::mat4(1));
 	}
 
 	// Create depth pre-pass render target
@@ -227,10 +243,15 @@ void ClusteredShading::init_app()
 	assert(*m_find_nonempty_clusters_shader);
 	m_find_nonempty_clusters_shader->setPostBarrier(Shader::Barrier::SSBO);  // config, only once
 
-	m_compile_nonempty_index_shader = std::make_shared<Shader>(dir + "compile_nonempty_index.comp");
-	m_compile_nonempty_index_shader->link();
-	assert(*m_compile_nonempty_index_shader);
-	m_compile_nonempty_index_shader->setPostBarrier(Shader::Barrier::SSBO);  // config, only once
+	m_collect_nonempty_clusters_shader = std::make_shared<Shader>(dir + "collect_nonempty_clusters.comp");
+	m_collect_nonempty_clusters_shader->link();
+	assert(*m_collect_nonempty_clusters_shader);
+	m_collect_nonempty_clusters_shader->setPostBarrier(Shader::Barrier::SSBO);  // config, only once
+
+	m_make_cull_lights_args_shader = std::make_shared<Shader>(dir + "make_cull_lights_args.comp");
+	m_make_cull_lights_args_shader->link();
+	assert(*m_make_cull_lights_args_shader);
+	m_make_cull_lights_args_shader->setPostBarrier(Shader::Barrier::SSBO);  // config, only once
 
 	m_cull_lights_shader = std::make_shared<Shader>(dir + "cull_lights.comp");
     m_cull_lights_shader->link();
@@ -335,7 +356,6 @@ void ClusteredShading::init_app()
 	calculateShadingClusterGrid();  // will also call prepareClusterBuffers()
 
 	glGenBuffers(1, &m_debug_draw_vbo);
-
 	glGenQueries(1, &_gl_time_query);
 
 
@@ -663,29 +683,33 @@ void ClusteredShading::calculateShadingClusterGrid()
 
 	/// Init clustered shading variables.
 
-	m_cluster_grid_dim.x = 64; // around 20 is good enough
 
-	m_cluster_grid_block_size = uint32_t(std::ceil(float(Window::width()) / float(m_cluster_grid_dim.x)));
-	m_cluster_grid_dim.y = uint32_t(glm::ceil(float(Window::height()) / float(m_cluster_grid_block_size)));
+	const auto screen_division = 4; // around 20 is a fair value
+
+
+
+	m_cluster_resolution.x = screen_division;
+
+	m_cluster_block_size = uint32_t(std::ceil(float(Window::width()) / float(m_cluster_resolution.x)));
+	m_cluster_resolution.y = uint32_t(glm::ceil(float(Window::height()) / float(m_cluster_block_size)));
 
 	// The depth of the cluster grid during clustered rendering is dependent on the
 	// number of clusters subdivisions in the screen Y direction.
 	// Source: Clustered Deferred and Forward Shading (2012) (Ola Olsson, Markus Billeter, Ulf Assarsson).
 
 	const float half_fov  = glm::radians(m_camera.verticalFov() * 0.5f);
-	const float sD        = 2.0f * glm::tan(half_fov) / float(m_cluster_grid_dim.y);
+	const float sD        = 2.0f * glm::tan(half_fov) / float(m_cluster_resolution.y);
 	m_near_k              = 1.0f + sD;  // used by "generate clusters" shader; apply scale factor to 'sD' to change the number of depth slices
-	m_log_grid_dim_y      = 1.0f / glm::log(m_near_k);
+	m_log_cluster_res_y      = 1.0f / glm::log(m_near_k);
 
 	const float z_near    = m_camera.nearPlane();
 	const float z_far     = m_camera.farPlane();
 	const float log_depth = glm::log(z_far / z_near);
-	m_cluster_grid_dim.z  = uint32_t(glm::floor(log_depth * m_log_grid_dim_y));
+	m_cluster_resolution.z  = uint32_t(glm::floor(log_depth * m_log_cluster_res_y));
 
 
-	// TODO: the depth slices closest to the camera will be really tiny
-	//   if 1.0 is 1m, the closest slice will be 1.4cm (with grid_dim.x = 20)
-	//   might want to use a fixed spacing the first 1-2 meters.
+	// TODO: the depth slices closest to the camera will be quite small
+	//   might want to use a fixed spacing the first X units (a few meters in world space)
 	// Maybe use the one Doom 2016 uses, see https://www.aortiz.me/2018/12/21/CG.html#building-a-cluster-grid
 	// auto doom_slice_z = [near_z=m_camera.nearPlane(), far_z=m_camera.farPlane(), num_slices=m_cluster_grid_dim.z](size_t slice_n) -> float {
 	// 	return -near_z * std::pow(far_z / near_z, float(slice_n)/float(num_slices));
@@ -694,26 +718,26 @@ void ClusteredShading::calculateShadingClusterGrid()
 	///   might be faster though, if that's useful?
 	// the reverse:
 	//   slice_n = std::log(z_slice) * (num_slices / std::log(cam_far_z/cam_near_z)) - num_slices * std::log(cam_near_z) / std::log(cam_far_z / cam_near_z);
-	// auto doom_slide_n = [near_z=m_camera.nearPlane(), far_z=m_camera.farPlane(), num_slices=m_cluster_grid_dim.z](float z_slice) -> size_t {
+	// auto doom_slide_n = [near_z=m_camera.nearPlane(), far_z=m_camera.farPlane(), num_slices=m_cluster_resolution.z](float z_slice) -> size_t {
 	// 	auto far_near = std::log(far_z / near_z);
 	// 	return size_t(std::log(z_slice) * (float(num_slices) / far_near) - float(num_slices) * std::log(near_z) / far_near);
 	// };
 
-	const auto cluster_count = m_cluster_grid_dim.x * m_cluster_grid_dim.y * m_cluster_grid_dim.z;
+	const auto cluster_count = m_cluster_resolution.x * m_cluster_resolution.y * m_cluster_resolution.z;
 
 	if(cluster_count != cluster_count_before)
 	{
 		m_clusters_count = cluster_count;
-		std::printf("Shading clusters: %d   (%d x %d x %d)\n", m_clusters_count, m_cluster_grid_dim.x, m_cluster_grid_dim.y, m_cluster_grid_dim.z);
+		std::printf("Shading clusters: %d   (%d x %d x %d)\n", m_clusters_count, m_cluster_resolution.x, m_cluster_resolution.y, m_cluster_resolution.z);
 
 		auto cluster_depth = [this](size_t slice_n) -> float { return -m_camera.nearPlane() * std::pow(std::abs(m_near_k), float(slice_n)); };
 
 		const float depthN0 = -cluster_depth(0); // this should be camera's near plane
 		const float depthN1 = -cluster_depth(1);
-		const float depthM0 = -cluster_depth(m_cluster_grid_dim.z/2 - 1); // this should be camera's near plane
-		const float depthM1 = -cluster_depth(m_cluster_grid_dim.z/2);
-		const float depthF0 = -cluster_depth(m_cluster_grid_dim.z - 1);
-		const float depthF1 = -cluster_depth(m_cluster_grid_dim.z);  // this should be camera's far plane (approximately)
+		const float depthM0 = -cluster_depth(m_cluster_resolution.z/2 - 1); // this should be camera's near plane
+		const float depthM1 = -cluster_depth(m_cluster_resolution.z/2);
+		const float depthF0 = -cluster_depth(m_cluster_resolution.z - 1);
+		const float depthF1 = -cluster_depth(m_cluster_resolution.z);  // this should be camera's far plane (approximately)
 
 		std::printf("    cluster[0]: %.3f\n", depthN1 - depthN0);
 		std::printf("  cluster[N/2]: %.2f\n", depthM1 - depthM0);
@@ -737,23 +761,31 @@ void ClusteredShading::calculateShadingClusterGrid()
 
 void ClusteredShading::prepareClusterBuffers()
 {
-	m_shading_clusters_ssbo.resize(m_clusters_count);
+	m_shading_clusters_aabb_ssbo.resize(m_clusters_count);
 	m_nonempty_clusters_ssbo.resize(m_clusters_count);
-	m_nonempty_range_ssbo.resize(1);
-	m_cull_lights_dispatch_args_ssbo.resize(1);
+	m_active_clusters_ssbo.resize(1 + m_clusters_count);
+	m_cull_lights_args_ssbo.resize(1);
+
+	const auto index_size = 1 + m_clusters_count * AVERAGE_LIGHTS_PER_CLUSTER;  // +1: global counter
+	m_point_lights_index_ssbo.resize(index_size);
+	m_spot_lights_index_ssbo.resize(index_size);
+	m_area_lights_index_ssbo.resize(index_size);
+
+	m_cluster_point_lights_ssbo.resize(m_clusters_count);
+	m_cluster_spot_lights_ssbo.resize(m_clusters_count);
+	m_cluster_area_lights_ssbo.resize(m_clusters_count);
 
 
-	/// Generate clusters' AABBs
-	// This can be done once as long as the camera parameters doesn't change (projection matrix related variables)
-	m_generate_clusters_shader->bind();
+
+	/// Generate AABBs for clusters
+	// This needs to be re-done when the camera projection changes (e.g. fov)
 	m_camera.setUniforms(*m_generate_clusters_shader);
-	m_generate_clusters_shader->setUniform("u_grid_dim"sv,           m_cluster_grid_dim);
-	m_generate_clusters_shader->setUniform("u_cluster_size_ss"sv,    glm::uvec2(m_cluster_grid_block_size));
+	m_generate_clusters_shader->setUniform("u_cluster_resolution"sv, m_cluster_resolution);
+	m_generate_clusters_shader->setUniform("u_cluster_size_ss"sv,    glm::uvec2(m_cluster_block_size));
 	m_generate_clusters_shader->setUniform("u_near_k"sv,             m_near_k);
 	m_generate_clusters_shader->setUniform("u_pixel_size"sv,         1.0f / glm::vec2(Window::width(), Window::height()));
 	// glDispatchCompute(GLuint(glm::ceil(float(m_clusters_count) / 1024.0f)), 1, 1);
-	glDispatchCompute(m_cluster_grid_dim.x, m_cluster_grid_dim.y, m_cluster_grid_dim.z);
-	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+	m_generate_clusters_shader->invoke(size_t(std::ceil(float(m_clusters_count) / 1024.f)));
 }
 
 void ClusteredShading::input()
@@ -954,31 +986,59 @@ void ClusteredShading::GeneratePointLights()
 {
     m_point_lights.clear();
 
-
-	for(auto idx = 0u; idx < 256; ++idx)
+#if 0
+	m_point_lights.push_back({
+		.base = {
+			.color = { .2f, 1.f, .5f },
+			.intensity = 1000
+		},
+		.position = { -5, 2.f, 4 },
+		.radius = 15,
+	});
+	m_point_lights.push_back({
+		.base = {
+			.color = { 1.f, 0.5f, .1f },
+			.intensity = 1000
+		},
+		.position = { -5, 3.f, -4 },
+		.radius = 15,
+	});
+	m_point_lights.push_back({
+		.base = {
+			.color = { .3f, 0.2f, 1.5f },
+			.intensity = 1000
+		},
+		.position = { 5, 3.f, -4 },
+		.radius = 15,
+	});
+#endif
+	for(auto idx = 0u; idx < 1024; ++idx)
 	{
 		glm::vec3 rand_color= hsv2rgb(
 			float(Util::RandomDouble(1, 360)),
-			float(Util::RandomDouble(0.1, 1.0)),
+			float(Util::RandomDouble(0, 1)),
 			1.f//float(Util::RandomDouble(0.1, 1))
 		);
 		glm::vec3 rand_pos = Util::RandomVec3({ -20, 0, -20 }, { 20, 4, 20 });
 
-		auto rand_intensity = float(Util::RandomDouble(10, 100));
+		auto rand_intensity = float(Util::RandomDouble(1, 20));
 
-		m_point_lights.push_back({
-			.base = {
-				.color = rand_color,
-				.intensity = rand_intensity,
-			},
-			.position = rand_pos,
-			.radius = std::pow(rand_intensity, 0.3f),
-		});
+		// if(idx == 7 or idx == 8 or idx >= 11)
+		// {
+			m_point_lights.push_back({
+				.base = {
+					.color = rand_color,
+					.intensity = rand_intensity,
+				},
+				.position = rand_pos,
+				.radius = std::pow(rand_intensity, 0.4f),
+			});
+			// std::printf("point light %u(%lu) @ %.2f; %.2f; %.2f  r=%.2f\n",
+			// 			idx, m_point_lights.size() - 1, rand_pos.x, rand_pos.y, rand_pos.z, m_point_lights.back().radius);
+		// }
 	}
-	return;
 
-
-#if 1
+#if 0
 	m_point_lights.push_back({
 		.base = {
 			.color = { 1.0f, 0.8f, 0.5f },
@@ -1021,6 +1081,7 @@ void ClusteredShading::GenerateSpotLights()
 {
     m_spot_lights.clear();
 
+#if 0
 	m_spot_lights.push_back({
 		.point = {
 			.base = {
@@ -1034,8 +1095,8 @@ void ClusteredShading::GenerateSpotLights()
 		.direction = { 0, 0, 1 },
 		.inner_angle = 0.f,
 		.outer_angle = glm::radians(30.f),
+		.bounds_radius = 0,
 	});
-#if 1
 	m_spot_lights.push_back({
 		.point = {
 			.base = {
@@ -1047,7 +1108,8 @@ void ClusteredShading::GenerateSpotLights()
 		},
 		.direction = { 0, 0, 1 },
 		.inner_angle = 0.f,
-		.outer_angle = glm::radians(30.f)
+		.outer_angle = glm::radians(30.f),
+		.bounds_radius = 0,
 	});
 	m_spot_lights.push_back({
 		.point = {
@@ -1060,7 +1122,8 @@ void ClusteredShading::GenerateSpotLights()
 		},
 		.direction = { 0, 0, 1 },
 		.inner_angle = 0.f,
-		.outer_angle = glm::radians(30.f)
+		.outer_angle = glm::radians(30.f),
+		.bounds_radius = 0,
 	});
 	m_spot_lights.push_back({
 		.point = {
@@ -1073,7 +1136,8 @@ void ClusteredShading::GenerateSpotLights()
 		},
 		.direction = { 0, 0, 1 },
 		.inner_angle = 0.f,
-		.outer_angle = glm::radians(30.f)
+		.outer_angle = glm::radians(30.f),
+		.bounds_radius = 0,
 	});
 
 	m_spot_lights.push_back({
@@ -1087,7 +1151,8 @@ void ClusteredShading::GenerateSpotLights()
 		},
 		.direction = { 0, 0, 1 },
 		.inner_angle = 0.f,
-		.outer_angle = glm::radians(30.f)
+		.outer_angle = glm::radians(30.f),
+		.bounds_radius = 0,
 	});
 
 	m_spot_lights.push_back({
@@ -1101,7 +1166,8 @@ void ClusteredShading::GenerateSpotLights()
 		},
 		.direction = { 0, 0, 1 },
 		.inner_angle = 0.f,
-		.outer_angle = glm::radians(30.f)
+		.outer_angle = glm::radians(30.f),
+		.bounds_radius = 0,
 	});
 	m_spot_lights.push_back({
 		.point = {
@@ -1114,7 +1180,8 @@ void ClusteredShading::GenerateSpotLights()
 		},
 		.direction = { 0, 0, 1 },
 		.inner_angle = 0.f,
-		.outer_angle = glm::radians(30.f)
+		.outer_angle = glm::radians(30.f),
+		.bounds_radius = 0,
 	});
 	m_spot_lights.push_back({
 		.point = {
@@ -1127,7 +1194,8 @@ void ClusteredShading::GenerateSpotLights()
 		},
 		.direction = { 0, 0, 1 },
 		.inner_angle = 0.f,
-		.outer_angle = glm::radians(30.f)
+		.outer_angle = glm::radians(30.f),
+		.bounds_radius = 0,
 	});
 	m_spot_lights.push_back({
 		.point = {
@@ -1140,9 +1208,18 @@ void ClusteredShading::GenerateSpotLights()
 		},
 		.direction = { 0, 0, 1 },
 		.inner_angle = 0.f,
-		.outer_angle = glm::radians(30.f)
+		.outer_angle = glm::radians(30.f),
+		.bounds_radius = 0,
 	});
 #endif
+
+	// pre-compute the 'bounds_radius'; the radius (and offset from 'position')
+	//   of a minimal bounding sphere
+	for(auto &spot: m_spot_lights)
+	{
+		const float tan_theta = std::tan(2*spot.outer_angle);
+		spot.bounds_radius = spot.point.radius * (1 + tan_theta*tan_theta*0.5f);
+	}
 }
 
 void ClusteredShading::UpdateLightsSSBOs()
@@ -1330,6 +1407,8 @@ void ClusteredShading::GenSkyboxGeometry()
 
 void ClusteredShading::render()
 {
+	glEnable(GL_CULL_FACE);
+
 	m_camera.setFov(m_camera_fov);
 
 
@@ -1357,56 +1436,37 @@ void ClusteredShading::render()
 
 
 	// find clusters with fragments in them (the only ones we need to process in the light culling step)
-	m_find_nonempty_clusters_shader->setUniform("u_near_z"sv,          m_camera.nearPlane());
-	m_find_nonempty_clusters_shader->setUniform("u_far_z"sv,           m_camera.farPlane());
-	m_find_nonempty_clusters_shader->setUniform("u_log_grid_dim_y"sv,  m_log_grid_dim_y);
-	m_find_nonempty_clusters_shader->setUniform("u_cluster_size_ss"sv, glm::uvec2(m_cluster_grid_block_size));
-	m_find_nonempty_clusters_shader->setUniform("u_grid_dim"sv,        m_cluster_grid_dim);
+	m_find_nonempty_clusters_shader->setUniform("u_near_z"sv,             m_camera.nearPlane());
+	m_find_nonempty_clusters_shader->setUniform("u_far_z"sv,              m_camera.farPlane());
+	m_find_nonempty_clusters_shader->setUniform("u_log_cluster_res_y"sv,  m_log_cluster_res_y);
+	m_find_nonempty_clusters_shader->setUniform("u_cluster_size_ss"sv,    glm::uvec2(m_cluster_block_size));
+	m_find_nonempty_clusters_shader->setUniform("u_cluster_resolution"sv, m_cluster_resolution);
 
 	m_nonempty_clusters_ssbo.clear();
-	m_nonempty_range_ssbo.clear();
 	m_depth_pass_rt.bindTextureSampler();
 	m_find_nonempty_clusters_shader->invoke(GLuint(glm::ceil(float(m_depth_pass_rt.width()) / 32.f)),
 											GLuint(glm::ceil(float(m_depth_pass_rt.height()) / 32.f)));
 
 	m_cluster_find_time = _gl_timer.elapsed<microseconds>(true);
 
-	if(0){
-		const auto indexes_view = m_nonempty_range_ssbo.view();
-		const auto &indexes = indexes_view->front();
-		const auto first_index = NONEMPTY_CLUSTERS_END - indexes.x;
-		const auto last_index = indexes.y;
-		std::printf("cluster range [%u - %u] -> %u\n", first_index, last_index, last_index - first_index + 1);
-	}
+	m_active_clusters_ssbo.clear();
+	m_collect_nonempty_clusters_shader->invoke(size_t(std::ceil(float(m_clusters_count) / 1024.f)));
 
-	m_compile_nonempty_index_shader->invoke();
+	m_make_cull_lights_args_shader->invoke();
 
-	m_cluster_compile_time = _gl_timer.elapsed<microseconds>(true);
-
-#if 0
-	const auto nonempty_view = m_nonempty_clusters_ssbo.view();
-	size_t num_clusters = 0;
-	for(const auto &item: (*nonempty_view))
-	{
-		if(item.cluster_index == NONEMPTY_CLUSTERS_END)
-			break;
-		++num_clusters;
-		// std::printf("non-empty cluster: %u\n", item.cluster_index);
-	}
-	std::printf("non-empty clusters: %lu\n", num_clusters);
-	const auto cull_args_view = m_cull_lights_dispatch_args_ssbo.view();
-	const auto &args = cull_args_view->front();
-	std::printf("cull args: %u %u %u\n", args.x, args.y, args.z);
-	// assert(false);
-#endif
+	m_cluster_index_time = _gl_timer.elapsed<microseconds>(true);
 
 	// Assign lights to clusters (cull lights)
-
+	m_point_lights_index_ssbo.clear();
+	m_spot_lights_index_ssbo.clear();
+	m_area_lights_index_ssbo.clear();
+	m_cluster_point_lights_ssbo.clear();
+	m_cluster_spot_lights_ssbo.clear();
+	m_cluster_area_lights_ssbo.clear();
 	m_cull_lights_shader->setUniform("u_view_matrix"sv, m_camera.viewTransform());
-	m_cull_lights_shader->invoke(m_cull_lights_dispatch_args_ssbo); // number of clusters
+	m_cull_lights_shader->invoke(m_cull_lights_args_ssbo); // number of clusters
 
 	m_light_cull_time = _gl_timer.elapsed<microseconds>(true);
-
 
     // 6. Render lighting
 	_rt.bindRenderTarget(RGL::RenderTarget::ColorBuffer);
@@ -1441,15 +1501,13 @@ void ClusteredShading::render()
 	//    - lights culled into screen tiles (i.e. only 2d)
 	//    - (optional) grid/voxel-based atmospheric density; otherwise, just use a constant
 	m_scattering_pp.setCameraUniforms(m_camera);
-	m_scattering_pp.shader().setUniform("u_time"sv,            _running_time.count());
-	m_scattering_pp.shader().setUniform("u_grid_dim"sv,        m_cluster_grid_dim);
-	m_scattering_pp.shader().setUniform("u_cluster_size_ss"sv, glm::uvec2(m_cluster_grid_block_size));
-	// m_scattering_pp.shader().setUniform("u_log_grid_dim_y"sv,  m_log_grid_dim_y);
-	m_scattering_pp.shader().setUniform("u_fog_color"sv,       glm::vec3(1, 1, 1));
-	m_scattering_pp.shader().setUniform("u_fog_density"sv,     m_fog_density);
-	m_scattering_pp.shader().setUniform("u_fog_falloff_blend"sv, m_fog_falloff_blend);
-	m_scattering_pp.shader().setUniform("u_ray_march_stride"sv, m_ray_march_stride);
-	m_scattering_pp.shader().setUniform("u_ray_march_noise",    _ray_march_noise);
+	m_scattering_pp.shader().setUniform("u_time"sv,               _running_time.count());
+	m_scattering_pp.shader().setUniform("u_cluster_resolution"sv, m_cluster_resolution);
+	m_scattering_pp.shader().setUniform("u_cluster_size_ss"sv,    glm::uvec2(m_cluster_block_size));
+	m_scattering_pp.shader().setUniform("u_fog_color"sv,          glm::vec3(1, 1, 1));
+	m_scattering_pp.shader().setUniform("u_fog_density"sv,        m_fog_density);
+	m_scattering_pp.shader().setUniform("u_ray_march_stride"sv,   m_ray_march_stride);
+	m_scattering_pp.shader().setUniform("u_ray_march_noise",      _ray_march_noise);
 
 	m_depth_pass_rt.bindTextureSampler(2);
 
@@ -1465,7 +1523,7 @@ void ClusteredShading::render()
 #endif
 
 	// add the scattering effect on to the final image
-	// draw2d(_pp_full_rt, _rt, BlendMode::Add);
+	draw2d(_pp_full_rt, _rt, BlendMode::Add);
 	m_pp_blur_time = _gl_timer.elapsed<microseconds>();
 
 
@@ -1578,11 +1636,11 @@ void ClusteredShading::renderSceneBounds()
 		debugDrawSpotLight(spot, color);
 	}
 
-	// for(const auto &point: m_point_lights)
-	// {
-	// 	const auto color = glm::vec4(glm::normalize(point.base.color), 1);
-	// 	debugDrawSphere(point.position, point.radius, color);
-	// }
+	for(const auto &point: m_point_lights)
+	{
+		const auto color = glm::vec4(glm::normalize(point.base.color), 1);
+		debugDrawSphere(point.position, point.radius, color);
+	}
 }
 
 void ClusteredShading::debugDrawLine(const glm::vec3 &p1, const glm::vec3 &p2, const glm::vec4 &color)
@@ -1646,6 +1704,8 @@ void ClusteredShading::debugDrawSphere(const glm::vec3 &center, float radius, si
 	const auto ring_step = glm::radians(180.f/float(rings + 1));
 	const auto slice_step = glm::radians(360.f/float(slices));
 
+	// const auto ring_rot = glm::angleAxis(ring_step, AXIS_Y);
+
 	const auto ring_cos = std::cos(ring_step);
 	const auto ring_sin = std::sin(ring_step);
 	const auto slice_cos = std::cos(slice_step);
@@ -1693,9 +1753,9 @@ void ClusteredShading::debugDrawSphere(const glm::vec3 &center, float radius, si
 		base_verts[2] = base_verts[3];
 		// base_verts[3] = ring_rotate * glm::vec4(base_verts[3], 0);
 		base_verts[3] = { // rotation matrix around z axis
-			ring_cos*base_verts[3].x + ring_sin*base_verts[3].y,
+			 ring_cos*base_verts[3].x + ring_sin*base_verts[3].y,
 			-ring_sin*base_verts[3].x + ring_cos*base_verts[3].y,
-			base_verts[3].z
+																  base_verts[3].z
 		};
 	}
 
@@ -1912,13 +1972,14 @@ void ClusteredShading::renderLighting(const Camera &camera)
 
 	m_clustered_pbr_shader->setUniform("u_cam_pos"sv,                               camera.position());
 	m_clustered_pbr_shader->setUniform("u_near_z"sv,                                camera.nearPlane());
-	m_clustered_pbr_shader->setUniform("u_grid_dim"sv,                              m_cluster_grid_dim);
-	m_clustered_pbr_shader->setUniform("u_cluster_size_ss"sv,                       glm::uvec2(m_cluster_grid_block_size));
-	m_clustered_pbr_shader->setUniform("u_log_grid_dim_y"sv,                        m_log_grid_dim_y);
-	m_clustered_pbr_shader->setUniform("u_debug_cluster_size"sv,                    m_debug_cluster_size);
+	m_clustered_pbr_shader->setUniform("u_cluster_resolution"sv,                    m_cluster_resolution);
+	m_clustered_pbr_shader->setUniform("u_cluster_size_ss"sv,                       glm::uvec2(m_cluster_block_size));
+	m_clustered_pbr_shader->setUniform("u_log_cluster_res_y"sv,                     m_log_cluster_res_y);
+	m_clustered_pbr_shader->setUniform("u_debug_cluster_geom"sv,                    m_debug_cluster_geom);
 	m_clustered_pbr_shader->setUniform("u_debug_clusters_occupancy"sv,              m_debug_clusters_occupancy);
 	m_clustered_pbr_shader->setUniform("u_debug_clusters_occupancy_blend_factor"sv, m_debug_clusters_blend_factor);
 	m_clustered_pbr_shader->setUniform("u_view"sv,                                  camera.viewTransform());
+	// m_clustered_pbr_shader->setUniform("u_highlight_xy_cluster"sv,  glm::uvec2{ 3, 3 });
 
     m_irradiance_cubemap_rt->bindTexture(6);
     m_prefiltered_env_map_rt->bindTexture(7);
@@ -1953,7 +2014,7 @@ void ClusteredShading::render_gui()
 	ImGui::Text("   Culling: %4ld µs", m_cull_time.count());
 	ImGui::Text("    Z-pass: %4ld µs", m_depth_time.count());
 	ImGui::Text("Clstr.find: %4ld µs", m_cluster_find_time.count());
-	ImGui::Text("Clstr.comp: %4ld µs", m_cluster_compile_time.count());
+	ImGui::Text("Clstr.coll: %4ld µs", m_cluster_index_time.count());
 	ImGui::Text("Light cull: %4ld µs", m_light_cull_time.count());
 	ImGui::Text("   Shading: %4ld µs", m_shading_time.count());
 	ImGui::Text("    Skybox: %4ld µs", m_skybox_time.count());
@@ -1996,19 +2057,19 @@ void ClusteredShading::render_gui()
         {
             ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.5f);
 
-			ImGui::Text("Cluster  resolution: %u x %u x %u", m_cluster_grid_dim.x, m_cluster_grid_dim.y, m_cluster_grid_dim.z);
-			if (ImGui::Checkbox("Show Cluster size", &m_debug_cluster_size))
+			ImGui::Text("Cluster  resolution: %u x %u x %u", m_cluster_resolution.x, m_cluster_resolution.y, m_cluster_resolution.z);
+			if (ImGui::Checkbox("Show Cluster geom", &m_debug_cluster_geom))
                 m_debug_clusters_occupancy = false;
 
 			if (ImGui::Checkbox("Show Clusters Occupancy", &m_debug_clusters_occupancy))
-				m_debug_cluster_size = false;
+				m_debug_cluster_geom = false;
 
-			if (m_debug_cluster_size or m_debug_clusters_occupancy)
+			if (m_debug_cluster_geom or m_debug_clusters_occupancy)
 				ImGui::SliderFloat("Cluster Debug Blending", &m_debug_clusters_blend_factor, 0.0f, 1.0f);
 
 			ImGui::Checkbox   ("Animate Lights",    &m_animate_lights);
 			ImGui::SliderFloat("Animation Speed",   &m_animation_speed, 0.0f, 15.0f, "%.1f");
-
+/*
             if (ImGui::DragFloat3("Min Bounds", &min_lights_bounds.x, 0.01f))
                 max_lights_bounds = glm::max(min_lights_bounds, max_lights_bounds);
 
@@ -2069,24 +2130,24 @@ void ClusteredShading::render_gui()
 
             if (ImGui::DragFloat("Spot Lights Intensity", &m_spot_lights_intensity, 0.1f, 0.0f))
                 m_spot_lights_intensity = glm::max(0.0f, m_spot_lights_intensity);
-
+*/
             ImGui::Separator();
 			ImGui::Checkbox  ("Two-Sided Area Lights", &m_area_lights_two_sided);
 			ImGui::Checkbox  ("Area Lights Geometry", &m_area_lights_geometry);
-			ImGui::DragScalar("Area Lights Count", ImGuiDataType_U32, &m_area_lights_count);
+			// ImGui::DragScalar("Area Lights Count", ImGuiDataType_U32, &m_area_lights_count);
 
-            if (ImGui::DragFloat("Area Lights Intensity", &m_area_lights_intensity, 0.1f, 0.0f))
-            {
-                m_area_lights_intensity = glm::max(0.0f, m_area_lights_intensity);
-            }
+			// if (ImGui::DragFloat("Area Lights Intensity", &m_area_lights_intensity, 0.1f, 0.0f))
+			// {
+			//     m_area_lights_intensity = glm::max(0.0f, m_area_lights_intensity);
+			// }
 
-            if (ImGui::DragFloat2("Area Lights Size", &m_area_lights_size[0], 0.01f, 0.1f))
-            {
-                m_area_lights_size = glm::max(glm::vec2(0.1f), m_area_lights_size);
-            }
+			// if (ImGui::DragFloat2("Area Lights Size", &m_area_lights_size[0], 0.01f, 0.1f))
+			// {
+			//     m_area_lights_size = glm::max(glm::vec2(0.1f), m_area_lights_size);
+			// }
 
             ImGui::Spacing();
-
+/*
             if (ImGui::Button("Normalize Lights Radii"))
             {
                 float bounds3 = (max_lights_bounds.x - min_lights_bounds.x) * (max_lights_bounds.y - min_lights_bounds.y) * (max_lights_bounds.z - min_lights_bounds.z);
@@ -2103,14 +2164,15 @@ void ClusteredShading::render_gui()
                     min_max_spot_light_radius.x = min_max_spot_light_radius.y - (min_max_spot_light_radius.y * 0.1f);
                 }
             }
+
             if (ImGui::Button("Generate Lights"))
             {
-                GeneratePointLights();
+				GeneratePointLights();
                 GenerateSpotLights();
                 GenerateAreaLights();
                 UpdateLightsSSBOs();
             }
-
+*/
             ImGui::PopItemWidth();
         }
 

@@ -1,15 +1,9 @@
 #version 460 core
 #include "shared.h"
 
-layout(std430, binding = SSBO_BIND_NONEMPTY_CLUSTERS) buffer NonemptyClustersSSBO
+layout(std430, binding = SSBO_BIND_NONEMPTY_CLUSTERS) buffer ClustersFlagsSSBO
 {
-	ClusterNonempty nonempty_clusters[];
-};
-
-layout(std430, binding = SSBO_BIND_NONEMPTY_RANGE) buffer NonemptyRangeSSBO
-{
-	uint first_index; // stored as a "fake 2-complent" negative, see ShaderBufferStorage::clear()
-	uint last_index;
+	bool nonempty_clusters[];
 };
 
 layout (binding = 0) uniform sampler2D u_depth_buffer;
@@ -17,9 +11,9 @@ layout (binding = 0) uniform sampler2D u_depth_buffer;
 // Uniforms
 uniform float u_near_z;
 uniform float u_far_z;
-uniform float u_log_grid_dim_y;
+uniform float u_log_cluster_res_y;
 uniform uvec2 u_cluster_size_ss;
-uniform uvec3 u_grid_dim;
+uniform uvec3 u_cluster_resolution;
 
 // Function's prototypes
 float linearDepth(float depth);
@@ -38,29 +32,27 @@ void main()
     uvec3 cluster_coord = computeClusterCoord(screen_pos, linearDepth(view_z));
     uint cluster_index = computeClusterIndex(cluster_coord);
 
-    nonempty_clusters[cluster_index].found = true;
-    atomicMax(first_index, NONEMPTY_CLUSTERS_END - cluster_index); // store as "negative"
-    atomicMax(last_index, cluster_index);
+    nonempty_clusters[cluster_index] = true;
 }
 
 float linearDepth(float depth)
 {
-	float ndc          = depth * 2.0 - 1.0;
-	float linear_depth = 2.0 * u_near_z * u_far_z / (u_far_z + u_near_z - ndc * (u_far_z - u_near_z));
+	float ndc          = depth*2 - 1;
+	float linear_depth = 2 * u_near_z * u_far_z / (u_far_z + u_near_z - ndc * (u_far_z - u_near_z));
 
 	return linear_depth;
 }
 
 uint computeClusterIndex(uvec3 cluster_coord)
 {
-    return cluster_coord.x + (u_grid_dim.x * (cluster_coord.y + u_grid_dim.y * cluster_coord.z));
+    return cluster_coord.x + (u_cluster_resolution.x * (cluster_coord.y + u_cluster_resolution.y * cluster_coord.z));
 }
 
 uvec3 computeClusterCoord(vec2 screen_pos, float view_z)
 {
 	uint x = uint(screen_pos.x / u_cluster_size_ss.x);
 	uint y = uint(screen_pos.y / u_cluster_size_ss.y);
-    uint z = uint(log(view_z / u_near_z) * u_log_grid_dim_y);
+    uint z = uint(log(view_z / u_near_z) * u_log_cluster_res_y);
 
 	return uvec3(x, y, z);
 }
