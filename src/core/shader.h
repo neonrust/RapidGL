@@ -22,14 +22,14 @@ using GroupsBuffer = ShaderStorageBuffer<glm::uvec3>;
 class Shader final
 {
 public:
-	enum class ShaderType
+	enum class ShaderType : GLenum
 	{
-		VERTEX                 = GL_VERTEX_SHADER,
-		FRAGMENT               = GL_FRAGMENT_SHADER,
-		GEOMETRY               = GL_GEOMETRY_SHADER,
-		TESSELATION_CONTROL    = GL_TESS_CONTROL_SHADER,
-		TESSELATION_EVALUATION = GL_TESS_EVALUATION_SHADER,
-		COMPUTE                = GL_COMPUTE_SHADER
+		Vertex                = GL_VERTEX_SHADER,
+		Fragment              = GL_FRAGMENT_SHADER,
+		Geometry              = GL_GEOMETRY_SHADER,
+		TesselationControl    = GL_TESS_CONTROL_SHADER,
+		TesselationEvaluation = GL_TESS_EVALUATION_SHADER,
+		Compute               = GL_COMPUTE_SHADER
 	};
 	enum class Barrier : GLbitfield
 	{
@@ -106,13 +106,15 @@ public:
 
 	inline operator bool () const { return m_program_id > 0 and m_failed_shaders == 0 and m_is_linked; }
 
+	inline const std::vector<ShaderType> &shaderTypes() const { return _shaderTypes; }
+
 private:
 	void addAllSubroutines();
 	
-	bool addShader(const std::filesystem::path & filepath, GLuint type, const string_set &conditionals);
-	bool loadShader(GLuint shaderObject, const std::filesystem::path &filepath, const string_set &conditionals);
+	bool addShader(const std::filesystem::path & filepath, ShaderType type, const string_set &conditionals);
+	bool loadShader(GLuint shaderObject, ShaderType type, const std::filesystem::path &filepath, const string_set &conditionals);
 	void logLineErrors(const std::filesystem::path &filepath, const std::string &log) const;
-	void add_name(const std::filesystem::path &filepath);
+	void add_name(const std::filesystem::path &filepath, ShaderType type);
 	std::tuple<bool, std::string> getStatusLog(GLuint object, GLenum statusType) const;
 
 	GLint getUniformLocation(const std::string_view &name);
@@ -134,6 +136,7 @@ private:
 	bool m_is_linked;
 	size_t m_failed_shaders;
 	std::string _name;
+	std::vector<ShaderType> _shaderTypes;
 	Barrier _pre_barrier { Barrier::None };
 	Barrier _post_barrier { Barrier::None };
 

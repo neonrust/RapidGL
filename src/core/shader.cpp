@@ -21,7 +21,7 @@ Shader::Shader() :
 Shader::Shader(const std::filesystem::path& compute_shader_filepath, const string_set &conditionals)
 	: Shader()
 {
-	addShader(compute_shader_filepath, GL_COMPUTE_SHADER, conditionals);
+	addShader(compute_shader_filepath, ShaderType::Compute, conditionals);
 }
 
 Shader::Shader(const std::filesystem::path & vertex_shader_filepath,
@@ -29,8 +29,8 @@ Shader::Shader(const std::filesystem::path & vertex_shader_filepath,
 			   const string_set &conditionals)
 	: Shader()
 {
-	addShader(vertex_shader_filepath, GL_VERTEX_SHADER, conditionals);
-	addShader(fragment_shader_filepath, GL_FRAGMENT_SHADER, conditionals);
+	addShader(vertex_shader_filepath, ShaderType::Vertex, conditionals);
+	addShader(fragment_shader_filepath, ShaderType::Fragment, conditionals);
 }
 
 Shader::Shader(const std::filesystem::path & vertex_shader_filepath,
@@ -41,7 +41,7 @@ Shader::Shader(const std::filesystem::path & vertex_shader_filepath,
 			 fragment_shader_filepath,
 			 conditionals)
 {
-	addShader(geometry_shader_filepath, GL_GEOMETRY_SHADER, conditionals);
+	addShader(geometry_shader_filepath, ShaderType::Geometry, conditionals);
 }
 
 Shader::Shader(const std::filesystem::path & vertex_shader_filepath,
@@ -53,8 +53,8 @@ Shader::Shader(const std::filesystem::path & vertex_shader_filepath,
 			 fragment_shader_filepath,
 			 conditionals)
 {
-	addShader(tessellation_control_shader_filepath, GL_TESS_CONTROL_SHADER, conditionals);
-	addShader(tessellation_evaluation_shader_filepath, GL_TESS_EVALUATION_SHADER, conditionals);
+	addShader(tessellation_control_shader_filepath, ShaderType::TesselationControl, conditionals);
+	addShader(tessellation_evaluation_shader_filepath, ShaderType::TesselationEvaluation, conditionals);
 }
 
 Shader::Shader(const std::filesystem::path & vertex_shader_filepath,
@@ -69,7 +69,7 @@ Shader::Shader(const std::filesystem::path & vertex_shader_filepath,
 			 tessellation_evaluation_shader_filepath,
 			 conditionals)
 {
-	addShader(geometry_shader_filepath, GL_GEOMETRY_SHADER, conditionals);
+	addShader(geometry_shader_filepath, ShaderType::Geometry, conditionals);
 }
 
 Shader::~Shader()
@@ -95,7 +95,7 @@ void Shader::enableLiveReload()
 	}
 }
 
-bool Shader::addShader(const std::filesystem::path & filepath, GLuint type, const string_set &conditionals)
+bool Shader::addShader(const std::filesystem::path & filepath, ShaderType type, const string_set &conditionals)
 {
 	if (filepath.empty())
 	{
@@ -113,24 +113,36 @@ bool Shader::addShader(const std::filesystem::path & filepath, GLuint type, cons
 		}
 	}
 
-	auto shaderObject = glCreateShader(type);
+	auto shaderObject = glCreateShader(GLenum(type));
 	if(not shaderObject)
 	{
-		std::fprintf(stderr, "Error while creating shader object (type %d).\n", type);
+		std::fprintf(stderr, "Error while creating shader object (type %u).\n", GLenum(type));
 		return false;
 	}
 
 	_shaderFiles[filepath.string()] = ShaderItem{ shaderObject, conditionals };
 
-	return loadShader(shaderObject, filepath, conditionals);
+	return loadShader(shaderObject, type, filepath, conditionals);
 }
 
-bool Shader::loadShader(GLuint shaderObject, const std::filesystem::path &filepath, const string_set &conditionals)
+bool Shader::loadShader(GLuint shaderObject, ShaderType type, const std::filesystem::path &filepath, const string_set &conditionals)
 {
 	const auto  dir = FileSystem::rootPath() / filepath.parent_path();
-	auto code = Util::PreprocessShaderSource(Util::LoadFile(filepath), dir);
+	const auto &[file_content, okf] = Util::LoadFile(filepath);
+	if(not okf)
+	{
+		std::fprintf(stderr, "Load shader failed: %s\n", filepath.c_str());
+		return false;
+	}
+	auto [code, okp] = Util::PreprocessShaderSource(file_content, dir);
+	if(not okp)
+	{
+		std::fprintf(stderr, "Preprocessing shader failed: %s\n", filepath.c_str());
+		return false;
+	}
 
-	add_name(filepath);
+	// TODO: only first time being called for this 'filepath'; i.e. not when reloading
+	add_name(filepath, type);
 
 	std::string macros;
 	if(not conditionals.empty())
@@ -186,12 +198,16 @@ bool Shader::loadShader(GLuint shaderObject, const std::filesystem::path &filepa
 	return true;
 }
 
-void Shader::add_name(const std::filesystem::path & filepath)
+void Shader::add_name(const std::filesystem::path & filepath, ShaderType type)
 {
 	if(not _name.empty())
 		_name.append(";");
 
 	_name += filepath.filename().string();
+
+	if(_shaderTypes.capacity() == 0)
+		_shaderTypes.reserve(4);
+	_shaderTypes.push_back(type);
 }
 
 bool Shader::link()
