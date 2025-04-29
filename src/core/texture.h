@@ -97,7 +97,7 @@ public:
 	void SetFiltering(TextureFiltering type, TextureFilteringParam filtering);
 	void SetMinLod(float min);
 	void SetMaxLod(float max);
-	void SetWrapping(TextureWrappingAxis coord, TextureWrappingParam param);
+	void SetWrapping(TextureWrappingAxis axis, TextureWrappingParam wrapping);
 	void SetBorderColor(float r, float g, float b, float a);
 	void SetCompareMode(TextureCompareMode mode);
 	void SetCompareFunc(TextureCompareFunc func);
@@ -125,9 +125,9 @@ public:
 	Texture(Texture&& other) noexcept :
 		m_metadata(other.m_metadata),
 		m_type(other.m_type),
-		m_obj_name(other.m_obj_name)
+		_texture_id(other._texture_id)
 	{
-		other.m_obj_name = 0;
+		other._texture_id = 0;
 	}
 
 	Texture& operator = (Texture&& other) noexcept
@@ -152,7 +152,7 @@ public:
 	virtual void SetFiltering(TextureFiltering type, TextureFilteringParam filtering);
 	virtual void SetMinLod(float min);
 	virtual void SetMaxLod(float max);
-	virtual void SetWrapping(TextureWrappingAxis axis, TextureWrappingParam param);
+	virtual void SetWrapping(TextureWrappingAxis axis, TextureWrappingParam wrapping);
 	virtual void SetBorderColor(float r, float g, float b, float a);
 	virtual void SetCompareMode(TextureCompareMode mode);
 	virtual void SetCompareFunc(TextureCompareFunc func);

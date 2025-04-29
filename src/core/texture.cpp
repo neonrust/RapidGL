@@ -132,9 +132,9 @@ void TextureSampler::SetMaxLod(float max)
 	glSamplerParameterf(m_so_id, GL_TEXTURE_MAX_LOD, max);
 }
 
-void TextureSampler::SetWrapping(TextureWrappingAxis coord, TextureWrappingParam param)
+void TextureSampler::SetWrapping(TextureWrappingAxis axis, TextureWrappingParam wrapping)
 {
-	glSamplerParameteri(m_so_id, GLenum(coord), GLint(param));
+	glSamplerParameteri(m_so_id, GLenum(axis), GLint(wrapping));
 }
 
 void TextureSampler::SetBorderColor(float r, float g, float b, float a)
