@@ -1487,9 +1487,8 @@ void ClusteredShading::render()
 	// Render skybox
     m_background_shader->bind();
 	m_camera.setUniforms(*m_background_shader);
-	// specialized 'u_view'; only rotation part
-	m_background_shader->setUniform("u_view"sv,       glm::mat4(glm::mat3(m_camera.viewTransform())));
-	m_background_shader->setUniform("u_lod_level"sv,  m_background_lod_level);
+	m_background_shader->setUniform("u_view_orientation"sv, glm::mat4(glm::mat3(m_camera.viewTransform())));
+	m_background_shader->setUniform("u_lod_level"sv,        m_background_lod_level);
     m_env_cubemap_rt->bindTexture();
 
     glBindVertexArray(m_skybox_vao);
