@@ -106,10 +106,10 @@ void TextureSampler::Create()
 	assert(m_so_id == 0);
 	glCreateSamplers(1, &m_so_id);
 
-	SetFiltering(TextureFiltering::Minify,       TextureFilteringParam::LinearMipLinear);
-	SetFiltering(TextureFiltering::Magnify,       TextureFilteringParam::Linear);
-	SetWrapping  (TextureWrappingAxis::S, TextureWrappingParam::ClampToEdge);
-	SetWrapping  (TextureWrappingAxis::T, TextureWrappingParam::ClampToEdge);
+	SetFiltering(TextureFiltering::Minify,  TextureFilteringParam::LinearMipLinear);
+	SetFiltering(TextureFiltering::Magnify, TextureFilteringParam::Linear);
+	SetWrapping (TextureWrappingAxis::U,    TextureWrappingParam::ClampToEdge);
+	SetWrapping (TextureWrappingAxis::V,    TextureWrappingParam::ClampToEdge);
 }
 
 void TextureSampler::SetFiltering(TextureFiltering type, TextureFilteringParam filtering)
