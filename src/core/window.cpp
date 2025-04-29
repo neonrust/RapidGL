@@ -101,6 +101,14 @@ namespace RGL
 			std::printf("   Counts:      %d x %d x %d\n", groupCounts[0], groupCounts[1], groupCounts[2]);
 			std::printf("   Sizes:       %d x %d x %d\n", groupSizes[0], groupSizes[1], groupSizes[2]);
 			std::printf("   Invocations: %d\n", invocations);
+
+		}
+		{
+			GLint max_size = 0;
+			glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_size);
+			GLint max_size3d = 0;
+			glGetIntegerv(GL_MAX_3D_TEXTURE_SIZE, &max_size3d);
+			std::printf("Max texture size: %d  3D: %d\n", max_size, max_size3d);
 		}
 
 
