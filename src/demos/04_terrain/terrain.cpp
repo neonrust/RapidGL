@@ -115,8 +115,8 @@ void Terrain::init_app()
 
         auto texture = std::make_shared<RGL::Texture2D>();
         texture->Load(path, tf != "blendmap.png" ? true : false);
-        texture->SetWrapping(RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::REPEAT);
-        texture->SetWrapping(RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::REPEAT);
+		texture->SetWrapping(RGL::TextureWrappingAxis::U, RGL::TextureWrappingParam::Repeat);
+		texture->SetWrapping(RGL::TextureWrappingAxis::V, RGL::TextureWrappingParam::Repeat);
         texture->SetAnisotropy(16.0);
 
         m_terrain_textures.push_back(texture);
@@ -512,8 +512,8 @@ void Terrain::render_gui()
 
                             auto texture = std::make_shared<RGL::Texture2D>();
                             texture->Load(path, tf != "blendmap.png" ? true : false);
-                            texture->SetWrapping(RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::REPEAT);
-                            texture->SetWrapping(RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::REPEAT);
+							texture->SetWrapping(RGL::TextureWrappingAxis::U, RGL::TextureWrappingParam::Repeat);
+							texture->SetWrapping(RGL::TextureWrappingAxis::V, RGL::TextureWrappingParam::Repeat);
                             texture->SetAnisotropy(16.0);
 
                             m_terrain_textures.push_back(texture);

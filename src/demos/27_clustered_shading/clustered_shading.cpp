@@ -202,10 +202,10 @@ void ClusteredShading::init_app()
 	m_ltc_mat_lut = std::make_shared<RGL::Texture2D>();
     if (m_ltc_mat_lut->LoadDds(ltc_lut_mat_path))
     {
-		m_ltc_mat_lut->SetWrapping (TextureWrappingAxis::S, TextureWrappingParam::CLAMP_TO_EDGE);
-		m_ltc_mat_lut->SetWrapping (TextureWrappingAxis::T, TextureWrappingParam::CLAMP_TO_EDGE);
-		m_ltc_mat_lut->SetFiltering(TextureFiltering::Minify,     TextureFilteringParam::NEAREST);
-		m_ltc_mat_lut->SetFiltering(TextureFiltering::Magnify,    TextureFilteringParam::LINEAR);
+		m_ltc_mat_lut->SetWrapping (TextureWrappingAxis::U,    TextureWrappingParam::ClampToEdge);
+		m_ltc_mat_lut->SetWrapping (TextureWrappingAxis::V,    TextureWrappingParam::ClampToEdge);
+		m_ltc_mat_lut->SetFiltering(TextureFiltering::Minify,  TextureFilteringParam::Nearest);
+		m_ltc_mat_lut->SetFiltering(TextureFiltering::Magnify, TextureFilteringParam::Linear);
     }
     else
     {
@@ -215,10 +215,10 @@ void ClusteredShading::init_app()
 	m_ltc_amp_lut = std::make_shared<RGL::Texture2D>();
     if (m_ltc_amp_lut->LoadDds(ltc_lut_amp_path))
     {
-		m_ltc_amp_lut->SetWrapping (TextureWrappingAxis::S, TextureWrappingParam::CLAMP_TO_EDGE);
-		m_ltc_amp_lut->SetWrapping (TextureWrappingAxis::T, TextureWrappingParam::CLAMP_TO_EDGE);
-		m_ltc_amp_lut->SetFiltering(TextureFiltering::Minify,     TextureFilteringParam::NEAREST);
-		m_ltc_amp_lut->SetFiltering(TextureFiltering::Magnify,    TextureFilteringParam::LINEAR);
+		m_ltc_amp_lut->SetWrapping (TextureWrappingAxis::U,    TextureWrappingParam::ClampToEdge);
+		m_ltc_amp_lut->SetWrapping (TextureWrappingAxis::V,    TextureWrappingParam::ClampToEdge);
+		m_ltc_amp_lut->SetFiltering(TextureFiltering::Minify,  TextureFilteringParam::Nearest);
+		m_ltc_amp_lut->SetFiltering(TextureFiltering::Magnify, TextureFilteringParam::Linear);
     }
     else
     {
@@ -310,27 +310,27 @@ void ClusteredShading::init_app()
 	const auto shader_init_time = duration_cast<microseconds>(T1 - T0);
 	std::printf("Shader init time: %.1f ms\n", float(shader_init_time.count())/1000.f);
 
-	_rt.create(Window::width(), Window::height(), RGL::RenderTarget::ColorFloat | RGL::RenderTarget::Depth);
-	_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LINEAR_MIP_NEAREST);
-	_rt.SetWrapping (RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
-	_rt.SetWrapping (RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
+	_rt.create(Window::width(), Window::height(), RGL::RenderTarget::Color | RGL::RenderTarget::Float | RGL::RenderTarget::Depth);
+	_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LinearMipNearest);
+	_rt.SetWrapping (RGL::TextureWrappingAxis::U, RGL::TextureWrappingParam::ClampToEdge);
+	_rt.SetWrapping (RGL::TextureWrappingAxis::V, RGL::TextureWrappingParam::ClampToEdge);
 
 	static constexpr size_t low_scale = 4;
-	_pp_low_rt.create(Window::width()/low_scale, Window::height()/low_scale, RGL::RenderTarget::ColorFloat);
-	_pp_low_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LINEAR_MIP_NEAREST);
-	_pp_low_rt.SetWrapping (RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
-	_pp_low_rt.SetWrapping (RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
+	_pp_low_rt.create(Window::width()/low_scale, Window::height()/low_scale, RGL::RenderTarget::Color | RGL::RenderTarget::Float);
+	_pp_low_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LinearMipNearest);
+	_pp_low_rt.SetWrapping (RGL::TextureWrappingAxis::U, RGL::TextureWrappingParam::ClampToEdge);
+	_pp_low_rt.SetWrapping (RGL::TextureWrappingAxis::V, RGL::TextureWrappingParam::ClampToEdge);
 
-	_pp_full_rt.create(Window::width(), Window::height(), RGL::RenderTarget::ColorFloat);
-	_pp_full_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LINEAR_MIP_NEAREST);
-	_pp_full_rt.SetWrapping (RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
-	_pp_full_rt.SetWrapping (RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
+	_pp_full_rt.create(Window::width(), Window::height(), RGL::RenderTarget::Color | RGL::RenderTarget::Float);
+	_pp_full_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LinearMipNearest);
+	_pp_full_rt.SetWrapping (RGL::TextureWrappingAxis::U, RGL::TextureWrappingParam::ClampToEdge);
+	_pp_full_rt.SetWrapping (RGL::TextureWrappingAxis::V, RGL::TextureWrappingParam::ClampToEdge);
 
 	// TODO: final_rt.cloneFrom(_rt);
-	_final_rt.create(Window::width(), Window::height(), RGL::RenderTarget::ColorFloat);
-	_final_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LINEAR_MIP_NEAREST);
-	_final_rt.SetWrapping (RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
-	_final_rt.SetWrapping (RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::CLAMP_TO_EDGE);
+	_final_rt.create(Window::width(), Window::height(), RGL::RenderTarget::Color | RGL::RenderTarget::Float);
+	_final_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LinearMipNearest);
+	_final_rt.SetWrapping (RGL::TextureWrappingAxis::U, RGL::TextureWrappingParam::ClampToEdge);
+	_final_rt.SetWrapping (RGL::TextureWrappingAxis::V, RGL::TextureWrappingParam::ClampToEdge);
 
     // IBL precomputations.
     GenSkyboxGeometry();

@@ -58,10 +58,8 @@ bool _blur_fixed_init(size_t width, size_t height, float sigma, Shader &horizont
 	horizontal.link();
 	assert(bool(horizontal));
 
-	temp.create(width, height, RenderTarget::ColorFloat);
-	temp.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LINEAR_MIP_NEAREST);
-	temp.SetWrapping (TextureWrappingAxis::S, TextureWrappingParam::CLAMP_TO_EDGE);
-	temp.SetWrapping (TextureWrappingAxis::T, TextureWrappingParam::CLAMP_TO_EDGE);
+	temp.create(width, height, RenderTarget::Color | RenderTarget::Float);
+	temp.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipNearest);
 
 	return false;
 }

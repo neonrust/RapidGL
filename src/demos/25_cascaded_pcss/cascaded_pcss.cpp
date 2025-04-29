@@ -183,13 +183,13 @@ void CascadedPCSS::init_app()
     CreateShadowFBO(m_dir_light_shadow_map_res.x, m_dir_light_shadow_map_res.y);
 
     m_shadow_map_pcf_sampler.Create();
-    m_shadow_map_pcf_sampler.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LINEAR);
-    m_shadow_map_pcf_sampler.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LINEAR);
-    m_shadow_map_pcf_sampler.SetWrapping(RGL::TextureWrappingAxis::S, RGL::TextureWrappingParam::CLAMP_TO_BORDER);
-    m_shadow_map_pcf_sampler.SetWrapping(RGL::TextureWrappingAxis::T, RGL::TextureWrappingParam::CLAMP_TO_BORDER);
+    m_shadow_map_pcf_sampler.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::Linear);
+    m_shadow_map_pcf_sampler.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::Linear);
+	m_shadow_map_pcf_sampler.SetWrapping(RGL::TextureWrappingAxis::U, RGL::TextureWrappingParam::ClampToBorder);
+	m_shadow_map_pcf_sampler.SetWrapping(RGL::TextureWrappingAxis::V, RGL::TextureWrappingParam::ClampToBorder);
     m_shadow_map_pcf_sampler.SetBorderColor(1, 0, 0, 0);
-    m_shadow_map_pcf_sampler.SetCompareMode(RGL::TextureCompareMode::REF);
-    m_shadow_map_pcf_sampler.SetCompareFunc(RGL::TextureCompareFunc::LEQUAL);
+    m_shadow_map_pcf_sampler.SetCompareMode(RGL::TextureCompareMode::Ref);
+    m_shadow_map_pcf_sampler.SetCompareFunc(RGL::TextureCompareFunc::LessEqual);
 
     uint32_t random_angles_size = 128;
     m_random_angles_tex3d_id = GenerateRandomAnglesTexture3D(random_angles_size);

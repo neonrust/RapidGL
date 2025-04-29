@@ -13,10 +13,8 @@ bool Blur::create(size_t width, size_t height)
 	new (&_blur_vertical) Shader("src/demos/27_clustered_shading/gaussian_blur_parametric.comp");
 	_blur_vertical.link();
 
-	_temp.create(width, height, RenderTarget::ColorFloat);
-	_temp.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LINEAR_MIP_NEAREST);
-	_temp.SetWrapping (TextureWrappingAxis::S, TextureWrappingParam::CLAMP_TO_EDGE);
-	_temp.SetWrapping (TextureWrappingAxis::T, TextureWrappingParam::CLAMP_TO_EDGE);
+	_temp.create(width, height, RenderTarget::Color | RenderTarget::Float);
+	_temp.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipNearest);
 
 	return false;
 }

@@ -106,20 +106,20 @@ void TextureSampler::Create()
 	assert(m_so_id == 0);
 	glCreateSamplers(1, &m_so_id);
 
-	SetFiltering(TextureFiltering::Minify,       TextureFilteringParam::LINEAR_MIP_LINEAR);
-	SetFiltering(TextureFiltering::Magnify,       TextureFilteringParam::LINEAR);
-	SetWrapping  (TextureWrappingAxis::S, TextureWrappingParam::CLAMP_TO_EDGE);
-	SetWrapping  (TextureWrappingAxis::T, TextureWrappingParam::CLAMP_TO_EDGE);
+	SetFiltering(TextureFiltering::Minify,       TextureFilteringParam::LinearMipLinear);
+	SetFiltering(TextureFiltering::Magnify,       TextureFilteringParam::Linear);
+	SetWrapping  (TextureWrappingAxis::S, TextureWrappingParam::ClampToEdge);
+	SetWrapping  (TextureWrappingAxis::T, TextureWrappingParam::ClampToEdge);
 }
 
-void TextureSampler::SetFiltering(TextureFiltering type, TextureFilteringParam param)
+void TextureSampler::SetFiltering(TextureFiltering type, TextureFilteringParam filtering)
 {
-	if (type == TextureFiltering::Magnify && param > TextureFilteringParam::LINEAR)
+	if (type == TextureFiltering::Magnify && filtering > TextureFilteringParam::Linear)
 	{
-		param = TextureFilteringParam::LINEAR;
+		filtering = TextureFilteringParam::Linear;
 	}
 
-	glSamplerParameteri(m_so_id, GLenum(type), GLint(param));
+	glSamplerParameteri(m_so_id, GLenum(type), GLint(filtering));
 }
 
 void TextureSampler::SetMinLod(float min)
@@ -172,7 +172,7 @@ void TextureSampler::Release()
 
 bool Texture::Create(size_t width, size_t height, size_t depth, GLenum internalFormat, size_t num_mipmaps)
 {
-	if(m_obj_name)
+	if(_texture_id)
 		Release();
 
 	if(not num_mipmaps)
@@ -180,18 +180,18 @@ bool Texture::Create(size_t width, size_t height, size_t depth, GLenum internalF
 
 	if(height <= 1)
 	{
-		glCreateTextures(GLenum(TextureType::Texture1D), 1, &m_obj_name);
-		glTextureStorage1D(m_obj_name, num_mipmaps, internalFormat, GLsizei(width));
+		glCreateTextures(GLenum(TextureType::Texture1D), 1, &_texture_id);
+		glTextureStorage1D(_texture_id, GLsizei(num_mipmaps), internalFormat, GLsizei(width));
 	}
 	if(depth <= 1)
 	{
-		glCreateTextures(GLenum(TextureType::Texture2D), 1, &m_obj_name);
-		glTextureStorage2D(m_obj_name, num_mipmaps, internalFormat, GLsizei(width), GLsizei(height));
+		glCreateTextures(GLenum(TextureType::Texture2D), 1, &_texture_id);
+		glTextureStorage2D(_texture_id, GLsizei(num_mipmaps), internalFormat, GLsizei(width), GLsizei(height));
 	}
 	else
 	{
-		glCreateTextures(GLenum(TextureType::Texture3D), 1, &m_obj_name);
-		glTextureStorage3D(m_obj_name, num_mipmaps, internalFormat, GLsizei(width), GLsizei(height), GLsizei(depth));
+		glCreateTextures(GLenum(TextureType::Texture3D), 1, &_texture_id);
+		glTextureStorage3D(_texture_id, GLsizei(num_mipmaps), internalFormat, GLsizei(width), GLsizei(height), GLsizei(depth));
 	}
 
 	m_metadata.width = GLuint(width);
@@ -204,45 +204,50 @@ bool Texture::Create(size_t width, size_t height, size_t depth, GLenum internalF
 	return true;
 }
 
-void Texture::SetFiltering(TextureFiltering type, TextureFilteringParam param)
+void Texture::Bind(uint32_t unit) const
 {
-	if (type == TextureFiltering::Magnify && param > TextureFilteringParam::LINEAR)
+	glBindTextureUnit(unit, _texture_id);
+}
+
+void Texture::SetFiltering(TextureFiltering type, TextureFilteringParam filtering)
+{
+	if (type == TextureFiltering::Magnify and filtering > TextureFilteringParam::Linear)
 	{
-		param = TextureFilteringParam::LINEAR;
+		filtering = TextureFilteringParam::Linear;
 	}
 
-	glTextureParameteri(m_obj_name, GLenum(type), GLint(param));
+	glTextureParameteri(_texture_id, GLenum(type), GLint(filtering));
 }
 
 void Texture::SetMinLod(float min)
 {
-	glTextureParameterf(m_obj_name, GL_TEXTURE_MIN_LOD, min);
+	glTextureParameterf(_texture_id, GL_TEXTURE_MIN_LOD, min);
 }
 
 void Texture::SetMaxLod(float max)
 {
-	glTextureParameterf(m_obj_name, GL_TEXTURE_MAX_LOD, max);
+	glTextureParameterf(_texture_id, GL_TEXTURE_MAX_LOD, max);
 }
 
-void Texture::SetWrapping(TextureWrappingAxis axis, TextureWrappingParam param)
+void Texture::SetWrapping(TextureWrappingAxis axis, TextureWrappingParam wrapping)
 {
-	glTextureParameteri(m_obj_name, GLenum(axis), GLint(param));
+	glTextureParameteri(_texture_id, GLenum(axis), GLint(wrapping));
 }
 
 void Texture::SetBorderColor(float r, float g, float b, float a)
 {
 	float color[4] = { r, g, b, a };
-	glTextureParameterfv(m_obj_name, GL_TEXTURE_BORDER_COLOR, color);
+	glTextureParameterfv(_texture_id, GL_TEXTURE_BORDER_COLOR, color);
 }
 
 void Texture::SetCompareMode(TextureCompareMode mode)
 {
-	glTextureParameteri(m_obj_name, GL_TEXTURE_COMPARE_MODE, GLint(mode));
+	glTextureParameteri(_texture_id, GL_TEXTURE_COMPARE_MODE, GLint(mode));
 }
 
 void Texture::SetCompareFunc(TextureCompareFunc func)
 {
-	glTextureParameteri(m_obj_name, GL_TEXTURE_COMPARE_FUNC, GLint(func));
+	glTextureParameteri(_texture_id, GL_TEXTURE_COMPARE_FUNC, GLint(func));
 }
 
 void Texture::SetAnisotropy(float anisotropy)
@@ -251,7 +256,12 @@ void Texture::SetAnisotropy(float anisotropy)
 	glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &max_anisotropy);
 
 	anisotropy = glm::clamp(anisotropy, 1.0f, max_anisotropy);
-	glTextureParameterf(m_obj_name, GL_TEXTURE_MAX_ANISOTROPY, anisotropy);
+	glTextureParameterf(_texture_id, GL_TEXTURE_MAX_ANISOTROPY, anisotropy);
+}
+
+void Texture::GenerateMipMaps()
+{
+	glGenerateTextureMipmap(_texture_id);
 }
 
 uint8_t Texture::calculateMipMapLevels(size_t width, size_t height, size_t depth, size_t min_size, size_t max_levels)
@@ -265,9 +275,9 @@ uint8_t Texture::calculateMipMapLevels(size_t width, size_t height, size_t depth
 	const auto use_height = height > 0;
 	const auto use_depth = depth > 0;
 
-	width /= 2;
-	height /= 2;
-	depth /= 2;
+	width >>= 1;
+	height >>= 1;
+	depth >>= 1;
 
 	if(max_levels == 0)
 		max_levels = 64;  // a huge number, i.e. loop until 'mip_limit' is hit
@@ -285,6 +295,12 @@ uint8_t Texture::calculateMipMapLevels(size_t width, size_t height, size_t depth
 	}
 
 	return levels + 1;
+}
+
+void Texture::Release()
+{
+	glDeleteTextures(1, &_texture_id);
+	_texture_id = 0;
 }
 
 // --------------------- Texture2D -------------------------
@@ -326,15 +342,15 @@ bool Texture2D::Load(const std::filesystem::path& filepath, bool is_srgb, uint32
 	const GLuint max_num_mipmaps = calculateMipMapLevels(m_metadata.width, m_metadata.height);
 	num_mipmaps     = num_mipmaps == 0 ? max_num_mipmaps : glm::clamp(num_mipmaps, 1u, max_num_mipmaps);
 
-	glCreateTextures       (GLenum(TextureType::Texture2D), 1, &m_obj_name);
-	glTextureStorage2D     (m_obj_name, GLsizei(num_mipmaps) /* levels */, internal_format, GLsizei(m_metadata.width), GLsizei(m_metadata.height));
-	glTextureSubImage2D    (m_obj_name, 0 /* level */, 0 /* xoffset */, 0 /* yoffset */, GLsizei(m_metadata.width), GLsizei(m_metadata.height), format, GL_UNSIGNED_BYTE, data.get());
-	glGenerateTextureMipmap(m_obj_name);
+	glCreateTextures       (GLenum(TextureType::Texture2D), 1, &_texture_id);
+	glTextureStorage2D     (_texture_id, GLsizei(num_mipmaps) /* levels */, internal_format, GLsizei(m_metadata.width), GLsizei(m_metadata.height));
+	glTextureSubImage2D    (_texture_id, 0 /* level */, 0 /* xoffset */, 0 /* yoffset */, GLsizei(m_metadata.width), GLsizei(m_metadata.height), format, GL_UNSIGNED_BYTE, data.get());
+	glGenerateTextureMipmap(_texture_id);
 
-	SetFiltering(TextureFiltering::Minify,       TextureFilteringParam::LINEAR_MIP_LINEAR);
-	SetFiltering(TextureFiltering::Magnify,       TextureFilteringParam::LINEAR);
-	SetWrapping (TextureWrappingAxis::S, TextureWrappingParam::CLAMP_TO_EDGE);
-	SetWrapping (TextureWrappingAxis::T, TextureWrappingParam::CLAMP_TO_EDGE);
+	SetFiltering(TextureFiltering::Minify,  TextureFilteringParam::LinearMipLinear);
+	SetFiltering(TextureFiltering::Magnify, TextureFilteringParam::Linear);
+	SetWrapping (TextureWrappingAxis::U,    TextureWrappingParam::ClampToEdge);
+	SetWrapping (TextureWrappingAxis::V,    TextureWrappingParam::ClampToEdge);
 
 	Util::ReleaseTextureData(data);
 
@@ -374,15 +390,15 @@ bool Texture2D::Load(unsigned char* memory_data, uint32_t data_size, bool is_srg
 	num_mipmaps     = num_mipmaps == 0 ? max_num_mipmaps : glm::clamp(num_mipmaps, 1u, max_num_mipmaps);
 
 
-	glCreateTextures       (GLenum(TextureType::Texture2D), 1, &m_obj_name);
-	glTextureStorage2D     (m_obj_name, GLsizei(num_mipmaps) /* levels */, internal_format, GLsizei(m_metadata.width), GLsizei(m_metadata.height));
-	glTextureSubImage2D    (m_obj_name, 0 /* level */, 0 /* xoffset */, 0 /* yoffset */, GLsizei(m_metadata.width), GLsizei(m_metadata.height), format, GL_UNSIGNED_BYTE, data.get());
-	glGenerateTextureMipmap(m_obj_name);
+	glCreateTextures       (GLenum(TextureType::Texture2D), 1, &_texture_id);
+	glTextureStorage2D     (_texture_id, GLsizei(num_mipmaps) /* levels */, internal_format, GLsizei(m_metadata.width), GLsizei(m_metadata.height));
+	glTextureSubImage2D    (_texture_id, 0 /* level */, 0 /* xoffset */, 0 /* yoffset */, GLsizei(m_metadata.width), GLsizei(m_metadata.height), format, GL_UNSIGNED_BYTE, data.get());
+	glGenerateTextureMipmap(_texture_id);
 
-	SetFiltering(TextureFiltering::Minify,       TextureFilteringParam::LINEAR_MIP_LINEAR);
-	SetFiltering(TextureFiltering::Magnify,       TextureFilteringParam::LINEAR);
-	SetWrapping (TextureWrappingAxis::S, TextureWrappingParam::CLAMP_TO_EDGE);
-	SetWrapping (TextureWrappingAxis::T, TextureWrappingParam::CLAMP_TO_EDGE);
+	SetFiltering(TextureFiltering::Minify,  TextureFilteringParam::LinearMipLinear);
+	SetFiltering(TextureFiltering::Magnify, TextureFilteringParam::Linear);
+	SetWrapping (TextureWrappingAxis::U,    TextureWrappingParam::ClampToEdge);
+	SetWrapping (TextureWrappingAxis::V,    TextureWrappingParam::ClampToEdge);
 
 	Util::ReleaseTextureData(data);
 
@@ -413,15 +429,15 @@ bool Texture2D::LoadHdr(const std::filesystem::path & filepath, uint32_t num_mip
 	const GLuint max_num_mipmaps = calculateMipMapLevels(m_metadata.width, m_metadata.height);
 	num_mipmaps     = num_mipmaps == 0 ? max_num_mipmaps : glm::clamp(num_mipmaps, 1u, max_num_mipmaps);
 
-	glCreateTextures       (GLenum(TextureType::Texture2D), 1, &m_obj_name);
-	glTextureStorage2D     (m_obj_name, 1 /* levels */, internal_format, GLsizei(m_metadata.width), GLsizei(m_metadata.height));
-	glTextureSubImage2D    (m_obj_name, 0 /* level */, 0 /* xoffset */, 0 /* yoffset */, GLsizei(m_metadata.width), GLsizei(m_metadata.height), format, type, data.get());
-	glGenerateTextureMipmap(m_obj_name);
+	glCreateTextures       (GLenum(TextureType::Texture2D), 1, &_texture_id);
+	glTextureStorage2D     (_texture_id, 1 /* levels */, internal_format, GLsizei(m_metadata.width), GLsizei(m_metadata.height));
+	glTextureSubImage2D    (_texture_id, 0 /* level */, 0 /* xoffset */, 0 /* yoffset */, GLsizei(m_metadata.width), GLsizei(m_metadata.height), format, type, data.get());
+	glGenerateTextureMipmap(_texture_id);
 
-	SetFiltering(TextureFiltering::Minify,     TextureFilteringParam::LINEAR);
-	SetFiltering(TextureFiltering::Magnify,    TextureFilteringParam::LINEAR);
-	SetWrapping (TextureWrappingAxis::S, TextureWrappingParam::CLAMP_TO_EDGE);
-	SetWrapping (TextureWrappingAxis::T, TextureWrappingParam::CLAMP_TO_EDGE);
+	SetFiltering(TextureFiltering::Minify,  TextureFilteringParam::Linear);
+	SetFiltering(TextureFiltering::Magnify, TextureFilteringParam::Linear);
+	SetWrapping (TextureWrappingAxis::U,    TextureWrappingParam::ClampToEdge);
+	SetWrapping (TextureWrappingAxis::V,    TextureWrappingParam::ClampToEdge);
 
 	Util::ReleaseTextureData(data);
 
@@ -456,18 +472,18 @@ bool Texture2D::LoadDds(const std::filesystem::path& filepath)
 		return false;
 	}
 
-	glCreateTextures   (GLenum(m_type), 1, &m_obj_name);
-	glTextureParameteri(m_obj_name, GL_TEXTURE_BASE_LEVEL, 0);
-	glTextureParameteri(m_obj_name, GL_TEXTURE_MAX_LEVEL, GLint(dds.GetMipCount() - 1));
-	glTextureParameteri(m_obj_name, GL_TEXTURE_SWIZZLE_R, GLint(format.m_swizzle.m_r));
-	glTextureParameteri(m_obj_name, GL_TEXTURE_SWIZZLE_G, GLint(format.m_swizzle.m_g));
-	glTextureParameteri(m_obj_name, GL_TEXTURE_SWIZZLE_B, GLint(format.m_swizzle.m_b));
-	glTextureParameteri(m_obj_name, GL_TEXTURE_SWIZZLE_A, GLint(format.m_swizzle.m_a));
+	glCreateTextures   (GLenum(m_type), 1, &_texture_id);
+	glTextureParameteri(_texture_id, GL_TEXTURE_BASE_LEVEL, 0);
+	glTextureParameteri(_texture_id, GL_TEXTURE_MAX_LEVEL, GLint(dds.GetMipCount() - 1));
+	glTextureParameteri(_texture_id, GL_TEXTURE_SWIZZLE_R, GLint(format.m_swizzle.m_r));
+	glTextureParameteri(_texture_id, GL_TEXTURE_SWIZZLE_G, GLint(format.m_swizzle.m_g));
+	glTextureParameteri(_texture_id, GL_TEXTURE_SWIZZLE_B, GLint(format.m_swizzle.m_b));
+	glTextureParameteri(_texture_id, GL_TEXTURE_SWIZZLE_A, GLint(format.m_swizzle.m_a));
 
 	m_metadata.width  = dds.GetWidth();
 	m_metadata.height = dds.GetHeight();
 
-	glTextureStorage2D(m_obj_name, GLsizei(dds.GetMipCount()), format.m_internal_format, GLsizei(m_metadata.width), GLsizei(m_metadata.height));
+	glTextureStorage2D(_texture_id, GLsizei(dds.GetMipCount()), format.m_internal_format, GLsizei(m_metadata.width), GLsizei(m_metadata.height));
 	dds.Flip();
 
 	for (uint32_t level = 0; level < dds.GetMipCount(); level++)
@@ -482,11 +498,11 @@ bool Texture2D::LoadDds(const std::filesystem::path& filepath)
 
 			if (isDdsCompressed(format.m_format))
 			{
-				glCompressedTextureSubImage2D(m_obj_name, GLint(level), 0, 0, GLsizei(w), GLsizei(h), format.m_format, GLsizei(imageData->m_memSlicePitch), imageData->m_mem);
+				glCompressedTextureSubImage2D(_texture_id, GLint(level), 0, 0, GLsizei(w), GLsizei(h), format.m_format, GLsizei(imageData->m_memSlicePitch), imageData->m_mem);
 			}
 			else
 			{
-				glTextureSubImage2D(m_obj_name, GLint(level), 0, 0, GLsizei(w), GLsizei(h), format.m_format, format.m_type, imageData->m_mem);
+				glTextureSubImage2D(_texture_id, GLint(level), 0, 0, GLsizei(w), GLsizei(h), format.m_format, format.m_type, imageData->m_mem);
 			}
 			break;
 		}
@@ -523,12 +539,12 @@ bool TextureCubeMap::Load(const std::filesystem::path* filepaths, bool is_srgb, 
 	const GLuint max_num_mipmaps = calculateMipMapLevels(m_metadata.width, m_metadata.height);
 	num_mipmaps     = num_mipmaps == 0 ? max_num_mipmaps : glm::clamp(num_mipmaps, 1u, max_num_mipmaps);
 
-	glCreateTextures  (GLenum(TextureType::TextureCubeMap), 1, &m_obj_name);
-	glTextureStorage2D(m_obj_name, GLsizei(num_mipmaps), m_internal_format, GLsizei(m_metadata.width), GLsizei(m_metadata.height));
+	glCreateTextures  (GLenum(TextureType::TextureCube), 1, &_texture_id);
+	glTextureStorage2D(_texture_id, GLsizei(num_mipmaps), m_internal_format, GLsizei(m_metadata.width), GLsizei(m_metadata.height));
 
 	for (int idx = 0; idx < NUM_FACES; ++idx)
 	{
-		glTextureSubImage3D(m_obj_name,
+		glTextureSubImage3D(_texture_id,
 							0,   // level
 							0,   // xoffset
 							0,   // yoffset
@@ -541,13 +557,13 @@ bool TextureCubeMap::Load(const std::filesystem::path* filepaths, bool is_srgb, 
 							images_data[idx].get());
 	}
 
-	glGenerateTextureMipmap(m_obj_name);
+	glGenerateTextureMipmap(_texture_id);
 
-	SetFiltering(TextureFiltering::Minify,      TextureFilteringParam::LINEAR_MIP_LINEAR);
-	SetFiltering(TextureFiltering::Magnify,     TextureFilteringParam::LINEAR);
-	SetWrapping  (TextureWrappingAxis::S, TextureWrappingParam::CLAMP_TO_EDGE);
-	SetWrapping  (TextureWrappingAxis::T, TextureWrappingParam::CLAMP_TO_EDGE);
-	SetWrapping  (TextureWrappingAxis::R, TextureWrappingParam::CLAMP_TO_EDGE);
+	SetFiltering(TextureFiltering::Minify,  TextureFilteringParam::LinearMipLinear);
+	SetFiltering(TextureFiltering::Magnify, TextureFilteringParam::Linear);
+	SetWrapping  (TextureWrappingAxis::U,   TextureWrappingParam::ClampToEdge);
+	SetWrapping  (TextureWrappingAxis::V,   TextureWrappingParam::ClampToEdge);
+	SetWrapping  (TextureWrappingAxis::W,   TextureWrappingParam::ClampToEdge);
 
 	for (int idx = 0; idx < NUM_FACES; ++idx)
 	{

@@ -10,11 +10,11 @@ namespace RGL
 
 enum class TextureType
 {
-	NONE = 0,
-	Texture1D = GL_TEXTURE_1D,
-	Texture2D = GL_TEXTURE_2D,
-	Texture3D = GL_TEXTURE_3D,
-	TextureCubeMap = GL_TEXTURE_CUBE_MAP
+	Invalid        = 0,
+	Texture1D      = GL_TEXTURE_1D,
+	Texture2D      = GL_TEXTURE_2D,
+	Texture3D      = GL_TEXTURE_3D,
+	TextureCube    = GL_TEXTURE_CUBE_MAP
 };
 
 enum class TextureFiltering
@@ -25,46 +25,46 @@ enum class TextureFiltering
 
 enum class TextureFilteringParam
 {
-	NEAREST              = GL_NEAREST,
-	LINEAR               = GL_LINEAR,
-	NEAREST_MIP_NEAREST  = GL_NEAREST_MIPMAP_NEAREST,
-	LINEAR_MIP_NEAREST   = GL_LINEAR_MIPMAP_NEAREST,
-	NEAREST_MIP_LINEAR   = GL_NEAREST_MIPMAP_LINEAR,
-	LINEAR_MIP_LINEAR    = GL_LINEAR_MIPMAP_LINEAR
+	Nearest              = GL_NEAREST,
+	Linear               = GL_LINEAR,
+	NearestMipNearest    = GL_NEAREST_MIPMAP_NEAREST,
+	LinearMipNearest     = GL_LINEAR_MIPMAP_NEAREST,
+	NearestMipLinear     = GL_NEAREST_MIPMAP_LINEAR,
+	LinearMipLinear      = GL_LINEAR_MIPMAP_LINEAR
 };
 
 enum class TextureWrappingAxis
 {
-	S = GL_TEXTURE_WRAP_S,
-	T = GL_TEXTURE_WRAP_T,
-	R = GL_TEXTURE_WRAP_R
+	U = GL_TEXTURE_WRAP_S,
+	V = GL_TEXTURE_WRAP_T,
+	W = GL_TEXTURE_WRAP_R,
 };
 
 enum class TextureWrappingParam
 {
-	REPEAT              = GL_REPEAT,
-	MIRRORED_REPEAT      = GL_MIRRORED_REPEAT,
-	CLAMP_TO_EDGE        = GL_CLAMP_TO_EDGE,
-	CLAMP_TO_BORDER      = GL_CLAMP_TO_BORDER,
-	MIRROR_CLAMP_TO_EDGE = GL_MIRROR_CLAMP_TO_EDGE
+	Repeat               = GL_REPEAT,
+	MirroredRepeat       = GL_MIRRORED_REPEAT,
+	ClampToEdge          = GL_CLAMP_TO_EDGE,
+	ClampToBorder        = GL_CLAMP_TO_BORDER,
+	MirrorClampToEdge    = GL_MIRROR_CLAMP_TO_EDGE
 };
 
 enum class TextureCompareMode
 {
-	NONE = GL_NONE,
-	REF  = GL_COMPARE_REF_TO_TEXTURE }
+	None = GL_NONE,
+	Ref  = GL_COMPARE_REF_TO_TEXTURE }
 ;
 
 enum class TextureCompareFunc
 {
-	NEVER    = GL_NEVER,
-	ALWAYS   = GL_ALWAYS,
-	LEQUAL   = GL_LEQUAL,
-	GEQUAL   = GL_GEQUAL,
-	LESS     = GL_LESS,
-	GREATER  = GL_GREATER,
-	EQUAL    = GL_EQUAL,
-	NOTEQUAL = GL_NOTEQUAL
+	Never        = GL_NEVER,
+	Always       = GL_ALWAYS,
+	LessEqual    = GL_LEQUAL,
+	GreaterEqual = GL_GEQUAL,
+	Less         = GL_LESS,
+	Greater      = GL_GREATER,
+	Equal        = GL_EQUAL,
+	NotEqual     = GL_NOTEQUAL
 };
 
 class TextureSampler final
@@ -94,7 +94,7 @@ public:
 	}
 
 	void Create();
-	void SetFiltering(TextureFiltering type, TextureFilteringParam param);
+	void SetFiltering(TextureFiltering type, TextureFilteringParam filtering);
 	void SetMinLod(float min);
 	void SetMaxLod(float max);
 	void SetWrapping(TextureWrappingAxis coord, TextureWrappingParam param);
@@ -138,18 +138,18 @@ public:
 
 			std::swap(m_metadata, other.m_metadata);
 			std::swap(m_type,     other.m_type);
-			std::swap(m_obj_name, other.m_obj_name);
+			std::swap(_texture_id, other._texture_id);
 		}
 
 		return *this;
 	}
 
-	inline GLuint texture_id() const { return m_obj_name; }
+	inline GLuint texture_id() const { return _texture_id; }
 	inline TextureType texture_type() const { return m_type; }
 
-	virtual inline void Bind(uint32_t unit=0) const { glBindTextureUnit(unit, m_obj_name); }
+	virtual void Bind(uint32_t unit=0) const;
 
-	virtual void SetFiltering(TextureFiltering type, TextureFilteringParam param);
+	virtual void SetFiltering(TextureFiltering type, TextureFilteringParam filtering);
 	virtual void SetMinLod(float min);
 	virtual void SetMaxLod(float max);
 	virtual void SetWrapping(TextureWrappingAxis axis, TextureWrappingParam param);
@@ -158,26 +158,24 @@ public:
 	virtual void SetCompareFunc(TextureCompareFunc func);
 	virtual void SetAnisotropy(float anisotropy);
 
+	void GenerateMipMaps();
+
 	virtual ImageData GetMetadata() const { return m_metadata; };
 
 	static uint8_t calculateMipMapLevels(size_t width, size_t height=0, size_t depth=0, size_t min_size=0, size_t max_levels=0);
 
-	inline operator bool () const { return m_obj_name; }
+	inline operator bool () const { return _texture_id; }
+
+	void Release();
 
 protected:
 	bool Create(size_t width, size_t height, size_t depth, GLenum internalFormat, size_t num_mipmaps);
 
-	Texture() : m_type(TextureType::NONE), m_obj_name(0) {}
-
-	void Release()
-	{
-		glDeleteTextures(1, &m_obj_name);
-		m_obj_name = 0;
-	}
+	Texture() : m_type(TextureType::Invalid), _texture_id(0) {}
 
 	ImageData   m_metadata;
 	TextureType m_type;
-	GLuint      m_obj_name;
+	GLuint      _texture_id;
 };
 
 class Texture1D : public Texture
