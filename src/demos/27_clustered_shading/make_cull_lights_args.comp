@@ -1,0 +1,19 @@
+#version 460 core
+#include "shared.h"
+
+layout(std430, binding = SSBO_BIND_ACTIVE_CLUSTERS) buffer ActiveClustersSSBO
+{
+	uint global_nonempty_count;  // here b/c it needs to be global
+	uint active_clusters[];
+};
+
+layout(std430, binding = SSBO_BIND_CULL_DISPATCH_ARGS) buffer CullLightsDispatchArgsSSBO
+{
+	uvec3 cull_lights_args;
+};
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+void main()
+{
+	cull_lights_args = uvec3(global_nonempty_count, 1, 1);
+}
