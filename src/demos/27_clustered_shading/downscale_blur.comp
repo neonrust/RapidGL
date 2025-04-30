@@ -1,0 +1,53 @@
+#version 450 core
+
+// binding=0: the input texture; must have complete mip-pyramid
+#ifdef BLUR_3D
+layout(binding = 0) uniform sampler3D u_input;
+#else
+layout(binding = 0) uniform sampler2D u_input;
+#endif
+
+// binding=1: output; the final blurred result
+layout(rgba8, binding = 1) uniform writeonly image2D u_output;
+
+uniform float u_weights[16]; // precomputed weights per level. size = u_num_levels
+uniform uint  u_num_levels;  // how many mip levels to sum (e.g. 4), starting at level 0 (largest)
+
+#ifdef BLUR_3D
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
+#else
+layout(local_size_x = 16, local_size_y = 16) in;
+#endif
+void main()
+{
+#ifdef BLUR_3D
+	vec3 inputSize = textureSize(u_input, 0);
+	vec3 px = vec2(gl_GlobalInvocationID.xyz);
+#else
+	vec2 inputSize = textureSize(u_input, 0);
+	vec2 px = vec2(gl_GlobalInvocationID.xy);
+#endif
+
+#ifdef BLUR_3D
+	if (px.x >= imageSize.x || px.y >= inputSize.y || px.z >= inputSize.z)
+#else
+    if (px.x >= imageSize.x || px.y >= inputSize.y)
+#endif
+   		 return;
+
+    // 1) compute UV in [0, 1]
+#ifdef BLUR_3D
+	vec3 uv;
+#else
+	vec2 uv;
+#endif
+    uv = (px + 0.5) / inputSize;
+
+    // 2) accumulate samples from each LOD
+    vec3 sum = vec3(0);
+    for (uint L = 0; L < u_num_levels; ++L)
+        sum += weights[L] * textureLod(u_input, uv, float(L)).rgb;
+
+    // 3) write result to uotput
+    imageStore(u_output, px, vec4(sum, 1));
+}

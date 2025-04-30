@@ -13,7 +13,7 @@ bool Blur::create(size_t width, size_t height)
 	new (&_blur_vertical) Shader("src/demos/27_clustered_shading/gaussian_blur_parametric.comp");
 	_blur_vertical.link();
 
-	_temp.create(width, height, RenderTarget::Color | RenderTarget::Float);
+	_temp.create(width, height, RenderTarget::Color::Default, RenderTarget::Depth::None);
 	_temp.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipNearest);
 
 	return false;
@@ -96,7 +96,7 @@ void Blur::render(const RenderTarget::Texture2d &in, RenderTarget::Texture2d &ou
 
 	// horizontal
 	in.bindImageRead(0);
-	_temp.bindImage(1, RenderTarget::Write);
+	_temp.bindImage(1, RenderTarget::Access::Write);
 
 	_blur_horizontal.bind();
 
@@ -106,7 +106,7 @@ void Blur::render(const RenderTarget::Texture2d &in, RenderTarget::Texture2d &ou
 
 	// vertical
 	_temp.bindImageRead(0);
-	out.bindImage(1, RenderTarget::Write);
+	out.bindImage(1, RenderTarget::Access::Write);
 
 	_blur_vertical.bind();
 
