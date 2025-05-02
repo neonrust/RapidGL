@@ -132,12 +132,14 @@ bool Shader::loadShader(GLuint shaderObject, ShaderType type, const std::filesys
 	if(not okf)
 	{
 		std::fprintf(stderr, "Load shader failed: %s\n", filepath.c_str());
+		m_failed_shaders++;
 		return false;
 	}
 	auto [code, okp] = Util::PreprocessShaderSource(file_content, dir);
 	if(not okp)
 	{
 		std::fprintf(stderr, "Preprocessing shader failed: %s\n", filepath.c_str());
+		m_failed_shaders++;
 		return false;
 	}
 
