@@ -25,8 +25,6 @@ public:
 
 public:
 	ShaderStorageBuffer(BufferUsage default_usage=DynamicDraw) :
-		_bind_index(0),
-		_size(0),
 		_default_usage(default_usage)
 	{
 	}
@@ -75,9 +73,9 @@ protected:
 
 private:
 	GLuint _id { 0 };
-	GLuint _bind_index { 0 };
+	GLuint _bind_index { GLuint(-1) };
 	BufferUsage _default_usage;
-	size_t _size;
+	size_t _size { 0 };
 	bool _view_active { false };
 };
 
@@ -172,7 +170,7 @@ bool ShaderStorageBuffer<T>::ensureCreated()
 		glCreateBuffers(1, &_id);
 		assert(_id > 0);
 
-		if(_bind_index > 0)
+		if(_bind_index != GLuint(-1))
 			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, _bind_index, _id);
 
 		return true;
