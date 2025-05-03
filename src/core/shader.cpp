@@ -274,12 +274,12 @@ void Shader::bind() const
 	}
 }
 
-void Shader::setPreBarrier(Barrier barrier_bits)
+void Shader::setPreBarrier(Barrier::Bits barrier_bits)
 {
 	_pre_barrier = barrier_bits;
 }
 
-void Shader::setPostBarrier(Barrier barrier_bits)
+void Shader::setPostBarrier(Barrier::Bits barrier_bits)
 {
 	_post_barrier = barrier_bits;
 }

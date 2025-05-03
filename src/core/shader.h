@@ -31,10 +31,13 @@ public:
 		TesselationEvaluation = GL_TESS_EVALUATION_SHADER,
 		Compute               = GL_COMPUTE_SHADER
 	};
-	enum class Barrier : GLbitfield
+	struct Barrier
 	{
-		None = 0,
-		SSBO = GL_SHADER_STORAGE_BARRIER_BIT,
+		using Bits = GLbitfield;
+		static constexpr Bits None    = 0;
+		static constexpr Bits SSBO    = GL_SHADER_STORAGE_BARRIER_BIT;
+		static constexpr Bits Texture = GL_TEXTURE_UPDATE_BARRIER_BIT;
+		static constexpr Bits Image   = GL_SHADER_IMAGE_ACCESS_BARRIER_BIT;
 	};
 
 	void enableLiveReload();
@@ -66,13 +69,14 @@ public:
 
 	~Shader();
 
+	inline uint32_t program_id() const { return m_program_id; }
 	bool link();
 	void bind() const;
 	void setTransformFeedbackVaryings(const std::vector<const char*>& output_names, GLenum buffer_mode) const;
 	std::string_view name() const { return _name; }
 
-	void setPreBarrier(Barrier barrier_bits);
-	void setPostBarrier(Barrier barrier_bits);
+	void setPreBarrier(Barrier::Bits barrier_bits);
+	void setPostBarrier(Barrier::Bits barrier_bits);
 
 	void invoke(size_t groups_x=1, size_t groups_y=1, size_t groups_z=1);
 	inline void invoke(glm::uvec2 groups) { invoke(groups.x, groups.y); }
@@ -137,8 +141,8 @@ private:
 	size_t m_failed_shaders;
 	std::string _name;
 	std::vector<ShaderType> _shaderTypes;
-	Barrier _pre_barrier { Barrier::None };
-	Barrier _post_barrier { Barrier::None };
+	Barrier::Bits _pre_barrier { Barrier::None };
+	Barrier::Bits _post_barrier { Barrier::None };
 
 };
 
