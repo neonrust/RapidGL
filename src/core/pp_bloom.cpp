@@ -19,10 +19,12 @@ bool Bloom::create()
 	new (&_downscale_shader) Shader(dir + "downscale.comp");
 	_downscale_shader.link();
 	assert(_downscale_shader);
+	_downscale_shader.setPostBarrier(Shader::Barrier::Image | Shader::Barrier::Texture);
 
 	new (&_upscale_shader) Shader(dir + "upscale.comp");
 	_upscale_shader.link();
 	assert(_upscale_shader);
+	_upscale_shader.setPostBarrier(Shader::Barrier::Image | Shader::Barrier::Texture);
 
 	_dirt_texture.Load(FileSystem::getResourcesPath() / "textures/bloom_dirt_mask.jxl");
 	assert(_dirt_texture);
@@ -74,7 +76,7 @@ void Bloom::render(const RenderTarget::Texture2d &in, RenderTarget::Texture2d &o
 		_downscale_shader.setUniform("u_use_threshold"sv, idx == 0);
 
 		// m_tmo_ps->renderTarget().bindImage(IMAGE_UNIT_WRITE, RenderTarget::Write, idx + mip_cap);
-		out.bindImage(IMAGE_UNIT_WRITE, RenderTarget::Write, idx + mip_cap);
+		out.bindImage(IMAGE_UNIT_WRITE, RenderTarget::Access::Write, idx + mip_cap);
 
 		glDispatchCompute(GLuint(glm::ceil(float(mip_size.x) / 8.f)),
 						  GLuint(glm::ceil(float(mip_size.y) / 8.f)),
@@ -103,11 +105,10 @@ void Bloom::render(const RenderTarget::Texture2d &in, RenderTarget::Texture2d &o
 		_upscale_shader.setUniform("u_texel_size"sv, 1.0f / glm::vec2(mip_size));
 		_upscale_shader.setUniform("u_mip_level"sv,  int(idx));
 
-		out.bindImage(IMAGE_UNIT_WRITE, RenderTarget::ReadWrite, idx - mip_cap);
+		out.bindImage(IMAGE_UNIT_WRITE, RenderTarget::Access::ReadWrite, idx - mip_cap);
 
-		glDispatchCompute(GLuint(glm::ceil(float(mip_size.x) / 8.f)),
-						  GLuint(glm::ceil(float(mip_size.y) / 8.f)),
-						  1);
+		_upscale_shader.invoke(GLuint(glm::ceil(float(mip_size.x) / 8.f)),
+						  GLuint(glm::ceil(float(mip_size.y) / 8.f)));
 
 		glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT); // not GL_TEXTURE_UPDATE_BARRIER_BIT ?
 	}

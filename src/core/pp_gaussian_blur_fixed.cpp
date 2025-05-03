@@ -51,14 +51,16 @@ bool _blur_fixed_init(size_t width, size_t height, float sigma, Shader &horizont
 	new (&vertical) Shader("src/demos/27_clustered_shading/gaussian_blur.comp", conditionals);
 	vertical.link();
 	assert(bool(vertical));
+	vertical.setPostBarrier(Shader::Barrier::Image);
 
 	conditionals.insert("HORIZONTAL");
 
 	new (&horizontal) Shader("src/demos/27_clustered_shading/gaussian_blur.comp", conditionals);
 	horizontal.link();
 	assert(bool(horizontal));
+	horizontal.setPostBarrier(Shader::Barrier::Image);
 
-	temp.create(width, height, RenderTarget::Color | RenderTarget::Float);
+	temp.create(width, height, RenderTarget::Color::Default, RenderTarget::Depth::None);
 	temp.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipNearest);
 
 	return false;
@@ -70,22 +72,15 @@ void _blur_fixed_render(const RenderTarget::Texture2d &in, RenderTarget::Texture
 
 	// horizontal
 	in.bindImageRead(0);
-	temp.bindImage(1, RenderTarget::Write);
+	temp.bindImage(1, RenderTarget::Access::Write);
 
-	horizontal.bind();
-
-	glDispatchCompute((in.width() + group_size - 1) / group_size, in.height(), 1);
-	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-
+	horizontal.invoke((in.width() + group_size - 1) / group_size, in.height());
 
 	// vertical
 	temp.bindImageRead(0);
-	out.bindImage(1, RenderTarget::Write);
+	out.bindImage(1, RenderTarget::Access::Write);
 
-	vertical.bind();
-
-	glDispatchCompute(in.width(), (in.height() + group_size - 1) / group_size, 1);
-	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+	vertical.invoke(in.width(), (in.height() + group_size - 1) / group_size);
 }
 
 } // RGL::PP

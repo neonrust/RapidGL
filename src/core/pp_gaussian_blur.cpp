@@ -9,9 +9,11 @@ bool Blur::create(size_t width, size_t height)
 {
 	new (&_blur_horizontal) Shader("src/demos/27_clustered_shading/gaussian_blur_parametric.comp", string_set{ "HORIZONTAL"s });
 	_blur_horizontal.link();
+	_blur_horizontal.setPostBarrier(Shader::Barrier::Image);
 
 	new (&_blur_vertical) Shader("src/demos/27_clustered_shading/gaussian_blur_parametric.comp");
 	_blur_vertical.link();
+	_blur_vertical.setPostBarrier(Shader::Barrier::Image);
 
 	_temp.create(width, height, RenderTarget::Color::Default, RenderTarget::Depth::None);
 	_temp.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipNearest);
@@ -98,20 +100,13 @@ void Blur::render(const RenderTarget::Texture2d &in, RenderTarget::Texture2d &ou
 	in.bindImageRead(0);
 	_temp.bindImage(1, RenderTarget::Access::Write);
 
-	_blur_horizontal.bind();
-
-	glDispatchCompute((in.width() + group_size - 1) / group_size, in.height(), 1);
-	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-
+	_blur_horizontal.invoke((in.width() + group_size - 1) / group_size, in.height());
 
 	// vertical
 	_temp.bindImageRead(0);
 	out.bindImage(1, RenderTarget::Access::Write);
 
-	_blur_vertical.bind();
-
-	glDispatchCompute(in.width(), (in.height() + group_size - 1) / group_size, 1);
-	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+	_blur_vertical.invoke(in.width(), (in.height() + group_size - 1) / group_size, 1);
 }
 
 } // RGL::PP
