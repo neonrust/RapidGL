@@ -160,6 +160,7 @@ private:
 
     std::shared_ptr<RGL::Shader> m_draw_area_lights_geometry_shader;
 	std::shared_ptr<RGL::Shader> m_line_draw_shader;
+	std::shared_ptr<RGL::Shader> m_imgui_depth_texture_shader;
 	std::shared_ptr<RGL::Shader> m_fsq_shader;
 
 	// GLuint m_depth_tex2D_id;

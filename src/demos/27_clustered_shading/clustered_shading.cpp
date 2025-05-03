@@ -302,6 +302,11 @@ void ClusteredShading::init_app()
 	m_line_draw_shader = std::make_shared<Shader>(dir + "line_draw.vert", dir + "line_draw.frag");
 	m_line_draw_shader->link();
 	assert(*m_line_draw_shader);
+
+	m_imgui_depth_texture_shader = std::make_shared<Shader>(dir + "imgui_depth_image.vert", dir + "imgui_depth_image.frag");
+	m_imgui_depth_texture_shader->link();
+	assert(*m_imgui_depth_texture_shader);
+
 	m_fsq_shader = std::make_shared<Shader>(dir + "FSQ.vert", dir + "FSQ.frag");
 	m_fsq_shader->link();
 	assert(*m_fsq_shader);
@@ -2206,20 +2211,18 @@ void ClusteredShading::render_gui()
         if (ImGui::CollapsingHeader("Bloom"))
         {
             ImGui::Checkbox   ("Bloom enabled",        &m_bloom_enabled);
-			ImGui::SliderFloat("Bloom threshold",      &m_bloom_threshold,            0.0f, 15.0f, "%.1f");
-			ImGui::SliderFloat("Bloom knee",           &m_bloom_knee,                 0.0f, 1.0f,  "%.1f");
-            ImGui::SliderFloat("Bloom intensity",      &m_bloom_intensity,      0.0f, 5.0f,  "%.1f");
-            ImGui::SliderFloat("Bloom dirt intensity", &m_bloom_dirt_intensity, 0.0f, 10.0f, "%.1f");
+			ImGui::SliderFloat("Bloom threshold",      &m_bloom_threshold,      0, 15.f, "%.1f");
+			ImGui::SliderFloat("Bloom knee",           &m_bloom_knee,           0,  1.f, "%.1f");
+			ImGui::SliderFloat("Bloom intensity",      &m_bloom_intensity,      0,  2.f, "%.1f");
+			ImGui::SliderFloat("Bloom dirt intensity", &m_bloom_dirt_intensity, 0, 10.f, "%.1f");
         }
 		if(ImGui::CollapsingHeader("Fog / Scattering", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			{
-				float density = m_fog_density;
-				if(ImGui::SliderFloat("Fog density", &density, 0.f, 0.5f))
-					m_fog_density = density;
+				float density = m_fog_density*100.f;
+				if(ImGui::SliderFloat("Fog density", &density, 0.f, 1.f))
+					m_fog_density = density/100.f;
 			}
-			ImGui::SliderFloat("Fog falloff blend", &m_fog_falloff_blend, 0, 1);
-			ImGui::SliderFloat("Ray march stride", &m_ray_march_stride, 0.01f, 1.f);
 			ImGui::Text("Ray march noise (N): %d", _ray_march_noise);
 		}
 
