@@ -1996,6 +1996,9 @@ void ClusteredShading::renderLighting(const Camera &camera)
     glDepthFunc(GL_LEQUAL);
 }
 
+
+void ImGui_ImageEx(ImTextureID texture_id, ImVec2 size, ImVec2 uv0, ImVec2 uv1, GLuint shader_id);
+
 void ClusteredShading::render_gui()
 {
     /* This method is responsible for rendering GUI using ImGUI. */
@@ -2011,7 +2014,7 @@ void ClusteredShading::render_gui()
 	ImVec2 window_pos_pivot = ImVec2(1.0f, 0.0f);
 
     ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
-	ImGui::SetNextWindowSize({ 300, 800 });
+	ImGui::SetNextWindowSize({ 400, 800 });
 
 	ImGui::Text("   Culling: %4ld µs", m_cull_time.count());
 	ImGui::Text("    Z-pass: %4ld µs", m_depth_time.count());
@@ -2284,9 +2287,9 @@ void ClusteredShading::render_gui()
 
 				if(rt->has_color() and rt->color_texture())
 				{
-					texture = &rt->color_texture();
+					auto &texture = rt->color_texture();
 
-					ImGui_ImageEx(texture->texture_id(), img_size, top_left, bottom_right, 0);
+					ImGui_ImageEx(texture.texture_id(), img_size, top_left, bottom_right, 0);
 
 					const auto color_f = rt->color_format();
 					ImGui::Text("Color: %u x %u  %s", rt->width(), rt->height(), format_str(color_f));
@@ -2294,10 +2297,10 @@ void ClusteredShading::render_gui()
 
 				if(rt->has_depth() and rt->depth_texture())
 				{
-					texture = &rt->depth_texture();
+					auto &texture = rt->depth_texture();
 
 					// render with shader to show as gray scale
-					ImGui_ImageEx(texture->texture_id(), img_size, top_left, bottom_right, m_imgui_depth_texture_shader->program_id());
+					ImGui_ImageEx(texture.texture_id(), img_size, top_left, bottom_right, m_imgui_depth_texture_shader->program_id());
 
 					const auto depth_f = rt->depth_format();
 					ImGui::Text("Depth: %u x %u  %s", rt->width(), rt->height(), format_str(depth_f));
