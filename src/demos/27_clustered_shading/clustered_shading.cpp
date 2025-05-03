@@ -2223,10 +2223,151 @@ void ClusteredShading::render_gui()
 			ImGui::Text("Ray march noise (N): %d", _ray_march_noise);
 		}
 
-		// if(ImGui::CollapsingHeader("Framebuffers"))
+		if(ImGui::CollapsingHeader("Images", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			static const char *rt_names[] = {
+				"-- No selection",
+				// cube
+				"env_cubemap_rt  [cube]",
+				"irradiance_cubemap_rt  [cube]",
+				"prefiltered_env_map_rt  [cube]",
+
+				// 2d
+				"depth_pass_rt",
+				"rt",
+				"pp_low_rt",
+				"pp_full_rt",
+				"final_rt",
+			};
+			static int current_image = 0;
+			ImGui::Combo("Render target", &current_image, rt_names, std::size(rt_names));
+
+			RenderTarget::Texture2d *rt = nullptr;
+			switch(current_image)
+			{
+			case 4: rt = &m_depth_pass_rt; break;
+			case 5: rt = &_rt; break;
+			case 6: rt = &_pp_low_rt; break;
+			case 7: rt = &_pp_full_rt; break;
+			case 8: rt = &_final_rt; break;
+			}
+			// const bool is_cube = current_image >= 1 and current_image <= 3;
+			// const bool is_depth = current_image == 4;
+			if(rt)
+			{
+				float aspect = float(rt->width()) / float(rt->height());
+
+				auto format_str = [](auto f) {
+					if(not f)
+						return "none";
+					switch(f)
+					{
+					case GL_RGB: return "RGB";
+					case GL_RGBA: return "RGBA";
+					case GL_R16F: return "R16F";
+					case GL_RGBA32F: return "RGBA32F";
+					case GL_DEPTH_COMPONENT32F: return "32F";
+					}
+					return "?";
+				};
+
+				static constexpr ImVec2 top_left { 0, 1 };
+				static constexpr ImVec2 bottom_right { 1, 0 };
+
+				const auto vMin = ImGui::GetWindowContentRegionMin();
+				const auto vMax = ImGui::GetWindowContentRegionMax();
+				const auto win_width = std::min(vMax.x - vMin.x, 512.f);
+
+				const ImVec2 img_size { win_width, float(win_width)/aspect };
+
+				if(rt->has_color() and rt->color_texture())
+				{
+					texture = &rt->color_texture();
+
+					ImGui_ImageEx(texture->texture_id(), img_size, top_left, bottom_right, 0);
+
+					const auto color_f = rt->color_format();
+					ImGui::Text("Color: %u x %u  %s", rt->width(), rt->height(), format_str(color_f));
+				}
+
+				if(rt->has_depth() and rt->depth_texture())
+				{
+					texture = &rt->depth_texture();
+
+					// render with shader to show as gray scale
+					ImGui_ImageEx(texture->texture_id(), img_size, top_left, bottom_right, m_imgui_depth_texture_shader->program_id());
+
+					const auto depth_f = rt->depth_format();
+					ImGui::Text("Depth: %u x %u  %s", rt->width(), rt->height(), format_str(depth_f));
+				}
+			}
+		}
+		// if(ImGui::CollapsingHeader("Textures"))
 		// {
-		// 	ImGui::Image(ImTextureID(int64_t(_rt.texture_id())), { 256, 256 });
 		// }
-    }
+	}
     ImGui::End();
+}
+
+inline ImVec2 operator + (const ImVec2 &A, const ImVec2 &B)
+{
+	return { A.x + B.x, A.y + B.y };
+}
+
+void ImGui_ImageEx(ImTextureID texture_id, ImVec2 size, ImVec2 uv0, ImVec2 uv1, GLuint shader_id)
+{
+	struct CB_args
+	{
+		GLuint program_id;
+		GLuint texture_id;
+	};
+
+	auto *args = new CB_args{
+		shader_id,
+		GLuint(texture_id),
+	};
+
+	static TextureSampler clamp0_sampler;
+	if(not clamp0_sampler)
+	{
+		clamp0_sampler.Create();
+		clamp0_sampler.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::Linear);
+		clamp0_sampler.SetFiltering(TextureFiltering::Magnify, TextureFilteringParam::Linear);
+	}
+
+	auto dl = ImGui::GetWindowDrawList();
+
+	dl->AddCallback([](const ImDrawList *, const ImDrawCmd *cmd) {
+		CB_args *args = static_cast<CB_args *>(cmd->UserCallbackData);
+		if(args->program_id)
+		{
+			const auto *draw_data = ImGui::GetDrawData();
+			float left = draw_data->DisplayPos.x;
+			float right = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
+			float top = draw_data->DisplayPos.y;
+			float bottom = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
+
+			const auto ortho_proj = glm::orthoLH(left, right, bottom, top, 1.f, -1.f);
+
+			glUseProgram(args->program_id);
+			const auto projLoc = glGetUniformLocation(args->program_id, "u_projection");
+			glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(ortho_proj));
+		}
+		glBindTextureUnit(0, args->texture_id);
+		delete args;
+
+		clamp0_sampler.Bind(0);
+	}, args);
+
+	dl->AddImage(texture_id, ImGui::GetCursorScreenPos(), ImGui::GetCursorScreenPos() + size, uv0, uv1);
+	ImGui::Dummy(size);  // Reserve layout space *before* drawing
+
+	dl->AddCallback([](const ImDrawList *, const ImDrawCmd *) {
+		glUseProgram(0);
+		glBindTextureUnit(0, 0);
+		glBindSampler(0, 0);
+	}, nullptr);
+
+	// reset all ImGui state
+	dl->AddCallback(ImDrawCallback_ResetRenderState, nullptr);
 }
