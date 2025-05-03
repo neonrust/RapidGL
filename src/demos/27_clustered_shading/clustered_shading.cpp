@@ -2026,6 +2026,8 @@ void ClusteredShading::render_gui()
 
 	ImGui::Begin("Settings");
     {
+		ImGui::Text("T: %6.2f", _running_time.count());
+
 		if (ImGui::CollapsingHeader("Camera Info", ImGuiTreeNodeFlags_DefaultOpen))
         {
 			const auto cam_pos   = m_camera.position();
@@ -2036,13 +2038,12 @@ void ClusteredShading::render_gui()
 			const auto fwd_xz = glm::normalize(glm::vec3(cam_fwd.x, 0.f, cam_fwd.z));
 			const float heading_angle = std::acos(glm::clamp(glm::dot(AXIS_Z, fwd_xz), -1.f, 1.f));
 
-			ImGui::Text("T: %.3f", _running_time.count());
 
-			ImGui::Text("      Yaw: %.1f    Pitch: %.1f\n"
-						"Position : %.2f ; %.2f ; %.2f\n"
-						"Forward  : %.2f ; %.2f ; %.2f  (%.1f°)\n"
-						"Right    : %.2f ; %.2f ; %.2f\n"
-						"Up       : %.2f ; %.2f ; %.2f",
+			ImGui::Text("     Yaw : %6.1f   Pitch : %5.1f\n"
+						"Position : %5.1f ; %5.1f ; %5.1f\n"
+						"Forward  : %5.2f ; %5.2f ; %5.2f   %5.1f°\n"
+						"Right    : %5.2f ; %5.2f ; %5.2f\n"
+						"Up       : %5.2f ; %5.2f ; %5.2f",
 						glm::degrees(m_camera.yaw()), glm::degrees(m_camera.pitch()),
 						cam_pos.x, cam_pos.y, cam_pos.z,
 						cam_fwd.x, cam_fwd.y, cam_fwd.z, glm::degrees(heading_angle),
