@@ -69,14 +69,12 @@ ClusteredShading::ClusteredShading() :
 	m_background_lod_level(1.2f),
 	m_skybox_vao          (0),
 	m_skybox_vbo          (0),
-	m_bloom_threshold     (0.8f),
+	m_bloom_threshold     (0.1f),
 	m_bloom_knee          (0.1f),
-	m_bloom_intensity     (1.5f),
+	m_bloom_intensity     (0.5f),
 	m_bloom_dirt_intensity(0),
-	m_bloom_enabled       (false),
+	m_bloom_enabled       (true),
 	m_fog_density         (0.1f), // [ 0, 0.5 ]   nice-ish value: 0.015
-	m_fog_falloff_blend   (0.05f),
-	m_ray_march_stride    (.1f),
 	_ray_march_noise      (1)
 {
 	m_shading_clusters_aabb_ssbo.setBindIndex(SSBO_BIND_CLUSTERS_AABB);

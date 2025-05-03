@@ -273,8 +273,6 @@ private:
     bool  m_bloom_enabled;
 
 	float m_fog_density;
-	float m_fog_falloff_blend;
-	float m_ray_march_stride;
 	int _ray_march_noise { 0 };  // 0 - 2
 
 	std::chrono::microseconds m_cull_time;
