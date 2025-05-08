@@ -1,13 +1,13 @@
-#include "pp_downscale_blur.h"
+#include "pp_mipmap_blur.h"
 
 using namespace std::literals;
 
 namespace RGL::PP
 {
 
-bool DownscaleBlur::create()
+bool MipmapBlur::create()
 {
-	new (&_downscale_blur) Shader("src/demos/27_clustered_shading/downscale_blur.comp");
+	new (&_downscale_blur) Shader("src/demos/27_clustered_shading/mipmap_blur.comp");
 	_downscale_blur.link();
 	assert(_downscale_blur);
 	_downscale_blur.setPostBarrier(Shader::Barrier::Image);
@@ -15,12 +15,12 @@ bool DownscaleBlur::create()
 	return bool(_downscale_blur);
 }
 
-DownscaleBlur::operator bool() const
+MipmapBlur::operator bool() const
 {
 	return _downscale_blur;
 }
 
-void DownscaleBlur::setLevelLimit(size_t limit)
+void MipmapBlur::setLevelLimit(size_t limit)
 {
 	// build weights for a blur over 'limit' mip-map levels (capped to MAX_WEIGHTS)
 
@@ -38,10 +38,10 @@ void DownscaleBlur::setLevelLimit(size_t limit)
 		computeWeights();
 
 	_downscale_blur.setUniform("u_weights"sv, _weights[_num_levels].size(), _weights[_num_levels].data());
-	_downscale_blur.setUniform("u_num_levsl"sv, uint32_t(_num_levels));
+	_downscale_blur.setUniform("u_num_levels"sv, uint32_t(_num_levels));
 }
 
-void DownscaleBlur::computeWeights()
+void MipmapBlur::computeWeights()
 {
 	auto &weights = _weights[_num_levels];
 
@@ -63,12 +63,13 @@ void DownscaleBlur::computeWeights()
 		w /= sum;
 }
 
-void DownscaleBlur::render(const RenderTarget::Texture2d &in, RenderTarget::Texture2d &out)
+void MipmapBlur::render(const RenderTarget::Texture2d &in, RenderTarget::Texture2d &out)
 {
 	static constexpr size_t group_size = 16;
 
 	// TODO: 'in' must have a complete mip-map pyramid!
-	const_cast<RenderTarget::Texture2d *>(&in)->color_texture().GenerateMipMaps();
+	// const_cast<RenderTarget::Texture2d *>(&in)->color_texture().GenerateMipMaps();
+	assert(false);
 
 	in.bindTextureSampler();
 	out.bindImage(1, RenderTarget::Access::Write);

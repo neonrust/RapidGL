@@ -12,7 +12,7 @@
 namespace RGL::PP
 {
 
-class DownscaleBlur : public PostProcess
+class MipmapBlur : public PostProcess
 {
 public:
 	bool create();
