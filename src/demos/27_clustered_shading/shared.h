@@ -6,6 +6,9 @@
 #define vec4  alignas(16) glm::vec4
 #define uvec3 alignas(16) glm::uvec3
 #define uint  alignas(4)  uint32_t
+#define LightID alignas(4) uint32_t
+#else
+#define LightID uint
 #endif
 
 #define SSBO_BIND_CLUSTERS_AABB               1
@@ -25,11 +28,16 @@
 #define SSBO_BIND_AREA_LIGHTS                 14
 #define SSBO_BIND_CULL_DISPATCH_ARGS          15
 
+// 'feature_flags' bits
+#define LIGHT_SHADOW_CASTER       0x01
+
 struct BaseLight
 {
+	LightID uuid;
     vec3 color;
 	float intensity;
-	// TODO: float fog; // [ 0, 1 ]
+	float fog;
+	uint feature_flags;
 };
 
 struct DirectionalLight
@@ -112,5 +120,4 @@ struct IndexRange
 #undef vec4
 #undef uvec3
 #undef uint
-// #undef bool
 #endif
