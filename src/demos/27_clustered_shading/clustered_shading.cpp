@@ -678,7 +678,7 @@ void ClusteredShading::calculateShadingClusterGrid()
 	/// Init clustered shading variables.
 
 
-	const auto screen_division = 4; // around 20 is a fair value
+	const auto screen_division = 20; // around 20 is a fair value
 
 
 
@@ -995,7 +995,7 @@ void ClusteredShading::GeneratePointLights()
 		.radius = 15,
 	});
 #endif
-	for(auto idx = 0u; idx < 1024; ++idx)
+	for(auto idx = 0u; idx < 5; ++idx)
 	{
 		glm::vec3 rand_color= hsv2rgb(
 			float(Util::RandomDouble(1, 360)),
@@ -1004,21 +1004,19 @@ void ClusteredShading::GeneratePointLights()
 		);
 		glm::vec3 rand_pos = Util::RandomVec3({ -20, 0, -20 }, { 20, 4, 20 });
 
-		auto rand_intensity = float(Util::RandomDouble(1, 20));
+		auto rand_intensity = float(Util::RandomDouble(1, 100));
 
-		// if(idx == 7 or idx == 8 or idx >= 11)
-		// {
-			m_point_lights.push_back({
-				.base = {
-					.color = rand_color,
-					.intensity = rand_intensity,
-				},
-				.position = rand_pos,
-				.radius = std::pow(rand_intensity, 0.4f),
-			});
-			// std::printf("point light %u(%lu) @ %.2f; %.2f; %.2f  r=%.2f\n",
-			// 			idx, m_point_lights.size() - 1, rand_pos.x, rand_pos.y, rand_pos.z, m_point_lights.back().radius);
-		// }
+		m_point_lights.push_back({
+			.base = {
+				.uuid = static_cast<uint32_t>(m_point_lights.size()), // TODO: use ECS entity ID
+				.color = rand_color,
+				.intensity = rand_intensity,
+				.fog = 1.f,
+				.feature_flags = 0,
+			},
+			.position = rand_pos,
+			.radius = std::pow(rand_intensity, 0.4f),
+		});
 	}
 
 #if 0
