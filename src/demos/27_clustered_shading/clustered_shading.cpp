@@ -1443,7 +1443,7 @@ void ClusteredShading::render()
 	m_light_cull_time.add(_gl_timer.elapsed<microseconds>(true));
 
     // 6. Render lighting
-	_rt.bindRenderTarget(RGL::RenderTarget::ColorBuffer);
+	_rt.bindRenderTarget(RenderTarget::ColorBuffer);
 	renderLighting(m_camera);
 
 
@@ -1934,7 +1934,7 @@ const std::vector<StaticObject> &ClusteredShading::cullScene()
 	return _scenePvs;
 }
 
-void ClusteredShading::renderScene(const Camera &camera, RGL::Shader &shader, MaterialCtrl materialCtrl)
+void ClusteredShading::renderScene(const Camera &camera, Shader &shader, MaterialCtrl materialCtrl)
 {
 	// TODO: for each model:
 	//   this should frustum cull models (and cache the result for other passes)
@@ -1965,7 +1965,7 @@ void ClusteredShading::renderScene(const Camera &camera, RGL::Shader &shader, Ma
 
 void ClusteredShading::renderDepth(const Camera &camera, RenderTarget::Texture2d &target)
 {
-	target.bindRenderTarget(RGL::RenderTarget::DepthBuffer);
+	target.bindRenderTarget(RenderTarget::DepthBuffer);
 
 	glDepthMask(GL_TRUE);
     glColorMask(0, 0, 0, 0);
