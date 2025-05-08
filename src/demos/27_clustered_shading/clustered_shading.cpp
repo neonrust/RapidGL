@@ -2245,8 +2245,12 @@ void ClusteredShading::render_gui()
 			ImGui::Combo("Render target", &current_image, rt_names, std::size(rt_names));
 
 			RenderTarget::Texture2d *rt = nullptr;
+			RenderTarget::Cube *rtc = nullptr;
 			switch(current_image)
 			{
+			case 1: rtc = m_env_cubemap_rt.get(); break;
+			case 2: rtc = m_irradiance_cubemap_rt.get(); break;
+			case 3: rtc = m_prefiltered_env_map_rt.get(); break;
 			case 4: rt = &m_depth_pass_rt; break;
 			case 5: rt = &_rt; break;
 			case 6: rt = &_pp_low_rt; break;
@@ -2255,30 +2259,32 @@ void ClusteredShading::render_gui()
 			}
 			// const bool is_cube = current_image >= 1 and current_image <= 3;
 			// const bool is_depth = current_image == 4;
+
+			auto format_str = [](auto f) {
+				if(not f)
+					return "none";
+				switch(f)
+				{
+				case GL_RGB: return "RGB";
+				case GL_RGBA: return "RGBA";
+				case GL_R16F: return "R16F";
+				case GL_RGBA32F: return "RGBA32F";
+				case GL_DEPTH_COMPONENT32F: return "32F";
+				}
+				return "?";
+			};
+
+
+			static constexpr ImVec2 top_left { 0, 1 };
+			static constexpr ImVec2 bottom_right { 1, 0 };
+
+			const auto vMin = ImGui::GetWindowContentRegionMin();
+			const auto vMax = ImGui::GetWindowContentRegionMax();
+			const auto win_width = std::min(vMax.x - vMin.x, 512.f);
+
 			if(rt)
 			{
 				float aspect = float(rt->width()) / float(rt->height());
-
-				auto format_str = [](auto f) {
-					if(not f)
-						return "none";
-					switch(f)
-					{
-					case GL_RGB: return "RGB";
-					case GL_RGBA: return "RGBA";
-					case GL_R16F: return "R16F";
-					case GL_RGBA32F: return "RGBA32F";
-					case GL_DEPTH_COMPONENT32F: return "32F";
-					}
-					return "?";
-				};
-
-				static constexpr ImVec2 top_left { 0, 1 };
-				static constexpr ImVec2 bottom_right { 1, 0 };
-
-				const auto vMin = ImGui::GetWindowContentRegionMin();
-				const auto vMax = ImGui::GetWindowContentRegionMax();
-				const auto win_width = std::min(vMax.x - vMin.x, 512.f);
 
 				const ImVec2 img_size { win_width, float(win_width)/aspect };
 
@@ -2301,6 +2307,25 @@ void ClusteredShading::render_gui()
 
 					const auto depth_f = rt->depth_format();
 					ImGui::Text("Depth: %u x %u  %s", rt->width(), rt->height(), format_str(depth_f));
+				}
+			}
+
+			if(rtc)
+			{
+				float aspect = float(rtc->width()) / float(rtc->height());
+
+				const ImVec2 img_size { win_width / 2, float(win_width / 2)/aspect };
+
+				if(rtc->has_color() and rtc->color_texture())
+				{
+					auto &texture = rtc->color_texture();
+
+					const char *names[] = { "right", "left", "up", "down", "front", "back" };
+					for(auto face = 0u; face < 6; ++face)
+					{
+						ImGui_ImageEx(texture.texture_face_id(CubeFace(face)), img_size, top_left, bottom_right, 0);
+						ImGui::Text("%u: %s", face, names[face]);
+					}
 				}
 			}
 		}
