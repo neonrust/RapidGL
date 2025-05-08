@@ -286,25 +286,25 @@ uint8_t Texture::calculateMipMapLevels(size_t width, size_t height, size_t depth
 		return uint8_t(1.f + std::floor(std::log2(float(max_extent))));
 	}
 
+	if(min_size == 0)
+		min_size = 1;
+
 	const auto use_height = height > 0;
 	const auto use_depth = depth > 0;
 
-	width >>= 1;
+	width  >>= 1;
 	height >>= 1;
-	depth >>= 1;
-
-	if(max_levels == 0)
-		max_levels = 64;  // a huge number, i.e. loop until 'mip_limit' is hit
+	depth  >>= 1;
 
 	uint_fast8_t levels = 1;
 
 	for (; levels < max_levels; ++levels)
 	{
-		width /= 2;
-		height /= 2;
-		depth /= 2;
+		width  >>= 1;
+		height >>= 1;
+		depth  >>= 1;
 
-		if (width < min_size or (use_height and height < min_size) or (use_depth and depth < min_size))
+		if(width < min_size or (use_height and height < min_size) or (use_depth and depth < min_size))
 			break;
 	}
 

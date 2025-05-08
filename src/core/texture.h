@@ -178,7 +178,7 @@ public:
 
 	virtual ImageData GetMetadata() const { return m_metadata; };
 
-	static uint8_t calculateMipMapLevels(size_t width, size_t height=0, size_t depth=0, size_t min_size=0, size_t max_levels=0);
+	static uint8_t calculateMipMapLevels(size_t width, size_t height=0, size_t depth=0, size_t min_size=0, size_t max_levels=64);
 
 	inline operator bool () const { return _texture_id; }
 
