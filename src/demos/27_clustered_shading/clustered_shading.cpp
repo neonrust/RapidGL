@@ -1546,7 +1546,7 @@ void ClusteredShading::render()
 
 
 	// draw the final result on the screen
-	draw2d(_final_rt, BlendMode::Replace);
+	draw2d(_final_rt.color_texture(), BlendMode::Replace);
 
 
 	if(m_draw_aabb)
