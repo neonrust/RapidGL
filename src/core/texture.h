@@ -171,6 +171,9 @@ public:
 	virtual void SetCompareFunc(TextureCompareFunc func);
 	virtual void SetAnisotropy(float anisotropy);
 
+	void SetBaseLevel(uint32_t level) const;
+	void SetMaxLevel(uint32_t level) const;
+
 	void GenerateMipMaps();
 
 	virtual ImageData GetMetadata() const { return m_metadata; };

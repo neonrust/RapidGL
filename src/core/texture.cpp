@@ -218,9 +218,7 @@ void Texture::Bind(uint32_t unit) const
 void Texture::SetFiltering(TextureFiltering type, TextureFilteringParam filtering)
 {
 	if (type == TextureFiltering::Magnify and filtering > TextureFilteringParam::Linear)
-	{
 		filtering = TextureFilteringParam::Linear;
-	}
 
 	glTextureParameteri(_texture_id, GLenum(type), GLint(filtering));
 }
@@ -263,6 +261,16 @@ void Texture::SetAnisotropy(float anisotropy)
 
 	anisotropy = glm::clamp(anisotropy, 1.0f, max_anisotropy);
 	glTextureParameterf(_texture_id, GL_TEXTURE_MAX_ANISOTROPY, anisotropy);
+}
+
+void Texture::SetBaseLevel(uint32_t level) const
+{
+	glTextureParameteri(_texture_id, GL_TEXTURE_BASE_LEVEL, GLint(level));
+}
+
+void Texture::SetMaxLevel(uint32_t level) const
+{
+	glTextureParameteri(_texture_id, GL_TEXTURE_MAX_LEVEL, GLint(level));
 }
 
 void Texture::GenerateMipMaps()
