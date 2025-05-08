@@ -4,15 +4,24 @@
 
 #define GROUP_SIZE 8
 
-#define MARCH_NUM_STEPS 16
+#define MARCH_NUM_STEPS 64
 
 const float TRANSMITTANCE_THRESHOLD = 0.01;
 const float MAX_SCATTER_DISTANCE = 80;
 
-layout(rgba32f, binding = 0) uniform image2D   u_input_color;
 layout(rgba32f, binding = 1) uniform image2D   u_output_color;
 layout(binding = 2)          uniform sampler2D u_input_depth;
 layout(binding = 3)          uniform sampler2D u_blue_noise;
+
+layout(std430, binding = SSBO_BIND_POINT_LIGHTS) buffer PointLightsSSBO
+{
+    PointLight point_lights[];
+};
+
+layout(std430, binding = SSBO_BIND_SPOT_LIGHTS) buffer SpotLightsSSBO
+{
+    SpotLight spot_lights[];
+};
 
 uniform vec3 u_fog_color;
 uniform float u_fog_density;       // [ 0, 0.1 ]   (sensible)
@@ -96,25 +105,13 @@ float rayPointNearest(Ray ray, vec3 point);  // returns distance on 'ray' that i
 float vectorVectorAngle(vec3 v1_norm, vec3 v2_norm);
 uint pcg_hash(uint seed);
 float depthWorldSpaceDistance(vec2 texCoord, float depth);
-float fadeScatterByDistance(vec3 light_pos);
+float fadeByDistance(vec3 light_pos);
 float hash13(vec2 uv, float time);
 float hash12(vec2 p, float time);
 vec3 hash33(vec2 p, float time);
 float interleavedGradientNoise(vec2 pixel, int frame);
 
 vec3 falseColor(float value);
-
-layout(std430, binding = SSBO_BIND_POINT_LIGHTS) buffer PointLightsSSBO
-{
-    PointLight point_lights[];
-};
-
-layout(std430, binding = SSBO_BIND_SPOT_LIGHTS) buffer SpotLightsSSBO
-{
-    SpotLight spot_lights[];
-};
-
-vec3 fakeSphere(Ray ray, Sphere sphere);
 
 float g_noise_offset = 0;
 vec2 screen_pos;
@@ -198,32 +195,27 @@ void main()
 
 	vec3 fog_radiance = vec3(0);
 
-#if 1
-	for(int idx = 0; idx < point_lights.length(); ++idx)
+	for(uint idx = 0; idx < point_lights.length(); ++idx)
 	{
-		float fade = fadeScatterByDistance(point_lights[idx].position);
-		if(fade > 1e-4)
-			fog_radiance += fade * scatterPointLight(cam_ray, point_lights[idx]);
-	}
-#endif
-
-	for(int idx = 0; idx < spot_lights.length(); ++idx)
-	{
-		float fade = fadeScatterByDistance(point_lights[idx].position);
-		if(fade > 1e-4)
-			fog_radiance += fade * scatterSpotLight(cam_ray, spot_lights[idx]);
+		float visible = fadeByDistance(point_lights[idx].position);
+		if(visible > 1e-4)
+			fog_radiance += visible * scatterPointLight(cam_ray, point_lights[idx]);
 	}
 
-	// Sphere sphere = Sphere(vec3(0, 2, 0), 2.f);
-	// fog_radiance += fakeSphere(eye_ray, sphere);
+	for(uint idx = 0; idx < spot_lights.length(); ++idx)
+	{
+		float visible = fadeByDistance(point_lights[idx].position);
+		if(visible > 1e-4)
+			fog_radiance += visible * scatterSpotLight(cam_ray, spot_lights[idx]);
+	}
 
 	// TODO: area lights
 	//   I guess area light scattering could be approximated using a frustum (the shape, i.e. a cropped pyramid),
 	//   with fall of in X and Y (from the center, outwards) as well as in Z (from the source outwards)
 	//    (in light-space, naturally).
 	//    Here's a daring 2d representation:
-	//                   ___----
-	//         ___---****    *
+	//                  ____----
+	//         ___---***     *
 	//        |              |  fall off from center axis
 	//      C |------------------> center (falling off from C)
 	//        |___           |  fall-off from center axis
@@ -241,9 +233,6 @@ void main()
 		fog_radiance += scatterLightsInCluster(eye_ray, cluster_index);
 */
 
-	// if(fog_radiance.r > 0 || fog_radiance.g > 0 || fog_radiance.b > 0)
-	// 	fog_radiance = vec3(1);
-
 	if(fog_radiance.r > 0 || fog_radiance.g > 0 || fog_radiance.b > 0)
 	{
 		fog_radiance *= u_fog_color;
@@ -251,7 +240,8 @@ void main()
 		vec4 final_color = vec4(fog_radiance, 1);
 
 		imageStore(u_output_color, pixel_id, final_color);
-		if(pixel_id.x < screen_size.x -1)  // write the same color to the right-side pixel (staggered pattern)
+		// write the same color to the right-side pixel (staggered pattern)
+		if(pixel_id.x < screen_size.x -1)
 			imageStore(u_output_color, pixel_id + ivec2(1, 0), final_color);
 	}
 }
@@ -281,7 +271,7 @@ void main()
 const float FADE_START = MAX_SCATTER_DISTANCE;
 const float FADE_END = FADE_START + MAX_SCATTER_DISTANCE/5;
 
-float fadeScatterByDistance(vec3 pos)
+float fadeByDistance(vec3 pos)
 {
 	vec3 to_pos = pos - u_cam_pos;
 	float distance = length(to_pos);
@@ -308,7 +298,7 @@ vec3 scatterPointLight(Ray ray, PointLight light)
 		return vec3(0);
 
 
-	float stride = u_ray_march_stride * thickness / MARCH_NUM_STEPS;
+	float stride = thickness / MARCH_NUM_STEPS;
 
 	float noise = 0;
 	int noise_anim = int(u_time * 120) % 64;
@@ -409,7 +399,7 @@ vec3 scatterSpotLight(Ray ray, SpotLight spot)
 #endif
 
 
-	float stride = u_ray_march_stride * thickness / MARCH_NUM_STEPS;
+	float stride = thickness / MARCH_NUM_STEPS;
 
 	float noise = 0;
 	int noise_anim = int(u_time * 120) % 64;
@@ -436,11 +426,9 @@ vec3 scatterSpotLight(Ray ray, SpotLight spot)
 
 
 		// EXPERIMENT
-		// dim points towards the direction of the light
+		// dimmer if facing towards the direction of the light
 		float along_axis = dot(p_sample - spot.point.position, spot.direction)/spot.point.radius;
 		intensity *= 1 - along_axis;
-
-
 
 
 		radiance += transmittance * stepOpacity * intensity;
