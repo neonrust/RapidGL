@@ -530,7 +530,41 @@ bool Texture2D::LoadDds(const std::filesystem::path& filepath)
 
 // --------------------- Texture CubeMap -------------------------
 
-bool TextureCubeMap::Load(const std::filesystem::path* filepaths, bool is_srgb, uint32_t num_mipmaps)
+bool TextureCube::Create(size_t width, size_t height, GLenum internalFormat, size_t num_mipmaps)
+{
+	if(_texture_id)
+		Release();
+
+	if(not num_mipmaps)
+		num_mipmaps = calculateMipMapLevels(width, height, 0);
+
+	glCreateTextures(GL_TEXTURE_CUBE_MAP, 1, &_texture_id);
+	assert(_texture_id);
+
+	glTextureStorage2D(_texture_id, GLsizei(num_mipmaps), internalFormat, GLsizei(width), GLsizei(height));
+
+
+	// create texture views for each face (useful for debugging, maybe nothing else?)
+	createFaceViews(internalFormat);
+
+	return true;
+}
+
+void TextureCube::createFaceViews(GLenum internalFormat)
+{
+	for(auto face = 0u; face < 6; ++face)
+	{
+		glGenTextures(1, &_faceViews[face]);
+		glTextureView(_faceViews[face], GL_TEXTURE_2D, _texture_id, internalFormat, 0, 1,  GLuint(face), 1);
+	}
+}
+
+void TextureCube::BindFace(CubeFace face, uint32_t unit)
+{
+	glBindTextureUnit(unit, _faceViews[uint32_t(face)]);
+}
+
+bool TextureCube::Load(const std::filesystem::path* filepaths, bool is_srgb, uint32_t num_mipmaps)
 {
 	constexpr int NUM_FACES = 6;
 
@@ -585,7 +619,21 @@ bool TextureCubeMap::Load(const std::filesystem::path* filepaths, bool is_srgb, 
 		Util::ReleaseTextureData(images_data[idx]);
 	}
 
+	createFaceViews(m_internal_format);
+
 	return true;
+}
+
+void TextureCube::Release()
+{
+	for (auto face = 0u; face < 6; ++face)
+	{
+		if(_faceViews[face] != 0)
+			glDeleteTextures(1, &_faceViews[face]);
+		_faceViews[face] = 0;
+	}
+
+	Texture::Release();
 }
 
 bool Texture1D::Create(size_t width, GLenum internalFormat, size_t num_mipmaps)

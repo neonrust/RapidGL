@@ -182,7 +182,7 @@ public:
 
 	inline operator bool () const { return _texture_id; }
 
-	void Release();
+	virtual void Release();
 
 protected:
 	bool Create(size_t width, size_t height, size_t depth, GLenum internalFormat, size_t num_mipmaps);
@@ -218,13 +218,27 @@ public:
 	bool LoadDds(const std::filesystem::path& filepath);
 };
 
-class TextureCubeMap : public Texture
+class TextureCube : public Texture
 {
 public:
-	TextureCubeMap() = default;
+	TextureCube() = default;
+
+	bool Create(size_t width, size_t height, GLenum internalFormat, size_t num_mipmaps=DefaultMipmaps);
+
+	void BindFace(CubeFace face, uint32_t unit=0);
 
 	// TODO: convert to factory function
 	bool Load(const std::filesystem::path * filepaths, bool is_srgb = false, uint32_t num_mipmaps=DefaultMipmaps);
+
+	void Release() override;
+
+	inline uint32_t texture_face_id(CubeFace face) const { return _faceViews[uint32_t(face)]; }
+
+private:
+	void createFaceViews(GLenum internalFormat);
+
+private:
+	std::array<GLuint, 6> _faceViews;
 };
 
 class Texture3D : public Texture
