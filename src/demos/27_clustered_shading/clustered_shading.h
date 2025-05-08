@@ -2,6 +2,7 @@
 #include "core_app.h"
 
 #include "camera.h"
+#include "sample_window.h"
 #include "ssbo.h"
 #include "static_model.h"
 #include "shader.h"
@@ -277,16 +278,16 @@ private:
 	float m_fog_density;
 	int _ray_march_noise { 0 };  // 0 - 2
 
-	std::chrono::microseconds m_cull_time;
-	std::chrono::microseconds m_depth_time;
-	std::chrono::microseconds m_cluster_find_time;
-	std::chrono::microseconds m_cluster_index_time;
-	std::chrono::microseconds m_light_cull_time;
-	std::chrono::microseconds m_shading_time;
-	std::chrono::microseconds m_skybox_time;
-	std::chrono::microseconds m_scatter_time;
-	std::chrono::microseconds m_pp_blur_time;
-	// std::chrono::microseconds m_pp_time;
+	SampleWindow<std::chrono::microseconds, 30> m_cull_scene_time;
+	SampleWindow<std::chrono::microseconds, 30> m_depth_time;
+	SampleWindow<std::chrono::microseconds, 30> m_cluster_find_time;
+	SampleWindow<std::chrono::microseconds, 30> m_cluster_index_time;
+	SampleWindow<std::chrono::microseconds, 30> m_light_cull_time;
+	SampleWindow<std::chrono::microseconds, 30> m_shadow_time;
+	SampleWindow<std::chrono::microseconds, 30> m_shading_time;
+	SampleWindow<std::chrono::microseconds, 30> m_skybox_time;
+	SampleWindow<std::chrono::microseconds, 30> m_scatter_time;
+	SampleWindow<std::chrono::microseconds, 30> m_pp_blur_time;
 
 	RGL::GLTimer _gl_timer;
 };
