@@ -1777,10 +1777,14 @@ void ClusteredShading::debugDrawSpotLight(const SpotLight &light, const glm::vec
 void ClusteredShading::draw2d(const Texture &texture, BlendMode blend)
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	if(blend != BlendMode::Replace)
+	if(blend == BlendMode::Replace)
+		glDisable(GL_BLEND);
+	else
+	{
 		glEnable(GL_BLEND);
+		glBlendEquation(GL_FUNC_ADD);
+	}
 
 	switch(blend)
 	{
@@ -1795,30 +1799,52 @@ void ClusteredShading::draw2d(const Texture &texture, BlendMode blend)
 
 	glBindVertexArray(_dummy_vao_id);
 	glDrawArrays(GL_TRIANGLES, 0, 3);
+
+	// restore states
+	if(blend != BlendMode::Replace)
+	{
+		glDisable(GL_BLEND);
+		if(blend == BlendMode::Subtract)
+			glBlendEquation(GL_FUNC_ADD);
+	}
 }
 
-void ClusteredShading::draw2d(const RGL::Texture &texture, RGL::Texture &target, BlendMode blend)
+void ClusteredShading::draw2d(const Texture &source, RenderTarget::Texture2d &target, BlendMode blend)
 {
-	target.Bind();
-
-	if(blend != BlendMode::Replace)
+	if(blend == BlendMode::Replace)
+		glDisable(GL_BLEND);
+	else
+	{
 		glEnable(GL_BLEND);
+		if(blend != BlendMode::Subtract)
+			glBlendEquation(GL_FUNC_ADD);
+	}
 
 	switch(blend)
 	{
-	case BlendMode::Replace: glDisable(GL_BLEND); break;
-	case BlendMode::Add:     glBlendFunc(GL_ONE, GL_ONE); break;
-	case BlendMode::Alpha:   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); break;
+	case BlendMode::Replace:  break;
+	case BlendMode::Subtract: glBlendEquation(GL_FUNC_SUBTRACT);  // fallthrough
+	case BlendMode::Add:      glBlendFunc(GL_ONE, GL_ONE); break;
+	case BlendMode::Alpha:    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); break;
 	}
 
-	m_fsq_shader->bind();
-	texture.Bind();
+	source.Bind(0);
+	target.bindRenderTarget(RenderTarget::NoBuffer);
 
+	m_fsq_shader->bind();
 	glBindVertexArray(_dummy_vao_id);
 	glDrawArrays(GL_TRIANGLES, 0, 3);
+
+	// restore states
+	if(blend != BlendMode::Replace)
+	{
+		glDisable(GL_BLEND);
+		if(blend == BlendMode::Subtract)
+			glBlendEquation(GL_FUNC_ADD);
+	}
 }
 
-void ClusteredShading::draw2d(const RGL::Texture &texture, const glm::uvec2 &top_left, const glm::uvec2 &bottom_right)
+void ClusteredShading::draw2d(const Texture &texture, const glm::uvec2 &top_left, const glm::uvec2 &bottom_right)
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
