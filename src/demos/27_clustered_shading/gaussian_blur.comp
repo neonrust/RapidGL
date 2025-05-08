@@ -1,7 +1,8 @@
 #version 460 core
 
 // https://lisyarus.github.io/blog/posts/compute-blur.html
-//
+// https://www.rastergrid.com/blog/2010/09/efficient-gaussian-blur-with-linear-sampling/
+
 // This source contains CONDITIONALcode:
 //    if HORIZONTAL is defined includes code for the horizontal pass
 //    if not defined, includes code for the vertical pass
@@ -17,6 +18,7 @@ layout(rgba32f, binding = 1) uniform image2D  u_output_color;
 
 const int num_weights = NUM_WEIGHTS;
 
+// NOTE: the sum of all weights must be 1.0
 const float weights[num_weights] = {
 #ifdef WEIGHTS_9  // 3.0 pixels
 	0.00147945,
