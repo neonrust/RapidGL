@@ -178,7 +178,7 @@ private:
 	glm::uvec3 m_cluster_resolution;             // 3D dimensions of the cluster grid.
 	float      m_near_k;                       // ( 1 + ( 2 * tan( fov * 0.5 ) / ClusterGridDim.y ) ) // Used to compute the near plane for clusters at depth k.
 	float      m_log_cluster_res_y;               // 1.0f / log( NearK )  // Used to compute the k index of the cluster from the view depth of a pixel sample.
-	uint32_t   m_clusters_count;
+	uint32_t   m_clusters_count { 0 };
 
 
 	bool  m_debug_cluster_geom           = false;
