@@ -43,9 +43,11 @@ void main()
 #endif
     uv = (px + 0.5) / inputSize;
 
+   	uint maxLevels = min(u_num_levels, textureQueryLevels(u_input))
+
     // 2) accumulate samples from each LOD
     vec3 sum = vec3(0);
-    for (uint L = 0; L < u_num_levels; ++L)
+    for (uint L = 0; L < maxLevels; ++L)
         sum += weights[L] * textureLod(u_input, uv, float(L)).rgb;
 
     // 3) write result to uotput
