@@ -45,7 +45,7 @@ layout(std430, binding = SSBO_BIND_POINT_LIGHT_INDEX) buffer PointLightIndexList
 
 layout(std430, binding = SSBO_BIND_CLUSTER_POINT_LIGHTS) buffer PointIndexRangeSSBO
 {
-	IndexRange point_light_grid[];
+	IndexRange cluster_point_lights[];
 };
 
 layout(std430, binding = SSBO_BIND_SPOT_LIGHT_INDEX) buffer SpotLightIndexListSSBO
@@ -55,7 +55,7 @@ layout(std430, binding = SSBO_BIND_SPOT_LIGHT_INDEX) buffer SpotLightIndexListSS
 
 layout(std430, binding = SSBO_BIND_CLUSTER_SPOT_LIGHTS) buffer SpotIndexRangeSSBO
 {
-	IndexRange spot_light_grid[];
+	IndexRange cluster_spot_lights[];
 };
 
 layout (std430, binding = SSBO_BIND_AREA_LIGHT_INDEX) buffer AreaLightIndexListSSBO
@@ -65,7 +65,7 @@ layout (std430, binding = SSBO_BIND_AREA_LIGHT_INDEX) buffer AreaLightIndexListS
 
 layout (std430, binding = SSBO_BIND_CLUSTER_AREA_LIGHTS) buffer AreaIndexRangeSSBO
 {
-    IndexRange area_light_grid[];
+    IndexRange cluster_area_lights[];
 };
 
 vec3  fromRedToGreen(float interpolant);
@@ -92,8 +92,8 @@ void main()
     uint cluster_index = computeClusterIndex(cluster_coord);
 
     // Calculate the point lights contribution
-    uint light_index_offset = point_light_grid[cluster_index].offset;
-    uint light_count = point_light_grid[cluster_index].count;
+    uint light_index_offset = cluster_point_lights[cluster_index].offset;
+    uint light_count = cluster_point_lights[cluster_index].count;
 
     for (uint i = 0; i < light_count; ++i)
     {
@@ -102,8 +102,8 @@ void main()
     }
 
     // Calculate the spot lights contribution
-    light_index_offset = spot_light_grid[cluster_index].offset;
-    light_count = spot_light_grid[cluster_index].count;
+    light_index_offset = cluster_spot_lights[cluster_index].offset;
+    light_count = cluster_spot_lights[cluster_index].count;
 
     for (uint i = 0; i < light_count; ++i)
     {
@@ -112,8 +112,8 @@ void main()
     }
 
     // Calculate the area lights contribution
-    light_index_offset = area_light_grid[cluster_index].offset;
-    light_count = area_light_grid[cluster_index].count;
+    light_index_offset = cluster_area_lights[cluster_index].offset;
+    light_count = cluster_area_lights[cluster_index].count;
 
     for (uint i = 0; i < light_count; ++i)
     {
@@ -137,7 +137,7 @@ void main()
     }
     else if (u_debug_clusters_occupancy)
     {
-        uint total_light_count = point_light_grid[cluster_index].count + spot_light_grid[cluster_index].count + area_light_grid[cluster_index].count;
+        uint total_light_count = cluster_point_lights[cluster_index].count + cluster_spot_lights[cluster_index].count + cluster_area_lights[cluster_index].count;
         if (total_light_count > 0)
         {
             float normalized_light_count = total_light_count / 100.0;
