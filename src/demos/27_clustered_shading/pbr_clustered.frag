@@ -74,6 +74,13 @@ vec3  heatMap(float interpolant);
 uint computeClusterIndex(uvec3 cluster_coord);
 uvec3 computeClusterCoord(vec2 screen_pos, float view_z);
 
+
+float lightVisibility(DirectionalLight light);
+float lightVisibility(PointLight light);
+float lightVisibility(SpotLight light);
+float lightVisibility(AreaLight light);
+
+
 void main()
 {
     vec3 radiance = vec3(0.0);
@@ -84,7 +91,9 @@ void main()
     // Calculate the directional lights
     for (uint i = 0; i < dir_lights.length(); ++i)
     {
-        radiance += calcDirectionalLight(dir_lights[i], in_world_pos, material);
+    	float visibility = lightVisibility(dir_lights[i]);
+     	if(visibility > 0)
+        	radiance += visibility * calcDirectionalLight(dir_lights[i], in_world_pos, material);
     }
 
     // Locating the cluster we are in
@@ -98,7 +107,9 @@ void main()
     for (uint i = 0; i < light_count; ++i)
     {
         uint light_index = point_light_index_list[light_index_offset + i];
-        radiance += calcPointLight(point_lights[light_index], in_world_pos, material);
+       	float visibility = lightVisibility(point_lights[light_index]);
+        if(visibility > 0)
+        	radiance += visibility * calcPointLight(point_lights[light_index], in_world_pos, material);
     }
 
     // Calculate the spot lights contribution
@@ -108,7 +119,9 @@ void main()
     for (uint i = 0; i < light_count; ++i)
     {
         uint light_index = spot_light_index_list[light_index_offset + i];
-        radiance += calcSpotLight(spot_lights[light_index], in_world_pos, material);
+       	float visibility = lightVisibility(spot_lights[light_index]);
+        if(visibility > 0)
+	        radiance += visibility * calcSpotLight(spot_lights[light_index], in_world_pos, material);
     }
 
     // Calculate the area lights contribution
@@ -118,7 +131,9 @@ void main()
     for (uint i = 0; i < light_count; ++i)
     {
         uint light_index = area_light_index_list[light_index_offset + i];
-        radiance += calcLtcAreaLight(area_lights[light_index], in_world_pos, material);
+       	float visibility = lightVisibility(area_lights[light_index]);
+        if(visibility > 0)
+	        radiance += visibility * calcLtcAreaLight(area_lights[light_index], in_world_pos, material);
     }
 
     radiance += indirectLightingIBL(in_world_pos, material);
@@ -209,4 +224,23 @@ vec3 heatMap(float interpolant)
         float remappedSecondHalf = 2.0 - 2.0 * invertedInterpolant;
         return fromRedToGreen(remappedSecondHalf);
     }
+}
+
+float lightVisibility(DirectionalLight light)
+{
+	return 1; // TODO
+}
+float lightVisibility(PointLight light)
+{
+	return 1; // TODO
+}
+
+float lightVisibility(SpotLight light)
+{
+	return 1; // TODO
+}
+
+float lightVisibility(AreaLight light)
+{
+	return 1; // TODO
 }
