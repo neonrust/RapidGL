@@ -1406,7 +1406,7 @@ void ClusteredShading::render()
 	// Blit depth info to our main render target
 	m_depth_pass_rt.copyTo(_rt, RenderTarget::DepthBuffer, TextureFilteringParam::Nearest);
 
-	m_depth_time = _gl_timer.elapsed<microseconds>(true);
+	m_depth_time.add(_gl_timer.elapsed<microseconds>(true));
 
 
 	// find clusters with fragments in them (the only ones we need to process in the light culling step)
@@ -1421,14 +1421,14 @@ void ClusteredShading::render()
 	m_find_nonempty_clusters_shader->invoke(GLuint(glm::ceil(float(m_depth_pass_rt.width()) / 32.f)),
 											GLuint(glm::ceil(float(m_depth_pass_rt.height()) / 32.f)));
 
-	m_cluster_find_time = _gl_timer.elapsed<microseconds>(true);
+	m_cluster_find_time.add(_gl_timer.elapsed<microseconds>(true));
 
 	m_active_clusters_ssbo.clear();
 	m_collect_nonempty_clusters_shader->invoke(size_t(std::ceil(float(m_clusters_count) / 1024.f)));
 
 	m_make_cull_lights_args_shader->invoke();
 
-	m_cluster_index_time = _gl_timer.elapsed<microseconds>(true);
+	m_cluster_index_time.add(_gl_timer.elapsed<microseconds>(true));
 
 	// Assign lights to clusters (cull lights)
 	m_point_lights_index_ssbo.clear();
@@ -1440,7 +1440,7 @@ void ClusteredShading::render()
 	m_cull_lights_shader->setUniform("u_view_matrix"sv, m_camera.viewTransform());
 	m_cull_lights_shader->invoke(m_cull_lights_args_ssbo); // number of clusters
 
-	m_light_cull_time = _gl_timer.elapsed<microseconds>(true);
+	m_light_cull_time.add(_gl_timer.elapsed<microseconds>(true));
 
     // 6. Render lighting
 	_rt.bindRenderTarget(RGL::RenderTarget::ColorBuffer);
@@ -1455,7 +1455,7 @@ void ClusteredShading::render()
 		glDrawArrays(GL_TRIANGLES, 0, GLsizei(6 * m_area_lights.size()));
 	}
 
-	m_shading_time = _gl_timer.elapsed<microseconds>(true);
+	m_shading_time.add(_gl_timer.elapsed<microseconds>(true));
 
 
 	// Render skybox
@@ -1468,35 +1468,50 @@ void ClusteredShading::render()
     glBindVertexArray(m_skybox_vao);
     glDrawArrays     (GL_TRIANGLES, 0, 36);
 
-	m_skybox_time = _gl_timer.elapsed<microseconds>(true);
+	m_skybox_time.add(_gl_timer.elapsed<microseconds>(true));
 
-	// TODO: Render atmospheric/fog light scattering (i.e. volumetric lights)
-	//    - lights culled into screen tiles (i.e. only 2d)
-	//    - (optional) grid/voxel-based atmospheric density; otherwise, just use a constant
-	m_scattering_pp.setCameraUniforms(m_camera);
-	m_scattering_pp.shader().setUniform("u_time"sv,               _running_time.count());
-	m_scattering_pp.shader().setUniform("u_cluster_resolution"sv, m_cluster_resolution);
-	m_scattering_pp.shader().setUniform("u_cluster_size_ss"sv,    glm::uvec2(m_cluster_block_size));
-	m_scattering_pp.shader().setUniform("u_fog_color"sv,          glm::vec3(1, 1, 1));
-	m_scattering_pp.shader().setUniform("u_fog_density"sv,        m_fog_density);
-	m_scattering_pp.shader().setUniform("u_ray_march_noise",      _ray_march_noise);
+	if(m_fog_density > 0)
+	{
+		// TODO: Render atmospheric/fog light scattering (i.e. volumetric lights)
+		//    - lights culled into screen tiles (i.e. only 2d)
+		//    - (optional) grid/voxel-based atmospheric density; otherwise, just use a constant
+		m_scattering_pp.setCameraUniforms(m_camera);
+		m_scattering_pp.shader().setUniform("u_time"sv,               _running_time.count());
+		// TODO: use a multiple of the shading cluster resolution, and we can thus re-use the light culling information
+		//   e.g. 10 more in XY-axes and maybe 2-3x more on Z-axis
+		m_scattering_pp.shader().setUniform("u_cluster_resolution"sv, m_cluster_resolution);
+		m_scattering_pp.shader().setUniform("u_cluster_size_ss"sv,    glm::uvec2(m_cluster_block_size));
+		m_scattering_pp.shader().setUniform("u_fog_color"sv,          glm::vec3(1, 1, 1));
+		m_scattering_pp.shader().setUniform("u_fog_density"sv,        m_fog_density);
+		m_scattering_pp.shader().setUniform("u_ray_march_noise",      _ray_march_noise);
 
-	m_depth_pass_rt.bindTextureSampler(2);
+		m_depth_pass_rt.bindDepthTextureSampler(2);
 
-	m_scattering_pp.render(_rt, _pp_low_rt);  // '_rt' actually isn't used but the API expects an argument
+		_pp_low_rt.clear();
+		m_scattering_pp.render(_rt, _pp_low_rt);  // '_rt' actually isn't used but the API expects an argument
 
-	m_scatter_time = _gl_timer.elapsed<microseconds>(true);
 
-	_pp_low_rt.copyTo(_pp_full_rt);  // first copy (and upscale)
+		// _pp_low_rt.copyTo(_pp_full_rt);  // copy and upscale
+		// NOTE: draw b/c copy(blit) doesn't work!?!?
+		//   no biggie though, it's often faster in practice
+		draw2d(_pp_low_rt.color_texture(), _pp_full_rt);
+
+	}
+	else
+		_pp_full_rt.clear();
+
+	m_scatter_time.add(_gl_timer.elapsed<microseconds>(true));
+
 #if 1
-	m_blur3_pp.render(_pp_full_rt, _pp_full_rt);
+	// TODO: change to MipmapBlur
+	// m_blur3_pp.render(_pp_full_rt, _pp_full_rt);
 	// m_blur3_pp.render(_pp_full_rt, _pp_full_rt);
 	// m_blur3_pp.render(_pp_full_rt, _pp_full_rt);
 #endif
 
 	// add the scattering effect on to the final image
-	draw2d(_pp_full_rt, _rt, BlendMode::Add);
-	m_pp_blur_time = _gl_timer.elapsed<microseconds>();
+	draw2d(_pp_full_rt.color_texture(), _rt, BlendMode::Add);   // why does this (kind of) do "replace" instead?
+	m_pp_blur_time.add(_gl_timer.elapsed<microseconds>());
 
 
 
@@ -1914,7 +1929,7 @@ const std::vector<StaticObject> &ClusteredShading::cullScene()
 	});
 
 
-	m_cull_time = duration_cast<microseconds>(steady_clock::now() - T0);
+	m_cull_scene_time.add(duration_cast<microseconds>(steady_clock::now() - T0));
 
 	return _scenePvs;
 }
@@ -2013,16 +2028,17 @@ void ClusteredShading::render_gui()
     ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
 	ImGui::SetNextWindowSize({ 400, 800 });
 
-	ImGui::Text("   Culling: %4ld µs", m_cull_time.count());
-	ImGui::Text("    Z-pass: %4ld µs", m_depth_time.count());
-	ImGui::Text("Clstr.find: %4ld µs", m_cluster_find_time.count());
-	ImGui::Text("Clstr.coll: %4ld µs", m_cluster_index_time.count());
-	ImGui::Text("Light cull: %4ld µs", m_light_cull_time.count());
-	ImGui::Text("   Shading: %4ld µs", m_shading_time.count());
-	ImGui::Text("    Skybox: %4ld µs", m_skybox_time.count());
+	ImGui::Text("   Culling: %4ld µs", m_cull_scene_time.average().count());
+	ImGui::Text("   Shadows: %4ld µs", m_shadow_time.average().count());
+	ImGui::Text("    Z-pass: %4ld µs", m_depth_time.average().count());
+	ImGui::Text("Clstr.find: %4ld µs", m_cluster_find_time.average().count());
+	ImGui::Text("Clstr.coll: %4ld µs", m_cluster_index_time.average().count());
+	ImGui::Text("Light cull: %4ld µs", m_light_cull_time.average().count());
+	ImGui::Text("   Shading: %4ld µs", m_shading_time.average().count());
+	ImGui::Text("    Skybox: %4ld µs", m_skybox_time.average().count());
 	// ImGui::Text("        PP: %3ld µs", m_pp_time.count());
-	ImGui::Text("Scattering: %4ld µs", m_scatter_time.count());
-	ImGui::Text("   PP blur: %4ld µs", m_pp_blur_time.count());
+	ImGui::Text("Scattering: %4ld µs", m_scatter_time.average().count());
+	ImGui::Text("   PP blur: %4ld µs", m_pp_blur_time.average().count());
 
 	ImGui::Begin("Settings");
     {
