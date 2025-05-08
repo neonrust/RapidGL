@@ -96,15 +96,15 @@ namespace RGL
 
 // --------------------- Texture Sampler -------------------------
 TextureSampler::TextureSampler() :
-	m_so_id(0),
+	_sampler_id(0),
 	m_max_anisotropy(1.0f)
 {
 }
 
 void TextureSampler::Create()
 {
-	assert(m_so_id == 0);
-	glCreateSamplers(1, &m_so_id);
+	assert(_sampler_id == 0);
+	glCreateSamplers(1, &_sampler_id);
 
 	SetFiltering(TextureFiltering::Minify,  TextureFilteringParam::LinearMipLinear);
 	SetFiltering(TextureFiltering::Magnify, TextureFilteringParam::Linear);
@@ -119,38 +119,39 @@ void TextureSampler::SetFiltering(TextureFiltering type, TextureFilteringParam f
 		filtering = TextureFilteringParam::Linear;
 	}
 
-	glSamplerParameteri(m_so_id, GLenum(type), GLint(filtering));
+	glSamplerParameteri(_sampler_id, GLenum(type), GLint(filtering));
 }
 
-void TextureSampler::SetMinLod(float min)
+
+void TextureSampler::SetMinLod(float lod)
 {
-	glSamplerParameterf(m_so_id, GL_TEXTURE_MIN_LOD, min);
+	glSamplerParameterf(_sampler_id, GL_TEXTURE_MIN_LOD, lod);
 }
 
-void TextureSampler::SetMaxLod(float max)
+void TextureSampler::SetMaxLod(float lod)
 {
-	glSamplerParameterf(m_so_id, GL_TEXTURE_MAX_LOD, max);
+	glSamplerParameterf(_sampler_id, GL_TEXTURE_MAX_LOD, lod);
 }
 
 void TextureSampler::SetWrapping(TextureWrappingAxis axis, TextureWrappingParam wrapping)
 {
-	glSamplerParameteri(m_so_id, GLenum(axis), GLint(wrapping));
+	glSamplerParameteri(_sampler_id, GLenum(axis), GLint(wrapping));
 }
 
 void TextureSampler::SetBorderColor(float r, float g, float b, float a)
 {
 	float color[4] = { r, g, b, a };
-	glSamplerParameterfv(m_so_id, GL_TEXTURE_BORDER_COLOR, color);
+	glSamplerParameterfv(_sampler_id, GL_TEXTURE_BORDER_COLOR, color);
 }
 
 void TextureSampler::SetCompareMode(TextureCompareMode mode)
 {
-	glSamplerParameteri(m_so_id, GL_TEXTURE_COMPARE_MODE, GLint(mode));
+	glSamplerParameteri(_sampler_id, GL_TEXTURE_COMPARE_MODE, GLint(mode));
 }
 
 void TextureSampler::SetCompareFunc(TextureCompareFunc func)
 {
-	glSamplerParameteri(m_so_id, GL_TEXTURE_COMPARE_FUNC, GLint(func));
+	glSamplerParameteri(_sampler_id, GL_TEXTURE_COMPARE_FUNC, GLint(func));
 }
 
 void TextureSampler::SetAnisotropy(float anisotropy)
@@ -159,13 +160,18 @@ void TextureSampler::SetAnisotropy(float anisotropy)
 	glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &max_anisotropy);
 
 	anisotropy = glm::clamp(anisotropy, 1.0f, max_anisotropy);
-	glSamplerParameterf(m_so_id, GL_TEXTURE_MAX_ANISOTROPY, anisotropy);
+	glSamplerParameterf(_sampler_id, GL_TEXTURE_MAX_ANISOTROPY, anisotropy);
+}
+
+void TextureSampler::Bind(uint32_t texture_unit)
+{
+	glBindSampler(texture_unit, _sampler_id);
 }
 
 void TextureSampler::Release()
 {
-	glDeleteSamplers(1, &m_so_id);
-	m_so_id = 0;
+	glDeleteSamplers(1, &_sampler_id);
+	_sampler_id = 0;
 }
 
 // --------------------- Texture -------------------------

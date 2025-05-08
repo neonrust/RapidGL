@@ -67,6 +67,16 @@ enum class TextureCompareFunc
 	NotEqual     = GL_NOTEQUAL
 };
 
+enum class CubeFace : uint32_t
+{
+	PlusX  = 0,
+	MinutX = 1,
+	PlusY  = 2,
+	MinutY = 3,
+	PlusZ  = 4,
+	MinutZ = 5,
+};
+
 class TextureSampler final
 {
 public:
@@ -76,9 +86,9 @@ public:
 	TextureSampler(const TextureSampler&) = delete;
 	TextureSampler& operator = (const TextureSampler&) = delete;
 
-	TextureSampler(TextureSampler&& other) noexcept : m_so_id(other.m_so_id), m_max_anisotropy(other.m_max_anisotropy)
+	TextureSampler(TextureSampler&& other) noexcept : _sampler_id(other._sampler_id), m_max_anisotropy(other.m_max_anisotropy)
 	{
-		other.m_so_id = 0;
+		other._sampler_id = 0;
 	}
 
 	TextureSampler& operator = (TextureSampler&& other) noexcept
@@ -86,7 +96,7 @@ public:
 		if (this != &other)
 		{
 			Release();
-			std::swap(m_so_id, other.m_so_id);
+			std::swap(_sampler_id, other._sampler_id);
 			std::swap(m_max_anisotropy, other.m_max_anisotropy);
 		}
 
@@ -94,21 +104,24 @@ public:
 	}
 
 	void Create();
+	inline GLuint sampler_id() const { return _sampler_id; }
 	void SetFiltering(TextureFiltering type, TextureFilteringParam filtering);
-	void SetMinLod(float min);
-	void SetMaxLod(float max);
+	void SetMinLod(float lod);
+	void SetMaxLod(float lod);
 	void SetWrapping(TextureWrappingAxis axis, TextureWrappingParam wrapping);
 	void SetBorderColor(float r, float g, float b, float a);
 	void SetCompareMode(TextureCompareMode mode);
 	void SetCompareFunc(TextureCompareFunc func);
 	void SetAnisotropy(float anisotropy);
 
-	void Bind(uint32_t texture_unit) { glBindSampler(texture_unit, m_so_id); }
+	void Bind(uint32_t texture_unit=0);
+
+	inline operator bool () { return _sampler_id > 0; }
 
 private:
 	void Release();
 
-	GLuint m_so_id;
+	GLuint _sampler_id;
 	float m_max_anisotropy;
 };
 
