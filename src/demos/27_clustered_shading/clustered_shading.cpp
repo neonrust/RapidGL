@@ -1211,7 +1211,7 @@ void ClusteredShading::UpdateLightsSSBOs()
 	m_area_lights_ssbo.set(m_area_lights);
 }
 
-void ClusteredShading::HdrEquirectangularToCubemap(const std::shared_ptr<RenderTargetCube>& cubemap_rt, const std::shared_ptr<RGL::Texture2D>& m_equirectangular_map)
+void ClusteredShading::HdrEquirectangularToCubemap(const std::shared_ptr<RenderTarget::Cube>& cubemap_rt, const std::shared_ptr<Texture2D>& m_equirectangular_map)
 {
     /* Update all faces per frame */
     m_equirectangular_to_cubemap_shader->bind();
@@ -1253,7 +1253,7 @@ void ClusteredShading::IrradianceConvolution(const std::shared_ptr<RenderTargetC
 	glViewport(0, 0, GLsizei(Window::width()), GLsizei(Window::height()));
 }
 
-void ClusteredShading::PrefilterCubemap(const std::shared_ptr<RenderTargetCube>& cubemap_rt)
+void ClusteredShading::PrefilterCubemap(const std::shared_ptr<RenderTarget::Cube>& cubemap_rt)
 {
     m_prefilter_env_map_shader->bind();
 	m_prefilter_env_map_shader->setUniform("u_projection"sv, cubemap_rt->projection());
@@ -1304,7 +1304,7 @@ void ClusteredShading::PrecomputeIndirectLight(const std::filesystem::path& hdri
     PrefilterCubemap(m_prefiltered_env_map_rt);
 }
 
-void ClusteredShading::PrecomputeBRDF(const std::shared_ptr<RGL::RenderTarget::Texture2d>& rt)
+void ClusteredShading::PrecomputeBRDF(const std::shared_ptr<RenderTarget::Texture2d>& rt)
 {
     rt->bindRenderTarget();
     m_precompute_brdf->bind();
@@ -1411,7 +1411,7 @@ void ClusteredShading::render()
 
 
 	// Blit depth info to our main render target
-	m_depth_pass_rt.copyTo(_rt, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+	m_depth_pass_rt.copyTo(_rt, RenderTarget::DepthBuffer, TextureFilteringParam::Nearest);
 
 	m_depth_time = _gl_timer.elapsed<microseconds>(true);
 
@@ -1424,7 +1424,7 @@ void ClusteredShading::render()
 	m_find_nonempty_clusters_shader->setUniform("u_cluster_resolution"sv, m_cluster_resolution);
 
 	m_nonempty_clusters_ssbo.clear();
-	m_depth_pass_rt.bindTextureSampler();
+	m_depth_pass_rt.bindDepthTextureSampler(0);
 	m_find_nonempty_clusters_shader->invoke(GLuint(glm::ceil(float(m_depth_pass_rt.width()) / 32.f)),
 											GLuint(glm::ceil(float(m_depth_pass_rt.height()) / 32.f)));
 
