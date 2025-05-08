@@ -114,9 +114,9 @@ private:
     void UpdateLightsSSBOs();
 
 	void bindScreenRenderTarget();
-	void HdrEquirectangularToCubemap(const std::shared_ptr<RenderTargetCube> & cubemap_rt, const std::shared_ptr<RGL::Texture2D> & m_equirectangular_map);
-	void IrradianceConvolution      (const std::shared_ptr<RenderTargetCube> & cubemap_rt);
-	void PrefilterCubemap           (const std::shared_ptr<RenderTargetCube>& cubemap_rt);
+	void HdrEquirectangularToCubemap(const std::shared_ptr<RGL::RenderTarget::Cube> & cubemap_rt, const std::shared_ptr<RGL::Texture2D> & m_equirectangular_map);
+	void IrradianceConvolution      (const std::shared_ptr<RGL::RenderTarget::Cube> & cubemap_rt);
+	void PrefilterCubemap           (const std::shared_ptr<RGL::RenderTarget::Cube>& cubemap_rt);
     void PrecomputeIndirectLight    (const std::filesystem::path & hdri_map_filepath);
 	void PrecomputeBRDF             (const std::shared_ptr<RGL::RenderTarget::Texture2d>& rt);
     void GenSkyboxGeometry();
@@ -127,7 +127,7 @@ private:
 	void renderLighting(const RGL::Camera &camera);
 	void renderSceneBounds();
 	void draw2d(const RGL::Texture &texture, BlendMode mode=BlendMode::Replace); // TODO: move to CoreApp
-	void draw2d(const RGL::Texture &texture, RGL::Texture &target, BlendMode blend=BlendMode::Replace); // TODO: move to CoreApp
+	void draw2d(const RGL::Texture &source, RGL::RenderTarget::Texture2d &target, BlendMode blend=BlendMode::Replace); // TODO: move to CoreApp
 	void draw2d(const RGL::Texture &texture, const glm::uvec2 &top_left, const glm::uvec2 &bottom_right); // TODO: move to CoreApp
 
 	void debugDrawLine(const glm::vec3 &p1, const glm::vec3 &p2, const glm::vec4 &color={1,1,1,1});
@@ -138,10 +138,11 @@ private:
 	RGL::Camera m_camera;
 	float m_camera_fov { 80.f };
 
-	std::shared_ptr<RenderTargetCube>   m_env_cubemap_rt;
-	std::shared_ptr<RenderTargetCube>   m_irradiance_cubemap_rt;
-	std::shared_ptr<RenderTargetCube>   m_prefiltered_env_map_rt;
+	std::shared_ptr<RGL::RenderTarget::Cube>   m_env_cubemap_rt;
+	std::shared_ptr<RGL::RenderTarget::Cube>   m_irradiance_cubemap_rt;
+	std::shared_ptr<RGL::RenderTarget::Cube>   m_prefiltered_env_map_rt;
 	std::shared_ptr<RGL::RenderTarget::Texture2d> m_brdf_lut_rt;
+	// std::shared_ptr<RenderTarget::Cube>   _shadow_map;
 
     std::shared_ptr<RGL::Shader> m_equirectangular_to_cubemap_shader;
     std::shared_ptr<RGL::Shader> m_irradiance_convolution_shader;
