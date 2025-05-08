@@ -124,6 +124,8 @@ void ClusteredShading::init_app()
 	glClearColor(0.05f, 0.05f, 0.05f, 1);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
+	// glEnable(GL_CULL_FACE);  // stops skybox from working !?
+	std::fprintf(stderr, "-------------------- ENABLE FACE CULLING -------------------\n");
 	glCullFace(GL_BACK);
 
 	// glLineWidth(2.f); // for wireframes (but >1 not commonly supported)
@@ -1217,35 +1219,31 @@ void ClusteredShading::HdrEquirectangularToCubemap(const std::shared_ptr<RenderT
     m_equirectangular_to_cubemap_shader->bind();
 	m_equirectangular_to_cubemap_shader->setUniform("u_projection"sv, cubemap_rt->projection());
 
-	cubemap_rt->bindRenderTarget();
     m_equirectangular_map->Bind(1);
 
     glBindVertexArray(m_skybox_vao);
     for (uint8_t side = 0; side < 6; ++side)
     {
 		m_equirectangular_to_cubemap_shader->setUniform("u_view"sv, cubemap_rt->view_transform(side));
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + side, cubemap_rt->texture_id(), 0);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		cubemap_rt->bindRenderTarget(side);
 
         glDrawArrays(GL_TRIANGLES, 0, 36);
     }
 	glViewport(0, 0, GLsizei(Window::width()), GLsizei(Window::height()));
 }
 
-void ClusteredShading::IrradianceConvolution(const std::shared_ptr<RenderTargetCube>& cubemap_rt)
+void ClusteredShading::IrradianceConvolution(const std::shared_ptr<RenderTarget::Cube>& cubemap_rt)
 {
     /* Update all faces per frame */
     m_irradiance_convolution_shader->bind();
 	m_irradiance_convolution_shader->setUniform("u_projection"sv, cubemap_rt->projection());
 
-	cubemap_rt->bindRenderTarget();
     m_env_cubemap_rt->bindTexture(1);
 
     for (uint8_t side = 0; side < 6; ++side)
     {
 		m_irradiance_convolution_shader->setUniform("u_view"sv, cubemap_rt->view_transform(side));
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + side, cubemap_rt->texture_id(), 0);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		cubemap_rt->bindRenderTarget(side);
 
         glBindVertexArray(m_skybox_vao);
         glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -1260,30 +1258,28 @@ void ClusteredShading::PrefilterCubemap(const std::shared_ptr<RenderTarget::Cube
 
     m_env_cubemap_rt->bindTexture(1);
 
-	cubemap_rt->bindRenderTarget();
-
 	auto max_mip_levels = uint8_t(glm::log2(float(cubemap_rt->width())));
     for (uint8_t mip = 0; mip < max_mip_levels; ++mip)
     {
         // resize the framebuffer according to mip-level size.
-		auto mip_width  = uint32_t(cubemap_rt->width()  * std::pow(0.5, mip));
-		auto mip_height = uint32_t(cubemap_rt->height() * std::pow(0.5, mip));
+		auto mip_width  = uint32_t(cubemap_rt->width()) >> mip; // * std::pow(0.5, mip));
+		auto mip_height = uint32_t(cubemap_rt->height()) >> mip;// * std::pow(0.5, mip));
 
-		cubemap_rt->bindRenderBuffer();
-        //glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, mip_width, mip_height);
-		glViewport(0, 0, GLsizei(mip_width), GLsizei(mip_height));
+		cubemap_rt->resizeDepth(mip_width, mip_height);
+		// TODO: want to set viewpoort once
+		// glViewport(0, 0, GLsizei(mip_width), GLsizei(mip_height));
 
         float roughness = float(mip) / float(max_mip_levels - 1);
 		m_prefilter_env_map_shader->setUniform("u_roughness"sv, roughness);
 
-        for (uint8_t side = 0; side < 6; ++side)
+		for (uint8_t face = 0; face < 6; ++face)
         {
-			m_prefilter_env_map_shader->setUniform("u_view"sv, cubemap_rt->view_transform(side));
-			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + side, cubemap_rt->texture_id(), mip);
+			m_prefilter_env_map_shader->setUniform("u_view"sv, cubemap_rt->view_transform(face));
+			cubemap_rt->bindRenderTarget(face);  // , { 0, 0, w, h } TODO?
+			glViewport(0, 0, GLsizei(mip_width), GLsizei(mip_height)); // view port is set in bindRenderTarget(face) ...
 
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            glBindVertexArray(m_skybox_vao);
-            glDrawArrays(GL_TRIANGLES, 0, 36);
+			glBindVertexArray(m_skybox_vao);
+			glDrawArrays(GL_TRIANGLES, 0, 36);
         }
     }
 	bindScreenRenderTarget();
@@ -1291,14 +1287,13 @@ void ClusteredShading::PrefilterCubemap(const std::shared_ptr<RenderTarget::Cube
 
 void ClusteredShading::PrecomputeIndirectLight(const std::filesystem::path& hdri_map_filepath)
 {
-	auto envmap_hdr = std::make_shared<RGL::Texture2D>();
+	auto envmap_hdr = std::make_shared<Texture2D>();
     envmap_hdr->LoadHdr(hdri_map_filepath);
 
     HdrEquirectangularToCubemap(m_env_cubemap_rt, envmap_hdr);
 
-	glBindTexture(GL_TEXTURE_CUBE_MAP, m_env_cubemap_rt->texture_id());
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+	m_env_cubemap_rt->color_texture().SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipLinear);
+	m_env_cubemap_rt->color_texture().GenerateMipMaps();
 
     IrradianceConvolution(m_irradiance_cubemap_rt);
     PrefilterCubemap(m_prefiltered_env_map_rt);
@@ -1388,8 +1383,6 @@ void ClusteredShading::GenSkyboxGeometry()
 
 void ClusteredShading::render()
 {
-	glEnable(GL_CULL_FACE);
-
 	m_camera.setFov(m_camera_fov);
 
 
