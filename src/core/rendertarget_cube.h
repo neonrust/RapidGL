@@ -1,38 +1,75 @@
 #pragma once
 
 #include "glad/glad.h"
-#include "glm/ext/matrix_float4x4.hpp"
+#include "glm/mat4x4.hpp"  // IWYU pragma: keep
+#include "texture.h"
+#include "rendertarget_common.h"
 
-
-struct RenderTargetCube
+namespace RGL::RenderTarget
 {
-	void create(uint32_t width, uint32_t height, bool gen_mip_levels = false);
 
-	~RenderTargetCube() { cleanup(); }
+// TODO: inherit from TextureCubeMap
+struct Cube
+{
+	Cube();
+
+	void create(uint32_t width, uint32_t height, Color::Config color_cfg = Color::Default, Depth::Config depth_cfg = Depth::Default);
+
+	~Cube() { release(); }
 
 	void set_position(const glm::vec3 pos);
 
 	inline GLsizei width() const { return _width; }
 	inline GLsizei height() const { return _height; }
-	inline GLuint texture_id() const { return _cubemap_texture_id; }
+
 	inline const glm::mat4 &projection() const { return _projection; }
 	// TODO: use enum: left, top, etc.
 	inline const glm::mat4 &view_transform(size_t index) { return _view_transforms[index]; }
 
-	void bindTexture(GLuint unit = 0);
-	void bindRenderBuffer();
-	void bindRenderTarget(GLbitfield clear_mask = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	void cleanup();
+	inline bool has_color() const { return _has_color; }
+	inline bool has_depth() const { return _has_depth; }
+
+	// might be invalid (if not a texture)
+	inline TextureCube &color_texture() { return _color_texture; }
+	void bindTexture(uint32_t unit = 0);
+	void bindTextureFace(CubeFace face, uint32_t unit = 0);
+
+	// might be invalid (if not a texture)
+	inline TextureCube &depth_texture() { return _depth_texture; }
+	void bindDepthTexture(GLuint unit = 0);
+
+	// useful when rendering into mip levels and depth is not a texture
+	void resizeDepth(size_t width, size_t height);
+
+	void bindRenderTarget(size_t face, BufferMask clear_buffers=ColorBuffer | DepthBuffer);
+
+	void release();
 
 private:
+	void attach(GLenum attachment, GLenum internal_format, GLuint texture_id, GLuint &rbo_id);
+
+private:
+	glm::vec3 _position;
 	glm::mat4 _view_transforms[6];
 	glm::mat4 _projection;
 
-	GLuint    _cubemap_texture_id = 0;
-	GLuint    _fbo_id             = 0;
-	GLuint    _rbo_id             = 0;
-	glm::vec3 _position           = glm::vec3(0.0f);
 	GLsizei   _width;
 	GLsizei   _height;
+
+	GLuint _fbo_id { 0 };
+
+	bool _has_color { false };
+	GLenum _color_format { 0 };
+	TextureCube _color_texture;
+	GLuint _color_rbo_id { 0 };
+
+	bool _has_depth { false };
+	GLenum _depth_format { 0 };
+	TextureCube _depth_texture;
+	GLuint _depth_rbo_id { 0 };
+
+	uint_fast8_t _mip_levels { 1 };
 };
+
+} // RGL::RenderTarget
