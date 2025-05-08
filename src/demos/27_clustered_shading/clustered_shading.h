@@ -90,6 +90,7 @@ enum struct BlendMode
 {
 	Replace,
 	Add,
+	Subtract,
 	Alpha,
 };
 

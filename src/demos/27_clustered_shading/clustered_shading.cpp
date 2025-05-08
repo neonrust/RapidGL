@@ -1785,6 +1785,7 @@ void ClusteredShading::draw2d(const Texture &texture, BlendMode blend)
 	switch(blend)
 	{
 	case BlendMode::Replace: glDisable(GL_BLEND); break;
+	case BlendMode::Subtract: glBlendEquation(GL_FUNC_SUBTRACT);  // fallthrough
 	case BlendMode::Add:     glBlendFunc(GL_ONE, GL_ONE); break;
 	case BlendMode::Alpha:   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); break;
 	}
