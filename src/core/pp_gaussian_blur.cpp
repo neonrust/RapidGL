@@ -15,7 +15,7 @@ bool Blur::create(size_t width, size_t height)
 	_blur_vertical.link();
 	_blur_vertical.setPostBarrier(Shader::Barrier::Image);
 
-	_temp.create(width, height, RenderTarget::Color::Default, RenderTarget::Depth::None);
+	_temp.create("blur-temp", width, height, RenderTarget::Color::Default, RenderTarget::Depth::None);
 	_temp.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipNearest);
 
 	return false;

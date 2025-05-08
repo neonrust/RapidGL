@@ -39,7 +39,7 @@ private:
 
     GLuint m_vao_id;
     GLuint m_vbo_id;
-    RGL::TextureCubeMap m_cubemap_texture;
+    RGL::TextureCube m_cubemap_texture;
 
     std::shared_ptr<RGL::Shader> m_skybox_shader;
 };

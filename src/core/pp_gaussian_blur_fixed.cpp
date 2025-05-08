@@ -60,7 +60,7 @@ bool _blur_fixed_init(size_t width, size_t height, float sigma, Shader &horizont
 	assert(bool(horizontal));
 	horizontal.setPostBarrier(Shader::Barrier::Image);
 
-	temp.create(width, height, RenderTarget::Color::Default, RenderTarget::Depth::None);
+	temp.create("gsauss temp", width, height, RenderTarget::Color::Default, RenderTarget::Depth::None);
 	temp.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipNearest);
 
 	return false;
