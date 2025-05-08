@@ -313,27 +313,19 @@ void ClusteredShading::init_app()
 	const auto shader_init_time = duration_cast<microseconds>(T1 - T0);
 	std::printf("Shader init time: %.1f ms\n", float(shader_init_time.count())/1000.f);
 
-	_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LinearMipNearest);
-	_rt.SetWrapping (RGL::TextureWrappingAxis::U, RGL::TextureWrappingParam::ClampToEdge);
-	_rt.SetWrapping (RGL::TextureWrappingAxis::V, RGL::TextureWrappingParam::ClampToEdge);
 	_rt.create("rt", Window::width(), Window::height());
+	_rt.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipNearest); // not necessary?
 
 	static constexpr size_t low_scale = 4;
-	_pp_low_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LinearMipNearest);
-	_pp_low_rt.SetWrapping (RGL::TextureWrappingAxis::U, RGL::TextureWrappingParam::ClampToEdge);
-	_pp_low_rt.SetWrapping (RGL::TextureWrappingAxis::V, RGL::TextureWrappingParam::ClampToEdge);
 	_pp_low_rt.create("pp_low", Window::width()/low_scale, Window::height()/low_scale, RenderTarget::Color::Default, RenderTarget::Depth::None);
+	_pp_low_rt.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipNearest); // not necessary?
 
-	_pp_full_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LinearMipNearest);
-	_pp_full_rt.SetWrapping (RGL::TextureWrappingAxis::U, RGL::TextureWrappingParam::ClampToEdge);
-	_pp_full_rt.SetWrapping (RGL::TextureWrappingAxis::V, RGL::TextureWrappingParam::ClampToEdge);
 	_pp_full_rt.create("pp_full", Window::width(), Window::height(), RenderTarget::Color::Default, RenderTarget::Depth::None);
+	_pp_full_rt.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipNearest); // not necessary?
 
 	// TODO: final_rt.cloneFrom(_rt);
-	_final_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LinearMipNearest);
-	_final_rt.SetWrapping (RGL::TextureWrappingAxis::U, RGL::TextureWrappingParam::ClampToEdge);
-	_final_rt.SetWrapping (RGL::TextureWrappingAxis::V, RGL::TextureWrappingParam::ClampToEdge);
 	_final_rt.create("final", Window::width(), Window::height(), RenderTarget::Color::Default, RenderTarget::Depth::None);
+	_final_rt.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipNearest); // not necessary?
 
     // IBL precomputations.
     GenSkyboxGeometry();
