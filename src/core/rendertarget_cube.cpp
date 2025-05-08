@@ -12,8 +12,9 @@ Cube::Cube()
 	set_position({ 0, 0, 0 });
 }
 
-void Cube::create(uint32_t width, uint32_t height, Color::Config color_cfg, Depth::Config depth_cfg)
+void Cube::create(const char *name, uint32_t width, uint32_t height, Color::Config color_cfg, Depth::Config depth_cfg)
 {
+	_name = name;
 	if(_fbo_id)
 		release();
 
@@ -81,6 +82,9 @@ void Cube::create(uint32_t width, uint32_t height, Color::Config color_cfg, Dept
 	glNamedFramebufferReadBuffer(_fbo_id, GL_NONE);
 
 	check_fbo(_fbo_id);
+#if !defined(NDEBUG)
+	dump_config(_name, _fbo_id);
+#endif
 }
 
 // void Cube::attach_color(uint32_t index, GLenum internal_format, bool as_texture)

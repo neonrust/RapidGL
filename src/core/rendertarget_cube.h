@@ -13,7 +13,7 @@ struct Cube
 {
 	Cube();
 
-	void create(uint32_t width, uint32_t height, Color::Config color_cfg = Color::Default, Depth::Config depth_cfg = Depth::Default);
+	void create(const char *name, uint32_t width, uint32_t height, Color::Config color_cfg = Color::Default, Depth::Config depth_cfg = Depth::Default);
 
 	~Cube() { release(); }
 
@@ -70,6 +70,7 @@ private:
 	GLuint _depth_rbo_id { 0 };
 
 	uint_fast8_t _mip_levels { 1 };
+	const char *_name;
 };
 
 } // RGL::RenderTarget

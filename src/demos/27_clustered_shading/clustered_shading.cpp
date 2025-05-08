@@ -175,7 +175,7 @@ void ClusteredShading::init_app()
 	}
 
 	// Create depth pre-pass render target
-	m_depth_pass_rt.create(Window::width(), Window::height(), RGL::RenderTarget::Depth);
+	m_depth_pass_rt.create("depth-pass", Window::width(), Window::height(), RenderTarget::Color::None, RenderTarget::Depth::Texture);
 
     /// Prepare lights' SSBOs.
 	UpdateLightsSSBOs();  // initial update will create the GL buffers
@@ -313,45 +313,45 @@ void ClusteredShading::init_app()
 	const auto shader_init_time = duration_cast<microseconds>(T1 - T0);
 	std::printf("Shader init time: %.1f ms\n", float(shader_init_time.count())/1000.f);
 
-	_rt.create(Window::width(), Window::height(), RGL::RenderTarget::Color | RGL::RenderTarget::Float | RGL::RenderTarget::Depth);
 	_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LinearMipNearest);
 	_rt.SetWrapping (RGL::TextureWrappingAxis::U, RGL::TextureWrappingParam::ClampToEdge);
 	_rt.SetWrapping (RGL::TextureWrappingAxis::V, RGL::TextureWrappingParam::ClampToEdge);
+	_rt.create("rt", Window::width(), Window::height());
 
 	static constexpr size_t low_scale = 4;
-	_pp_low_rt.create(Window::width()/low_scale, Window::height()/low_scale, RGL::RenderTarget::Color | RGL::RenderTarget::Float);
 	_pp_low_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LinearMipNearest);
 	_pp_low_rt.SetWrapping (RGL::TextureWrappingAxis::U, RGL::TextureWrappingParam::ClampToEdge);
 	_pp_low_rt.SetWrapping (RGL::TextureWrappingAxis::V, RGL::TextureWrappingParam::ClampToEdge);
+	_pp_low_rt.create("pp_low", Window::width()/low_scale, Window::height()/low_scale, RenderTarget::Color::Default, RenderTarget::Depth::None);
 
-	_pp_full_rt.create(Window::width(), Window::height(), RGL::RenderTarget::Color | RGL::RenderTarget::Float);
 	_pp_full_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LinearMipNearest);
 	_pp_full_rt.SetWrapping (RGL::TextureWrappingAxis::U, RGL::TextureWrappingParam::ClampToEdge);
 	_pp_full_rt.SetWrapping (RGL::TextureWrappingAxis::V, RGL::TextureWrappingParam::ClampToEdge);
+	_pp_full_rt.create("pp_full", Window::width(), Window::height(), RenderTarget::Color::Default, RenderTarget::Depth::None);
 
 	// TODO: final_rt.cloneFrom(_rt);
-	_final_rt.create(Window::width(), Window::height(), RGL::RenderTarget::Color | RGL::RenderTarget::Float);
 	_final_rt.SetFiltering(RGL::TextureFiltering::Minify, RGL::TextureFilteringParam::LinearMipNearest);
 	_final_rt.SetWrapping (RGL::TextureWrappingAxis::U, RGL::TextureWrappingParam::ClampToEdge);
 	_final_rt.SetWrapping (RGL::TextureWrappingAxis::V, RGL::TextureWrappingParam::ClampToEdge);
+	_final_rt.create("final", Window::width(), Window::height(), RenderTarget::Color::Default, RenderTarget::Depth::None);
 
     // IBL precomputations.
     GenSkyboxGeometry();
 
 	m_env_cubemap_rt = std::make_shared<RenderTargetCube>();
     m_env_cubemap_rt->set_position(glm::vec3(0.0));
-	m_env_cubemap_rt->create(2048, 2048, true);
+	m_env_cubemap_rt->create("env", 2048, 2048);
 
 	m_irradiance_cubemap_rt = std::make_shared<RenderTargetCube>();
     m_irradiance_cubemap_rt->set_position(glm::vec3(0.0));
-	m_irradiance_cubemap_rt->create(32, 32);
+	m_irradiance_cubemap_rt->create("irradiance", 32, 32);
 
 	m_prefiltered_env_map_rt = std::make_shared<RenderTargetCube>();
     m_prefiltered_env_map_rt->set_position(glm::vec3(0.0));
-	m_prefiltered_env_map_rt->create(512, 512, true);
+	m_prefiltered_env_map_rt->create("prefiltered_env", 512, 512);
 
 	m_brdf_lut_rt = std::make_shared<RGL::RenderTarget::Texture2d>();
-    m_brdf_lut_rt->create(512, 512, GL_RG16F);
+	m_brdf_lut_rt->create("brdf-lut", 512, 512, RenderTarget::Color::Texture | GL_RG16F);
 
     PrecomputeIndirectLight(FileSystem::getResourcesPath() / "textures/skyboxes/IBL" / m_hdr_maps_names[m_current_hdr_map_idx]);
     PrecomputeBRDF(m_brdf_lut_rt);
