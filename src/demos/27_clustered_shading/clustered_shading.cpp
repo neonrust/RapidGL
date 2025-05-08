@@ -330,19 +330,18 @@ void ClusteredShading::init_app()
     // IBL precomputations.
     GenSkyboxGeometry();
 
-	m_env_cubemap_rt = std::make_shared<RenderTargetCube>();
-    m_env_cubemap_rt->set_position(glm::vec3(0.0));
+	m_env_cubemap_rt = std::make_shared<RenderTarget::Cube>();
 	m_env_cubemap_rt->create("env", 2048, 2048);
 
-	m_irradiance_cubemap_rt = std::make_shared<RenderTargetCube>();
+	m_irradiance_cubemap_rt = std::make_shared<RenderTarget::Cube>();
     m_irradiance_cubemap_rt->set_position(glm::vec3(0.0));
 	m_irradiance_cubemap_rt->create("irradiance", 32, 32);
 
-	m_prefiltered_env_map_rt = std::make_shared<RenderTargetCube>();
+	m_prefiltered_env_map_rt = std::make_shared<RenderTarget::Cube>();
     m_prefiltered_env_map_rt->set_position(glm::vec3(0.0));
 	m_prefiltered_env_map_rt->create("prefiltered_env", 512, 512);
 
-	m_brdf_lut_rt = std::make_shared<RGL::RenderTarget::Texture2d>();
+	m_brdf_lut_rt = std::make_shared<RenderTarget::Texture2d>();
 	m_brdf_lut_rt->create("brdf-lut", 512, 512, RenderTarget::Color::Texture | GL_RG16F);
 
     PrecomputeIndirectLight(FileSystem::getResourcesPath() / "textures/skyboxes/IBL" / m_hdr_maps_names[m_current_hdr_map_idx]);
