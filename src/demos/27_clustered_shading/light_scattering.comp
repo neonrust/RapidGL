@@ -27,7 +27,6 @@ uniform mat4  u_inv_view;
 uniform uvec3 u_cluster_resolution;
 uniform uvec2 u_cluster_size_ss;
 uniform float u_log_cluster_res_y;
-uniform float u_ray_march_stride;
 uniform float u_time;
 uniform int u_ray_march_noise;
 

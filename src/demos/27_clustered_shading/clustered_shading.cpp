@@ -807,17 +807,6 @@ void ClusteredShading::input()
 	else if(Input::isKeyDown(KeyCode::DownArrow))
 		s_spot_intensity = std::max(s_spot_intensity - 5.f, 10.f);
 
-	if(Input::isKeyDown(KeyCode::PageDown))
-	{
-		m_ray_march_stride = std::min(m_ray_march_stride + 0.1f, 2.f);
-		std::printf("ray_march_stride: %.1f\n", m_ray_march_stride);
-	}
-	else if(Input::isKeyDown(KeyCode::PageUp))
-	{
-		m_ray_march_stride = std::max(m_ray_march_stride - 0.1f, 0.1f);
-		std::printf("ray_march_stride: %.1f\n", m_ray_march_stride);
-	}
-
 	if(Input::isKeyDown(KeyCode::Equals))
 		m_camera_fov = std::min(m_camera_fov + 0.5f, 140.f);
 	else if(Input::isKeyDown(KeyCode::Minus))
@@ -1508,7 +1497,6 @@ void ClusteredShading::render()
 	m_scattering_pp.shader().setUniform("u_cluster_size_ss"sv,    glm::uvec2(m_cluster_block_size));
 	m_scattering_pp.shader().setUniform("u_fog_color"sv,          glm::vec3(1, 1, 1));
 	m_scattering_pp.shader().setUniform("u_fog_density"sv,        m_fog_density);
-	m_scattering_pp.shader().setUniform("u_ray_march_stride"sv,   m_ray_march_stride);
 	m_scattering_pp.shader().setUniform("u_ray_march_noise",      _ray_march_noise);
 
 	m_depth_pass_rt.bindTextureSampler(2);
