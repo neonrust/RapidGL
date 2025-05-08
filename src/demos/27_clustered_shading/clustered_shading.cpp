@@ -199,7 +199,7 @@ void ClusteredShading::init_app()
 	const auto ltc_lut_mat_path = ltc_lut_path / "ltc_mat.dds";
 	const auto ltc_lut_amp_path = ltc_lut_path / "ltc_amp.dds";
 
-	m_ltc_mat_lut = std::make_shared<RGL::Texture2D>();
+	m_ltc_mat_lut = std::make_shared<Texture2D>();
     if (m_ltc_mat_lut->LoadDds(ltc_lut_mat_path))
     {
 		m_ltc_mat_lut->SetWrapping (TextureWrappingAxis::U,    TextureWrappingParam::ClampToEdge);
@@ -212,7 +212,7 @@ void ClusteredShading::init_app()
         fprintf(stderr, "Error: could not load texture %s\n", ltc_lut_mat_path.string().c_str());
     }
 
-	m_ltc_amp_lut = std::make_shared<RGL::Texture2D>();
+	m_ltc_amp_lut = std::make_shared<Texture2D>();
     if (m_ltc_amp_lut->LoadDds(ltc_lut_amp_path))
     {
 		m_ltc_amp_lut->SetWrapping (TextureWrappingAxis::U,    TextureWrappingParam::ClampToEdge);
