@@ -8,6 +8,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_DEBUG_POSTFIX "_d")
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 
+remove_definitions("-DNDEBUG")
+add_compile_definitions("$<$<NOT:$<CONFIG:Debug>>:NDEBUG>")
+
 # Set glfw variables
 set(GLFW_BUILD_EXAMPLES OFF CACHE INTERNAL "Build the GLFW example programs")
 set(GLFW_BUILD_TESTS    OFF CACHE INTERNAL "Build the GLFW test programs")
