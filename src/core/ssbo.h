@@ -267,3 +267,68 @@ void AtomicCounterBuffer<count>::set(uint32_t value)
 
 	glNamedBufferSubData(id(), index + sizeof(uint32_t), sizeof(uint32_t), &value);
 }
+
+
+// ============================================================================
+
+
+template<typename T, size_t size> requires (size > 0 && sizeof(T) >= 4)
+class MappedSSBO : protected ShaderStorageBuffer<T>
+{
+public:
+	inline MappedSSBO(BufferUsage default_usage=DynamicDraw) : ShaderStorageBuffer<T>(default_usage) {};
+
+	using ShaderStorageBuffer<T>::setBindIndex;
+
+	void clear();
+
+	inline       T &operator -> ()       requires (size == 1) { mapBuffer(); return *_data; }
+	inline const T &operator -> () const requires (size == 1) { mapBuffer(); return *_data; }
+
+	inline       T &operator [] (size_t index)       requires (size > 1) { mapBuffer(); return _data[index]; }
+	inline const T &operator [] (size_t index) const requires (size > 1) { mapBuffer(); return _data[index]; }
+
+	template<size_t index>
+	inline       T &get()       requires (size > 1 && index < size) { mapBuffer(); return _data[index]; }
+	template<size_t index>
+	inline const T &get() const requires (size > 1 && index < size) { mapBuffer(); return _data[index]; }
+
+	//! ensure modifications are visible to GPU
+	void flush();
+
+	inline T* begin() { mapBuffer(); return _data; }
+	inline T* end()   { mapBuffer(); return _data + size; }
+
+private:
+	void mapBuffer();
+
+private:
+	T *_data { nullptr };
+};
+
+template<typename T, size_t size> requires (size > 0 && sizeof(T) >= 4)
+void MappedSSBO<T, size>::clear()
+{
+	mapBuffer();
+	ShaderStorageBuffer<T>::clear();
+}
+
+template<typename T, size_t size> requires (size > 0 && sizeof(T) >= 4)
+void MappedSSBO<T, size>::flush()
+{
+	mapBuffer();
+	glFlushMappedBufferRange(this->id(), 0, size*sizeof(T));
+	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+}
+
+template<typename T, size_t size> requires (size > 0 && sizeof(T) >= 4)
+void MappedSSBO<T, size>::mapBuffer()
+{
+	if(this->ensureCreated())
+	{
+		static constexpr auto flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
+
+		glNamedBufferStorage(this->id(), size, nullptr, flags);
+		_data = static_cast<T *>(glMapNamedBuffer(this->id(), flags));
+	}
+}
