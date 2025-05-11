@@ -6,6 +6,14 @@ layout(std430, binding = SSBO_BIND_CLUSTERS_AABB) buffer ClustersSSBO
 	ClusterAABB clusters[];
 };
 
+layout(std430, binding = SSBO_BIND_ACTIVE_CLUSTERS) buffer UniqueActiveClustersSSBO
+{
+	uint global_nonempty_count;
+	uint active_clusters[];
+};
+
+// POINT lights
+
 layout(std430, binding = SSBO_BIND_POINT_LIGHTS) buffer PointLightsSSBO
 {
 	PointLight point_lights[];
@@ -13,13 +21,16 @@ layout(std430, binding = SSBO_BIND_POINT_LIGHTS) buffer PointLightsSSBO
 
 layout(std430, binding = SSBO_BIND_POINT_LIGHT_INDEX) buffer PointLightIndexListSSBO
 {
+	uint global_point_light_counter;
 	uint point_light_index_list[];
 };
 
 layout(std430, binding = SSBO_BIND_CLUSTER_POINT_LIGHTS) buffer PointIndexRangeSSBO
 {
-	IndexRange point_light_grid[];
+	IndexRange cluster_point_lights[];
 };
+
+// SPOT lights
 
 layout(std430, binding = SSBO_BIND_SPOT_LIGHTS) buffer SpotLightsSSBO
 {
@@ -28,36 +39,31 @@ layout(std430, binding = SSBO_BIND_SPOT_LIGHTS) buffer SpotLightsSSBO
 
 layout(std430, binding = SSBO_BIND_SPOT_LIGHT_INDEX) buffer SpotLightIndexListSSBO
 {
-	uint global_point_light_counter; // here b/c it needs to be global
+	uint global_spot_light_counter;
 	uint spot_light_index_list[];
 };
 
 layout(std430, binding = SSBO_BIND_CLUSTER_SPOT_LIGHTS) buffer SpotIndexRangeSSBO
 {
-	uint global_spot_light_counter; // here b/c it needs to be global
-	IndexRange spot_light_grid[];
+	IndexRange cluster_spot_lights[];
 };
+
+// AREA lights
 
 layout(std430, binding = SSBO_BIND_AREA_LIGHTS) buffer AreaLightsSSBO
 {
-	uint global_area_light_counter; // here b/c it needs to be global
 	AreaLight area_lights[];
 };
 
 layout(std430, binding = SSBO_BIND_AREA_LIGHT_INDEX) buffer AreaLightIndexListSSBO
 {
+	uint global_area_light_counter;
 	uint area_light_index_list[];
 };
 
 layout(std430, binding = SSBO_BIND_CLUSTER_AREA_LIGHTS) buffer AreaIndexRangeSSBO
 {
-	IndexRange area_light_grid[];
-};
-
-layout(std430, binding = SSBO_BIND_ACTIVE_CLUSTERS) buffer UniqueActiveClustersSSBO
-{
-	uint global_nonempty_count;
-	uint active_clusters[];
+	IndexRange cluster_area_lights[];
 };
 
 uniform mat4 u_view_matrix;
@@ -157,19 +163,20 @@ void main()
     {
         // Update light grid for point lights.
         s_point_lights_start_offset = atomicAdd(global_point_light_counter, s_point_lights_count);
-        point_light_grid[s_cluster_index].offset = s_point_lights_start_offset;
-        point_light_grid[s_cluster_index].count = s_point_lights_count;
+        cluster_point_lights[s_cluster_index].offset = s_point_lights_start_offset;
+        cluster_point_lights[s_cluster_index].count = s_point_lights_count;
 
         // Update light grid for spot lights.
         s_spot_lights_start_offset = atomicAdd(global_spot_light_counter, s_spot_lights_count);
-        spot_light_grid[s_cluster_index].offset = s_spot_lights_start_offset;
-        spot_light_grid[s_cluster_index].count = s_spot_lights_count;
+        cluster_spot_lights[s_cluster_index].offset = s_spot_lights_start_offset;
+        cluster_spot_lights[s_cluster_index].count = s_spot_lights_count;
 
         // Update light grid for area lights.
         s_area_lights_start_offset = atomicAdd(global_area_light_counter, s_area_lights_count);
-        area_light_grid[s_cluster_index].offset = s_area_lights_start_offset;
-        area_light_grid[s_cluster_index].count = s_area_lights_count;
+        cluster_area_lights[s_cluster_index].offset = s_area_lights_start_offset;
+        cluster_area_lights[s_cluster_index].count = s_area_lights_count;
     }
+
     barrier();
 
     // Update the global light index lists with the shared light lists.

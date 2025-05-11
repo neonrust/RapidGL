@@ -18,28 +18,23 @@ const vec3 debug_colors[8] = vec3[]
    vec3(1, 0, 0), vec3(1, 0, 1), vec3(1, 1, 0), vec3(1, 1, 1)
 );
 
+// DIRECTIONAL lights
+
 layout(std430, binding = SSBO_BIND_DIRECTIONAL_LIGHTS) buffer DirLightsSSBO
 {
 	DirectionalLight dir_lights[];
 };
+
+// POINT lights
 
 layout(std430, binding = SSBO_BIND_POINT_LIGHTS) buffer PointLightSSBO
 {
 	PointLight point_lights[];
 };
 
-layout(std430, binding = SSBO_BIND_SPOT_LIGHTS) buffer SpotLightsSSBO
-{
-	SpotLight spot_lights[];
-};
-
-layout(std430, binding = SSBO_BIND_AREA_LIGHTS) buffer AreaLightsSSBO
-{
-	AreaLight area_lights[];
-};
-
 layout(std430, binding = SSBO_BIND_POINT_LIGHT_INDEX) buffer PointLightIndexListSSBO
 {
+	uint global_point_light_counter;
 	uint point_light_index_list[];
 };
 
@@ -48,8 +43,16 @@ layout(std430, binding = SSBO_BIND_CLUSTER_POINT_LIGHTS) buffer PointIndexRangeS
 	IndexRange cluster_point_lights[];
 };
 
+// SPOT lights
+
+layout(std430, binding = SSBO_BIND_SPOT_LIGHTS) buffer SpotLightsSSBO
+{
+	SpotLight spot_lights[];
+};
+
 layout(std430, binding = SSBO_BIND_SPOT_LIGHT_INDEX) buffer SpotLightIndexListSSBO
 {
+	uint global_spot_light_counter;
 	uint spot_light_index_list[];
 };
 
@@ -58,15 +61,24 @@ layout(std430, binding = SSBO_BIND_CLUSTER_SPOT_LIGHTS) buffer SpotIndexRangeSSB
 	IndexRange cluster_spot_lights[];
 };
 
-layout (std430, binding = SSBO_BIND_AREA_LIGHT_INDEX) buffer AreaLightIndexListSSBO
+// AREA lights
+
+layout(std430, binding = SSBO_BIND_AREA_LIGHTS) buffer AreaLightsSSBO
 {
+	AreaLight area_lights[];
+};
+
+layout(std430, binding = SSBO_BIND_AREA_LIGHT_INDEX) buffer AreaLightIndexListSSBO
+{
+	uint global_area_light_counter;
 	uint area_light_index_list[];
 };
 
-layout (std430, binding = SSBO_BIND_CLUSTER_AREA_LIGHTS) buffer AreaIndexRangeSSBO
+layout(std430, binding = SSBO_BIND_CLUSTER_AREA_LIGHTS) buffer AreaIndexRangeSSBO
 {
     IndexRange cluster_area_lights[];
 };
+
 
 vec3  fromRedToGreen(float interpolant);
 vec3  fromGreenToBlue(float interpolant);
