@@ -113,7 +113,7 @@ void main()
         {
             index = atomicAdd(s_point_lights_count, 1);
 
-            if (index < 1024)
+            if (index < CLUSTER_MAX_POINT_LIGHTS)
                 s_point_lights_list[index] = i;
         }
     }
@@ -129,7 +129,7 @@ void main()
         {
             index = atomicAdd(s_spot_lights_count, 1);
 
-            if (index < 1024)
+            if (index < CLUSTER_MAX_SPOT_LIGHTS)
                 s_spot_lights_list[index] = i;
         }
     }
@@ -149,7 +149,7 @@ void main()
             {
                 index = atomicAdd(s_area_lights_count, 1);
 
-                if (index < 1024)
+                if (index < CLUSTER_MAX_AREA_LIGHTS)
                     s_area_lights_list[index] = i;
             }
         }

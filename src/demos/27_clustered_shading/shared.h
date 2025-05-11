@@ -11,6 +11,19 @@
 #define LightID uint
 #endif
 
+#define MAX_POINT_LIGHTS          2048
+#define MAX_SPOT_LIGHTS            256
+#define MAX_AREA_LIGHTS             64
+#define MAX_POINT_SHADOW_CASTERS   256
+#define MAX_SPOT_SHADOW_CASTERS     32
+#define MAX_AREA_SHADOW_CASTERS      2
+
+#define CLUSTER_MAX_COUNT       131072
+#define CLUSTER_MAX_POINT_LIGHTS   256
+#define CLUSTER_MAX_SPOT_LIGHTS     32
+#define CLUSTER_MAX_AREA_LIGHTS      8
+#define CLUSTER_AVERAGE_LIGHTS      64
+#define CLUSTER_INDEX_MAX           9999999
 #define SSBO_BIND_CLUSTERS_AABB               1
 #define SSBO_BIND_POINT_LIGHT_INDEX           2
 #define SSBO_BIND_SPOT_LIGHT_INDEX            3
@@ -20,7 +33,6 @@
 #define SSBO_BIND_CLUSTER_AREA_LIGHTS         7
 #define SSBO_BIND_NONEMPTY_CLUSTERS           8
 #define SSBO_BIND_ACTIVE_CLUSTERS             9
-// #define SSBO_BIND_GLOBAL_LIGHT_COUNTERS       10
 
 #define SSBO_BIND_DIRECTIONAL_LIGHTS          11
 #define SSBO_BIND_POINT_LIGHTS                12
@@ -74,11 +86,6 @@ struct AABB
 	vec4 min;
 	vec4 max;
 };
-
-#define CLUSTER_MAX_POINT_LIGHTS   256
-#define CLUSTER_MAX_SPOT_LIGHTS     32
-#define CLUSTER_MAX_AREA_LIGHTS      8
-#define CLUSTER_INDEX_MAX           9999999
 
 // struct Cluster
 // {
