@@ -226,63 +226,63 @@ void ClusteredShading::init_app()
     }
 
     /// Create shaders.
-	const std::string dir = "src/demos/27_clustered_shading/";
+	const fs::path shaders = "src/demos/27_clustered_shading/";
 
 	const auto T0 = steady_clock::now();
 
-    m_depth_prepass_shader = std::make_shared<Shader>(dir + "depth_pass.vert", dir + "depth_pass.frag");
+	m_depth_prepass_shader = std::make_shared<Shader>(shaders/"depth_pass.vert", shaders/"depth_pass.frag");
     m_depth_prepass_shader->link();
 	assert(*m_depth_prepass_shader);
 
-    m_generate_clusters_shader = std::make_shared<Shader>(dir + "generate_clusters.comp");
+	m_generate_clusters_shader = std::make_shared<Shader>(shaders/"generate_clusters.comp");
     m_generate_clusters_shader->link();
 	assert(*m_generate_clusters_shader);
 
-	m_find_nonempty_clusters_shader = std::make_shared<Shader>(dir + "find_nonempty_clusters.comp");
+	m_find_nonempty_clusters_shader = std::make_shared<Shader>(shaders/"find_nonempty_clusters.comp");
 	m_find_nonempty_clusters_shader->link();
 	assert(*m_find_nonempty_clusters_shader);
 	m_find_nonempty_clusters_shader->setPostBarrier(Shader::Barrier::SSBO);  // config, only once
 
-	m_collect_nonempty_clusters_shader = std::make_shared<Shader>(dir + "collect_nonempty_clusters.comp");
+	m_collect_nonempty_clusters_shader = std::make_shared<Shader>(shaders/"collect_nonempty_clusters.comp");
 	m_collect_nonempty_clusters_shader->link();
 	assert(*m_collect_nonempty_clusters_shader);
 	m_collect_nonempty_clusters_shader->setPostBarrier(Shader::Barrier::SSBO);  // config, only once
 
-	m_make_cull_lights_args_shader = std::make_shared<Shader>(dir + "make_cull_lights_args.comp");
+	m_make_cull_lights_args_shader = std::make_shared<Shader>(shaders/"make_cull_lights_args.comp");
 	m_make_cull_lights_args_shader->link();
 	assert(*m_make_cull_lights_args_shader);
 	m_make_cull_lights_args_shader->setPostBarrier(Shader::Barrier::SSBO);  // config, only once
 
-	m_cull_lights_shader = std::make_shared<Shader>(dir + "cull_lights.comp");
+	m_cull_lights_shader = std::make_shared<Shader>(shaders/"cull_lights.comp");
     m_cull_lights_shader->link();
 	assert(*m_cull_lights_shader);
 	m_cull_lights_shader->setPostBarrier(Shader::Barrier::SSBO);  // config, only once
 
-	m_clustered_pbr_shader = std::make_shared<Shader>(dir + "pbr_lighting.vert", dir + "pbr_clustered.frag");
+	m_clustered_pbr_shader = std::make_shared<Shader>(shaders/"pbr_lighting.vert", shaders/"pbr_clustered.frag");
     m_clustered_pbr_shader->link();
 	assert(*m_clustered_pbr_shader);
 
-    m_draw_area_lights_geometry_shader = std::make_shared<Shader>(dir + "area_light_geom.vert", dir + "area_light_geom.frag");
+	m_draw_area_lights_geometry_shader = std::make_shared<Shader>(shaders/"area_light_geom.vert", shaders/"area_light_geom.frag");
     m_draw_area_lights_geometry_shader->link();
 	assert(*m_draw_area_lights_geometry_shader);
 
-    m_equirectangular_to_cubemap_shader = std::make_shared<Shader>(dir + "cubemap.vert", dir + "equirectangular_to_cubemap.frag");
+	m_equirectangular_to_cubemap_shader = std::make_shared<Shader>(shaders/"cubemap.vert", shaders/"equirectangular_to_cubemap.frag");
     m_equirectangular_to_cubemap_shader->link();
 	assert(*m_equirectangular_to_cubemap_shader);
 
-    m_irradiance_convolution_shader = std::make_shared<Shader>(dir + "cubemap.vert", dir + "irradiance_convolution.frag");
+	m_irradiance_convolution_shader = std::make_shared<Shader>(shaders/"cubemap.vert", shaders/"irradiance_convolution.frag");
     m_irradiance_convolution_shader->link();
 	assert(*m_irradiance_convolution_shader);
 
-    m_prefilter_env_map_shader = std::make_shared<Shader>(dir + "cubemap.vert", dir + "prefilter_cubemap.frag");
+	m_prefilter_env_map_shader = std::make_shared<Shader>(shaders/"cubemap.vert", shaders/"prefilter_cubemap.frag");
     m_prefilter_env_map_shader->link();
 	assert(*m_prefilter_env_map_shader);
 
-	m_precompute_brdf = std::make_shared<Shader>(dir + "FSQ.vert", dir + "precompute_brdf.frag");
+	m_precompute_brdf = std::make_shared<Shader>(shaders/"FSQ.vert", shaders/"precompute_brdf.frag");
     m_precompute_brdf->link();
 	assert(*m_precompute_brdf);
 
-    m_background_shader = std::make_shared<Shader>(dir + "background.vert", dir + "background.frag");
+	m_background_shader = std::make_shared<Shader>(shaders/"background.vert", shaders/"background.frag");
     m_background_shader->link();
 	assert(*m_background_shader);
 
@@ -299,15 +299,15 @@ void ClusteredShading::init_app()
 	m_blur3_pp.create(Window::width(), Window::height());
 	assert(m_blur3_pp);
 
-	m_line_draw_shader = std::make_shared<Shader>(dir + "line_draw.vert", dir + "line_draw.frag");
+	m_line_draw_shader = std::make_shared<Shader>(shaders/"line_draw.vert", shaders/"line_draw.frag");
 	m_line_draw_shader->link();
 	assert(*m_line_draw_shader);
 
-	m_imgui_depth_texture_shader = std::make_shared<Shader>(dir + "imgui_depth_image.vert", dir + "imgui_depth_image.frag");
+	m_imgui_depth_texture_shader = std::make_shared<Shader>(shaders/"imgui_depth_image.vert", shaders/"imgui_depth_image.frag");
 	m_imgui_depth_texture_shader->link();
 	assert(*m_imgui_depth_texture_shader);
 
-	m_fsq_shader = std::make_shared<Shader>(dir + "FSQ.vert", dir + "FSQ.frag");
+	m_fsq_shader = std::make_shared<Shader>(shaders/"FSQ.vert", shaders/"FSQ.frag");
 	m_fsq_shader->link();
 	assert(*m_fsq_shader);
 
