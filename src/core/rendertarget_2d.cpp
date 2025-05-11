@@ -158,11 +158,16 @@ void Texture2d::bindDepthTextureSampler(GLuint unit) const
 	glBindTextureUnit(unit, _depth_texture.texture_id());
 }
 
-void Texture2d::bindRenderTarget(BufferMask clear_mask)
+void Texture2d::bindRenderTarget(BufferMask clear_mask, glm::ivec4 rect)
 {
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _fbo_id);
 
-	glViewport(0, 0, GLsizei(m_metadata.width), GLsizei(m_metadata.height));
+	if(rect.x == 0 and rect.y == 0 and rect.z == 0 and rect.w == 0)
+	{
+		rect.z = int(m_metadata.width);
+		rect.w = int(m_metadata.height);
+	}
+	glViewport(rect.x, rect.y, rect.z, rect.w);
 
 	if(clear_mask != 0)
 	{
@@ -170,6 +175,7 @@ void Texture2d::bindRenderTarget(BufferMask clear_mask)
 			clear_mask &= ~ColorBuffer;
 		if(not _has_depth)
 			clear_mask &= ~DepthBuffer;
+		glScissor(rect.x, rect.y, rect.z, rect.w);
 		glClear(clear_mask);
 	}
 }

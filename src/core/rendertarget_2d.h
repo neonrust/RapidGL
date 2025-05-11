@@ -49,7 +49,7 @@ struct Texture2d
 	void bindDepthTextureSampler(GLuint unit=0) const;
 
 	//! bind for rendering into using regular draw calls (and clear specified aspects of the RT)
-	void bindRenderTarget(BufferMask clear_mask=ColorBuffer | DepthBuffer);
+	void bindRenderTarget(BufferMask clear_mask=ColorBuffer | DepthBuffer, glm::ivec4 rect={0, 0, 0, 0});
 
 	//! bind color for read/write from compute shaders
 	void bindImage(GLuint image_unit=0, RenderTarget::Access access=Access::Read, GLint mip_level=0);
