@@ -162,8 +162,10 @@ void Texture2d::bindRenderTarget(BufferMask clear_mask, glm::ivec4 rect)
 {
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _fbo_id);
 
-	if(rect.x == 0 and rect.y == 0 and rect.z == 0 and rect.w == 0)
+	if(rect == FullScreen)
 	{
+		rect.x = 0;
+		rect.y = 0;
 		rect.z = int(m_metadata.width);
 		rect.w = int(m_metadata.height);
 	}
