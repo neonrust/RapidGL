@@ -1458,15 +1458,7 @@ void ClusteredShading::render()
 	m_shading_time.add(_gl_timer.elapsed<microseconds>(true));
 
 
-	// Render skybox
-    m_background_shader->bind();
-	m_camera.setUniforms(*m_background_shader);
-	m_background_shader->setUniform("u_view_orientation"sv, glm::mat4(glm::mat3(m_camera.viewTransform())));
-	m_background_shader->setUniform("u_lod_level"sv,        m_background_lod_level);
-    m_env_cubemap_rt->bindTexture();
-
-    glBindVertexArray(m_skybox_vao);
-    glDrawArrays     (GL_TRIANGLES, 0, 36);
+	renderSkybox();
 
 	m_skybox_time.add(_gl_timer.elapsed<microseconds>(true));
 
@@ -1551,6 +1543,19 @@ void ClusteredShading::render()
 
 	if(m_draw_aabb)
 		renderSceneBounds();
+}
+
+void ClusteredShading::renderSkybox()
+{
+	// Render skybox
+	m_background_shader->bind();
+	m_camera.setUniforms(*m_background_shader);
+	m_background_shader->setUniform("u_view_orientation"sv, glm::mat4(glm::mat3(m_camera.viewTransform())));
+	m_background_shader->setUniform("u_lod_level"sv,        m_background_lod_level);
+	m_env_cubemap_rt->bindTexture();
+
+	glBindVertexArray(m_skybox_vao);
+	glDrawArrays     (GL_TRIANGLES, 0, 36);
 }
 
 void ClusteredShading::renderSceneBounds()

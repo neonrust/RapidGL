@@ -127,6 +127,7 @@ private:
 	void renderScene(const RGL::Camera &camera, RGL::Shader &shader, MaterialCtrl matCtrl=UseMaterials);
 	void renderDepth(const RGL::Camera &camera, RGL::RenderTarget::Texture2d &target);
 	void renderLighting(const RGL::Camera &camera);
+	void renderSkybox();
 	void renderSceneBounds();
 	void draw2d(const RGL::Texture &texture, BlendMode mode=BlendMode::Replace); // TODO: move to CoreApp
 	void draw2d(const RGL::Texture &source, RGL::RenderTarget::Texture2d &target, BlendMode blend=BlendMode::Replace); // TODO: move to CoreApp
