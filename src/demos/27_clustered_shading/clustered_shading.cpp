@@ -762,7 +762,7 @@ void ClusteredShading::prepareClusterBuffers()
 	m_active_clusters_ssbo.resize(1 + m_clusters_count);
 	m_cull_lights_args_ssbo.resize(1);
 
-	const auto index_size = 1 + m_clusters_count * AVERAGE_LIGHTS_PER_CLUSTER;  // +1: global counter
+	const auto index_size = 1 + m_clusters_count * CLUSTER_AVERAGE_LIGHTS;
 	m_point_lights_index_ssbo.resize(index_size);
 	m_spot_lights_index_ssbo.resize(index_size);
 	m_area_lights_index_ssbo.resize(index_size);
