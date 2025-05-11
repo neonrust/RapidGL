@@ -139,7 +139,7 @@ const Texture &Texture2d::color_texture() const
 void Texture2d::bindTextureSampler(GLuint unit) const
 {
 	assert(_color_texture);
-	glBindTextureUnit(unit, _color_texture.texture_id());
+	_color_texture.Bind(unit);
 }
 
 Texture &Texture2d::depth_texture()
@@ -155,7 +155,7 @@ const Texture &Texture2d::depth_texture() const
 void Texture2d::bindDepthTextureSampler(GLuint unit) const
 {
 	assert(_depth_texture);
-	glBindTextureUnit(unit, _depth_texture.texture_id());
+	_depth_texture.Bind(unit);
 }
 
 void Texture2d::bindRenderTarget(BufferMask clear_mask, glm::ivec4 rect)
