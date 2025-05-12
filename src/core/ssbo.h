@@ -103,18 +103,10 @@ inline void ShaderStorageBuffer<T>::bindIndirect() const
 template<typename T>
 void ShaderStorageBuffer<T>::set(const std::vector<T> &data, BufferUsage usage)
 {
-	if(data.empty())
-	{
-		if(_size == 0)
-			return;
-	}
-	else
-	{
-		ensureCreated();
+	ensureCreated();
 
-		glNamedBufferData(_id, data.size() * sizeof(T), data.data(), usage != DefaultUsage? usage: _default_usage);
-		_size = data.size();
-	}
+	glNamedBufferData(_id, data.size() * sizeof(T), data.data(), usage != DefaultUsage? usage: _default_usage);
+	_size = data.size();
 }
 
 template<typename T>
