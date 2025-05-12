@@ -3,10 +3,10 @@
 
 layout(std430, binding = SSBO_BIND_CLUSTERS_AABB) buffer ClustersSSBO
 {
-	ClusterAABB clusters[];
+	ClusterAABB clusters_aabb[];
 };
 
-layout(std430, binding = SSBO_BIND_ACTIVE_CLUSTERS) buffer UniqueActiveClustersSSBO
+layout(std430, binding = SSBO_BIND_ACTIVE_CLUSTERS) buffer ActiveClustersSSBO
 {
 	uint global_nonempty_count;
 	uint active_clusters[];
@@ -98,7 +98,7 @@ void main()
         s_area_lights_count = 0;
 
         s_cluster_index = active_clusters[gl_WorkGroupID.x];
-        s_cluster_aabb = clusters[s_cluster_index];
+        s_cluster_aabb = clusters_aabb[s_cluster_index];
     }
     barrier();
 
