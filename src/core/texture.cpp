@@ -626,12 +626,8 @@ bool TextureCube::Load(const std::filesystem::path* filepaths, bool is_srgb, uin
 
 void TextureCube::Release()
 {
-	for (auto face = 0u; face < 6; ++face)
-	{
-		if(_faceViews[face] != 0)
-			glDeleteTextures(1, &_faceViews[face]);
-		_faceViews[face] = 0;
-	}
+	glDeleteTextures(6, _faceViews.data());
+	_faceViews = { 0, 0, 0, 0, 0, 0 };
 
 	Texture::Release();
 }
