@@ -8,7 +8,7 @@ layout(std430, binding = SSBO_BIND_NONEMPTY_CLUSTERS) buffer ClustersFlagsSSBO
 
 layout(std430, binding = SSBO_BIND_ACTIVE_CLUSTERS) buffer ActiveClustersSSBO
 {
-	uint global_nonempty_count;  // here b/c it needs to be global
+	uint global_nonempty_count;
 	uint active_clusters[];
 };
 
