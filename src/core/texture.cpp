@@ -552,11 +552,10 @@ bool TextureCube::Create(size_t width, size_t height, GLenum internalFormat, siz
 
 void TextureCube::createFaceViews(GLenum internalFormat)
 {
+	glGenTextures(6, _faceViews.data());
+
 	for(auto face = 0u; face < 6; ++face)
-	{
-		glGenTextures(1, &_faceViews[face]);
 		glTextureView(_faceViews[face], GL_TEXTURE_2D, _texture_id, internalFormat, 0, 1,  GLuint(face), 1);
-	}
 }
 
 void TextureCube::BindFace(CubeFace face, uint32_t unit)
