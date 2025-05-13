@@ -2,7 +2,7 @@
 
 // Soruce: https://github.com/TheRealMJP/BakingLab/blob/master/BakingLab/ACES.hlsl
 
-in vec2 texcoord;
+in vec2 v_uv;
 out vec4 frag_color;
 
 layout(binding = 0) uniform sampler2D u_filter_texture;
@@ -10,12 +10,12 @@ layout(binding = 0) uniform sampler2D u_filter_texture;
 uniform float u_exposure;
 uniform float u_gamma;
 
-vec3 gammaCorrect(vec3 color) 
+vec3 gammaCorrect(vec3 color)
 {
     return pow(color, vec3(1.0/u_gamma));
 }
 
-vec3 Tonemap_Filmic_UC2(vec3 linearColor, float linearWhite, float A, float B, float C, float D, float E, float F) 
+vec3 Tonemap_Filmic_UC2(vec3 linearColor, float linearWhite, float A, float B, float C, float D, float E, float F)
 {
 	// Uncharted II configurable tonemapper.
 
@@ -30,10 +30,10 @@ vec3 Tonemap_Filmic_UC2(vec3 linearColor, float linearWhite, float A, float B, f
 
 	vec3 x = linearColor;
 	vec3 color = ((x * (A * x + C * B) + D * E) / (x * (A * x + B) + D * F)) - E / F;
-	
+
 	x = vec3(linearWhite);
 	vec3 white = ((x * (A * x + C * B) + D * E) / (x * (A * x + B) + D * F)) - E / F;
-	
+
 	return color / white;
 }
 
@@ -47,8 +47,8 @@ vec3 Tonemap_Filmic_UC2Default(vec3 linearColor) {
 
 void main()
 {
-	vec4 x = u_exposure * texture(u_filter_texture, texcoord);
-	    
+	vec4 x = u_exposure * texture(u_filter_texture, v_uv);
+
     vec3 color = Tonemap_Filmic_UC2Default(x.rgb);
 		 color = gammaCorrect(color);
 

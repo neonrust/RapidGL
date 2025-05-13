@@ -1,15 +1,22 @@
 #version 450
 
-out vec2 texcoord;
+out vec2 v_uv;
+
+// single triangle covering the entire screen
+const vec2 verts[3] = vec2[] (
+    vec2(-1, -1),
+    vec2( 3, -1),
+    vec2(-1,  3)
+);
+// UV [0, 1] mapped to screen corners
+const vec2 uvs[3] = vec2[] (
+	vec2(0, 0),
+	vec2(2, 0),
+	vec2(0, 2)
+);
 
 void main()
 {
-    // IDX    UV         POS
-    //  0    { 0, 0 }   { -1, -1, 0, 1 )
-    //  1    { 2, 0 }   {  3, -1, 0, 1 )
-    //  2    { 0, 2 }   { -1,  3, 0, 1 )
-    // i.e. a single triangle covering the entire screen;
-    //  UV 0-1 mapped to screen corners.
-    texcoord = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
-    gl_Position = vec4(texcoord * 2 - 1, 0, 1);
+	v_uv = uvs[gl_VertexID];
+	gl_Position = vec4(verts[gl_VertexID], 0, 1);
 }
