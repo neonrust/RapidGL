@@ -133,7 +133,7 @@ void ClusteredShading::init_app()
     glEnable(GL_MULTISAMPLE);
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
-	glCreateVertexArrays(1, &_dummy_vao_id);
+	glCreateVertexArrays(1, &_empty_vao);
 
 	// Create camera
 	m_camera = Camera(m_camera_fov, 0.1f, 200);
@@ -302,6 +302,14 @@ void ClusteredShading::init_app()
 	m_line_draw_shader = std::make_shared<Shader>(shaders/"line_draw.vert", shaders/"line_draw.frag");
 	m_line_draw_shader->link();
 	assert(*m_line_draw_shader);
+
+	m_line_draw2d_shader = std::make_shared<Shader>(shaders/"FSQ.vert", shaders/"line_draw_2d.frag");
+	m_line_draw2d_shader->link();
+	assert(*m_line_draw2d_shader);
+	m_line_draw2d_shader->setUniform("u_line_color"sv, glm::vec4(1));
+	m_line_draw2d_shader->setUniform("u_screen_size"sv, glm::uvec2{ Window::width(), Window::height() });
+	m_line_draw2d_shader->setUniform("u_thickness"sv, float(Window::height())/720.f);
+
 
 	m_imgui_depth_texture_shader = std::make_shared<Shader>(shaders/"imgui_depth_image.vert", shaders/"imgui_depth_image.frag");
 	m_imgui_depth_texture_shader->link();
@@ -1304,7 +1312,7 @@ void ClusteredShading::PrecomputeBRDF(const std::shared_ptr<RenderTarget::Textur
     rt->bindRenderTarget();
     m_precompute_brdf->bind();
 
-	glBindVertexArray(_dummy_vao_id);
+	glBindVertexArray(_empty_vao);
     glDrawArrays(GL_TRIANGLES, 0, 3);
 
 	bindScreenRenderTarget();
@@ -1543,6 +1551,8 @@ void ClusteredShading::render()
 
 	if(m_draw_aabb)
 		renderSceneBounds();
+	if(m_draw_cluster_grid)
+		renderClusterGrid();
 }
 
 void ClusteredShading::renderSkybox()
@@ -1662,6 +1672,27 @@ void ClusteredShading::debugDrawLine(const glm::vec3 &p1, const glm::vec3 &p2, c
 	glDepthMask(GL_TRUE);
 	glEnable(GL_DEPTH_TEST);
 	glDisableVertexAttribArray(0);
+}
+
+void ClusteredShading::debugDrawLine(const glm::uvec2 &p1, const glm::uvec2 &p2, const glm::vec4 &color)
+{
+	glDisable(GL_DEPTH_TEST);
+	glDepthMask(GL_FALSE);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	m_line_draw2d_shader->bind();
+
+	m_line_draw2d_shader->setUniform("u_start"sv, p1);
+	m_line_draw2d_shader->setUniform("u_end"sv, p2);
+	m_line_draw2d_shader->setUniform("u_line_color"sv, color);
+
+	glBindVertexArray(_empty_vao);
+	glDrawArrays(GL_TRIANGLES, 0, 3);
+
+	glDisable(GL_BLEND);
+	glEnable(GL_DEPTH_TEST);
+	glDepthMask(GL_TRUE);
 }
 
 void ClusteredShading::debugDrawSphere(const glm::vec3 &center, float radius, const glm::vec4 &color)
@@ -1794,6 +1825,28 @@ void ClusteredShading::debugDrawSpotLight(const SpotLight &light, const glm::vec
 	// TODO: draw cap
 }
 
+void ClusteredShading::renderClusterGrid()
+{
+	auto x_stride = float(Window::width()) / float(m_cluster_resolution.x);
+	auto y_stride = float(Window::height()) / float(m_cluster_resolution.y);
+
+	static constexpr glm::vec4 grid_color{ 0, 0.7f, 0.2f, 0.3f };
+
+
+	auto x = x_stride;
+	while(x < float(Window::width()))
+	{
+		debugDrawLine({ x, 0 }, { x, Window::height() }, grid_color);
+		x += x_stride;
+	}
+	auto y = y_stride;
+	while(y < float(Window::height()))
+	{
+		debugDrawLine({ 0, y }, { Window::width(), y }, grid_color);
+		y += y_stride;
+	}
+}
+
 void ClusteredShading::draw2d(const Texture &texture, BlendMode blend)
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -1817,7 +1870,7 @@ void ClusteredShading::draw2d(const Texture &texture, BlendMode blend)
 	m_fsq_shader->bind();
 	texture.Bind();
 
-	glBindVertexArray(_dummy_vao_id);
+	glBindVertexArray(_empty_vao);
 	glDrawArrays(GL_TRIANGLES, 0, 3);
 
 	// restore states
@@ -1852,7 +1905,7 @@ void ClusteredShading::draw2d(const Texture &source, RenderTarget::Texture2d &ta
 	target.bindRenderTarget(RenderTarget::NoBuffer);
 
 	m_fsq_shader->bind();
-	glBindVertexArray(_dummy_vao_id);
+	glBindVertexArray(_empty_vao);
 	glDrawArrays(GL_TRIANGLES, 0, 3);
 
 	// restore states
@@ -2082,14 +2135,15 @@ void ClusteredShading::render_gui()
             ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.5f);
 
 			ImGui::Text("Cluster  resolution: %u x %u x %u", m_cluster_resolution.x, m_cluster_resolution.y, m_cluster_resolution.z);
-			if (ImGui::Checkbox("Show Cluster geom", &m_debug_cluster_geom))
+			ImGui::Checkbox("Draw cluster grid", &m_draw_cluster_grid);
+			if (ImGui::Checkbox("Show cluster geom", &m_debug_cluster_geom))
                 m_debug_clusters_occupancy = false;
 
-			if (ImGui::Checkbox("Show Clusters Occupancy", &m_debug_clusters_occupancy))
+			if (ImGui::Checkbox("Show cluster occupancy", &m_debug_clusters_occupancy))
 				m_debug_cluster_geom = false;
 
-			if (m_debug_cluster_geom or m_debug_clusters_occupancy)
-				ImGui::SliderFloat("Cluster Debug Blending", &m_debug_clusters_blend_factor, 0.0f, 1.0f);
+			if (m_debug_cluster_geom or m_debug_clusters_occupancy or m_draw_cluster_grid)
+				ImGui::SliderFloat("Cluster debug blending", &m_debug_clusters_blend_factor, 0.0f, 1.0f);
 
 			ImGui::Checkbox   ("Animate Lights",    &m_animate_lights);
 			ImGui::SliderFloat("Animation Speed",   &m_animation_speed, 0.0f, 15.0f, "%.1f");

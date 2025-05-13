@@ -129,11 +129,13 @@ private:
 	void renderLighting(const RGL::Camera &camera);
 	void renderSkybox();
 	void renderSceneBounds();
+	void renderClusterGrid();
 	void draw2d(const RGL::Texture &texture, BlendMode mode=BlendMode::Replace); // TODO: move to CoreApp
 	void draw2d(const RGL::Texture &source, RGL::RenderTarget::Texture2d &target, BlendMode blend=BlendMode::Replace); // TODO: move to CoreApp
 	void draw2d(const RGL::Texture &texture, const glm::uvec2 &top_left, const glm::uvec2 &bottom_right); // TODO: move to CoreApp
 
 	void debugDrawLine(const glm::vec3 &p1, const glm::vec3 &p2, const glm::vec4 &color={1,1,1,1});
+	void debugDrawLine(const glm::uvec2 &p1, const glm::uvec2 &p2, const glm::vec4 &color={1,1,1,1});
 	void debugDrawSphere(const glm::vec3 &center, float radius, const glm::vec4 &color={1,1,1,1});
 	void debugDrawSphere(const glm::vec3 &center, float radius, size_t rings, size_t slices, const glm::vec4 &color={1,1,1,1});
 	void debugDrawSpotLight(const SpotLight &light, const glm::vec4 &color={1,1,1,1});
@@ -164,6 +166,7 @@ private:
 
     std::shared_ptr<RGL::Shader> m_draw_area_lights_geometry_shader;
 	std::shared_ptr<RGL::Shader> m_line_draw_shader;
+	std::shared_ptr<RGL::Shader> m_line_draw2d_shader;
 	std::shared_ptr<RGL::Shader> m_imgui_depth_texture_shader;
 	std::shared_ptr<RGL::Shader> m_fsq_shader;
 
@@ -171,11 +174,7 @@ private:
 	// GLuint m_depth_pass_fbo_id;
 	RGL::RenderTarget::Texture2d m_depth_pass_rt;
 
-	GLuint _dummy_vao_id;
-
-    // Average number of overlapping lights per cluster AABB.
-    // This variable matters when the lights are big and cover more than one cluster.
-	static constexpr uint32_t AVERAGE_LIGHTS_PER_CLUSTER = 50;
+	GLuint _empty_vao;
 
 	uint32_t   m_cluster_block_size;      // The size of a cluster in screen space.(pixels, x-axis)
 	glm::uvec3 m_cluster_resolution;             // 3D dimensions of the cluster grid.
@@ -209,6 +208,7 @@ private:
     bool      m_area_lights_two_sided    = true;
 	bool      m_area_lights_geometry     = true;
 	bool      m_draw_aabb                = false;
+	bool      m_draw_cluster_grid        = false;
 	// GLuint    m_debug_draw_vao           = 0;
 	GLuint    m_debug_draw_vbo           = 0;
 	GLuint    _gl_time_query             = 0;
