@@ -94,7 +94,7 @@ ClusteredShading::ClusteredShading() :
 	m_bloom_intensity     (0.5f),
 	m_bloom_dirt_intensity(0),
 	m_bloom_enabled       (true),
-	m_fog_density         (0.1f), // [ 0, 0.5 ]   nice-ish value: 0.015
+	m_fog_density         (0.f), // [ 0, 0.5 ]   nice-ish value: 0.015
 	_ray_march_noise      (1)
 {
 	m_shading_clusters_aabb_ssbo.setBindIndex(SSBO_BIND_CLUSTERS_AABB);
@@ -375,6 +375,8 @@ void ClusteredShading::init_app()
 
 	m_env_cubemap_rt = std::make_shared<RenderTarget::Cube>();
 	m_env_cubemap_rt->create("env", 2048, 2048);
+
+	_shadow_atlas.create("shadow atlas", 4096, 4096, RenderTarget::Color::None, RenderTarget::Depth::Texture | RenderTarget::Depth::Float);
 
 	m_irradiance_cubemap_rt = std::make_shared<RenderTarget::Cube>();
     m_irradiance_cubemap_rt->set_position(glm::vec3(0.0));
@@ -1038,28 +1040,71 @@ void ClusteredShading::GeneratePointLights()
 		.radius = 15,
 	});
 #endif
-	for(auto idx = 0u; idx < 5; ++idx)
+
+	// m_point_lights.push_back({
+	// 	.base = {
+	// 		.uuid = static_cast<uint32_t>(m_point_lights.size()), // TODO: use ECS entity ID
+	// 		.color = { 1.0f, 0.8f, 0.5f },
+	// 		.intensity = 100,
+	// 		.fog = 1.f,
+	// 		.feature_flags = LIGHT_SHADOW_CASTER,
+	// 	},
+	// 	.position = { -10, 2.f, 0 },
+	// 	.radius = 10,
+	// });
+
+	// m_point_lights.push_back({
+	// 	.base = {
+	// 		.uuid = static_cast<uint32_t>(m_point_lights.size()), // TODO: use ECS entity ID
+	// 		.color = { 0.3f, 0.5f, 1.0 },
+	// 		.intensity = 100,
+	// 		.fog = 1.f,
+	// 		.feature_flags = LIGHT_SHADOW_CASTER,
+	// 	},
+	// 	.position = { 10, 2.f, 0 },
+	// 	.radius = 10,
+	// });
+
+	// m_point_lights.push_back({
+	// 	.base = {
+	// 		.uuid = static_cast<uint32_t>(m_point_lights.size()), // TODO: use ECS entity ID
+	// 		.color = { 0.4f, 1.0f, 0.4f },
+	// 		.intensity = 100,
+	// 		.fog = 1.f,
+	// 		.feature_flags = LIGHT_SHADOW_CASTER,
+	// 	},
+	// 	.position = { 0, 2.f, -10 },
+	// 	.radius = 10,
+	// });
+	// return;
+	for(auto idx = 0u; idx < 8; ++idx)
 	{
-		glm::vec3 rand_color= hsv2rgb(
+		auto rand_color= hsv2rgb(
 			float(Util::RandomDouble(1, 360)),
 			float(Util::RandomDouble(0, 1)),
-			1.f//float(Util::RandomDouble(0.1, 1))
+			1.f
 		);
-		glm::vec3 rand_pos = Util::RandomVec3({ -20, 0, -20 }, { 20, 4, 20 });
+		auto rand_pos = Util::RandomVec3({ -18, 0.5f, -18 }, { 18, 3.5f, 18 });
 
 		auto rand_intensity = float(Util::RandomDouble(1, 100));
 
 		m_point_lights.push_back({
 			.base = {
-				.uuid = static_cast<uint32_t>(m_point_lights.size()), // TODO: use ECS entity ID
 				.color = rand_color,
 				.intensity = rand_intensity,
-				.fog = 1.f,
-				.feature_flags = 0,
+				// .fog = 1.f,
+				// .feature_flags = LIGHT_SHADOW_CASTER,
+				// .uuid = static_cast<uint32_t>(m_point_lights.size()), // TODO: use ECS entity ID
 			},
 			.position = rand_pos,
-			.radius = std::pow(rand_intensity, 0.4f),
+			.radius = std::pow(rand_intensity, 0.5f),   // maybe this could be tightened as the total light count goes up?
 		});
+
+		std::printf("light[%2lu] @ %5.1f; %3.1f; %5.1f  %3u,%3u,%3u  %4.0f\n",
+					m_point_lights.size() - 1,
+					rand_pos.x, rand_pos.y, rand_pos.z,
+					uint(rand_color.r*255), uint(rand_color.g*255), uint(rand_color.b*255),
+					rand_intensity);
 	}
 
 #if 0
@@ -1254,13 +1299,13 @@ void ClusteredShading::UpdateLightsSSBOs()
 	m_area_lights_ssbo.set(m_area_lights);
 }
 
-void ClusteredShading::HdrEquirectangularToCubemap(const std::shared_ptr<RenderTarget::Cube>& cubemap_rt, const std::shared_ptr<Texture2D>& m_equirectangular_map)
+void ClusteredShading::HdrEquirectangularToCubemap(const std::shared_ptr<RenderTarget::Cube>& cubemap_rt, const std::shared_ptr<Texture2D>& equirectangular_map)
 {
     /* Update all faces per frame */
     m_equirectangular_to_cubemap_shader->bind();
 	m_equirectangular_to_cubemap_shader->setUniform("u_projection"sv, cubemap_rt->projection());
 
-    m_equirectangular_map->Bind(1);
+	equirectangular_map->Bind(1);
 
     glBindVertexArray(m_skybox_vao);
     for (uint8_t side = 0; side < 6; ++side)
@@ -1432,16 +1477,19 @@ void ClusteredShading::render()
 	cullScene();
 
 
-
-	// TODO: render shadow-maps (if lights/meshes changed)
-	//   need to limit to only "a few" lights, basically strongest lights (as perceived by the camera)
-
-
 	_gl_timer.start();
+
+	// renderShadowMaps();
+	// TODO: need to update the light SSBOs, again? :(
+	//   light.view_projection could be done on the GPU
+	//   but the atlas_tile must be sent from the CPU.
+
+	m_shadow_time.add(_gl_timer.elapsed<microseconds>(true));
+
 
 
 	// Depth pre-pass  (only if camera/meshes moved, probably always)
-	renderDepth(m_camera, m_depth_pass_rt);
+	renderDepth(m_camera.projectionTransform() * m_camera.viewTransform(), m_depth_pass_rt);
 
 
 	// Blit depth info to our main render target
@@ -1461,15 +1509,14 @@ void ClusteredShading::render()
 	m_depth_pass_rt.bindDepthTextureSampler(0);
 	m_find_nonempty_clusters_shader->invoke(GLuint(glm::ceil(float(m_depth_pass_rt.width()) / 32.f)),
 											GLuint(glm::ceil(float(m_depth_pass_rt.height()) / 32.f)));
-
 	m_cluster_find_time.add(_gl_timer.elapsed<microseconds>(true));
-
+	// ------------------------------------------------------------------
 	m_active_clusters_ssbo.clear();
 	m_collect_nonempty_clusters_shader->invoke(size_t(std::ceil(float(m_clusters_count) / 1024.f)));
-
+	// ------------------------------------------------------------------
 	m_make_cull_lights_args_shader->invoke();
-
 	m_cluster_index_time.add(_gl_timer.elapsed<microseconds>(true));
+	// ------------------------------------------------------------------
 
 	// Assign lights to clusters (cull lights)
 	m_point_lights_index_ssbo.clear();
@@ -1479,13 +1526,15 @@ void ClusteredShading::render()
 	m_cluster_spot_lights_ssbo.clear();
 	m_cluster_area_lights_ssbo.clear();
 	m_cull_lights_shader->setUniform("u_view_matrix"sv, m_camera.viewTransform());
+
 	m_cull_lights_shader->invoke(m_cull_lights_args_ssbo); // number of clusters
 
 	m_light_cull_time.add(_gl_timer.elapsed<microseconds>(true));
+	// ------------------------------------------------------------------
 
-    // 6. Render lighting
 	_rt.bindRenderTarget(RenderTarget::ColorBuffer);
 	renderLighting(m_camera);
+	m_shading_time.add(_gl_timer.elapsed<microseconds>(true));
 
 
 	// Render area lights geometry
@@ -1496,22 +1545,17 @@ void ClusteredShading::render()
 		glDrawArrays(GL_TRIANGLES, 0, GLsizei(6 * m_area_lights.size()));
 	}
 
-	m_shading_time.add(_gl_timer.elapsed<microseconds>(true));
-
-
+	// also render to '_rt'
 	renderSkybox();
 
 	m_skybox_time.add(_gl_timer.elapsed<microseconds>(true));
 
 	if(m_fog_density > 0)
 	{
-		// TODO: Render atmospheric/fog light scattering (i.e. volumetric lights)
-		//    - lights culled into screen tiles (i.e. only 2d)
-		//    - (optional) grid/voxel-based atmospheric density; otherwise, just use a constant
 		m_scattering_pp.setCameraUniforms(m_camera);
 		m_scattering_pp.shader().setUniform("u_time"sv,               _running_time.count());
 		// TODO: use a multiple of the shading cluster resolution, and we can thus re-use the light culling information
-		//   e.g. 10 more in XY-axes and maybe 2-3x more on Z-axis
+		//   e.g. 8-10 more in XY-axes and maybe 2-3x more on Z-axis
 		m_scattering_pp.shader().setUniform("u_cluster_resolution"sv, m_cluster_resolution);
 		m_scattering_pp.shader().setUniform("u_cluster_size_ss"sv,    glm::uvec2(m_cluster_block_size));
 		m_scattering_pp.shader().setUniform("u_fog_color"sv,          glm::vec3(1, 1, 1));
@@ -1588,12 +1632,172 @@ void ClusteredShading::render()
 		debugDrawClusterGrid();
 }
 
+void ClusteredShading::renderShadowMaps()
+{
+	glCullFace(GL_FRONT);  // render only back faces   TODO face culling is whack! (see init_app())
+	// TODO: render shadow-maps
+	// if light or meshes within its radius moved -> implies caching, somehow
+	//   cap the number of shadow maps (maybe dynamically, based on fps), e.g. top X closest
+	//   pack the shadow maps into a few textures (maybe one texture per light type?)
+	//     to simplify packing, one texture per shadow map size?
+	//   Scale shadow map size is deduced based on distance from camera (far away, small shadow map),
+	//     also light radius.
+	//   maybe not update the shadow maps every frame?  (preferably, as little as possible)
+
+#if 0
+	for(const auto &light: m_directional_lights)
+	{
+		if((light.base.feature_flags & LIGHT_SHADOW_CASTER) > 0)
+			renderShadowMap(light);
+	}
+#endif
+
+	// need to use the scissor during atlas update; to avoid toughting pixels outside each tile
+	glEnable(GL_SCISSOR_TEST);
+
+	auto &light = m_point_lights[0];
+	auto aspect = 1.f;  // i.e. square
+
+	static constexpr glm::vec3 faceForward[] = {
+		AXIS_X, -AXIS_X,
+		AXIS_Y, -AXIS_Y,
+		AXIS_Z, -AXIS_Z,
+	};
+	static constexpr glm::vec3 faceUp[] = {
+		-AXIS_Y, -AXIS_Y,
+		 AXIS_Z, -AXIS_Z,
+		-AXIS_Y, -AXIS_Y,
+	};
+
+	const auto lightProjection = glm::perspective(glm::radians(90.0f), aspect, 0.05f, light.radius);
+	auto tile_size = 1024u;
+
+	// TODO ideally, these 6 faces should generated using a single draw call
+	//   by using a geometry shader
+
+	for(auto face = 0u; face < 6; ++face)
+	{
+		glm::uvec4 tile_rect = {
+			(face % 3)*tile_size,
+			(face / 3)*tile_size,
+			tile_size,
+			tile_size,
+		};
+
+		const auto lightView = glm::lookAt(light.position, light.position + faceForward[face], faceUp[face]);
+		const auto lightVP = lightProjection * lightView;
+
+		// light.view_projection[face] = lightVP;
+		// light.shadow_tile[face] = tile_rect;
+
+		// TODO: only render objects whose AABB intersects with the light's sphere
+		renderDepth(lightVP, _shadow_atlas, tile_rect);
+	}
+
+	glDisable(GL_SCISSOR_TEST);
+#if 0
+	// lights farther away than this (squared), will not cast a shadow
+	static const float cut_off_distance_sq = 50.f * 50.f;
+
+	const auto cam_pos = m_camera.position();
+
+	struct LightIndex
+	{
+		uint index;
+		float importance;
+	};
+	static std::vector<LightIndex> light_index;
+	light_index.reserve(std::max(m_point_lights.size(), std::max(m_spot_lights.size(), m_area_lights.size())));
+
+	auto sq_distance = [&cam_pos](const auto &pos) {
+		const auto v = glm::vec3(pos) - cam_pos;
+		return glm::dot(v, v);
+	};
+
+	light_index.clear();
+	uint index = 0;
+	for(const auto &light: m_point_lights)
+	{
+		if((light.base.feature_flags & LIGHT_SHADOW_CASTER) > 0)
+		{
+			const auto distance = sq_distance(light.position);
+			if(distance < cut_off_distance_sq)
+			{
+				const auto importance = 1.f/distance;  // TODO: also light radius
+				light_index.push_back({ index, importance });
+			}
+		}
+		++index;
+	}
+
+	auto by_importance = [](const auto &A, const auto &B) {
+		return A.importance > B.importance;
+	};
+
+	std::sort(light_index.begin(), light_index.end(), by_importance);
+	for(const auto &item: light_index)
+		renderShadowMap(m_point_lights[item.index]);
+#endif
+
+
+
+#if 0
+	light_index.clear();
+	index = 0;
+	for(const auto &light: m_spot_lights)
+	{
+		if((light.base.feature_flags & LIGHT_SHADOW_CASTER) > 0)
+		{
+			const auto distance = sq_distance(light.point.position);
+			if(distance < cut_off_distance)
+			{
+				const auto importance = 1.f/distance; // TODO: also radius
+				light_index.push_back({ index, importance });
+			}
+		}
+		++index;
+	}
+
+	std::sort(light_index.begin(), light_index.end(), by_importance);
+	for(const auto &item: light_index)
+		renderShadowMap(m_spot_lights[item.index]);
+
+
+	light_index.clear();
+	index = 0;
+	for(const auto &light: m_area_lights)
+	{
+		if((light.base.feature_flags & LIGHT_SHADOW_CASTER) > 0)
+		{
+			const auto center = (light.points[0] + light.points[1] + light.points[2] + light.points[3]) / 4.f;
+			const auto distance = sq_distance(center);
+			if(distance < cut_off_distance)
+			{
+				const auto importance = 1.f/distance; // TODO: also radius
+				light_index.push_back({ index, importance });
+			}
+		}
+		++index;
+	}
+
+	std::sort(light_index.begin(), light_index.end(), by_importance);
+	for(const auto &item: light_index)
+		renderShadowMap(m_area_lights[item.index]);
+#endif
+
+	glCullFace(GL_BACK);
+}
+
+void ClusteredShading::renderShadowMap(const PointLight &light)
+{
+
+}
+
 void ClusteredShading::renderSkybox()
 {
-	// Render skybox
 	m_background_shader->bind();
 	m_camera.setUniforms(*m_background_shader);
-	m_background_shader->setUniform("u_view_orientation"sv, glm::mat4(glm::mat3(m_camera.viewTransform())));
+	m_background_shader->setUniform("u_view_orientation"sv, glm::mat4(glm::mat3(m_camera.viewTransform())));  // only rotational part
 	m_background_shader->setUniform("u_lod_level"sv,        m_background_lod_level);
 	m_env_cubemap_rt->bindTexture();
 
@@ -2199,7 +2403,7 @@ const std::vector<StaticObject> &ClusteredShading::cullScene()
 	return _scenePvs;
 }
 
-void ClusteredShading::renderScene(const Camera &camera, Shader &shader, MaterialCtrl materialCtrl)
+void ClusteredShading::renderScene(const glm::mat4 &view_projection, Shader &shader, MaterialCtrl materialCtrl)
 {
 	// TODO: for each model:
 	//   this should frustum cull models (and cache the result for other passes)
@@ -2210,8 +2414,6 @@ void ClusteredShading::renderScene(const Camera &camera, Shader &shader, Materia
 	// return;
 
 
-
-	const auto view_projection = camera.projectionTransform() * camera.viewTransform();
 
 	for(const auto &obj: _scenePvs)
 	{
@@ -2228,9 +2430,9 @@ void ClusteredShading::renderScene(const Camera &camera, Shader &shader, Materia
 	}
 }
 
-void ClusteredShading::renderDepth(const Camera &camera, RenderTarget::Texture2d &target)
+void ClusteredShading::renderDepth(const glm::mat4 &view_projection, RenderTarget::Texture2d &target, const glm::ivec4 &rect)
 {
-	target.bindRenderTarget(RenderTarget::DepthBuffer);
+	target.bindRenderTarget(RenderTarget::DepthBuffer, rect);
 
 	glDepthMask(GL_TRUE);
     glColorMask(0, 0, 0, 0);
@@ -2238,7 +2440,7 @@ void ClusteredShading::renderDepth(const Camera &camera, RenderTarget::Texture2d
 
     m_depth_prepass_shader->bind();
 
-	renderScene(camera, *m_depth_prepass_shader, NoMaterials);
+	renderScene(view_projection, *m_depth_prepass_shader, NoMaterials);
 }
 
 void ClusteredShading::renderLighting(const Camera &camera)
@@ -2258,15 +2460,16 @@ void ClusteredShading::renderLighting(const Camera &camera)
 	m_clustered_pbr_shader->setUniform("u_debug_clusters_occupancy"sv,              m_debug_clusters_occupancy);
 	m_clustered_pbr_shader->setUniform("u_debug_clusters_occupancy_blend_factor"sv, m_debug_clusters_blend_factor);
 	m_clustered_pbr_shader->setUniform("u_view"sv,                                  camera.viewTransform());
-	// m_clustered_pbr_shader->setUniform("u_highlight_xy_cluster"sv,  glm::uvec2{ 3, 3 });
 
     m_irradiance_cubemap_rt->bindTexture(6);
     m_prefiltered_env_map_rt->bindTexture(7);
 	m_brdf_lut_rt->bindTextureSampler(8);
     m_ltc_mat_lut->Bind(9);
     m_ltc_amp_lut->Bind(10);
+	_shadow_atlas.bindDepthTextureSampler(20);
 
-	renderScene(m_camera, *m_clustered_pbr_shader);
+	const auto view_projection = m_camera.projectionTransform() * m_camera.viewTransform();
+	renderScene(view_projection, *m_clustered_pbr_shader);
 
 	// Enable writing to the depth buffer
 	glDepthMask(GL_TRUE);
@@ -2522,6 +2725,7 @@ void ClusteredShading::render_gui()
 				"pp_low_rt",
 				"pp_full_rt",
 				"final_rt",
+				"shadow_atlas",
 			};
 			static int current_image = 0;
 			ImGui::Combo("Render target", &current_image, rt_names, std::size(rt_names));
@@ -2538,6 +2742,7 @@ void ClusteredShading::render_gui()
 			case 6: rt = &_pp_low_rt; break;
 			case 7: rt = &_pp_full_rt; break;
 			case 8: rt = &_final_rt; break;
+			case 9: rt = &_shadow_atlas; break;
 			}
 			// const bool is_cube = current_image >= 1 and current_image <= 3;
 			// const bool is_depth = current_image == 4;
