@@ -210,7 +210,7 @@ private:
 	float     m_animation_speed          = 0.1f;
 	bool      m_animate_lights           = false;
     bool      m_area_lights_two_sided    = true;
-	bool      m_area_lights_geometry     = true;
+	bool      m_draw_area_lights_geometry     = true;
 	bool      m_draw_aabb                = false;
 	bool      m_draw_cluster_grid        = false;
 	// GLuint    m_debug_draw_vao           = 0;

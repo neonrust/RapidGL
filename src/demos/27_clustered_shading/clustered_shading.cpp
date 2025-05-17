@@ -1489,7 +1489,7 @@ void ClusteredShading::render()
 
 
 	// Render area lights geometry
-	if(m_area_lights_geometry)
+	if(m_draw_area_lights_geometry)
 	{
 		m_draw_area_lights_geometry_shader->bind();
 		m_draw_area_lights_geometry_shader->setUniform("u_view_projection"sv, m_camera.projectionTransform() * m_camera.viewTransform());
@@ -2418,7 +2418,7 @@ void ClusteredShading::render_gui()
 */
             ImGui::Separator();
 			ImGui::Checkbox  ("Two-Sided Area Lights", &m_area_lights_two_sided);
-			ImGui::Checkbox  ("Area Lights Geometry", &m_area_lights_geometry);
+			ImGui::Checkbox  ("Area Lights Geometry", &m_draw_area_lights_geometry);
 			// ImGui::DragScalar("Area Lights Count", ImGuiDataType_U32, &m_area_lights_count);
 
 			// if (ImGui::DragFloat("Area Lights Intensity", &m_area_lights_intensity, 0.1f, 0.0f))
