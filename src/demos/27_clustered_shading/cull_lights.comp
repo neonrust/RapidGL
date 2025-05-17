@@ -73,15 +73,15 @@ shared ClusterAABB s_cluster_aabb;
 
 shared uint s_point_lights_count;
 shared uint s_point_lights_start_offset;
-shared uint s_point_lights_list[1024];
+shared uint s_point_lights_list[CLUSTER_MAX_POINT_LIGHTS];
 
 shared uint s_spot_lights_count;
 shared uint s_spot_lights_start_offset;
-shared uint s_spot_lights_list[1024];
+shared uint s_spot_lights_list[CLUSTER_MAX_SPOT_LIGHTS];
 
 shared uint s_area_lights_count;
 shared uint s_area_lights_start_offset;
-shared uint s_area_lights_list[1024];
+shared uint s_area_lights_list[CLUSTER_MAX_AREA_LIGHTS];
 
 bool sphereInsideAABB(vec3 center, float radius, ClusterAABB aabb);
 float sqDistancePointAABB(vec3 point, ClusterAABB aabb);

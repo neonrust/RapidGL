@@ -200,7 +200,7 @@ vec3 pbr(BaseLight base, vec3 direction, vec3 world_pos, float attenuation, Mate
 }
 
 // source: https://google.github.io/filament/Filament.md.html
-float getSquareFalloffAttenuation(vec3 pos_to_light, float light_inv_radius) 
+float getSquareFalloffAttenuation(vec3 pos_to_light, float light_inv_radius)
 {
     float distance_square = dot(pos_to_light, pos_to_light);
     float factor          = distance_square * light_inv_radius * light_inv_radius;
@@ -210,7 +210,7 @@ float getSquareFalloffAttenuation(vec3 pos_to_light, float light_inv_radius)
 }
 
 // source: https://google.github.io/filament/Filament.md.html
-float getSpotAngleAttenuation(vec3 l, vec3 light_dir, float inner_angle, float outer_angle) 
+float getSpotAngleAttenuation(vec3 l, vec3 light_dir, float inner_angle, float outer_angle)
 {
     // the scale and offset computations can be done CPU-side
     float cos_outer   = cos(outer_angle);
@@ -259,7 +259,7 @@ vec3 calcLtcAreaLight(AreaLight light, vec3 world_pos, MaterialProperties materi
     float cos_theta = max(dot(N, V), 0.0);
 
     // diffuse term
-    vec3 diff  = ltcEvaluate(N, V, world_pos, mat3(1), light.points, light.two_sided); 
+    vec3 diff  = ltcEvaluate(N, V, world_pos, mat3(1), light.points, light.two_sided);
          diff *= diff_color * light.base.color;
 
     // specular term
