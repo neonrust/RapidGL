@@ -15,6 +15,7 @@ void Tonemapping::create()
 {
 	_shader = std::make_shared<RGL::Shader>("src/demos/27_clustered_shading/FSQ.vert", "src/demos/27_clustered_shading/tmo.frag");
 	_shader->link();
+	assert(*_shader.get());
 
 	glCreateVertexArrays(1, &_dummy_vao_id);
 }
