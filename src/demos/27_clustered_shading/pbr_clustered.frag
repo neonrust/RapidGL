@@ -18,19 +18,13 @@ const vec3 debug_colors[8] = vec3[]
    vec3(1, 0, 0), vec3(1, 0, 1), vec3(1, 1, 0), vec3(1, 1, 1)
 );
 
+
+layout(std430, binding = SSBO_BIND_LIGHTS) buffer LightsMgmtSSBO
+{
+	LightsManagement lights;
+};
+
 // DIRECTIONAL lights
-
-layout(std430, binding = SSBO_BIND_DIRECTIONAL_LIGHTS) buffer DirLightsSSBO
-{
-	DirectionalLight dir_lights[];
-};
-
-// POINT lights
-
-layout(std430, binding = SSBO_BIND_POINT_LIGHTS) buffer PointLightSSBO
-{
-	PointLight point_lights[];
-};
 
 layout(std430, binding = SSBO_BIND_POINT_LIGHT_INDEX) buffer PointLightIndexListSSBO
 {
@@ -45,11 +39,6 @@ layout(std430, binding = SSBO_BIND_CLUSTER_POINT_LIGHTS) buffer PointIndexRangeS
 
 // SPOT lights
 
-layout(std430, binding = SSBO_BIND_SPOT_LIGHTS) buffer SpotLightsSSBO
-{
-	SpotLight spot_lights[];
-};
-
 layout(std430, binding = SSBO_BIND_SPOT_LIGHT_INDEX) buffer SpotLightIndexListSSBO
 {
 	uint global_spot_light_counter;
@@ -62,11 +51,6 @@ layout(std430, binding = SSBO_BIND_CLUSTER_SPOT_LIGHTS) buffer SpotIndexRangeSSB
 };
 
 // AREA lights
-
-layout(std430, binding = SSBO_BIND_AREA_LIGHTS) buffer AreaLightsSSBO
-{
-	AreaLight area_lights[];
-};
 
 layout(std430, binding = SSBO_BIND_AREA_LIGHT_INDEX) buffer AreaLightIndexListSSBO
 {
@@ -101,11 +85,11 @@ void main()
     MaterialProperties material = getMaterialProperties(normal);
 
     // Calculate the directional lights
-    for (uint i = 0; i < dir_lights.length(); ++i)
+    for (uint i = 0; i < lights.num_dir_lights; ++i)
     {
-    	float visibility = lightVisibility(dir_lights[i]);
+    	float visibility = lightVisibility(lights.dir_lights[i]);
      	if(visibility > 0)
-        	radiance += visibility * calcDirectionalLight(dir_lights[i], in_world_pos, material);
+        	radiance += visibility * calcDirectionalLight(lights.dir_lights[i], in_world_pos, material);
     }
 
     // Locating the cluster we are in
@@ -119,9 +103,9 @@ void main()
     for (uint i = 0; i < light_count; ++i)
     {
         uint light_index = point_light_index_list[light_index_offset + i];
-       	float visibility = lightVisibility(point_lights[light_index]);
+       	float visibility = lightVisibility(lights.point_lights[light_index]);
         if(visibility > 0)
-        	radiance += visibility * calcPointLight(point_lights[light_index], in_world_pos, material);
+        	radiance += visibility * calcPointLight(lights.point_lights[light_index], in_world_pos, material);
     }
 
     // Calculate the spot lights contribution
@@ -131,9 +115,9 @@ void main()
     for (uint i = 0; i < light_count; ++i)
     {
         uint light_index = spot_light_index_list[light_index_offset + i];
-       	float visibility = lightVisibility(spot_lights[light_index]);
+       	float visibility = lightVisibility(lights.spot_lights[light_index]);
         if(visibility > 0)
-	        radiance += visibility * calcSpotLight(spot_lights[light_index], in_world_pos, material);
+	        radiance += visibility * calcSpotLight(lights.spot_lights[light_index], in_world_pos, material);
     }
 
     // Calculate the area lights contribution
@@ -143,9 +127,9 @@ void main()
     for (uint i = 0; i < light_count; ++i)
     {
         uint light_index = area_light_index_list[light_index_offset + i];
-       	float visibility = lightVisibility(area_lights[light_index]);
+       	float visibility = lightVisibility(lights.area_lights[light_index]);
         if(visibility > 0)
-	        radiance += visibility * calcLtcAreaLight(area_lights[light_index], in_world_pos, material);
+	        radiance += visibility * calcLtcAreaLight(lights.area_lights[light_index], in_world_pos, material);
     }
 
     radiance += indirectLightingIBL(in_world_pos, material);

@@ -268,14 +268,15 @@ template<typename T, size_t size> requires (size > 0 && sizeof(T) >= 4)
 class MappedSSBO : protected ShaderStorageBuffer<T>
 {
 public:
+	// TODO: add control over GL_MAP_COHERENT_BIT / GL_MAP_FLUSH_EXPLICIT_BIT use?
 	inline MappedSSBO(BufferUsage default_usage=DynamicDraw) : ShaderStorageBuffer<T>(default_usage) {};
 
 	using ShaderStorageBuffer<T>::setBindIndex;
 
 	void clear();
 
-	inline       T &operator -> ()       requires (size == 1) { mapBuffer(); return *_data; }
-	inline const T &operator -> () const requires (size == 1) { mapBuffer(); return *_data; }
+	inline       T *operator -> ()       requires (size == 1) { mapBuffer(); return _data; }
+	inline const T *operator -> () const requires (size == 1) { mapBuffer(); return _data; }
 
 	inline       T &operator [] (size_t index)       requires (size > 1) { mapBuffer(); return _data[index]; }
 	inline const T &operator [] (size_t index) const requires (size > 1) { mapBuffer(); return _data[index]; }
@@ -308,8 +309,9 @@ void MappedSSBO<T, size>::clear()
 template<typename T, size_t size> requires (size > 0 && sizeof(T) >= 4)
 void MappedSSBO<T, size>::flush()
 {
-	mapBuffer();
-	glFlushMappedBufferRange(this->id(), 0, size*sizeof(T));
+	if(not this->id())  // calling this while still unmapped makes little sense
+		return;
+	glFlushMappedNamedBufferRange(this->id(), 0, size*sizeof(T));
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }
 
@@ -318,9 +320,10 @@ void MappedSSBO<T, size>::mapBuffer()
 {
 	if(this->ensureCreated())
 	{
-		static constexpr auto flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
+		static constexpr auto flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT;
+		static constexpr auto map_flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_FLUSH_EXPLICIT_BIT;
 
-		glNamedBufferStorage(this->id(), size, nullptr, flags);
-		_data = static_cast<T *>(glMapNamedBuffer(this->id(), flags));
+		glNamedBufferStorage(this->id(), size*sizeof(T), nullptr, flags);
+		_data = static_cast<T *>(glMapNamedBufferRange(this->id(), 0, size*sizeof(T), map_flags));
 	}
 }

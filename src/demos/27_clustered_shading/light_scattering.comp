@@ -13,14 +13,9 @@ layout(rgba32f, binding = 1) uniform image2D   u_output_color;
 layout(binding = 2)          uniform sampler2D u_input_depth;
 layout(binding = 3)          uniform sampler2D u_blue_noise;
 
-layout(std430, binding = SSBO_BIND_POINT_LIGHTS) buffer PointLightsSSBO
+layout(std430, binding = SSBO_BIND_LIGHTS) buffer LightsMgmtSSBO
 {
-    PointLight point_lights[];
-};
-
-layout(std430, binding = SSBO_BIND_SPOT_LIGHTS) buffer SpotLightsSSBO
-{
-    SpotLight spot_lights[];
+	LightsManagement lights;
 };
 
 uniform vec3 u_fog_color;
@@ -197,18 +192,20 @@ void main()
 
 	vec3 fog_radiance = vec3(0);
 
-	for(uint idx = 0; idx < point_lights.length(); ++idx)
+	// TODO: iterate throught lights in this CLUSTER only
+	for(uint idx = 0; idx < lights.num_point_lights; ++idx)
 	{
-		float visible = fadeByDistance(point_lights[idx].position);
+		float visible = fadeByDistance(lights.point_lights[idx].position);
 		if(visible > 1e-4)
-			fog_radiance += visible * scatterPointLight(cam_ray, point_lights[idx]);
+			fog_radiance += visible * scatterPointLight(cam_ray, lights.point_lights[idx]);
 	}
 
-	for(uint idx = 0; idx < spot_lights.length(); ++idx)
+	// TODO: iterate throught lights in this CLUSTER only
+	for(uint idx = 0; idx < lights.num_spot_lights; ++idx)
 	{
-		float visible = fadeByDistance(point_lights[idx].position);
+		float visible = fadeByDistance(lights.point_lights[idx].position);
 		if(visible > 1e-4)
-			fog_radiance += visible * scatterSpotLight(cam_ray, spot_lights[idx]);
+			fog_radiance += visible * scatterSpotLight(cam_ray, lights.spot_lights[idx]);
 	}
 
 	// TODO: area lights

@@ -30,6 +30,10 @@
 #define CLUSTER_INDEX_MAX          9999999
 
 #define SSBO_BIND_CLUSTERS_AABB               1
+#define SSBO_BIND_LIGHTS                 10
+// #define SSBO_BIND_CLUSTERS               11
+// #define SSBO_BIND_NONEMPRY_CLUSTERS      12
+// #define SSBO_BIND_CLUSTER_LIGHTS         13
 #define SSBO_BIND_POINT_LIGHT_INDEX           2
 #define SSBO_BIND_SPOT_LIGHT_INDEX            3
 #define SSBO_BIND_AREA_LIGHT_INDEX            4
@@ -39,10 +43,6 @@
 #define SSBO_BIND_NONEMPTY_CLUSTERS           8
 #define SSBO_BIND_ACTIVE_CLUSTERS             9
 
-#define SSBO_BIND_DIRECTIONAL_LIGHTS          11
-#define SSBO_BIND_POINT_LIGHTS                12
-#define SSBO_BIND_SPOT_LIGHTS                 13
-#define SSBO_BIND_AREA_LIGHTS                 14
 #define SSBO_BIND_CULL_DISPATCH_ARGS          15
 
 // 'feature_flags' bits
@@ -96,28 +96,6 @@ struct AABB
 	vec4 max;
 };
 
-// struct Cluster
-// {
-// 	AABB aabb;
-
-// 	uint num_point_lights;   // if > CLUSTER_MAX_POINT_LIGHTS, too many lights affect the cluster
-// 	uint point_lights[CLUSTER_MAX_POINT_LIGHTS];
-
-// 	uint num_spot_lights;    // if > CLUSTER_MAX_SPOT_LIGHTS, too many lights affect the cluster
-// 	uint spot_lights[CLUSTER_MAX_SPOT_LIGHTS];
-
-// 	uint num_area_lights;    // if > CLUSTER_MAX_AREA_LIGHTS, too many lights affect the cluster
-// 	uint area_lights[CLUSTER_MAX_AREA_LIGHTS];
-// };
-
-// #define NONEMPTY_CLUSTERS_END     9999999
-
-// struct ClusterNonempty
-// {
-// 	uint cluster_index;
-// 	bool found;
-// };
-
 struct ClusterAABB
 {
 	vec4 min;
@@ -130,59 +108,73 @@ struct IndexRange
     uint count;
 };
 
-struct ShadowMapParams
-{
-	mat4 view_proj[6];
-	uvec4 atlas_rect[6];
-};
 
-struct LightingData
+// almost static stuff (updated when lights change/move)
+struct LightsManagement  // MappedSSBO : SSBO_BIND_LIGHTS
 {
+	uint num_dir_lights;
+	uint num_point_lights;
+	uint num_spot_lights;
+	uint num_area_lights;
+	DirectionalLight dir_lights[1];  // 0..1
 	PointLight point_lights[MAX_POINT_LIGHTS];
 	SpotLight spot_lights[MAX_SPOT_LIGHTS];
 	AreaLight area_lights[MAX_AREA_LIGHTS];
 
-	ShadowMapParams point_shadow_params[MAX_POINT_SHADOW_CASTERS];
-	ShadowMapParams spot_shadow_params[MAX_SPOT_SHADOW_CASTERS];
-	ShadowMapParams area_shadow_params[MAX_AREA_SHADOW_CASTERS]; // if even any?
+#ifdef __cplusplus
+	// hm, can't use ranged for with these anyway... :(
+	inline DirectionalLight *dir_begin() { return dir_lights; }
+	inline DirectionalLight *dir_end() { return dir_lights + num_dir_lights; }
+	inline PointLight *points_begin() { return point_lights; }
+	inline PointLight *points_end() { return point_lights + num_point_lights; }
+	inline SpotLight *spot_begin() { return spot_lights; }
+	inline SpotLight *spot_end() { return spot_lights + num_spot_lights; }
+	inline AreaLight *area_begin() { return area_lights; }
+	inline AreaLight *area_end() { return area_lights + num_area_lights; }
+#endif
 };
 
-struct ClusterControl
+// could first try these four SSBOs, then perhaps merge everything,
+//   into a single persistently memory mapped SSBO
+// static info (updated once)
+struct ClusterManagement  // regular SSBO : SSBO_BIND_CLUSTERS
 {
-	ClusterAABB clusters[CLUSTER_MAX_COUNT];
-	uint global_nonempty_count;
-	uint active_clusters[CLUSTER_MAX_COUNT];
+	uvec3 cluster_resolution;
+	uint num_clusters;
+	ClusterAABB clusters_aabb[CLUSTER_MAX_COUNT]; // num_clusters
 };
 
-struct ClusterLighting
+// discovery of non-empty clusters
+struct ClustersDiscovery  // regular SSBO : SSBO_BIND_NONEMPRY_CLUSTERS
 {
-	// global list of light index (pointed into by the IndexRange)
-	uint point_light_index_list[CLUSTER_AVERAGE_LIGHTS * CLUSTER_MAX_COUNT];
-	uint spot_light_index_list[CLUSTER_AVERAGE_LIGHTS * CLUSTER_MAX_COUNT];
-	uint area_light_index_list[CLUSTER_AVERAGE_LIGHTS * CLUSTER_MAX_COUNT];
+	bool nonempty_clusters[CLUSTER_MAX_COUNT];    // num_clusters  'flagged' ?
+	uint active_clusters[CLUSTER_MAX_COUNT];      // num_clusters  'active' ?
+	uint global_nonempty_count;                   // 'global_count' /
+	uvec3 cull_lights_args;
+};
 
-	IndexRange cluster_point_lights[CLUSTER_MAX_COUNT];
-	IndexRange cluster_spot_lights[CLUSTER_MAX_COUNT];
-	IndexRange cluster_area_lights[CLUSTER_MAX_COUNT];
+// light culling
+struct LightCulling // regular SSBO : SSBO_BIND_CLUSTER_LIGHTS
+{
+	IndexRange cluster_area_lights[CLUSTER_MAX_COUNT];  // num_clusters
+	IndexRange cluster_point_lights[CLUSTER_MAX_COUNT]; // num_clusters
+	IndexRange cluster_spot_lights[CLUSTER_MAX_COUNT];  // num_clusters
 
 	uint global_point_light_counter;
 	uint global_spot_light_counter;
 	uint global_area_light_counter;
-};
-#ifdef __cplusplus
-// static_assert(sizeof(ClusterControl::point_light_index_list) == 3);
-#endif
 
-struct ClusterControlCounts
-{
-	uint num_point_lights;
-	uint num_spot_lights;
-	uint num_area_lights;
+	uint point_light_index_list[CLUSTER_AVERAGE_LIGHTS * CLUSTER_MAX_COUNT];
+	uint spot_light_index_list [CLUSTER_AVERAGE_LIGHTS * CLUSTER_MAX_COUNT];
+	uint area_light_index_list [CLUSTER_AVERAGE_LIGHTS * CLUSTER_MAX_COUNT];
 };
-#ifdef __cplusplus
-// static_assert(sizeof(ClusterControlCounts) == 3*4);
-#endif
 
+
+// struct ShadowMapParams
+// {
+// 	mat4 view_proj[6];
+// 	uvec4 atlas_rect[6];
+// };
 
 
 #ifdef __cplusplus
