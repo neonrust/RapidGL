@@ -18,7 +18,7 @@ using namespace std::literals;
 
 namespace RGL
 {
-	std::tuple<std::string, bool> Util::LoadFile(const std::filesystem::path & filename)
+	std::tuple<std::string, bool> Util::LoadFile(const fs::path & filename)
     {
         if (filename.empty())
 			return { {}, false };
@@ -26,7 +26,7 @@ namespace RGL
         std::string filetext;
         std::string line;
 
-        std::filesystem::path filepath = FileSystem::rootPath() / filename;
+		fs::path filepath = FileSystem::rootPath() / filename;
         std::ifstream inFile(filepath);
 
         if (!inFile)
@@ -47,9 +47,9 @@ namespace RGL
 		return { filetext, true };
     }
 
-	std::vector<uint8_t> Util::LoadFileBinary(const std::filesystem::path& filename)
+	std::vector<uint8_t> Util::LoadFileBinary(const fs::path& filename)
     {
-        std::filesystem::path filepath = FileSystem::rootPath() / filename;
+		fs::path filepath = FileSystem::rootPath() / filename;
         std::ifstream file(filepath, std::ios::binary);
 
         if (!file)
@@ -74,7 +74,7 @@ namespace RGL
         return data;
     }
 
-	std::tuple<std::string, bool> Util::PreprocessShaderSource(const std::string& shader_source, const std::filesystem::path& dir)
+	std::tuple<std::string, bool> Util::PreprocessShaderSource(const std::string& shader_source, const fs::path& dir)
     {
 		static const auto phrase_include = "#include "sv;
 
@@ -152,7 +152,7 @@ namespace RGL
 
 	static Util::TextureData mk_tx_data(void *data);
 
-	Util::TextureData Util::LoadTextureData(const std::filesystem::path& filepath, ImageData & image_data, int desired_number_of_channels)
+	Util::TextureData Util::LoadTextureData(const fs::path& filepath, ImageData & image_data, int desired_number_of_channels)
     {
 		// TODO: always try to load .jxl (instead) ?
 
@@ -188,7 +188,7 @@ namespace RGL
 		return mk_tx_data(data);
     }
 
-	Util::TextureData Util::LoadTextureDataHdr(const std::filesystem::path &filepath, ImageData &image_data, int desired_number_of_channels)
+	Util::TextureData Util::LoadTextureDataHdr(const fs::path &filepath, ImageData &image_data, int desired_number_of_channels)
     {
 		void *data = nullptr;
 
@@ -217,7 +217,7 @@ namespace RGL
 		data.reset();
 	}
 
-	// void Util::ReleaseTextureData(const std::filesystem::path& filepath, unsigned char* data)
+	// void Util::ReleaseTextureData(const fs::path& filepath, unsigned char* data)
  //    {
 	// 	if(filepath.extension() == ".jxl")
 	// 		::free(data);
