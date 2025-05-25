@@ -12,12 +12,15 @@ public:
 	void add(T value);
 	void clear();
 
-	T average() const;
-	T sum() const;
-	T min() const;
-	T max() const;
+	[[nodiscard]] T average(T def=T{0}) const noexcept;
+	[[nodiscard]] T sum(T def=T{0}) const noexcept;
+	[[nodiscard]] inline T min(T def=T{0}) const noexcept;
+	[[nodiscard]] inline T max(T def=T{0}) const noexcept;
+	[[nodiscard]] inline T first(T def=T{0}) const noexcept;
+	[[nodiscard]] inline T last(T def=T{0}) const noexcept;
 
-	inline size_t num_samples() const { return _samples.size(); }
+	[[nodiscard]] inline bool empty() const noexcept { return _samples.empty(); }
+	[[nodiscard]] inline size_t num_samples() const noexcept { return _samples.size(); }
 
 private:
 	small_vec<T, size> _samples;
@@ -41,25 +44,49 @@ inline void SampleWindow<T, size>::clear()
 }
 
 template<typename T, size_t size>
-inline T SampleWindow<T, size>::average() const
+inline T SampleWindow<T, size>::average(T def) const noexcept
 {
+	if(empty())
+		return def;
 	return sum() / num_samples();
 }
 
 template<typename T, size_t size>
-inline T SampleWindow<T, size>::sum() const
+inline T SampleWindow<T, size>::sum(T def) const noexcept
 {
+	if(empty())
+		return def;
 	return std::accumulate(_samples.begin(), _samples.end(), T{ 0 });
 }
 
 template<typename T, size_t size>
-inline T SampleWindow<T, size>::min() const
+inline T SampleWindow<T, size>::min(T def) const noexcept
 {
+	if(empty())
+		return def;
 	return std::min_element(_samples.begin(), _samples.end());
 }
 
 template<typename T, size_t size>
-inline T SampleWindow<T, size>::max() const
+inline T SampleWindow<T, size>::max(T def) const noexcept
 {
+	if(empty())
+		return def;
 	return std::max_element(_samples.begin(), _samples.end());
+}
+
+template<typename T, size_t size>
+inline T SampleWindow<T, size>::first(T def) const noexcept
+{
+	if(empty())
+		return def;
+	return _samples.front();
+}
+
+template<typename T, size_t size>
+inline T SampleWindow<T, size>::last(T def) const noexcept
+{
+	if(empty())
+		return def;
+	return _samples.back();;
 }
