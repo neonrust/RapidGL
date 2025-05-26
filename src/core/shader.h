@@ -121,7 +121,7 @@ private:
 	void add_name(const std::filesystem::path &filepath, ShaderType type);
 	std::tuple<bool, std::string> getStatusLog(GLuint object, GLenum statusType) const;
 
-	GLint getUniformLocation(const std::string_view &name);
+	GLint _uniformLocation(const std::string_view &name);
 
 private:
 	string_map<GLuint> m_subroutine_indices;
