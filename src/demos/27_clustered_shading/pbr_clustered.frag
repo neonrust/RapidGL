@@ -70,7 +70,9 @@ void main()
     uint num_clusters = u_cluster_resolution.x*u_cluster_resolution.y*u_cluster_resolution.z;
 
     // Calculate the point lights contribution
-    for (uint i = 0; i < cluster.num_point_lights; ++i)
+    uint num_point_lights = min(cluster.num_point_lights, CLUSTER_MAX_POINT_LIGHTS);
+    // TODO: if cluster.num_point_lights > CLUSTER_MAX_POINT_LIGHTS, highlight the pixel?
+    for (uint i = 0; i < num_point_lights; ++i)
     {
 	    uint light_index = cluster.light_index[i];
        	float visibility = lightVisibility(lights.point_lights[light_index]);
@@ -83,7 +85,9 @@ void main()
     uint idx_spot_offset = spot_offset*u_num_cluster_avg_lights;
 
     uint index_offset = CLUSTER_MAX_POINT_LIGHTS;
-    for (uint i = 0; i < cluster.num_spot_lights; ++i)
+    uint num_spot_lights = min(cluster.num_spot_lights, CLUSTER_MAX_SPOT_LIGHTS);
+    // TODO: if cluster.num_spot_lights > CLUSTER_MAX_SPOT_LIGHTS, highlight the pixel?
+    for (uint i = 0; i < num_spot_lights; ++i)
     {
 	    uint light_index = cluster.light_index[i + index_offset];
        	float visibility = lightVisibility(lights.spot_lights[light_index]);
@@ -96,7 +100,9 @@ void main()
     uint idx_area_offset = area_offset*u_num_cluster_avg_lights;
 
     index_offset += CLUSTER_MAX_SPOT_LIGHTS;
-    for (uint i = 0; i < cluster.num_area_lights; ++i)
+    uint num_area_lights = min(cluster.num_area_lights, CLUSTER_MAX_AREA_LIGHTS);
+    // TODO: if cluster.num_area_lights > CLUSTER_MAX_AREA_LIGHTS, highlight the pixel?
+    for (uint i = 0; i < num_area_lights; ++i)
     {
 	    uint light_index = cluster.light_index[i + index_offset];
        	float visibility = lightVisibility(lights.area_lights[light_index]);
