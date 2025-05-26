@@ -7,9 +7,12 @@
 #include <cstdio>
 
 using namespace std::literals;
+using namespace std::chrono;
 
 namespace RGL
 {
+
+static constexpr auto s_link_log_threshold = milliseconds(20);
 
 Shader::Shader() :
 	m_program_id(0),   // allocated in first call to addShader()
@@ -214,6 +217,8 @@ void Shader::add_name(const std::filesystem::path & filepath, ShaderType type)
 
 bool Shader::link()
 {
+	const auto T0 = steady_clock::now();
+
 	glLinkProgram(m_program_id);
 
 	GLint success = GL_FALSE;
@@ -225,7 +230,7 @@ bool Shader::link()
 		const auto &[ok, log] = getStatusLog(m_program_id, GL_LINK_STATUS);
 		if(not ok)
 		{
-			std::fprintf(stderr, "%s Linking failed!\n", _name.c_str());
+			std::fprintf(stderr, "Shader[%s]: linking failed!\n", _name.c_str());
 			if(not log.empty())
 				logLineErrors(_name, log);
 		}
@@ -233,6 +238,19 @@ bool Shader::link()
 	}
 	else
 		addAllSubroutines();
+
+	{
+		const auto T1 = steady_clock::now();
+		const auto duration = T1 - T0;
+		if(duration >= s_link_log_threshold)
+		{
+			std::printf("Shader[%s]: linked, in ", _name.c_str());
+			if(duration_cast<milliseconds>(duration).count() > 0)
+				std::printf("%lu ms\n", duration_cast<milliseconds>(duration).count());
+			else
+				std::printf("%lu µs\n", duration_cast<milliseconds>(duration).count());
+		}
+	}
 
 	return m_is_linked;
 }
