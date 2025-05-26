@@ -60,16 +60,16 @@ void Bloom::render(const RenderTarget::Texture2d &in, RenderTarget::Texture2d &o
 		in.height() / (1 << mip_cap)
 		);
 
-	static auto printed = false;
+	// static auto printed = false;
 
-	if(not printed)
-		std::printf("PP mip_levels: %d\n", in.mip_levels());
+	// if(not printed)
+	// 	std::printf("PP mip_levels: %d\n", in.mip_levels());
 
 	// TODO: couldn't these loops be made entirely in the compute shader, i.e. binding all mips at once
 	for (auto idx = 0; idx < in.mip_levels() - mip_cap; ++idx)
 	{
-		if(not printed)
-			std::fprintf(stderr, "PP dn size[%d]: %d x %d\n", idx, mip_size.x, mip_size.y);
+		// if(not printed)
+		// 	std::fprintf(stderr, "PP dn size[%d]: %d x %d\n", idx, mip_size.x, mip_size.y);
 
 		_downscale_shader.setUniform("u_texel_size"sv,    1.0f / glm::vec2(mip_size));
 		_downscale_shader.setUniform("u_mip_level"sv,     idx);
@@ -99,8 +99,8 @@ void Bloom::render(const RenderTarget::Texture2d &in, RenderTarget::Texture2d &o
 		mip_size.x = glm::max(1u, uint32_t(glm::floor(float(in.width()) / glm::pow(2.f, idx - 1))));
 		mip_size.y = glm::max(1u, uint32_t(glm::floor(float(in.height()) / glm::pow(2.f, idx - 1))));
 
-		if(not printed)
-			std::fprintf(stderr, "PP up size[%d]: %d x %d\n", idx, mip_size.x, mip_size.y);
+		// if(not printed)
+		// 	std::fprintf(stderr, "PP up size[%d]: %d x %d\n", idx, mip_size.x, mip_size.y);
 
 		_upscale_shader.setUniform("u_texel_size"sv, 1.0f / glm::vec2(mip_size));
 		_upscale_shader.setUniform("u_mip_level"sv,  int(idx));
@@ -113,7 +113,7 @@ void Bloom::render(const RenderTarget::Texture2d &in, RenderTarget::Texture2d &o
 		glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT); // not GL_TEXTURE_UPDATE_BARRIER_BIT ?
 	}
 
-	printed = true;
+	// printed = true;
 }
 
 } // RGL::PP
