@@ -59,22 +59,16 @@ struct LightsManagement
 	AreaLight area_lights[MAX_AREA_LIGHTS];
 };
 
-struct ClusterAABB
+struct AABB
 {
 	vec4 min;
 	vec4 max;
 };
 
-struct IndexRange
-{
-    uint offset;
-    uint count;
-};
-
 // simpler variant; AABB coupled with light indexes
 struct SimpleCluster
 {
-	ClusterAABB aabb;
+	AABB aabb;
 	uint num_point_lights;
 	uint num_spot_lights;
 	uint num_area_lights;

@@ -26,7 +26,7 @@ uniform uint u_max_cluster_avg_lights;
 
 
 shared uint s_cluster_index;
-shared ClusterAABB s_cluster_aabb;
+shared AABB s_cluster_aabb;
 
 shared uint s_point_lights_count;
 shared uint s_point_lights_list[CLUSTER_MAX_POINT_LIGHTS];
@@ -37,8 +37,8 @@ shared uint s_spot_lights_list[CLUSTER_MAX_SPOT_LIGHTS];
 shared uint s_area_lights_count;
 shared uint s_area_lights_list[CLUSTER_MAX_AREA_LIGHTS];
 
-bool sphereInsideAABB(vec3 center, float radius, ClusterAABB aabb);
-float sqDistancePointAABB(vec3 point, ClusterAABB aabb);
+bool sphereInsideAABB(vec3 center, float radius, AABB aabb);
+float sqDistancePointAABB(vec3 point, AABB aabb);
 
 layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 void main()
@@ -154,7 +154,7 @@ void main()
     }
 }
 
-bool sphereInsideAABB(vec3 center, float radius, ClusterAABB aabb)
+bool sphereInsideAABB(vec3 center, float radius, AABB aabb)
 {
     center = vec3(u_view_matrix * vec4(center, 1.0));
     float squared_distance = sqDistancePointAABB(center, aabb);
@@ -162,7 +162,7 @@ bool sphereInsideAABB(vec3 center, float radius, ClusterAABB aabb)
     return squared_distance <= (radius * radius);
 }
 
-float sqDistancePointAABB(vec3 point, ClusterAABB aabb)
+float sqDistancePointAABB(vec3 point, AABB aabb)
 {
     float sq_dist = 0.0;
 
