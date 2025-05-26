@@ -1,9 +1,15 @@
 #version 460 core
-#include "shared.h"
 
-layout(std430, binding = SSBO_BIND_CLUSTERS_AABB) buffer ClustersSSBO
+#include "shared-structs.glh"
+
+// layout(std430, binding = SSBO_BIND_CLUSTERS_AABB) buffer ClustersSSBO
+// {
+//     ClusterAABB clusters_aabb[];
+// };
+
+layout(std430, binding = SSBO_BIND_SIMPLE_CLUSTERS_AABB) buffer ClustersSimpleSSBO
 {
-    ClusterAABB clusters_aabb[];
+	SimpleCluster clusters[];
 };
 
 // uniforms
@@ -43,6 +49,7 @@ void main()
 	Plane far_plane  = Plane(AXIS_Z, -u_near_z * pow(abs(u_near_k), cluster_coord.z + 1));
 
 	// The top-left and bottom-right points respectively of the cluster k in screen space.
+	// TODO: center the green on screen, to enable simple spatial partitioning
 	vec4 p_min = vec4( cluster_coord.xy      * u_cluster_size_ss, 1, 1); // Top left in screen space
 	vec4 p_max = vec4((cluster_coord.xy + 1) * u_cluster_size_ss, 1, 1); // Bottom right in screen space
 
@@ -61,8 +68,10 @@ void main()
 	vec3 min_aabb = min(near_min, min(near_max, min(far_min, far_max)));
 	vec3 max_aabb = max(near_min, max(near_max, max(far_min, far_max)));
 
-	clusters_aabb[cluster_index].min = vec4(min_aabb.xyz, 1);
-	clusters_aabb[cluster_index].max = vec4(max_aabb.xyz, 1);
+	// clusters_aabb[cluster_index].min = vec4(min_aabb.xyz, 1);
+	// clusters_aabb[cluster_index].max = vec4(max_aabb.xyz, 1);
+
+	clusters[cluster_index].aabb = ClusterAABB(vec4(min_aabb.xyz, 1), vec4(max_aabb.xyz, 1));
 }
 
 uvec3 clusterCoordFromIndex(uint cluster_index)

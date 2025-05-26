@@ -7,6 +7,8 @@ uniform float u_near_z;
 uniform uvec3 u_cluster_resolution;
 uniform uvec2 u_cluster_size_ss;
 uniform float u_log_cluster_res_y;
+uniform uint  u_num_cluster_avg_lights;
+
 
 uniform bool u_debug_cluster_geom;
 uniform bool u_debug_clusters_occupancy;
@@ -24,43 +26,9 @@ layout(std430, binding = SSBO_BIND_LIGHTS) buffer LightsMgmtSSBO
 	LightsManagement lights;
 };
 
-// DIRECTIONAL lights
-
-layout(std430, binding = SSBO_BIND_POINT_LIGHT_INDEX) buffer PointLightIndexListSSBO
+layout(std430, binding = SSBO_BIND_SIMPLE_CLUSTERS_AABB) buffer ClustersSimpleSSBO
 {
-	uint global_point_light_counter;
-	uint point_light_index_list[];
-};
-
-layout(std430, binding = SSBO_BIND_CLUSTER_POINT_LIGHTS) buffer PointIndexRangeSSBO
-{
-	IndexRange cluster_point_lights[];
-};
-
-// SPOT lights
-
-layout(std430, binding = SSBO_BIND_SPOT_LIGHT_INDEX) buffer SpotLightIndexListSSBO
-{
-	uint global_spot_light_counter;
-	uint spot_light_index_list[];
-};
-
-layout(std430, binding = SSBO_BIND_CLUSTER_SPOT_LIGHTS) buffer SpotIndexRangeSSBO
-{
-	IndexRange cluster_spot_lights[];
-};
-
-// AREA lights
-
-layout(std430, binding = SSBO_BIND_AREA_LIGHT_INDEX) buffer AreaLightIndexListSSBO
-{
-	uint global_area_light_counter;
-	uint area_light_index_list[];
-};
-
-layout(std430, binding = SSBO_BIND_CLUSTER_AREA_LIGHTS) buffer AreaIndexRangeSSBO
-{
-    IndexRange cluster_area_lights[];
+	SimpleCluster clusters[];
 };
 
 
@@ -76,6 +44,7 @@ float lightVisibility(PointLight light);
 float lightVisibility(SpotLight light);
 float lightVisibility(AreaLight light);
 
+mat4 lightViewProjection(PointLight light);
 
 void main()
 {
@@ -96,37 +65,40 @@ void main()
     uvec3 cluster_coord = computeClusterCoord(gl_FragCoord.xy, in_view_pos.z);
     uint cluster_index = computeClusterIndex(cluster_coord);
 
-    // Calculate the point lights contribution
-    uint light_index_offset = cluster_point_lights[cluster_index].offset;
-    uint light_count = cluster_point_lights[cluster_index].count;
+    SimpleCluster cluster = clusters[cluster_index];
 
-    for (uint i = 0; i < light_count; ++i)
+    uint num_clusters = u_cluster_resolution.x*u_cluster_resolution.y*u_cluster_resolution.z;
+
+    // Calculate the point lights contribution
+    for (uint i = 0; i < cluster.num_point_lights; ++i)
     {
-        uint light_index = point_light_index_list[light_index_offset + i];
+	    uint light_index = cluster.light_index[i];
        	float visibility = lightVisibility(lights.point_lights[light_index]);
         if(visibility > 0)
         	radiance += visibility * calcPointLight(lights.point_lights[light_index], in_world_pos, material);
     }
 
     // Calculate the spot lights contribution
-    light_index_offset = cluster_spot_lights[cluster_index].offset;
-    light_count = cluster_spot_lights[cluster_index].count;
+    uint spot_offset = num_clusters;
+    uint idx_spot_offset = spot_offset*u_num_cluster_avg_lights;
 
-    for (uint i = 0; i < light_count; ++i)
+    uint index_offset = CLUSTER_MAX_POINT_LIGHTS;
+    for (uint i = 0; i < cluster.num_spot_lights; ++i)
     {
-        uint light_index = spot_light_index_list[light_index_offset + i];
+	    uint light_index = cluster.light_index[i + index_offset];
        	float visibility = lightVisibility(lights.spot_lights[light_index]);
         if(visibility > 0)
 	        radiance += visibility * calcSpotLight(lights.spot_lights[light_index], in_world_pos, material);
     }
 
     // Calculate the area lights contribution
-    light_index_offset = cluster_area_lights[cluster_index].offset;
-    light_count = cluster_area_lights[cluster_index].count;
+    uint area_offset = 2*num_clusters;
+    uint idx_area_offset = area_offset*u_num_cluster_avg_lights;
 
-    for (uint i = 0; i < light_count; ++i)
+    index_offset += CLUSTER_MAX_SPOT_LIGHTS;
+    for (uint i = 0; i < cluster.num_area_lights; ++i)
     {
-        uint light_index = area_light_index_list[light_index_offset + i];
+	    uint light_index = cluster.light_index[i + index_offset];
        	float visibility = lightVisibility(lights.area_lights[light_index]);
         if(visibility > 0)
 	        radiance += visibility * calcLtcAreaLight(lights.area_lights[light_index], in_world_pos, material);
@@ -148,7 +120,9 @@ void main()
     }
     else if (u_debug_clusters_occupancy)
     {
-        uint total_light_count = cluster_point_lights[cluster_index].count + cluster_spot_lights[cluster_index].count + cluster_area_lights[cluster_index].count;
+        uint total_light_count = cluster.num_point_lights \
+						       	+ cluster.num_spot_lights \
+						        + cluster.num_area_lights;
         if (total_light_count > 0)
         {
             float normalized_light_count = total_light_count / 100.0;
@@ -156,6 +130,8 @@ void main()
 
             frag_color = vec4(mix(radiance, heat_map_color, u_debug_clusters_occupancy_blend_factor), 1.0);
         }
+        else
+	       frag_color = vec4(0.4, 0.15, 0.5, 1); // purple is not in the heat map gradient
     }
     else
     {

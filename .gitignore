@@ -38,3 +38,4 @@ CMakeSettings.json
 build/
 configuration/root_directory.h
 !resources/**
+generated/

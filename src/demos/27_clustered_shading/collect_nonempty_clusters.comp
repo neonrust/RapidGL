@@ -1,25 +1,40 @@
 #version 460 core
-#include "shared.h"
 
-layout(std430, binding = SSBO_BIND_NONEMPTY_CLUSTERS) buffer ClustersFlagsSSBO
+#include "shared-structs.glh"
+
+layout(std430, binding = SSBO_BIND_CLUSTER_DISCOVERY) buffer ClusterDiscoverySSBO
 {
-	bool nonempty_clusters[];
+	uint num_active;   // TDOO: this could be a shared variable?
+	uint nonempty_clusters[];      // size = range * 2
+	// range = u_num_clusters
+	//   nonempty  0 - range-1
+	//   active    range - 2*range-1
 };
 
-layout(std430, binding = SSBO_BIND_ACTIVE_CLUSTERS) buffer ActiveClustersSSBO
+layout(std430, binding = SSBO_BIND_CULL_LIGHTS_ARGS) buffer CullLightsArgsSSBO
 {
-	uint global_nonempty_count;
-	uint active_clusters[];
+	uvec3 num_groups;
 };
+
+uniform uint u_num_clusters;
 
 layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 void main()
 {
 	uint cluster_index = gl_GlobalInvocationID.x;
 
-	if(nonempty_clusters[cluster_index])
+	if(cluster_index >= u_num_clusters)
+		return;
+
+	if(nonempty_clusters[cluster_index] == 1)
 	{
-		uint idx = atomicAdd(global_nonempty_count, 1); // TODO: add to cull_lights_args.x directly?
-		active_clusters[idx] = cluster_index;
+		uint idx = atomicAdd(num_active, 1);  // TDOO: this could be a shared variable?
+		uint active_offset = u_num_clusters;
+		nonempty_clusters[idx + active_offset] = cluster_index;
 	}
+
+	barrier();
+
+	if(gl_LocalInvocationIndex == 0)
+		num_groups = uvec3(num_active, 1, 1);
 }

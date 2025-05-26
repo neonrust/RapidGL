@@ -1,6 +1,6 @@
 #version 460 core
 
-#include "shared.h"
+#include "shared-structs.glh"
 
 #define GROUP_SIZE 8
 

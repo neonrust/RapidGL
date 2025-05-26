@@ -124,8 +124,10 @@ private:
     void GenSkyboxGeometry();
 
 	const std::vector<StaticObject> &cullScene();
-	void renderScene(const RGL::Camera &camera, RGL::Shader &shader, MaterialCtrl matCtrl=UseMaterials);
-	void renderDepth(const RGL::Camera &camera, RGL::RenderTarget::Texture2d &target);
+	void renderScene(const glm::mat4 &view_projection, RGL::Shader &shader, MaterialCtrl matCtrl=UseMaterials);
+	void renderDepth(const glm::mat4 &view_projection, RGL::RenderTarget::Texture2d &target, const glm::ivec4 &rect={0,0,0,0});
+	void renderShadowMaps();
+	void renderShadowMap(const PointLight &light);
 	void renderLighting(const RGL::Camera &camera);
 	void renderSkybox();
 	void debugDrawSceneBounds();
@@ -149,7 +151,7 @@ private:
 	std::shared_ptr<RGL::RenderTarget::Cube>   m_irradiance_cubemap_rt;
 	std::shared_ptr<RGL::RenderTarget::Cube>   m_prefiltered_env_map_rt;
 	std::shared_ptr<RGL::RenderTarget::Texture2d> m_brdf_lut_rt;
-	// std::shared_ptr<RenderTarget::Cube>   _shadow_map;
+	RGL::RenderTarget::Texture2d _shadow_atlas;
 
     std::shared_ptr<RGL::Shader> m_equirectangular_to_cubemap_shader;
     std::shared_ptr<RGL::Shader> m_irradiance_convolution_shader;
@@ -162,9 +164,9 @@ private:
     std::shared_ptr<RGL::Shader> m_generate_clusters_shader;
 	std::shared_ptr<RGL::Shader> m_find_nonempty_clusters_shader;
 	std::shared_ptr<RGL::Shader> m_collect_nonempty_clusters_shader;
-	std::shared_ptr<RGL::Shader> m_make_cull_lights_args_shader;
     std::shared_ptr<RGL::Shader> m_cull_lights_shader;
     std::shared_ptr<RGL::Shader> m_clustered_pbr_shader;
+	// std::shared_ptr<RGL::Shader> m_shadow_cube_shader;
 
     std::shared_ptr<RGL::Shader> m_draw_area_lights_geometry_shader;
 	std::shared_ptr<RGL::Shader> m_line_draw_shader;
@@ -207,46 +209,31 @@ private:
 	float     m_spot_lights_intensity    = 100;
 	float     m_area_lights_intensity    = 30;
 	glm::vec2 m_area_lights_size         = glm::vec2(0.5f);
-	float     m_animation_speed          = 0.1f;
+	float     m_animation_speed          = 0.4f;
 	bool      m_animate_lights           = false;
     bool      m_area_lights_two_sided    = true;
 	bool      m_draw_area_lights_geometry     = true;
 	bool      m_draw_aabb                = false;
-	bool      m_draw_cluster_grid        = false;
+	bool      m_debug_draw_cluster_grid        = false;
 	// GLuint    m_debug_draw_vao           = 0;
 	GLuint    m_debug_draw_vbo           = 0;
 	GLuint    _gl_time_query             = 0;
 
 
-	std::vector<DirectionalLight> m_directional_lights;
-    std::vector<PointLight>       m_point_lights;
-    std::vector<SpotLight>        m_spot_lights;
-    std::vector<AreaLight>        m_area_lights;
-
 	std::vector<StaticObject> _scene;  // TODO: Scene _scene;
 	std::vector<StaticObject> _scenePvs;  // potentially visible set
 
-	// StaticObject m_sponza_static_object;
-	ShaderStorageBuffer<ClusterAABB> m_shading_clusters_aabb_ssbo;
-	ShaderStorageBuffer<uint32_t> m_nonempty_clusters_ssbo;
-	ShaderStorageBuffer<uint32_t> m_active_clusters_ssbo;
+	ShaderStorageBuffer<SimpleCluster> m_simple_clusters_aabb_ssbo;
+
+	MappedSSBO<LightsManagement, 1> m_lights_ssbo;
+	ShaderStorageBuffer<uint> m_cluster_discovery_ssbo;
 	ShaderStorageBuffer<glm::uvec3> m_cull_lights_args_ssbo;
-	ShaderStorageBuffer<IndexRange> m_cluster_point_lights_ssbo;
-	ShaderStorageBuffer<IndexRange> m_cluster_spot_lights_ssbo;
-	ShaderStorageBuffer<IndexRange> m_cluster_area_lights_ssbo;
-	ShaderStorageBuffer<uint32_t> m_point_lights_index_ssbo;
-	ShaderStorageBuffer<uint32_t> m_spot_lights_index_ssbo;
-	ShaderStorageBuffer<uint32_t> m_area_lights_index_ssbo;
-	ShaderStorageBuffer<DirectionalLight> m_directional_lights_ssbo;
-	ShaderStorageBuffer<PointLight> m_point_lights_ssbo;
-	ShaderStorageBuffer<SpotLight> m_spot_lights_ssbo;
-	ShaderStorageBuffer<AreaLight> m_area_lights_ssbo;
 
     /// Area lights variables
     std::shared_ptr<RGL::Texture2D> m_ltc_amp_lut;
     std::shared_ptr<RGL::Texture2D> m_ltc_mat_lut;
 
-    /* Tonemapping variables */
+	// Tonemapping variables
 	RGL::RenderTarget::Texture2d _rt;
 	RGL::RenderTarget::Texture2d _pp_low_rt;
 	RGL::RenderTarget::Texture2d _pp_full_rt;
@@ -265,7 +252,7 @@ private:
 		"sunset_fairway_4k.hdr",
 		"rogland_clear_night_2k.hdr",
 	};
-	uint8_t m_current_hdr_map_idx   = 4;
+	uint8_t m_current_hdr_map_idx = 4;
 
     GLuint m_skybox_vao, m_skybox_vbo;
 

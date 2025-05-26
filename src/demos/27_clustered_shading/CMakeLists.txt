@@ -34,6 +34,59 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} PREFIX "sources" FILES ${SOURCE_FI
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} PREFIX "headers" FILES ${HEADER_FILES_EXE})
 
 
+
+# Read the file contents
+set(LIMITS_HEADER "${CMAKE_CURRENT_LIST_DIR}/light_constants.h")
+file(READ "${LIMITS_HEADER}" LIMITS_HEADER_CONTENTS)
+#message(STATUS "Header contents: [${LIMITS_HEADER_CONTENTS}]")
+
+# Helper macro to extract #define value
+macro(extract_define NAME)
+	set(_pattern "#define[ \t]+${NAME}[ \t]+([0-9]+)")
+	string(REGEX MATCH ${_pattern} _match "${LIMITS_HEADER_CONTENTS}")
+	if(NOT ${CMAKE_MATCH_1})
+		    message(FATAL_ERROR "Constant ${NAME} not found")
+	endif()
+	set(${NAME} "${CMAKE_MATCH_1}" CACHE INTERNAL "Extracted constant")
+endmacro()
+
+# Extract constants (repeat for each)
+extract_define(MAX_POINT_LIGHTS)
+extract_define(MAX_SPOT_LIGHTS)
+extract_define(MAX_AREA_LIGHTS)
+extract_define(CLUSTER_MAX_COUNT)
+extract_define(CLUSTER_MAX_LIGHTS)
+
+set(GLSL_STRUCT_SCRIPT ${CMAKE_SOURCE_DIR}/scripts/glsl_std430_to_cpp)
+set(GLSL_STRUCT_INPUT  ${CMAKE_CURRENT_LIST_DIR}/shared-structs.glh)
+set(GLSL_STRUCT_OUTPUT ${CMAKE_CURRENT_LIST_DIR}/generated/shared-structs.h)
+
+# Make sure output directory exists
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/generated)
+
+add_custom_command(
+	OUTPUT ${GLSL_STRUCT_OUTPUT}
+	COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=$ENV{PYTHONPATH}
+	        ${Python3_EXECUTABLE} ${GLSL_STRUCT_SCRIPT}
+			${GLSL_STRUCT_INPUT}
+			-DMAX_POINT_LIGHTS=${MAX_POINT_LIGHTS}
+			-DMAX_SPOT_LIGHTS=${MAX_SPOT_LIGHTS}
+			-DMAX_AREA_LIGHTS=${MAX_AREA_LIGHTS}
+			-DCLUSTER_MAX_COUNT=${CLUSTER_MAX_COUNT}
+			-DCLUSTER_MAX_LIGHTS=${CLUSTER_MAX_LIGHTS}
+			> ${GLSL_STRUCT_OUTPUT}
+			DEPENDS ${GLSL_STRUCT_SCRIPT} ${GLSL_STRUCT_INPUT} ${LIMITS_HEADER}
+	COMMENT "Generating C++ structs from GLSL"
+	VERBATIM
+)
+
+add_custom_target(generate_glsl_structs DEPENDS ${GLSL_STRUCT_OUTPUT})
+# Make sure your main build depends on this output
+add_dependencies(${DEMO_NAME} generate_glsl_structs)
+# Or, if you add the generated directory to your include paths:
+#target_include_directories(${DEMO_NAME} PRIVATE ${CMAKE_BINARY_DIR}/generated)
+
+
 add_custom_target(Other-files
 	SOURCES
 	${SHADER_FILES}

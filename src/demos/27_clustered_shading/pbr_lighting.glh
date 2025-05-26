@@ -1,4 +1,4 @@
-#include "shared.h"
+#include "shared-structs.glh"
 #include "area_light_ltc.glh"
 
 #ifndef PI
@@ -23,6 +23,8 @@ layout(binding = 5) uniform sampler2D u_emissive_map;
 layout (binding = 6) uniform samplerCube u_irradiance_map;
 layout (binding = 7) uniform samplerCube u_prefiltered_map;
 layout (binding = 8) uniform sampler2D   u_brdf_lut;
+// 9, 10 is in area_light_ltc.glh
+layout (binding = 20) uniform sampler2D  u_shadow_atlas;
 
 uniform bool u_has_albedo_map;
 uniform bool u_has_normal_map;

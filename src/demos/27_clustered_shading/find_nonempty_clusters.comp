@@ -1,21 +1,25 @@
 #version 460 core
-#include "shared.h"
 
-layout(std430, binding = SSBO_BIND_NONEMPTY_CLUSTERS) buffer ClustersFlagsSSBO
+#include "shared-structs.glh"
+
+layout(std430, binding = SSBO_BIND_CLUSTER_DISCOVERY) buffer ClusterDiscoverySSBO
 {
-	bool nonempty_clusters[];
+	uint num_active;
+	uint nonempty_clusters[];      // size = range * 2
+	//  range = u_num_clusters
+	//    nonempty 0 - range-1
+	//    active   range - 2*range-1
 };
+
 
 layout (binding = 0) uniform sampler2D u_depth_buffer;
 
-// Uniforms
 uniform float u_near_z;
 uniform float u_far_z;
 uniform float u_log_cluster_res_y;
 uniform uvec2 u_cluster_size_ss;
 uniform uvec3 u_cluster_resolution;
 
-// Function's prototypes
 float linearDepth(float depth);
 uint clusterIndexFromCoord(uvec3 cluster_coord);
 uvec3 clusterCoordFromPos(vec2 screen_pos, float view_z);
@@ -30,9 +34,12 @@ void main()
 	vec2  screen_pos = vec2(pixel_id) + vec2(0.5);
 
     uvec3 cluster_coord = clusterCoordFromPos(screen_pos, linearDepth(view_z));
+    if(greaterThanEqual(cluster_coord, u_cluster_resolution) != bvec3(0))
+    	return;
+
     uint cluster_index = clusterIndexFromCoord(cluster_coord);
 
-    nonempty_clusters[cluster_index] = true;
+	nonempty_clusters[cluster_index] = 1;
 }
 
 float linearDepth(float depth)

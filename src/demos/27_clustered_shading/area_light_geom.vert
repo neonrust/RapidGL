@@ -1,5 +1,6 @@
 #version 460
-#include "shared.h"
+
+#include "shared-structs.glh"
 
 layout(std430, binding = SSBO_BIND_LIGHTS) buffer LightsMgmtSSBO
 {

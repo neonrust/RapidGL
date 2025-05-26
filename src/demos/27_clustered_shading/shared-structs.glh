@@ -1,0 +1,82 @@
+#include "light_constants.h"
+#include "ssbo_binds.h"
+
+#ifdef __cplusplus
+// simply to make it look nicer in the IDE ;)
+using vec3 = int;
+using vec4 = int;
+using uvec3 = int;
+using uint = int;
+#endif
+
+struct BaseLight
+{
+    vec3 color;
+	float intensity;
+	float fog;
+	uint feature_flags;
+	uint uuid;
+};
+
+struct DirectionalLight
+{
+    BaseLight base;
+    vec3 direction;
+};
+
+struct PointLight
+{
+    BaseLight base;
+    vec3 position;
+    float radius;
+};
+
+struct SpotLight
+{
+    PointLight point;
+    vec3 direction;
+    float inner_angle;
+    float outer_angle;
+	float bounds_radius;  // also the distance from 'point.position' along 'direction'
+};
+
+struct AreaLight
+{
+    BaseLight base;
+    vec4 points[4];
+    bool two_sided;
+};
+
+struct LightsManagement
+{
+	uint num_dir_lights;
+	uint num_point_lights;
+	uint num_spot_lights;
+	uint num_area_lights;
+	DirectionalLight dir_lights[1];  // 0..1
+	PointLight point_lights[MAX_POINT_LIGHTS];
+	SpotLight spot_lights[MAX_SPOT_LIGHTS];
+	AreaLight area_lights[MAX_AREA_LIGHTS];
+};
+
+struct ClusterAABB
+{
+	vec4 min;
+	vec4 max;
+};
+
+struct IndexRange
+{
+    uint offset;
+    uint count;
+};
+
+// simpler variant; AABB coupled with light indexes
+struct SimpleCluster
+{
+	ClusterAABB aabb;
+	uint num_point_lights;
+	uint num_spot_lights;
+	uint num_area_lights;
+	uint light_index[CLUSTER_MAX_LIGHTS];
+};
