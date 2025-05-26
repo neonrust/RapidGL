@@ -141,7 +141,7 @@ void dump_config(const char *fbo_name, GLuint fbo)
 
 		if (type == GL_RENDERBUFFER)
 		{
-			std::cout << "Renderb.(ID: " << std::setw(2) << obj << ")";
+			std::cout << "Renderb.(" << obj << ")";
 
 			glGetNamedRenderbufferParameteriv(obj, GL_RENDERBUFFER_INTERNAL_FORMAT, &fmt);
 			glGetNamedRenderbufferParameteriv(obj, GL_RENDERBUFFER_WIDTH, &w);
@@ -149,7 +149,7 @@ void dump_config(const char *fbo_name, GLuint fbo)
 		}
 		else if (type == GL_TEXTURE)
 		{
-			std::cout << "Texture (ID: " << std::setw(2) << obj << ")";
+			std::cout << "Texture (" << obj << ")";
 
 			glGetTextureLevelParameteriv(obj, 0, GL_TEXTURE_INTERNAL_FORMAT, &fmt);
 			glGetTextureLevelParameteriv(obj, 0, GL_TEXTURE_WIDTH, &w);
