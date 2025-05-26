@@ -83,7 +83,7 @@ void main()
         if (light.point.base.intensity > 0)
        	{
         	float radius = light.point.radius;
-         	float center = light.point.position;
+         	vec3 center = light.point.position;
         	if(light.bounds_radius > 0)
 	        {
 				// use minimal sphere bounds, if set
