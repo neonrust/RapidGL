@@ -70,6 +70,8 @@ void main()
 
             if (index < CLUSTER_MAX_POINT_LIGHTS)
                 s_point_lights_list[index] = i;
+            else
+            	; // TODO: replace a less-prio light?
         }
     }
 
@@ -96,6 +98,8 @@ void main()
 
 	            if (index < CLUSTER_MAX_SPOT_LIGHTS)
 	                s_spot_lights_list[index] = i;
+				else
+	            	; // TODO: replace a less-prio light?
 	        }
 		}
     }
@@ -117,6 +121,8 @@ void main()
 
                 if (index < CLUSTER_MAX_AREA_LIGHTS)
                     s_area_lights_list[index] = i;
+                else
+                    ; // TODO: replace a less-prio light?
             }
         }
     }
