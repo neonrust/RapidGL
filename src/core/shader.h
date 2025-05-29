@@ -112,6 +112,9 @@ public:
 
 	inline const std::vector<ShaderType> &shaderTypes() const { return _shaderTypes; }
 
+	GLint uniformLocation(const std::string_view &name);
+	GLint attributeLocation(const std::string_view &name);
+
 private:
 	void addAllSubroutines();
 	
@@ -121,7 +124,6 @@ private:
 	void add_name(const std::filesystem::path &filepath, ShaderType type);
 	std::tuple<bool, std::string> getStatusLog(GLuint object, GLenum statusType) const;
 
-	GLint _uniformLocation(const std::string_view &name);
 
 private:
 	string_map<GLuint> m_subroutine_indices;
