@@ -127,6 +127,7 @@ private:
 	void renderScene(const glm::mat4 &view_projection, RGL::Shader &shader, MaterialCtrl matCtrl=UseMaterials);
 	void renderDepth(const glm::mat4 &view_projection, RGL::RenderTarget::Texture2d &target, const glm::ivec4 &rect={0,0,0,0});
 	void renderShadowMaps();
+	void renderShadowDepth(const glm::vec3 &pos, float far_z, const glm::mat4 &view_projection, RGL::RenderTarget::Texture2d &target, const glm::ivec4 &rect={0,0,0,0});
 	void renderShadowMap(const PointLight &light);
 	void renderLighting(const RGL::Camera &camera);
 	void renderSkybox();
@@ -166,7 +167,7 @@ private:
 	std::shared_ptr<RGL::Shader> m_collect_nonempty_clusters_shader;
     std::shared_ptr<RGL::Shader> m_cull_lights_shader;
     std::shared_ptr<RGL::Shader> m_clustered_pbr_shader;
-	// std::shared_ptr<RGL::Shader> m_shadow_cube_shader;
+	std::shared_ptr<RGL::Shader> m_shadow_depth_shader;
 
     std::shared_ptr<RGL::Shader> m_draw_area_lights_geometry_shader;
 	std::shared_ptr<RGL::Shader> m_line_draw_shader;
@@ -192,6 +193,12 @@ private:
 	bool  m_debug_cluster_geom           = false;
 	bool  m_debug_clusters_occupancy     = false;
 	float m_debug_clusters_blend_factor  = 0.7f;
+	float m_shadow_bias_constant         = 0.001f;
+	float m_shadow_bias_slope_scale      = 1.f;
+	float m_shadow_bias_slope_power      = 2.5f;
+	float m_shadow_bias_distance_scale   = 0.f;
+	float m_shadow_bias_scale            = 1;
+
 
     /// Lights
 	uint32_t  m_point_lights_count       = 0;
@@ -224,8 +231,8 @@ private:
 	std::vector<StaticObject> _scenePvs;  // potentially visible set
 
 	ShaderStorageBuffer<SimpleCluster> m_simple_clusters_aabb_ssbo;
-
 	MappedSSBO<LightsManagement, 1> m_lights_ssbo;
+	MappedSSBO<PointLightShadowParams, MAX_POINT_LIGHTS> m_shadow_map_params_ssbo;
 	ShaderStorageBuffer<uint> m_cluster_discovery_ssbo;
 	ShaderStorageBuffer<glm::uvec3> m_cull_lights_args_ssbo;
 
@@ -252,7 +259,7 @@ private:
 		"sunset_fairway_4k.hdr",
 		"rogland_clear_night_2k.hdr",
 	};
-	uint8_t m_current_hdr_map_idx = 4;
+	uint8_t m_current_hdr_map_idx = 0;
 
     GLuint m_skybox_vao, m_skybox_vbo;
 

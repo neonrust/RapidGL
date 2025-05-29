@@ -9,10 +9,15 @@ uniform uvec2 u_cluster_size_ss;
 uniform float u_log_cluster_res_y;
 uniform uint  u_num_cluster_avg_lights;
 
-
 uniform bool u_debug_cluster_geom;
 uniform bool u_debug_clusters_occupancy;
 uniform float u_debug_clusters_occupancy_blend_factor;
+
+uniform float u_shadow_bias_constant;
+uniform float u_shadow_bias_slope_scale;
+uniform float u_shadow_bias_distance_scale;
+uniform float u_shadow_bias_slope_power;
+uniform float u_shadow_bias_scale;
 
 const vec3 debug_colors[8] = vec3[]
 (
@@ -31,6 +36,10 @@ layout(std430, binding = SSBO_BIND_SIMPLE_CLUSTERS_AABB) buffer ClustersSimpleSS
 	SimpleCluster clusters[];
 };
 
+layout(std430, binding = SSBO_BIND_SHADOW_PARAMS) buffer ShadowParamsSSBO
+{
+	PointLightShadowParams shadow_params[];
+};
 
 vec3  fromRedToGreen(float interpolant);
 vec3  fromGreenToBlue(float interpolant);
@@ -39,10 +48,10 @@ uint computeClusterIndex(uvec3 cluster_coord);
 uvec3 computeClusterCoord(vec2 screen_pos, float view_z);
 
 
-float lightVisibility(DirectionalLight light);
-float lightVisibility(PointLight light);
-float lightVisibility(SpotLight light);
-float lightVisibility(AreaLight light);
+float dirLightVisibility(uint index);
+float pointLightVisibility(uint index);
+float spotLightVisibility(uint index);
+float areaLightVisibility(uint index);
 
 mat4 lightViewProjection(PointLight light);
 
@@ -54,11 +63,11 @@ void main()
     MaterialProperties material = getMaterialProperties(normal);
 
     // Calculate the directional lights
-    for (uint i = 0; i < lights.num_dir_lights; ++i)
+    for (uint index = 0; index < lights.num_dir_lights; ++index)
     {
-    	float visibility = lightVisibility(lights.dir_lights[i]);
+    	float visibility = dirLightVisibility(index);
      	if(visibility > 0)
-        	radiance += visibility * calcDirectionalLight(lights.dir_lights[i], in_world_pos, material);
+        	radiance += visibility * calcDirectionalLight(lights.dir_lights[index], in_world_pos, material);
     }
 
     // Locating the cluster we are in
@@ -75,7 +84,7 @@ void main()
     for (uint i = 0; i < num_point_lights; ++i)
     {
 	    uint light_index = cluster.light_index[i];
-       	float visibility = lightVisibility(lights.point_lights[light_index]);
+       	float visibility = pointLightVisibility(light_index);
         if(visibility > 0)
         	radiance += visibility * calcPointLight(lights.point_lights[light_index], in_world_pos, material);
     }
@@ -90,7 +99,7 @@ void main()
     for (uint i = 0; i < num_spot_lights; ++i)
     {
 	    uint light_index = cluster.light_index[i + index_offset];
-       	float visibility = lightVisibility(lights.spot_lights[light_index]);
+       	float visibility = spotLightVisibility(light_index);
         if(visibility > 0)
 	        radiance += visibility * calcSpotLight(lights.spot_lights[light_index], in_world_pos, material);
     }
@@ -105,7 +114,7 @@ void main()
     for (uint i = 0; i < num_area_lights; ++i)
     {
 	    uint light_index = cluster.light_index[i + index_offset];
-       	float visibility = lightVisibility(lights.area_lights[light_index]);
+       	float visibility = areaLightVisibility(light_index);
         if(visibility > 0)
 	        radiance += visibility * calcLtcAreaLight(lights.area_lights[light_index], in_world_pos, material);
     }
@@ -204,21 +213,209 @@ vec3 heatMap(float interpolant)
     }
 }
 
-float lightVisibility(DirectionalLight light)
+vec3 unpackNormal(vec2 f)
 {
-	return 1; // TODO
+    // float z = sqrt(max(0, 1 - dot(f, f)));
+    // return vec3(f, z);
+
+    // octahedral encoding
+    f = f * 2.0 - 1.0; // Back to [-1, 1]
+    vec3 n = vec3(f.xy, 1.0 - abs(f.x) - abs(f.y));
+    float t = clamp(-n.z, 0.0, 1.0);
+    n.xy -= sign(n.xy) * t;
+    return normalize(n);
 }
-float lightVisibility(PointLight light)
+
+// returns [1, 0] whther the fragment corresponding to 'atlas_uv' has LOS to the light
+float lineOfSight(float current_depth, vec2 atlas_uv, vec2 texel_size);
+
+float dirLightVisibility(uint index)
 {
 	return 1; // TODO
 }
 
-float lightVisibility(SpotLight light)
+float pointLightVisibility(uint index)
+{
+	PointLight light = lights.point_lights[index];
+	if((light.base.feature_flags & LIGHT_SHADOW_CASTER) == 0)
+		return 1;
+
+	PointLightShadowParams params = shadow_params[index];
+
+	vec3 light_to_frag = in_world_pos - light.position;
+
+	// figure out which of the 6 faces is relevant
+	int major_axis = 0;
+	float max_axis = abs(light_to_frag.x);
+	vec3 abs_dir = abs(light_to_frag);
+
+	if (abs_dir.y > max_axis)
+	{
+	    major_axis = 1;
+	    max_axis = abs_dir.y;
+	}
+	if (abs_dir.z > max_axis)
+	{
+	    major_axis = 2;
+	    max_axis = abs_dir.z;
+	}
+
+	// select projection and atlas rect for this face
+	//   surprisingly, this ugliness is quite a bit faster than just view_proj[face]
+	mat4 proj_0 = params.view_proj[0];
+	mat4 proj_1 = params.view_proj[1];
+	mat4 proj_2 = params.view_proj[2];
+	mat4 proj_3 = params.view_proj[3];
+	mat4 proj_4 = params.view_proj[4];
+	mat4 proj_5 = params.view_proj[5];
+
+	vec4 rect_0 = params.atlas_rect[0];
+	vec4 rect_1 = params.atlas_rect[1];
+	vec4 rect_2 = params.atlas_rect[2];
+	vec4 rect_3 = params.atlas_rect[3];
+	vec4 rect_4 = params.atlas_rect[4];
+	vec4 rect_5 = params.atlas_rect[5];
+
+	mat4 proj;
+	vec4 rect;
+
+	if (major_axis == 0)
+	{
+	    if(light_to_frag.x > 0) // +X
+		{
+			proj = proj_0;
+			rect = rect_0;
+		}
+		else  // -X
+		{
+			proj = proj_1;
+			rect = rect_1;
+		}
+	}
+	else if (major_axis == 1)
+	{
+		if(light_to_frag.y > 0) // +Y
+		{
+			proj = proj_2;
+			rect = rect_2;
+		}
+		else  // -Y
+		{
+			proj = proj_3;
+			rect = rect_3;
+		}
+	}
+	else
+	{
+	    if(light_to_frag.z > 0) // +Z
+		{
+			proj = proj_4;
+			rect = rect_4;
+		}
+		else  // -Z
+		{
+			proj = proj_5;
+			rect = rect_5;
+		}
+	}
+
+	// return float(face)/5.0;
+
+
+	// to light space
+	vec4 light_space = proj * vec4(in_world_pos, 1);
+	light_space.xyz /= light_space.w; // NDC
+	vec2 face_uv = light_space.xy * 0.5 + 0.5; // [0, 1]
+
+	vec2 atlas_uv = rect.xy + face_uv * rect.zw;
+
+	// TODO: use square distance?
+	float light_distance = length(light_to_frag);
+	float normalized_depth = light_distance / light.radius;
+
+	vec2 encoded_normal = texture(u_shadow_atlas_normals, atlas_uv).xy;
+	vec3 depth_normal = unpackNormal(encoded_normal);
+	vec3 light_dir = normalize(-light_to_frag);
+	float angle = dot(depth_normal, light_dir);
+
+
+	float bias = 0;
+
+	// depth-scaled bias
+	bias += u_shadow_bias_distance_scale * normalized_depth;
+
+	// bias based on surface normals
+	// bias increases when the angle between normal and light_dir is steep.
+	angle = pow(angle, u_shadow_bias_slope_power);
+	angle = clamp(angle, 0.0, 0.99);
+	bias += (0.001 / angle) * u_shadow_bias_slope_scale;
+
+	bias = u_shadow_bias_constant + bias * u_shadow_bias_scale;
+	bias = clamp(bias, 0.0, 0.05);
+
+	normalized_depth -= bias;
+
+	// float shadow_depth = texture(u_shadow_atlas, atlas_uv).r;
+	// return normalized_depth > shadow_depth ? 0 : 1;
+	vec2 texel_size = 1.0 / vec2(textureSize(u_shadow_atlas, 0));
+	return lineOfSight(normalized_depth, atlas_uv, texel_size);
+}
+
+float spotLightVisibility(uint index)
 {
 	return 1; // TODO
 }
 
-float lightVisibility(AreaLight light)
+float areaLightVisibility(uint index)
 {
 	return 1; // TODO
+}
+
+// float pcfInShadow(float current_depth, vec2 atlas_uv, vec2 texel_size)
+// {
+// 	float shadow = 0;
+
+// 	// in-shadow state, averaged over a 3x3 kernel
+// 	for (int x = -1; x <= 1; ++x)
+// 	{
+// 		for (int y = -1; y <= 1; ++y)
+// 		{
+// 		    vec2 offset = vec2(x, y) * texel_size;
+// 		    float sample_depth = texture(u_shadow_atlas, atlas_uv + offset).r;
+// 		    shadow += current_depth > sample_depth ? 0.0 : 1.0;
+// 		}
+// 	}
+
+// 	return shadow / 9.0;
+// }
+
+float lineOfSight(float current_depth, vec2 atlas_uv, vec2 texel_size)
+{
+	// 3x3 gauss kernel
+
+	float shadow = 0;
+	float sample_depth;
+
+	texel_size = vec2(1)/4096.f;
+
+#define SAMPLE(uv_offset, weight) \
+	sample_depth = texture(u_shadow_atlas, atlas_uv + uv_offset*texel_size).r; \
+ 	shadow += current_depth > sample_depth ? 0.0 : (weight);
+
+  	const float weights[3] = { 0.25, 0.125, 0.0625 };
+
+	// top row
+	SAMPLE(vec2(-1, -1), weights[2]);
+	SAMPLE(vec2( 0, -1), weights[1]);
+	SAMPLE(vec2( 1, -1), weights[2]);
+	// middle row
+	SAMPLE(vec2(-1,  0), weights[1]);
+	SAMPLE(vec2( 0,  0), weights[0]);
+	SAMPLE(vec2( 1,  0), weights[1]);
+	// bottom row
+	SAMPLE(vec2(-1,  1), weights[2]);
+	SAMPLE(vec2( 0,  1), weights[1]);
+	SAMPLE(vec2( 1,  1), weights[2]);
+
+	return shadow;
 }

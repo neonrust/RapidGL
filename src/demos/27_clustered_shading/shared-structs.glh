@@ -59,6 +59,12 @@ struct LightsManagement
 	AreaLight area_lights[MAX_AREA_LIGHTS];
 };
 
+struct PointLightShadowParams
+{
+	mat4 view_proj[6];
+	vec4 atlas_rect[6];
+};
+
 struct AABB
 {
 	vec4 min;
