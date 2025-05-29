@@ -70,9 +70,13 @@ struct Texture2d
 
 	operator bool () const;
 
-	// Texture interface
+	// color texture parameters
 	void SetFiltering(TextureFiltering type, TextureFilteringParam filtering);  // color
 	void SetWrapping(TextureWrappingAxis axis, TextureWrappingParam wrapping);     // color
+
+	// depth texture parameters
+	void SetDepthFiltering(TextureFiltering type, TextureFilteringParam filtering);  // color
+	void SetDepthWrapping(TextureWrappingAxis axis, TextureWrappingParam wrapping);     // color
 
 private:
 	void attach(GLenum attachment, GLenum internal_format, GLuint texture_id, GLuint &rbo_id);

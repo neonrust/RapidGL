@@ -269,4 +269,16 @@ void Texture2d::SetWrapping(TextureWrappingAxis axis, TextureWrappingParam wrapp
 	_color_texture.SetWrapping(axis, wrapping);
 }
 
+void Texture2d::SetDepthFiltering(TextureFiltering type, TextureFilteringParam filtering)
+{
+	assert(_depth_texture);
+	_depth_texture.SetFiltering(type, filtering);
+}
+
+void Texture2d::SetDepthWrapping(TextureWrappingAxis axis, TextureWrappingParam wrapping)
+{
+	assert(_depth_texture);
+	_depth_texture.SetWrapping(axis, wrapping);
+}
+
 } // RGL::RenderTarget
