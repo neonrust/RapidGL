@@ -4,3 +4,5 @@
 #define SSBO_BIND_CULL_LIGHTS_ARGS          4
 
 #define SSBO_BIND_SHADOW_PARAMS             5
+
+#define UBO_BIND_LIGHT_COUNTERS            20

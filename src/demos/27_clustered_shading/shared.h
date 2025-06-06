@@ -2,5 +2,5 @@
 
 #include "light_constants.h"  // IWYU pragma: keep
 
-#include "ssbo_binds.h"
+#include "buffer_binds.h"
 #include "generated/shared-structs.h"
