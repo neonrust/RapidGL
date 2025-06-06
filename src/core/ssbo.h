@@ -7,38 +7,26 @@
 #include <vector>
 #include <cassert>
 #include <span>
+#include <print>
 
+#include "buffer.h"
 
-enum BufferUsage : GLenum
+namespace RGL::buffer
 {
-	DefaultUsage = 0,
-	DynamicDraw = GL_DYNAMIC_DRAW,
-	StaticRead  = GL_STATIC_READ,
-	StaticDraw  = GL_STATIC_DRAW,
-};
 
 template<typename T>
-class ShaderStorageBuffer
+class ShaderStorage : public Buffer
 {
 public:
 	using value_type = T;
 
 public:
-	ShaderStorageBuffer(BufferUsage default_usage=DynamicDraw) :
-		_default_usage(default_usage)
+	ShaderStorage(BufferUsage default_usage=DynamicDraw) :
+		Buffer(default_usage)
 	{
-	}
-	~ShaderStorageBuffer()
-	{
-		if(*this)
-			glDeleteBuffers(1, &_id);
-		_id = 0;
+		_buffer_type = GL_SHADER_STORAGE_BUFFER;
 	}
 
-	void setBindIndex(GLuint index);
-
-	inline uint32_t id() const { return _id; }
-	void bind();
 	void bindIndirect() const;
 
 	void set(const std::vector<T> &data, BufferUsage usage=DefaultUsage);
@@ -46,102 +34,82 @@ public:
 	void clear();
 
 	inline size_t size() const { return _size; }
-	inline BufferUsage usage() const { return _default_usage; }
 
 	void resize(size_t size);
 
-	void copyTo(ShaderStorageBuffer<T> &dest, size_t count=0, size_t readStart=0, size_t writeStart=0) const;
+	void copyTo(ShaderStorage<T> &dest, size_t count=0, size_t readStart=0, size_t writeStart=0) const;
 
-	inline operator bool () const { return _id >= 0; }
 
 	class View : public std::span<const T, std::dynamic_extent>
 	{
-		friend class ShaderStorageBuffer;
+		friend class ShaderStorage;
 	public:
 		virtual ~View();
 	private:
-		View(ShaderStorageBuffer<T> *buffer, const T *start);
+		View(ShaderStorage<T> *buffer, const T *start);
 	private:
-		ShaderStorageBuffer<T> *_buffer;
+		ShaderStorage<T> *_buffer;
 	};
 
-	std::unique_ptr<const typename ShaderStorageBuffer<T>::View> view();
+	std::unique_ptr<const typename ShaderStorage<T>::View> view();
 
 protected:
-	bool ensureCreated();  // returns true if it was created
 	void releaseView();
 
 private:
-	GLuint _id { 0 };
-	GLuint _bind_index { GLuint(-1) };
-	BufferUsage _default_usage;
 	size_t _size { 0 };
 	bool _view_active { false };
 };
 
 
 template<typename T>
-inline void ShaderStorageBuffer<T>::setBindIndex(GLuint index)
+inline void ShaderStorage<T>::bindIndirect() const
 {
-	_bind_index = index;
-	if(_id > 0)
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, _bind_index, _id);
+	glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, id());
 }
 
 template<typename T>
-inline void ShaderStorageBuffer<T>::bind()
-{
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, _id);
-}
-
-template<typename T>
-inline void ShaderStorageBuffer<T>::bindIndirect() const
-{
-	glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, _id);
-}
-
-template<typename T>
-void ShaderStorageBuffer<T>::set(const std::vector<T> &data, BufferUsage usage)
+void ShaderStorage<T>::set(const std::vector<T> &data, BufferUsage usage)
 {
 	ensureCreated();
 
-	glNamedBufferData(_id, data.size() * sizeof(T), data.data(), usage != DefaultUsage? usage: _default_usage);
+	glNamedBufferData(id(), data.size() * sizeof(T), data.data(), usage != DefaultUsage? usage: this->usage());
 	_size = data.size();
 }
 
 template<typename T>
-inline bool ShaderStorageBuffer<T>::set(size_t index, const T &item)
+inline bool ShaderStorage<T>::set(size_t index, const T &item)
 {
 	ensureCreated();
 
 	assert(index < _size);
 	if(index < _size)
-		glNamedBufferSubData(_id, index * sizeof(T), sizeof(T), &item);
+		glNamedBufferSubData(id(), index * sizeof(T), sizeof(T), &item);
 
 	return index < _size;
 }
 
 template<typename T>
-inline void ShaderStorageBuffer<T>::clear()
+inline void ShaderStorage<T>::clear()
 {
 	ensureCreated();
 
 	static constexpr uint32_t clear_val = 0;
-	glClearNamedBufferData(_id, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &clear_val);
+	glClearNamedBufferData(id(), GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &clear_val);
 }
 
 template<typename T>
-inline void ShaderStorageBuffer<T>::resize(size_t size)
+inline void ShaderStorage<T>::resize(size_t size)
 {
 	ensureCreated();
 
 	assert(size > 0);
-	glNamedBufferData(_id, size * sizeof(T), nullptr, _default_usage);
+	glNamedBufferData(id(), size * sizeof(T), nullptr, usage());
 	_size = size;
 }
 
 template<typename T>
-void ShaderStorageBuffer<T>::copyTo(ShaderStorageBuffer<T> &dest, size_t count, size_t readStart, size_t writeStart) const
+void ShaderStorage<T>::copyTo(ShaderStorage<T> &dest, size_t count, size_t readStart, size_t writeStart) const
 {
 	ensureCreated();
 
@@ -151,30 +119,13 @@ void ShaderStorageBuffer<T>::copyTo(ShaderStorageBuffer<T> &dest, size_t count, 
 	assert(readStart + count <= _size);
 	assert(writeStart + count <= dest.size());
 
-	glCopyNamedBufferSubData(_id, dest._id, GLintptr(readStart*sizeof(T)), GLintptr(writeStart*sizeof(T)), GLsizeiptr(count*sizeof(T)));
+	glCopyNamedBufferSubData(id(), dest.id(), GLintptr(readStart*sizeof(T)), GLintptr(writeStart*sizeof(T)), GLsizeiptr(count*sizeof(T)));
 }
 
 template<typename T>
-bool ShaderStorageBuffer<T>::ensureCreated()
+std::unique_ptr<const typename ShaderStorage<T>::View> ShaderStorage<T>::view()
 {
-	if(_id == 0)
-	{
-		glCreateBuffers(1, &_id);
-		assert(_id > 0);
-
-		if(_bind_index != GLuint(-1))
-			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, _bind_index, _id);
-
-		return true;
-	}
-
-	return false;
-}
-
-template<typename T>
-std::unique_ptr<const typename ShaderStorageBuffer<T>::View> ShaderStorageBuffer<T>::view()
-{
-	assert(_id and _size and not _view_active);
+	assert(id() and _size and not _view_active);
 	if(_view_active)
 	{
 		std::fprintf(stderr, "SSBO: Returning NULL view b/c a view already exists!\n");
@@ -182,36 +133,39 @@ std::unique_ptr<const typename ShaderStorageBuffer<T>::View> ShaderStorageBuffer
 	}
 
 	// TODO: prevent multiple views
-	const T *start = static_cast<const T *>(glMapNamedBuffer(_id, GL_READ_ONLY));
+	assert(not _view_active);
+	const T *start = static_cast<const T *>(glMapNamedBuffer(id(), GL_READ_ONLY));
 	auto *v = new View(this, start);
 	_view_active = true;
 	return std::unique_ptr<View>(v);
 }
 
 template<typename T>
-void ShaderStorageBuffer<T>::releaseView()
+void ShaderStorage<T>::releaseView()
 {
-	glUnmapNamedBuffer(_id);
+	assert(_view_active);
+	glUnmapNamedBuffer(id());
 	_view_active = false;
 }
 
 template<typename T>
-inline ShaderStorageBuffer<T>::View::View(ShaderStorageBuffer<T> *buffer, const T *start) :
+inline ShaderStorage<T>::View::View(ShaderStorage<T> *buffer, const T *start) :
 	std::span<const T, std::dynamic_extent>(start, buffer->size()),
 	_buffer(buffer)
 {
 }
 
 template<typename T>
-inline ShaderStorageBuffer<T>::View::~View()
+inline ShaderStorage<T>::View::~View()
 {
 	_buffer->releaseView();
 }
 
 // ============================================================================
+// ============================================================================
 
 template<size_t count=1> requires (count <= 32)
-class AtomicCounterBuffer : protected ShaderStorageBuffer<uint32_t>
+class AtomicCounterBuffer : protected ShaderStorage<uint32_t>
 {
 public:
 	AtomicCounterBuffer(BufferUsage usage=DefaultUsage);
@@ -221,28 +175,30 @@ public:
 
 	template<size_t index> requires (index < count)
 	void set(uint32_t value);
+
+protected:
+	void onCreate() override;
 };
 
 template<size_t count> requires (count <= 32)
 inline AtomicCounterBuffer<count>::AtomicCounterBuffer(BufferUsage usage) :
-	ShaderStorageBuffer<uint32_t>(usage)
+	ShaderStorage<uint32_t>(usage)
 {
+	_buffer_type = GL_ATOMIC_COUNTER_BUFFER;
 }
 
 template<size_t count> requires (count <= 32)
 void AtomicCounterBuffer<count>::bindCounters()
 {
-	if(ensureCreated())
-		resize(count);
+	ensureCreated();
 
-	glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, id());
+	glBindBuffer(_buffer_type, id());
 }
 
 template<size_t count> requires (count <= 32)
 void AtomicCounterBuffer<count>::clear()
 {
-	if(ensureCreated())
-		resize(count);
+	ensureCreated();
 
 	GLuint values[count];
 	std::memset(&values, sizeof(uint32_t)*count, 0);
@@ -251,60 +207,58 @@ void AtomicCounterBuffer<count>::clear()
 }
 
 template<size_t count> requires (count <= 32)
+inline void AtomicCounterBuffer<count>::onCreate()
+{
+	resize(count);
+}
+
+template<size_t count> requires (count <= 32)
 template<size_t index> requires (index < count)
 void AtomicCounterBuffer<count>::set(uint32_t value)
 {
-	if(ensureCreated())
-		resize(count);
+	ensureCreated();
 
 	glNamedBufferSubData(id(), index + sizeof(uint32_t), sizeof(uint32_t), &value);
 }
 
 
 // ============================================================================
+// ============================================================================
 
 
 template<typename T, size_t size> requires (size > 0 && sizeof(T) >= 4)
-class MappedSSBO : protected ShaderStorageBuffer<T>
+class MappedSSBO : protected ShaderStorage<T>
 {
 public:
 	// TODO: add control over GL_MAP_COHERENT_BIT / GL_MAP_FLUSH_EXPLICIT_BIT use?
-	inline MappedSSBO(BufferUsage default_usage=DynamicDraw) : ShaderStorageBuffer<T>(default_usage) {};
+	inline MappedSSBO(BufferUsage default_usage=DynamicDraw) : ShaderStorage<T>(default_usage) {};
 
-	using ShaderStorageBuffer<T>::setBindIndex;
+	using ShaderStorage<T>::setBindIndex;
+	using ShaderStorage<T>::clear;
 
-	void clear();
+	inline       T *operator -> ()       requires (size == 1) { this->ensureCreated(); return _data; }
+	inline const T *operator -> () const requires (size == 1) { this->ensureCreated(); return _data; }
 
-	inline       T *operator -> ()       requires (size == 1) { mapBuffer(); return _data; }
-	inline const T *operator -> () const requires (size == 1) { mapBuffer(); return _data; }
-
-	inline       T &operator [] (size_t index)       requires (size > 1) { mapBuffer(); return _data[index]; }
-	inline const T &operator [] (size_t index) const requires (size > 1) { mapBuffer(); return _data[index]; }
+	inline       T &operator [] (size_t index)       requires (size > 1) { this->ensureCreated(); return _data[index]; }
+	inline const T &operator [] (size_t index) const requires (size > 1) { this->ensureCreated(); return _data[index]; }
 
 	template<size_t index>
-	inline       T &get()       requires (size > 1 && index < size) { mapBuffer(); return _data[index]; }
+	inline       T &get()       requires (size > 1 && index < size) { this->ensureCreated(); return _data[index]; }
 	template<size_t index>
-	inline const T &get() const requires (size > 1 && index < size) { mapBuffer(); return _data[index]; }
+	inline const T &get() const requires (size > 1 && index < size) { this->ensureCreated(); return _data[index]; }
 
 	//! ensure modifications are visible to GPU
 	void flush();
 
-	inline T* begin() { mapBuffer(); return _data; }
-	inline T* end()   { mapBuffer(); return _data + size; }
+	inline T* begin() { this->ensureCreated(); return _data; }
+	inline T* end()   { this->ensureCreated(); return _data + size; }
 
 private:
-	void mapBuffer();
+	void onCreate() override;
 
 private:
 	T *_data { nullptr };
 };
-
-template<typename T, size_t size> requires (size > 0 && sizeof(T) >= 4)
-void MappedSSBO<T, size>::clear()
-{
-	mapBuffer();
-	ShaderStorageBuffer<T>::clear();
-}
 
 template<typename T, size_t size> requires (size > 0 && sizeof(T) >= 4)
 void MappedSSBO<T, size>::flush()
@@ -316,14 +270,13 @@ void MappedSSBO<T, size>::flush()
 }
 
 template<typename T, size_t size> requires (size > 0 && sizeof(T) >= 4)
-void MappedSSBO<T, size>::mapBuffer()
+inline void MappedSSBO<T, size>::onCreate()
 {
-	if(this->ensureCreated())
-	{
-		static constexpr auto flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT;
-		static constexpr auto map_flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_FLUSH_EXPLICIT_BIT;
+	static constexpr auto flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT;
+	static constexpr auto map_flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_FLUSH_EXPLICIT_BIT;
 
-		glNamedBufferStorage(this->id(), size*sizeof(T), nullptr, flags);
-		_data = static_cast<T *>(glMapNamedBufferRange(this->id(), 0, size*sizeof(T), map_flags));
-	}
+	glNamedBufferStorage(this->id(), size*sizeof(T), nullptr, flags);
+	_data = static_cast<T *>(glMapNamedBufferRange(this->id(), 0, size*sizeof(T), map_flags));
 }
+
+} // RGL::buffer
