@@ -1,0 +1,370 @@
+#! /usr/bin/env python3
+
+"""
+GLSL (std430/std140) struct to C++23 (GLM) struct generator.
+Usage:
+    python glsl_to_cpp_std430.py mystructs.glsl -DMAX_POINT_LIGHTS=32 -DMAX_SPOT_LIGHTS=8
+
+Outputs C++ structs with correct alignas, padding, and static_asserts for field offsets and sizeof.
+Tag a struct for UBO (std140) layout by preceding it with '// @ubo'.
+UBO-tagged structs will NOT be nested (nested struct fields always use std430).
+For std430: arrays of vec3/ivec3/uvec3/bvec3 use a padded wrapper struct to guarantee std430 layout.
+"""
+
+import re
+import sys
+from collections import namedtuple, OrderedDict
+from datetime import datetime
+import getpass
+import os
+
+indent = '\t'
+
+# --- GLSL to C++ type mapping --- #
+GLSL_TO_CPP = {
+    'float':  ("float", 4, 4),
+    'int':    ("int32_t", 4, 4),
+    'uint':   ("uint32_t", 4, 4),
+    'bool':   ("uint32_t", 4, 4),  # bool is 4 bytes in std430!
+    'vec2':   ("glm::vec2", 8, 8),
+    'vec3':   ("glm::vec3", 12, 16),  # align as vec4!
+    'vec4':   ("glm::vec4", 16, 16),
+    'ivec2':  ("glm::ivec2", 8, 8),
+    'ivec3':  ("glm::ivec3", 12, 16),
+    'ivec4':  ("glm::ivec4", 16, 16),
+    'uvec2':  ("glm::uvec2", 8, 8),
+    'uvec3':  ("glm::uvec3", 12, 16),
+    'uvec4':  ("glm::uvec4", 16, 16),
+    'bvec2':  ("glm::bvec2", 8, 8),
+    'bvec3':  ("glm::bvec3", 12, 16),
+    'bvec4':  ("glm::bvec4", 16, 16),
+    'mat3':   ("glm::mat3", 48, 16),  # 3 vec4 columns, 16 aligned
+    'mat4':   ("glm::mat4", 64, 16),
+}
+
+VEC3_TYPES = {
+    'vec3':   ('glm::vec3', 'float', 4),
+    'ivec3':  ('glm::ivec3', 'int32_t', 4),
+    'uvec3':  ('glm::uvec3', 'uint32_t', 4),
+    'bvec3':  ('glm::bvec3', 'uint32_t', 4),
+}
+
+CPP_SCALAR_TYPES = {'float', 'int', 'uint', 'bool'}
+
+# --- Struct definitions --- #
+Field = namedtuple('Field', 'name type array array_size')
+StructType = namedtuple('StructType', 'name fields ubo')
+Padding = namedtuple('Padding', 'name size')
+
+class UnknownArraySizeError(ValueError):
+    pass
+
+# --- Argument parsing --- #
+def parse_args():
+    import argparse
+    parser = argparse.ArgumentParser(description='GLSL std430/std140 struct to C++ generator')
+    parser.add_argument('glsl_file', type=argparse.FileType("r"), help='Input GLSL file with struct definitions')
+    parser.add_argument('-D', action='append', default=[], metavar='NAME=VALUE',
+                        help='Define constant (array size) as NAME=VALUE')
+    return parser.parse_args()
+
+def parse_defines(defines):
+    """Parse -DNAME=VALUE flags into dictionary."""
+    result = {}
+    for d in defines:
+        if '=' not in d:
+            raise ValueError(f"Invalid define: {d}")
+        k, v = d.split('=', 1)
+        result[k.strip()] = int(v.strip())
+    return result
+
+# --- GLSL Struct Parsing --- #
+def remove_comments(s):
+    # Remove all block comments that do NOT contain @ubo
+    def block_replacer(match):
+        return '' if '@ubo' not in match.group(0) else match.group(0)
+    s = re.sub(r'/\*.*?\*/', block_replacer, s, flags=re.DOTALL)
+
+    # Remove all line comments that do NOT contain @ubo
+    def line_replacer(match):
+        return '' if '@ubo' not in match.group(0) else match.group(0)
+    s = re.sub(r'//.*', line_replacer, s)
+
+    return s
+
+def parse_structs(glsl_src):
+    """Parse structs into {name: StructType(fields, ubo)}.
+       If a struct is preceded by // @ubo (on the line above), mark it as UBO."""
+    structs = OrderedDict()
+    # Split into lines for tag scanning
+    lines = glsl_src.splitlines()
+    # Build a set of line numbers that have @ubo
+    ubo_lines = set()
+    for idx, line in enumerate(lines):
+        if line.strip() == "// @ubo":
+            ubo_lines.add(idx + 1)  # next line will be the struct
+    # Now parse structs with the original regex
+    struct_re = re.compile(
+        r'struct\s+(\w+)\s*\{([^}]*)\};', re.DOTALL)
+    field_re = re.compile(
+        r'(\w+)\s+(\w+)(\s*\[\s*([^\]]+)\s*\])?\s*;')
+    for match in struct_re.finditer(glsl_src):
+        # Find the line number of this struct
+        start = match.start()
+        struct_line = glsl_src[:start].count('\n')
+        struct_name = match.group(1)
+        body = match.group(2)
+        fields = []
+        for field_match in field_re.finditer(body):
+            ftype, fname, arr, arrsize = field_match.groups()
+            array = arr is not None
+            array_size = arrsize.strip() if array else None
+            fields.append(Field(fname, ftype, array, array_size))
+        is_ubo = struct_line in ubo_lines
+        structs[struct_name] = StructType(struct_name, fields, is_ubo)
+    return structs
+
+# --- std430 + std140 Layout Computation --- #
+class LayoutComputer:
+    def __init__(self, structs, constants):
+        self.structs = structs
+        self.constants = constants
+        self.struct_sizes = {}  # name -> (size, alignment)
+        self.struct_offsets = {}  # name -> {field: offset}
+        self.padding_counter = 0
+        # Track which padded types are needed
+        self.required_wrappers = set()
+
+    def compute_all(self):
+        for sname in self.structs:
+            self.compute_struct(sname)
+
+    def resolve_array_size(self, size_str):
+        """Get static size, allow constants."""
+        try:
+            return int(size_str)
+        except ValueError:
+            if size_str in self.constants:
+                return int(self.constants[size_str])
+            else:
+                raise UnknownArraySizeError(size_str)
+
+    def type_info(self, typ):
+        """Return (cpp_type, size, align) for a type (scalar/vec/mat/struct)."""
+        if typ in GLSL_TO_CPP:
+            return GLSL_TO_CPP[typ]
+        elif typ in self.structs:
+            if typ not in self.struct_sizes:
+                self.compute_struct(typ)
+            size, align = self.struct_sizes[typ]
+            return (typ, size, align)
+        else:
+            raise ValueError(f"Unknown type: {typ}")
+
+    def align(self, offset, align):
+        return ((offset + align - 1) // align) * align
+
+    def compute_struct(self, sname):
+        struct = self.structs[sname]
+        offset = 0
+        max_align = 0
+        offsets = {}
+        for field in struct.fields:
+            base_typ, base_size, base_align = self.type_info(field.type)
+            # Use wrapper for all arrays of 3-vectors
+            is_vec3_array = field.array and field.type in VEC3_TYPES
+            if field.array:
+                arr_len = self.resolve_array_size(field.array_size)
+                if is_vec3_array:
+                    align_req = 16
+                    arr_stride = 16
+                    self.required_wrappers.add(field.type)
+                else:
+                    align_req = base_align
+                    arr_stride = self.align(base_size, base_align)
+                offset = self.align(offset, align_req)
+                offsets[field.name] = offset
+                max_align = max(max_align, align_req)
+                offset += arr_stride * arr_len
+            else:
+                # Plain 3-vector fields may still need 16-byte alignment in std140
+                if struct.ubo and field.type in VEC3_TYPES:
+                    align_req = 16
+                    field_size = 16
+                elif field.type in self.structs:
+                    align_req = 16
+                    field_size = base_size
+                else:
+                    align_req = base_align
+                    field_size = base_size
+                offset = self.align(offset, align_req)
+                offsets[field.name] = offset
+                max_align = max(max_align, align_req)
+                offset += field_size
+        struct_align = 16 if struct.ubo else (max_align if max_align else 1)
+        struct_size = self.align(offset, struct_align)
+        self.struct_sizes[sname] = (struct_size, struct_align)
+        self.struct_offsets[sname] = offsets
+
+    def generate_wrappers(self):
+        """Emit wrapper structs for vec3/ivec3/uvec3/bvec3 as needed for std430 arrays."""
+        out = []
+        for typ in sorted(self.required_wrappers):
+            wrapper_name = f"Padded{typ.capitalize()}"
+            if typ == 'vec3':
+                out.append(f"""struct alignas(16) {wrapper_name} {{
+        float x, y, z, _pad;
+        {wrapper_name}() = default;
+        {wrapper_name}(float xx, float yy, float zz) : x(xx), y(yy), z(zz), _pad(0) {{}}
+        {wrapper_name}(const glm::vec3& v) : x(v.x), y(v.y), z(v.z), _pad(0) {{}}
+        operator glm::vec3() const {{ return glm::vec3(x, y, z); }}
+    }};""")
+            elif typ == 'ivec3':
+                out.append(f"""struct alignas(16) {wrapper_name} {{
+        int32_t x, y, z, _pad;
+        {wrapper_name}() = default;
+        {wrapper_name}(int32_t xx, int32_t yy, int32_t zz) : x(xx), y(yy), z(zz), _pad(0) {{}}
+        {wrapper_name}(const glm::ivec3& v) : x(v.x), y(v.y), z(v.z), _pad(0) {{}}
+        operator glm::ivec3() const {{ return glm::ivec3(x, y, z); }}
+    }};""")
+            elif typ == 'uvec3':
+                out.append(f"""struct alignas(16) {wrapper_name} {{
+        uint32_t x, y, z, _pad;
+        {wrapper_name}() = default;
+        {wrapper_name}(uint32_t xx, uint32_t yy, uint32_t zz) : x(xx), y(yy), z(zz), _pad(0) {{}}
+        {wrapper_name}(const glm::uvec3& v) : x(v.x), y(v.y), z(v.z), _pad(0) {{}}
+        operator glm::uvec3() const {{ return glm::uvec3(x, y, z); }}
+    }};""")
+            elif typ == 'bvec3':
+                out.append(f"""struct alignas(16) {wrapper_name} {{
+        uint32_t x, y, z, _pad;
+        {wrapper_name}() = default;
+        {wrapper_name}(uint32_t xx, uint32_t yy, uint32_t zz) : x(xx), y(yy), z(zz), _pad(0) {{}}
+        {wrapper_name}(const glm::bvec3& v) : x(v.x), y(v.y), z(v.z), _pad(0) {{}}
+        operator glm::bvec3() const {{ return glm::bvec3(x, y, z); }}
+    }};""")
+        if out:
+            out.append("")  # spacing
+        return "\n".join(out)
+
+    def wrapper_cpp_type(self, typ):
+        return f"Padded{typ.capitalize()}" if typ in VEC3_TYPES else typ
+
+    def generate_cpp(self, sname, emitted=None):
+        if emitted is None:
+            emitted = set()
+        if sname in emitted:
+            return ""
+        emitted.add(sname)
+        struct = self.structs[sname]
+        offsets = self.struct_offsets[sname]
+        struct_size, struct_align = self.struct_sizes[sname]
+        out = []
+        out.append(f"struct alignas({struct_align}) {sname}\n{{")
+        last_offset = 0
+        pad_idx = 0
+        for i, field in enumerate(struct.fields):
+            field_offset = offsets[field.name]
+            # Emit padding if necessary
+            if field_offset > last_offset:
+                pad_sz = field_offset - last_offset
+                out.append(f"{indent}uint8_t _pad{pad_idx}[{pad_sz}];")
+                pad_idx += 1
+
+            use_std140 = struct.ubo
+            base_typ, base_size, base_align = self.type_info(field.type)
+            is_vec3_array = field.array and field.type in VEC3_TYPES
+
+            if field.array:
+                arr_len = self.resolve_array_size(field.array_size)
+                if is_vec3_array:
+                    cpp_type = self.wrapper_cpp_type(field.type)
+                    align_req = 16
+                    arr_stride = 16
+                else:
+                    cpp_type = base_typ
+                    align_req = base_align
+                    arr_stride = self.align(base_size, base_align)
+                decl = f"{indent}alignas({align_req}) {cpp_type} {field.name}[{arr_len}];"
+                out.append(decl)
+                field_size = arr_stride * arr_len
+            else:
+                if use_std140 and field.type in VEC3_TYPES:
+                    cpp_type = base_typ
+                    align_req = 16
+                    decl = f"{indent}alignas(16) {cpp_type} {field.name};"
+                    out.append(decl)
+                    field_size = 12
+                    # emit std140 padding for single vec3
+                    pad_name = f"_pad{pad_idx}"
+                    out.append(f"{indent}uint8_t {pad_name}[4];")
+                    pad_idx += 1
+                    field_size = 16  # account for padding in offset calculation
+                else:
+                    cpp_type = base_typ
+                    align_req = base_align
+                    decl = f"{indent}alignas({align_req}) {cpp_type} {field.name};"
+                    out.append(decl)
+                    field_size = base_size
+
+            last_offset = field_offset + field_size
+
+        # Final struct padding (if needed)
+        if last_offset < struct_size:
+            pad_sz = struct_size - last_offset
+            out.append(f"{indent}uint8_t _pad{pad_idx}[{pad_sz}];")
+
+        out.append("};")
+        for field in struct.fields:
+            out.append(f"static_assert(offsetof({sname}, {field.name}) == {offsets[field.name]});")
+        out.append(f"static_assert(sizeof({sname}) == {struct_size});")
+        out.append('')
+        return "\n".join(out)
+
+# --- Main Entrypoint --- #
+def main():
+    args = parse_args()
+    constants = parse_defines(args.D)
+    print("Defined constants:", file=sys.stderr)
+    max_len = max(len(name) for name in constants) if constants else 0
+    for name, value in sorted(constants.items()):
+        print(f"  {name:<{max_len}} = {value}", file=sys.stderr)
+
+    glsl_src = args.glsl_file.read()
+
+    glsl_src = remove_comments(glsl_src)
+    structs = parse_structs(glsl_src)
+    if not structs:
+        print("No structs found in input file.", file=sys.stderr)
+        sys.exit(1)
+    for name, struct in structs.items():
+        print(f"{name}: ubo={struct.ubo}", file=sys.stderr)
+    layout = LayoutComputer(structs, constants)
+    try:
+        layout.compute_all()
+    except UnknownArraySizeError as uase:
+        print(f"Array size not defined: {uase}; use -D.", file=sys.stderr)
+        sys.exit(1)
+
+    dt = datetime.now().replace(microsecond=0)
+    print(f'// Generated with {sys.argv[0]} from {args.glsl_file.name} at {dt},')
+    print(f'// by {getpass.getuser()} in {os.getcwd()}')
+    print()
+    print('#include <cstdint>')
+    print('#include <cstddef>')
+    print('#include <glm/vec2.hpp>')
+    print('#include <glm/vec3.hpp>')
+    print('#include <glm/vec4.hpp>')
+    print('#include <glm/mat3x3.hpp>')
+    print('#include <glm/mat4x4.hpp>')
+    print()
+    # Emit wrappers if any
+    wrappers = layout.generate_wrappers()
+    if wrappers:
+        print(wrappers)
+    emitted = set()
+    for sname in structs:
+        print(layout.generate_cpp(sname, emitted))
+
+if __name__ == "__main__":
+    main()

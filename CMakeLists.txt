@@ -16,3 +16,11 @@ add_subdirectory(thirdparty)
 
 # ---- Main project's files ----
 add_subdirectory(src)
+
+
+file(GLOB_RECURSE SCRIPT_FILES ${CMAKE_CURRENT_LIST_DIR}/scripts/*)
+
+add_custom_target(Scripts
+	SOURCES
+	${SCRIPT_FILES}
+)
