@@ -1,9 +1,7 @@
 #include "rendertarget_common.h"
 #include "container_types.h"
 
-#include <iomanip>
-#include <iostream>
-#include <cstdio>
+#include <print>
 #include <string>
 #include <fstream>
 #include <regex>
@@ -51,7 +49,7 @@ bool check_fbo(GLuint fbo_id)
 			msg = "(unknown status code)";
 		}
 		if(msg)
-			std::fprintf(stderr, "FBO INVALID: %s (%d)\n", msg, fbo_status);
+			std::print(stderr, "FBO INVALID: {} ({})\n", msg, fbo_status);
 		return false;
 	}
 
@@ -74,7 +72,7 @@ std::string valueEnum(uint32_t value)
 		std::ifstream file(gl_h);
 		if (!file.is_open())
 		{
-			std::cerr << "Failed to open: " << gl_h << "\n";
+			std::print(stderr, "Failed to open: {}\n", gl_h);
 			return {};
 		}
 
@@ -133,7 +131,7 @@ void dump_config(const char *fbo_name, GLuint fbo)
 				label = valueEnum(attachment);
 		}
 
-		std::cout << "  " << label << ": ";
+		std::print("  {}:", label);
 
 		GLint fmt = 0;
 		GLint w = 0;
@@ -141,7 +139,7 @@ void dump_config(const char *fbo_name, GLuint fbo)
 
 		if (type == GL_RENDERBUFFER)
 		{
-			std::cout << "Renderb.(" << obj << ")";
+			std::print("Renderb.({})",  obj);
 
 			glGetNamedRenderbufferParameteriv(obj, GL_RENDERBUFFER_INTERNAL_FORMAT, &fmt);
 			glGetNamedRenderbufferParameteriv(obj, GL_RENDERBUFFER_WIDTH, &w);
@@ -149,16 +147,16 @@ void dump_config(const char *fbo_name, GLuint fbo)
 		}
 		else if (type == GL_TEXTURE)
 		{
-			std::cout << "Texture (" << obj << ")";
+			std::print("Texture ({})", obj);
 
 			glGetTextureLevelParameteriv(obj, 0, GL_TEXTURE_INTERNAL_FORMAT, &fmt);
 			glGetTextureLevelParameteriv(obj, 0, GL_TEXTURE_WIDTH, &w);
 			glGetTextureLevelParameteriv(obj, 0, GL_TEXTURE_HEIGHT, &h);
 		}
-		std::cout << "  " << w << " x " << h << "  " << valueEnum(uint32_t(fmt)) << " (0x" << std::hex << fmt << std::dec << ")\n";
+		std::print("  {} x {} {} (:#04x)\n", w, h, valueEnum(uint32_t(fmt)), fmt);
 	};
 
-	std::cout << "FBO \"" << fbo_name << "\" (" << fbo << ")\n";
+	std::print("FBO \"{}\" ({})\n", fbo_name, fbo);
 
 		   // Check for standard attachments
 	for (int i = 0; i < 8; ++i)

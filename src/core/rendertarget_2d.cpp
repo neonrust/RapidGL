@@ -1,6 +1,5 @@
 #include "rendertarget_2d.h"
 
-#include <cstdio>
 #include <glm/gtc/type_ptr.hpp>
 
 

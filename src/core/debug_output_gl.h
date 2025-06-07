@@ -1,8 +1,8 @@
 #pragma once
 
 #include <cassert>
-#include <cstdio>
 #include <string>
+#include <print>
 
 #include <glad/glad.h>
 
@@ -33,16 +33,16 @@ namespace RGL
                 return;
             }
 
-            printf(
+			std::print(
                 "********** GL Debug Output **********\n"
-                " Source:     %s\n"
-                " Type:       %s\n"
-                " Severity:   %s\n"
-                " Debug call: %s\n"
+				" Source:     {}\n"
+				" Type:       {}\n"
+				" Severity:   {}\n"
+				" Debug call: {}\n"
                 "*************************************\n\n",
-                getStringForSource(source).c_str(),
-                getStringForType(type).c_str(),
-                getStringForSeverity(severity).c_str(),
+				getStringForSource(source),
+				getStringForType(type),
+				getStringForSeverity(severity),
                 msg
             );
         }

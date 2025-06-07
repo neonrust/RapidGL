@@ -4,7 +4,8 @@
 #include "shader.h"
 #include "util.h"
 
-#include <cstdio>
+#include <print>
+#include <chrono>
 
 using namespace std::literals;
 using namespace std::chrono;
@@ -91,7 +92,7 @@ void Shader::enableLiveReload()
 	{
 		// TODO: use inotify to monitor 'filepath' for changes
 		//   if changed, after a delay, call loadShader()
-		std::fprintf(stderr, "Shader::monitorFile() NOT IMPLEMENTED: %s\n", filepath.c_str());
+		std::print(stderr, "Shader::monitorFile() NOT IMPLEMENTED: {}\n", filepath);
 		// Util::MonitorFileChanges(filepath, [this, filepath, item]() {
 		// 	loadShader(fs::path(filepath), item.shaderObject, item.conditionals);
 		// });
@@ -102,7 +103,7 @@ bool Shader::addShader(const std::filesystem::path & filepath, ShaderType type, 
 {
 	if (filepath.empty())
 	{
-		std::fprintf(stderr, "Error: Shader's file name can't be empty.\n");
+		std::print(stderr, "Error: Shader's file name can't be empty.\n");
 		return false;
 	}
 
@@ -111,7 +112,7 @@ bool Shader::addShader(const std::filesystem::path & filepath, ShaderType type, 
 		m_program_id = glCreateProgram();
 		if(not m_program_id)
 		{
-			std::fprintf(stderr, "Error while creating program object.\n");
+			std::print(stderr, "Error while creating program object.\n");
 			return false;
 		}
 	}
@@ -119,7 +120,7 @@ bool Shader::addShader(const std::filesystem::path & filepath, ShaderType type, 
 	auto shaderObject = glCreateShader(GLenum(type));
 	if(not shaderObject)
 	{
-		std::fprintf(stderr, "Error while creating shader object (type %u).\n", GLenum(type));
+		std::print(stderr, "Error while creating shader object (type {}).\n", GLenum(type));
 		return false;
 	}
 
@@ -134,14 +135,14 @@ bool Shader::loadShader(GLuint shaderObject, ShaderType type, const std::filesys
 	const auto &[file_content, okf] = Util::LoadFile(filepath);
 	if(not okf)
 	{
-		std::fprintf(stderr, "Load shader failed: %s\n", filepath.c_str());
+		std::print(stderr, "Load shader failed: {}\n", filepath.string());
 		m_failed_shaders++;
 		return false;
 	}
 	auto [code, okp] = Util::PreprocessShaderSource(file_content, dir);
 	if(not okp)
 	{
-		std::fprintf(stderr, "Preprocessing shader failed: %s\n", filepath.c_str());
+		std::print(stderr, "Preprocessing shader failed: {}\n", filepath.string());
 		m_failed_shaders++;
 		return false;
 	}
@@ -190,7 +191,7 @@ bool Shader::loadShader(GLuint shaderObject, ShaderType type, const std::filesys
 		const auto &[ok, log] = getStatusLog(shaderObject, GL_COMPILE_STATUS);
 		if(not ok)
 		{
-			std::fprintf(stderr, "%s Compilation failed!\n", filepath.string().c_str());
+			std::print(stderr, "{} Compilation failed!\n", filepath.string());
 			if(not log.empty())
 				logLineErrors(filepath, log);
 		}
@@ -230,7 +231,7 @@ bool Shader::link()
 		const auto &[ok, log] = getStatusLog(m_program_id, GL_LINK_STATUS);
 		if(not ok)
 		{
-			std::fprintf(stderr, "Shader[%s]: linking failed!\n", _name.c_str());
+			std::print(stderr, "Shader[{}]: linking failed!\n", _name);
 			if(not log.empty())
 				logLineErrors(_name, log);
 		}
@@ -244,11 +245,11 @@ bool Shader::link()
 		const auto duration = T1 - T0;
 		if(duration >= s_link_log_threshold)
 		{
-			std::printf("Shader[%s]: linked, in ", _name.c_str());
-			if(duration_cast<milliseconds>(duration).count() > 0)
-				std::printf("%lu ms\n", duration_cast<milliseconds>(duration).count());
+			std::print("Shader[{}]: linked, in ", _name);
+			if(duration_cast<milliseconds>(duration).count() > 1)
+				std::print("{} ms\n", duration_cast<milliseconds>(duration));
 			else
-				std::printf("%lu µs\n", duration_cast<milliseconds>(duration).count());
+				std::print("{} µs\n", duration_cast<microseconds>(duration));
 		}
 	}
 
@@ -263,19 +264,19 @@ void Shader::logLineErrors(const std::filesystem::path & filepath, const std::st
 	{
 		if(line.size() < 10 or not line.starts_with("0("))
 		{
-			std::fprintf(stderr, "%s\n", line.c_str());
+			std::print(stderr, "{}\n", line);
 			continue;
 		}
 
 		const auto end_bracket = line.find(')', 2);
 		if(end_bracket == std::string::npos)
 		{
-			std::fprintf(stderr, "%s\n", line.c_str());
+			std::print(stderr, "{}\n", line);
 			continue;
 		}
 
 		line = line.replace(0, 1, filepath);
-		std::fprintf(stderr, "%s\n", line.c_str());
+		std::print(stderr, "%s\n", line);
 	}
 }
 
@@ -336,7 +337,7 @@ GLint Shader::uniformLocation(const std::string_view & name)
 	{
 		location = glGetUniformLocation(m_program_id, name.data());
 		if(location == -1)
-			std::fprintf(stderr, "Shader[%s]: Uniform not found: %s\n", _name.c_str(), name.data());
+			std::print(stderr, "Shader[{}]: Uniform not found: {}\n", _name, name);
 		m_uniforms_locations[name] = location; // also remember failures (calls will be ignored)
 	}
 	else
@@ -518,7 +519,7 @@ std::tuple<bool, std::string> Shader::getStatusLog(GLuint object, GLenum statusT
 	const auto isShader = glIsShader(object);
 	if(not isShader and not glIsProgram(object))
 	{
-		std::fprintf(stderr, "getStatusLog provided object is neither program nor shader: %d\n", object);
+		std::print(stderr, "getStatusLog provided object is neither program nor shader: {}\n", object);
 		return { false, {} };
 	}
 

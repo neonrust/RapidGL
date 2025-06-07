@@ -5,6 +5,7 @@
 #define TINYDDSLOADER_IMPLEMENTATION
 #include <tinyddsloader.h>
 
+#include <print>
 #include <chrono>
 using namespace std::chrono;
 
@@ -292,11 +293,7 @@ uint8_t Texture::calculateMipMapLevels(size_t width, size_t height, size_t depth
 	const auto use_height = height > 0;
 	const auto use_depth = depth > 0;
 
-	width  >>= 1;
-	height >>= 1;
-	depth  >>= 1;
-
-	uint_fast8_t levels = 1;
+	uint_fast8_t levels = 0;
 
 	for (; levels < max_levels; ++levels)
 	{
@@ -330,7 +327,7 @@ bool Texture2D::Load(const std::filesystem::path& filepath, bool is_srgb, uint32
 
 	if (!data)
 	{
-		fprintf(stderr, "Texture failed to load: %s\n", filepath.string().c_str());
+		std::print(stderr, "Texture failed to load: {}\n", filepath.string());
 		return false;
 	}
 
@@ -377,7 +374,7 @@ bool Texture2D::Load(unsigned char* memory_data, uint32_t data_size, bool is_srg
 
 	if (not data)
 	{
-		fprintf(stderr, "Texture failed to load from the memory.\n");
+		std::print(stderr, "Texture failed to load from the memory.\n");
 		return false;
 	}
 
@@ -424,7 +421,7 @@ bool Texture2D::LoadHdr(const std::filesystem::path & filepath, uint32_t num_mip
 	const auto T0 = steady_clock::now();
 	// if (filepath.extension() != ".hdr")
 	// {
-	// 	fprintf(stderr, "This function is meant for loading HDR images only.\n");
+	// 	std::print(stderr, "This function is meant for loading HDR images only.\n");
 	// 	return false;
 	// }
 
@@ -432,7 +429,7 @@ bool Texture2D::LoadHdr(const std::filesystem::path & filepath, uint32_t num_mip
 
 	if (not data)
 	{
-		fprintf(stderr, "Texture failed to load: %s\n", filepath.generic_string().c_str());
+		std::print(stderr, "Texture failed to load: {}\n", filepath.generic_string());
 		return false;
 	}
 
@@ -455,7 +452,7 @@ bool Texture2D::LoadHdr(const std::filesystem::path & filepath, uint32_t num_mip
 
 	Util::ReleaseTextureData(data);
 
-	std::printf("Loaded HDR texture %s  (%ld ms)\n", filepath.c_str(), duration_cast<milliseconds>(steady_clock::now() - T0).count());
+	std::print("Loaded HDR texture {}  ({} ms)\n", filepath.c_str(), duration_cast<milliseconds>(steady_clock::now() - T0));
 
 	return true;
 }
@@ -467,11 +464,11 @@ bool Texture2D::LoadDds(const std::filesystem::path& filepath)
 
 	if (Result::Success != ret)
 	{
-		std::cout << "Failed to load.[" << filepath << "]\n";
-		std::cout << "Result : " << int(ret) << "\n";
+		std::print("Failed to load.[{}]\n", filepath.string());
+		std::print("Result : {}\n", int(ret));
 
-		fprintf(stderr, "Texture failed to load: %s\n", filepath.string().c_str());
-		fprintf(stderr, "Result: %d", int(ret));
+		std::print(stderr, "Texture failed to load: {}\n", filepath.string());
+		std::print(stderr, "Result: {}\n", int(ret));
 		return false;
 	}
 
@@ -575,7 +572,7 @@ bool TextureCube::Load(const std::filesystem::path* filepaths, bool is_srgb, uin
 
 		if (not images_data[idx])
 		{
-			fprintf(stderr, "Texture failed to load: %s\n", filepaths[idx].string().c_str());
+			std::print(stderr, "Texture failed to load: {}\n", filepaths[idx].string());
 			return false;
 		}
 	}

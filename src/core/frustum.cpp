@@ -1,7 +1,6 @@
 #include "frustum.h"
 #include <glm/mat4x4.hpp>
 #include "bounds.h"
-#include <cstdio>
 
 namespace X
 {
@@ -267,7 +266,7 @@ frustum_cull_result check(const Frustum &f, const bounds::AABB &box, const glm::
 	// if it's not inside the frustum's AABB, it's definitely not visible
 	if(not check(f.aabb(), tfm_aabb))
 	{
-		// std::printf("  CULLED by AABB %s/%s\n", glm::to_string(minp).c_str(), glm::to_string(maxp).c_str());
+		// std::print("  CULLED by AABB {}/{}\n", glm::to_string(minp).c_str(), glm::to_string(maxp).c_str());
 		result.visible = false;
 		result.culled_by_aabb = true;
 		return result;

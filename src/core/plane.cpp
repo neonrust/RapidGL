@@ -1,6 +1,5 @@
 #include "plane.h"
 #include "glm/geometric.hpp"
-#include <cstdio>
 
 namespace RGL
 {
