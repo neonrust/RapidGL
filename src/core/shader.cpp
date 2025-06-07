@@ -276,7 +276,7 @@ void Shader::logLineErrors(const std::filesystem::path & filepath, const std::st
 		}
 
 		line = line.replace(0, 1, filepath);
-		std::print(stderr, "%s\n", line);
+		std::print(stderr, "{}\n", line);
 	}
 }
 
