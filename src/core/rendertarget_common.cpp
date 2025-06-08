@@ -1,10 +1,8 @@
 #include "rendertarget_common.h"
-#include "container_types.h"
 
 #include <print>
 #include <string>
-#include <fstream>
-#include <regex>
+#include "gl_lookup.h"
 
 using namespace std::literals;
 
@@ -57,55 +55,6 @@ bool check_fbo(GLuint fbo_id)
 }
 
 #if !defined(NDEBUG)
-std::string valueEnum(uint32_t value)
-{
-	static dense_map<uint32_t, std::string> enumMap;
-	static bool tried_read = false;
-
-		   // Parse once
-	if (not tried_read)
-	{
-		tried_read = true;
-
-		static const auto gl_h = "thirdparty/glad/include/glad/glad.h"s; // TODO: should be defined by build system
-
-		std::ifstream file(gl_h);
-		if (!file.is_open())
-		{
-			std::print(stderr, "Failed to open: {}\n", gl_h);
-			return {};
-		}
-
-		std::string line;
-		std::regex defineRegex(R"-(#define\s+(GL_[A-Za-z0-9_]+)\s+(0x[0-9A-Fa-f]+|\d+))-");
-
-		while (std::getline(file, line))
-		{
-			std::smatch match;
-			if (std::regex_search(line, match, defineRegex))
-			{
-				std::string name = match[1];
-				std::string valStr = match[2];
-
-				uint32_t val = 0;
-				if (valStr.find("0x") == 0 || valStr.find("0X") == 0)
-					val = uint32_t(std::stoul(valStr, nullptr, 16));
-				else
-					val = uint32_t(std::stoul(valStr));
-
-					   // Only keep first match (many names may share the same value)
-				enumMap.emplace(val, name);
-			}
-		}
-	}
-
-	auto found = enumMap.find(value);
-	if (found != enumMap.end())
-		return found->second;
-	else
-		return "(unknown: " + std::to_string(value) + ")";
-}
-
 void dump_config(const char *fbo_name, GLuint fbo)
 {
 	auto printAttachment = [&](GLenum attachment) {
@@ -128,7 +77,7 @@ void dump_config(const char *fbo_name, GLuint fbo)
 			if (attachment >= GL_COLOR_ATTACHMENT0 and attachment <= GL_COLOR_ATTACHMENT31)
 				label = " Color." + std::to_string(attachment - GL_COLOR_ATTACHMENT0);
 			else
-				label = valueEnum(attachment);
+				label = gl_lookup::enum_name(attachment);
 		}
 
 		std::print("  {}:", label);
@@ -153,7 +102,7 @@ void dump_config(const char *fbo_name, GLuint fbo)
 			glGetTextureLevelParameteriv(obj, 0, GL_TEXTURE_WIDTH, &w);
 			glGetTextureLevelParameteriv(obj, 0, GL_TEXTURE_HEIGHT, &h);
 		}
-		std::print("  {} x {} {} (:#04x)\n", w, h, valueEnum(uint32_t(fmt)), fmt);
+		std::print("  {} x {} {} ({:#04x})\n", w, h, gl_lookup::enum_name(uint32_t(fmt)), fmt);
 	};
 
 	std::print("FBO \"{}\" ({})\n", fbo_name, fbo);
