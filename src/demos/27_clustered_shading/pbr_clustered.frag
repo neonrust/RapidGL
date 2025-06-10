@@ -26,19 +26,19 @@ const vec3 debug_colors[8] = vec3[]
 );
 
 
-layout(std430, binding = SSBO_BIND_LIGHTS) buffer LightsMgmtSSBO
+layout(std430, binding = SSBO_BIND_LIGHTS) readonly buffer LightsMgmtSSBO
 {
 	LightsManagement lights;
 };
 
-layout(std430, binding = SSBO_BIND_SIMPLE_CLUSTERS_AABB) buffer ClustersSimpleSSBO
+layout(std430, binding = SSBO_BIND_SIMPLE_CLUSTERS_AABB) readonly buffer ClustersSimpleSSBO
 {
 	SimpleCluster clusters[];
 };
 
-layout(std430, binding = SSBO_BIND_SHADOW_PARAMS) buffer ShadowParamsSSBO
+layout(std430, binding = SSBO_BIND_SHADOW_PARAMS) readonly buffer ShadowParamsSSBO
 {
-	PointLightShadowParams shadow_params[];
+	LightShadowParams shadow_params[];
 };
 
 vec3  fromRedToGreen(float interpolant);
@@ -240,7 +240,7 @@ float pointLightVisibility(uint index)
 	if((light.base.feature_flags & LIGHT_SHADOW_CASTER) == 0)
 		return 1;
 
-	PointLightShadowParams params = shadow_params[index];
+	LightShadowParams params = shadow_params[index];
 
 	vec3 light_to_frag = in_world_pos - light.position;
 
