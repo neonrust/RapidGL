@@ -54,7 +54,7 @@ namespace RGL
         if (ImGui::Begin("Perf info", 0, (corner != -1 ? ImGuiWindowFlags_NoMove : 0) | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
         {
 			ImGui::Text("%.1f FPS (%.3f ms/frame)",	ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
-			ImGui::Text("r-time: %ld us (~%ld FPS)", _render_time.count(), 1'000'000 / _render_time.count());
+			ImGui::Text("r-time: %ld us (~%ld FPS)", _render_time.average().count(), 1'000'000 / _render_time.average().count());
         }
         ImGui::End();
         /* Overlay end */
@@ -99,12 +99,12 @@ namespace RGL
         std::vector<uint8_t> image;
         image.resize(width * height * 3);
 
-        glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, image.data());
+		glReadPixels(0, 0, GLsizei(width), GLsizei(height), GL_RGB, GL_UNSIGNED_BYTE, image.data());
 
         if (resize)
         {
             auto resized_image = image;
-            stbir_resize_uint8(image.data(), width, height, 0, resized_image.data(), dst_width, dst_height, 0, 3);
+			stbir_resize_uint8(image.data(), GLsizei(width), GLsizei(height), 0, resized_image.data(), int(dst_width), int(dst_height), 0, 3);
 
             width  = dst_width;
             height = dst_height;
@@ -121,7 +121,7 @@ namespace RGL
         filepath += ".png";
 
         stbi_flip_vertically_on_write(true);
-        auto ret = stbi_write_png(filepath.string().c_str(), width, height, 3, image.data(), 0);
+		auto ret = stbi_write_png(filepath.string().c_str(), GLsizei(width), GLsizei(height), 3, image.data(), 0);
 
         return ret;
     }
@@ -184,7 +184,7 @@ namespace RGL
                 /* Render */
 				const auto T0 = steady_clock::now();
 				render();
-				_render_time = duration_cast<microseconds>(steady_clock::now() - T0);
+				_render_time.add(duration_cast<microseconds>(steady_clock::now() - T0));
 
                 GUI::prepare();
                 {

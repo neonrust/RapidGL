@@ -1,5 +1,6 @@
 #pragma once
 #include "common.h"
+#include "sample_window.h"
 #include <string>
 #include <cstdint>
 #include <chrono>
@@ -36,6 +37,6 @@ namespace RGL
         double   m_frame_time;
         uint32_t m_fps;
         bool     m_is_running;
-		std::chrono::microseconds _render_time;
+		SampleWindow<std::chrono::microseconds, 30> _render_time;
 	};
 }
