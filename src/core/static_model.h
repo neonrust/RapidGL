@@ -59,7 +59,8 @@ public:
 		m_vao_name  (other.m_vao_name),
 		m_vbo_name  (other.m_vbo_name),
 		m_ibo_name  (other.m_ibo_name),
-		m_draw_mode (other.m_draw_mode)
+		m_draw_mode (other.m_draw_mode),
+		_ok(false)
 	{
 		other.m_unit_scale = 1;
 		other.m_vao_name   = 0;
@@ -115,6 +116,8 @@ public:
 
 	inline const bounds::AABB &aabb() const { return _aabb; }
 
+	inline operator bool () const { return _ok; }
+
 protected:
 	// For converting between ASSIMP and glm
 	static inline glm::vec3 vec3_cast(const aiVector3D& v)   { return glm::vec3(v.x, v.y, v.z); }
@@ -143,6 +146,7 @@ protected:
 	GLuint   m_ibo_name;
 	DrawMode m_draw_mode;
 	bounds::AABB _aabb;
+	bool _ok;
 };
 
 }

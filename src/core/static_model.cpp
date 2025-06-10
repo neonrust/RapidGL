@@ -135,13 +135,16 @@ bool StaticModel::Load(const std::filesystem::path& filepath)
 												 aiProcess_RemoveRedundantMaterials |
 												 aiProcess_GenBoundingBoxes );
 
-	if (!scene || scene->mFlags == AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
+	_ok = scene and scene->mFlags != AI_SCENE_FLAGS_INCOMPLETE and scene->mRootNode;
+
+	if(not _ok)
 	{
-		std::print(stderr, "\x1b[33;1mError\x1b[m loading mesh failed: %s: %s\n", filepath.generic_string().c_str(), importer.GetErrorString());
+		std::print(stderr, "\x1b[97;41;1mError\x1b[m loading mesh failed: {}: {}\n", filepath.generic_string().c_str(), importer.GetErrorString());
 		return false;
 	}
 
-	return ParseScene(scene, filepath);
+	_ok = ParseScene(scene, filepath);
+	return _ok;
 }
 
 bool StaticModel::ParseScene(const aiScene* scene, const std::filesystem::path& filepath)
