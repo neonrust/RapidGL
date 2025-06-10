@@ -2,12 +2,12 @@
 
 #include "glad/glad.h"
 
-#include <cstring>
 #include <memory>
 #include <vector>
 #include <cassert>
 #include <span>
 #include <print>
+#include <cstring>  // std::memset
 
 #include "buffer.h"
 
@@ -20,18 +20,21 @@ class ShaderStorage : public Buffer
 public:
 	using value_type = T;
 
+private:
+	static constexpr size_t type_size();
 public:
-	ShaderStorage(BufferUsage default_usage=DynamicDraw) :
-		Buffer(default_usage)
+	static constexpr size_t elem_size = type_size();
+
+public:
+	ShaderStorage(std::string_view name, BufferUsage default_usage=DynamicDraw) :
+		Buffer(name, GL_SHADER_STORAGE_BUFFER, default_usage)
 	{
-		_buffer_type = GL_SHADER_STORAGE_BUFFER;
 	}
 
 	void bindIndirect() const;
 
-	void set(const std::vector<T> &data, BufferUsage usage=DefaultUsage);
+	void set(const std::vector<T> &data);
 	bool set(size_t index, const T &item);
-	void clear();
 
 	inline size_t size() const { return _size; }
 
@@ -62,18 +65,18 @@ private:
 };
 
 
-template<typename T>
+template<typename T> // requires (std::is_same_v<T, uint32_t>)
 inline void ShaderStorage<T>::bindIndirect() const
 {
 	glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, id());
 }
 
 template<typename T>
-void ShaderStorage<T>::set(const std::vector<T> &data, BufferUsage usage)
+void ShaderStorage<T>::set(const std::vector<T> &data)
 {
 	ensureCreated();
 
-	glNamedBufferData(id(), data.size() * sizeof(T), data.data(), usage != DefaultUsage? usage: this->usage());
+	upload(data.data(), data.size() * elem_size);
 	_size = data.size();
 }
 
@@ -84,18 +87,9 @@ inline bool ShaderStorage<T>::set(size_t index, const T &item)
 
 	assert(index < _size);
 	if(index < _size)
-		glNamedBufferSubData(id(), index * sizeof(T), sizeof(T), &item);
+		upload(&item, sizeof(T), index * elem_size);
 
 	return index < _size;
-}
-
-template<typename T>
-inline void ShaderStorage<T>::clear()
-{
-	ensureCreated();
-
-	static constexpr uint32_t clear_val = 0;
-	glClearNamedBufferData(id(), GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &clear_val);
 }
 
 template<typename T>
@@ -104,13 +98,15 @@ inline void ShaderStorage<T>::resize(size_t size)
 	ensureCreated();
 
 	assert(size > 0);
-	glNamedBufferData(id(), size * sizeof(T), nullptr, usage());
+	upload(nullptr, size * elem_size);
 	_size = size;
 }
 
 template<typename T>
 void ShaderStorage<T>::copyTo(ShaderStorage<T> &dest, size_t count, size_t readStart, size_t writeStart) const
 {
+	// TODO: move to base class
+
 	ensureCreated();
 
 	if(not count)
@@ -128,7 +124,7 @@ std::unique_ptr<const typename ShaderStorage<T>::View> ShaderStorage<T>::view()
 	assert(id() and _size and not _view_active);
 	if(_view_active)
 	{
-		std::fprintf(stderr, "SSBO: Returning NULL view b/c a view already exists!\n");
+		std::print(stderr, "SSBO: Returning NULL view b/c a view already exists!\n");
 		return {};
 	}
 
@@ -138,6 +134,23 @@ std::unique_ptr<const typename ShaderStorage<T>::View> ShaderStorage<T>::view()
 	auto *v = new View(this, start);
 	_view_active = true;
 	return std::unique_ptr<View>(v);
+}
+
+namespace _private
+{
+template<typename T>
+concept HasSize = requires {
+	{ T::_struct_size } -> std::convertible_to<size_t>;
+};
+}
+
+template<typename T>
+constexpr size_t ShaderStorage<T>::type_size()
+{
+	if constexpr (_private::HasSize<T>)
+		return T::_struct_size;
+	else
+		return sizeof(T);
 }
 
 template<typename T>
@@ -168,9 +181,8 @@ template<size_t count=1> requires (count <= 32)
 class AtomicCounterBuffer : protected ShaderStorage<uint32_t>
 {
 public:
-	AtomicCounterBuffer(BufferUsage usage=DefaultUsage);
+	AtomicCounterBuffer(std::string_view name, BufferUsage usage=DefaultUsage);
 
-	void bindCounters();
 	void clear();
 
 	template<size_t index> requires (index < count)
@@ -181,18 +193,11 @@ protected:
 };
 
 template<size_t count> requires (count <= 32)
-inline AtomicCounterBuffer<count>::AtomicCounterBuffer(BufferUsage usage) :
-	ShaderStorage<uint32_t>(usage)
+inline AtomicCounterBuffer<count>::AtomicCounterBuffer(std::string_view name, BufferUsage usage) :
+	ShaderStorage<uint32_t>(name, usage)
 {
+	// TODO: set_buffer_type ?
 	_buffer_type = GL_ATOMIC_COUNTER_BUFFER;
-}
-
-template<size_t count> requires (count <= 32)
-void AtomicCounterBuffer<count>::bindCounters()
-{
-	ensureCreated();
-
-	glBindBuffer(_buffer_type, id());
 }
 
 template<size_t count> requires (count <= 32)
@@ -203,7 +208,7 @@ void AtomicCounterBuffer<count>::clear()
 	GLuint values[count];
 	std::memset(&values, sizeof(uint32_t)*count, 0);
 
-	glNamedBufferData(id(), sizeof(values), values, usage());
+	upload(values, sizeof(values));
 }
 
 template<size_t count> requires (count <= 32)
@@ -218,7 +223,7 @@ void AtomicCounterBuffer<count>::set(uint32_t value)
 {
 	ensureCreated();
 
-	glNamedBufferSubData(id(), index + sizeof(uint32_t), sizeof(uint32_t), &value);
+	upload(&value, sizeof(uint32_t), index + sizeof(uint32_t));
 }
 
 
@@ -227,14 +232,17 @@ void AtomicCounterBuffer<count>::set(uint32_t value)
 
 
 template<typename T, size_t size> requires (size > 0 && sizeof(T) >= 4)
-class MappedSSBO : protected ShaderStorage<T>
+class MappedSSBO : protected ShaderStorage<T> // T must be @interop struct
 {
 public:
 	// TODO: add control over GL_MAP_COHERENT_BIT / GL_MAP_FLUSH_EXPLICIT_BIT use?
-	inline MappedSSBO(BufferUsage default_usage=DynamicDraw) : ShaderStorage<T>(default_usage) {};
+	inline MappedSSBO(std::string_view name, BufferUsage default_usage=DynamicDraw) :
+		ShaderStorage<T>(name, default_usage)
+	{};
 
 	using ShaderStorage<T>::setBindIndex;
 	using ShaderStorage<T>::clear;
+	using ShaderStorage<T>::elem_size;
 
 	inline       T *operator -> ()       requires (size == 1) { this->ensureCreated(); return _data; }
 	inline const T *operator -> () const requires (size == 1) { this->ensureCreated(); return _data; }
@@ -260,23 +268,23 @@ private:
 	T *_data { nullptr };
 };
 
-template<typename T, size_t size> requires (size > 0 && sizeof(T) >= 4)
-void MappedSSBO<T, size>::flush()
+template<typename T, size_t N> requires (N > 0 && sizeof(T) >= 4)
+void MappedSSBO<T, N>::flush()
 {
 	if(not this->id())  // calling this while still unmapped makes little sense
 		return;
-	glFlushMappedNamedBufferRange(this->id(), 0, size*sizeof(T));
+	glFlushMappedNamedBufferRange(this->id(), 0, N*sizeof(T));
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }
 
-template<typename T, size_t size> requires (size > 0 && sizeof(T) >= 4)
-inline void MappedSSBO<T, size>::onCreate()
+template<typename T, size_t N> requires (N > 0 && sizeof(T) >= 4)
+inline void MappedSSBO<T, N>::onCreate()
 {
 	static constexpr auto flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT;
 	static constexpr auto map_flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_FLUSH_EXPLICIT_BIT;
 
-	glNamedBufferStorage(this->id(), size*sizeof(T), nullptr, flags);
-	_data = static_cast<T *>(glMapNamedBufferRange(this->id(), 0, size*sizeof(T), map_flags));
+	glNamedBufferStorage(this->id(), N*sizeof(T), nullptr, flags);
+	_data = static_cast<T *>(glMapNamedBufferRange(this->id(), 0, N*elem_size, map_flags));
 }
 
 } // RGL::buffer

@@ -2,6 +2,7 @@
 
 #include "glad/glad.h"
 
+#include <string_view>
 
 namespace RGL::buffer
 {
@@ -19,18 +20,14 @@ enum BufferUsage : GLenum
 class Buffer
 {
 public:
-	Buffer(BufferUsage default_usage=DynamicDraw) :
-		_default_usage(default_usage)
+	Buffer(std::string_view name, GLenum buffer_type, BufferUsage default_usage=DynamicDraw) :
+		_buffer_type(buffer_type),
+		_default_usage(default_usage),
+		_name(name)
 	{
 	}
 
-	~Buffer()
-	{
-		if(*this)
-			glDeleteBuffers(1, &_id);
-		_id = 0;
-	}
-
+	virtual ~Buffer();
 
 	void setBindIndex(GLuint index);
 	void bind();
@@ -38,11 +35,15 @@ public:
 	inline uint32_t id() const { return _id; }
 	inline BufferUsage usage() const { return _default_usage; }
 
+	void clear();
+
 	inline operator bool () const { return _id >= 0; }
 
 
 protected:
 	bool ensureCreated() const;    // returns true if it was created
+	void upload(void *ptr, size_t size);
+	void upload(void *ptr, size_t size, size_t offset);
 	virtual void onCreate() {};
 
 protected:
@@ -50,8 +51,9 @@ protected:
 
 private:
 	mutable GLuint _id { 0 };
-	GLuint _bind_index { GLuint(-1) };
 	BufferUsage _default_usage;
+	std::string_view _name;
+	GLuint _bind_index { GLuint(-1) };
 };
 
 } // RGL::buffer
