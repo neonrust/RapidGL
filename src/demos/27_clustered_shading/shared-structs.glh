@@ -9,6 +9,7 @@ using uvec3 = int;
 using uint = int;
 #endif
 
+// @interop
 struct BaseLight
 {
     vec3 color;
@@ -18,12 +19,14 @@ struct BaseLight
 	uint uuid;
 };
 
+// @interop
 struct DirectionalLight
 {
     BaseLight base;
     vec3 direction;
 };
 
+// @interop
 struct PointLight
 {
     BaseLight base;
@@ -31,6 +34,7 @@ struct PointLight
     float radius;
 };
 
+// @interop
 struct SpotLight
 {
     PointLight point;
@@ -40,6 +44,7 @@ struct SpotLight
 	float bounds_radius;  // also the distance from 'point.position' along 'direction'
 };
 
+// @interop
 struct AreaLight
 {
     BaseLight base;
@@ -47,19 +52,51 @@ struct AreaLight
     bool two_sided;
 };
 
-struct LightsManagement
+// @interop
+struct MergedLight
+{
+	// all light types in a single struct
+	//  - makes shadow map prioritization simpler
+	//  - can then use a single array (dynamic size, w/ offsets by type)
+	//     -> MUCH faster shader compilation
+
+	vec3 color;
+	uint uuid;
+    vec3 position;
+	uint type_flags;  // LIGHT_*
+    vec3 direction;   // also directional light
+	float intensity;
+    float radius;
+    float inner_angle;
+    float outer_angle;
+	float bounds_radius; // tighter bounds for spot; distance from 'position', along 'direction'
+
+	vec4 points[4];  // only area light
+
+	float fog_intensity;  // might be separate SSBO ? (together w/ other fog/scattering stuff)
+	                      // removing it from here will shrink this struct, 144->128
+};
+
+// @ubo
+struct LightCounts
 {
 	uint num_dir_lights;
 	uint num_point_lights;
 	uint num_spot_lights;
 	uint num_area_lights;
+};
+
+// @interop
+struct LightsManagement
+{
 	DirectionalLight dir_lights[1];  // 0..1
 	PointLight point_lights[MAX_POINT_LIGHTS];
 	SpotLight spot_lights[MAX_SPOT_LIGHTS];
 	AreaLight area_lights[MAX_AREA_LIGHTS];
 };
 
-struct PointLightShadowParams
+// @interop
+struct LightShadowParams
 {
 	mat4 view_proj[6];
 	vec4 atlas_rect[6];
