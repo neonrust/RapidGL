@@ -82,6 +82,12 @@ void opengl_message_callback([[maybe_unused]] GLenum source,
 using namespace RGL;
 
 ClusteredShading::ClusteredShading() :
+	m_simple_clusters_aabb_ssbo("simple-clusters"sv),
+	m_lights_ssbo("lights"sv),
+	m_light_counts_ubo("light-counts"sv),
+	m_shadow_map_params_ssbo("shadow-map-params"sv),
+	m_cluster_discovery_ssbo("cluster-discovery"sv),
+	m_cull_lights_args_ssbo("cull-lights"sv),
 	m_exposure            (0.4f),
 	m_gamma               (2.2f),
 	m_background_lod_level(1.2f),
@@ -95,9 +101,10 @@ ClusteredShading::ClusteredShading() :
 	m_fog_density         (0.f), // [ 0, 0.5 ]   nice-ish value: 0.015
 	_ray_march_noise      (1)
 {
-	m_lights_ssbo.setBindIndex(SSBO_BIND_LIGHTS);
-	m_shadow_map_params_ssbo.setBindIndex(SSBO_BIND_SHADOW_PARAMS);
 	m_simple_clusters_aabb_ssbo.setBindIndex(SSBO_BIND_SIMPLE_CLUSTERS_AABB);
+	m_lights_ssbo.setBindIndex(SSBO_BIND_LIGHTS);
+	m_light_counts_ubo.setBindIndex(UBO_BIND_LIGHT_COUNTS);
+	m_shadow_map_params_ssbo.setBindIndex(SSBO_BIND_SHADOW_PARAMS);
 	m_cluster_discovery_ssbo.setBindIndex(SSBO_BIND_CLUSTER_DISCOVERY);
 	m_cull_lights_args_ssbo.setBindIndex(SSBO_BIND_CULL_LIGHTS_ARGS);
 }
@@ -153,7 +160,8 @@ void ClusteredShading::init_app()
 
     /// Randomly initialize lights
 	::srand(3281991);
-    GeneratePointLights();
+	m_light_counts_ubo.clear();
+	GeneratePointLights();
     GenerateSpotLights();
     GenerateAreaLights();
 
@@ -172,20 +180,19 @@ void ClusteredShading::init_app()
 		// _scene.emplace_back(sponza_model, world_trans);
 
 		auto testroom_model = std::make_shared<StaticModel>();
-		testroom_model->Load(models_path / "testroom" / "testroom.gltf");
+		testroom_model->Load(models_path / "testroom" / "white-room.gltf");
+		assert(*testroom_model);
 		_scene.emplace_back(testroom_model, origin);
 
 		auto default_cube = std::make_shared<StaticModel>();
 		default_cube->Load(models_path / "default-cube.gltf");
+		assert(*default_cube);
 		_scene.emplace_back(default_cube, origin);
 
 		// auto floor = std::make_shared<StaticModel>();
 		// floor->Load(models_path / "floor.gltf");
 		// _scene.emplace_back(floor, glm::mat4(1));
 	}
-
-	// Create depth pre-pass render target
-	m_depth_pass_rt.create("depth-pass", Window::width(), Window::height(), RenderTarget::Color::None, RenderTarget::Depth::Texture);
 
     /// Prepare lights' SSBOs.
 	UpdateLightsSSBOs();  // initial update will create the GL buffers
@@ -341,7 +348,10 @@ void ClusteredShading::init_app()
 
 	const auto T1 = steady_clock::now();
 	const auto shader_init_time = duration_cast<microseconds>(T1 - T0);
-	std::printf("Shader init time: %.1f ms\n", float(shader_init_time.count())/1000.f);
+	std::print("Shader init time: {:.1f} ms\n", float(shader_init_time.count())/1000.f);
+
+	// Create depth pre-pass render target
+	m_depth_pass_rt.create("depth-pass", Window::width(), Window::height(), RenderTarget::Color::None, RenderTarget::Depth::Texture);
 
 	_rt.create("rt", Window::width(), Window::height());
 	_rt.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipNearest); // not necessary?
@@ -916,7 +926,7 @@ void ClusteredShading::update(double delta_time)
 			spot.point.position = orbit_mat * glm::vec4(spot.point.position, 1);
 		}
 */
-		for(auto idx = 0u; idx < m_lights_ssbo->num_point_lights; ++idx)
+		for(auto idx = 0u; idx < m_light_counts_ubo->num_point_lights; ++idx)
 		{
 			PointLight &point = m_lights_ssbo->point_lights[idx];
 			// orbit aounr the orgin
@@ -935,13 +945,15 @@ void ClusteredShading::update(double delta_time)
   //       glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
 		// UpdateLightsSSBOs();
-	}
-	UpdateLightsSSBOs();
 
+		UpdateLightsSSBOs();
+	}
 }
 
 void ClusteredShading::GenerateAreaLights()
 {
+	m_light_counts_ubo->num_area_lights = 0;
+
 	/*
     auto computeAreaLightPoints = [](glm::vec3 position, glm::vec2 size, glm::vec4 points[4])
     {
@@ -1004,11 +1016,11 @@ void ClusteredShading::GenerateAreaLights()
         x0 += step;
     }
 */
+	m_light_counts_ubo.flush();
 }
 
 void ClusteredShading::GeneratePointLights()
 {
-	m_lights_ssbo->num_point_lights = 0;
 
 #if 0
 	m_point_lights.push_back({
@@ -1074,9 +1086,9 @@ void ClusteredShading::GeneratePointLights()
 	// });
 	// return;
 
-	m_lights_ssbo->num_point_lights = 0;
+	m_light_counts_ubo->num_point_lights = 0;
 
-	for(auto idx = 0u; idx < 1; ++idx)
+	for(auto idx = 0u; idx < 3; ++idx)
 	{
 		auto rand_color= hsv2rgb(
 			float(Util::RandomDouble(1, 360)),
@@ -1085,7 +1097,7 @@ void ClusteredShading::GeneratePointLights()
 		);
 		auto rand_pos = Util::RandomVec3({ -18, 0.5f, -18 }, { 18, 3.5f, 18 });
 
-		auto rand_intensity = float(Util::RandomDouble(1, 100)) * 10;
+		auto rand_intensity = float(Util::RandomDouble(1, 100)) * 3;
 
 		m_lights_ssbo->point_lights[idx] = {
 			.base = {
@@ -1099,7 +1111,7 @@ void ClusteredShading::GeneratePointLights()
 			.position = rand_pos,
 			.radius = std::pow(rand_intensity, 0.5f),   // maybe this could be tightened as the total light count goes up?
 		};
-		m_lights_ssbo->num_point_lights = idx + 1;
+		m_light_counts_ubo->num_point_lights = idx + 1;
 
 		std::printf("light[%2u] @ %5.1f; %3.1f; %5.1f  %3u,%3u,%3u  %4.0f\n",
 					idx,
@@ -1145,11 +1157,13 @@ void ClusteredShading::GeneratePointLights()
 		.radius = 10,
 	});
 #endif
+	m_light_counts_ubo.flush();
 }
 
 void ClusteredShading::GenerateSpotLights()
 {
 	// m_spot_lights.clear();
+	m_light_counts_ubo->num_spot_lights = 0;
 
 #if 0
 	m_spot_lights.push_back({
@@ -1292,11 +1306,13 @@ void ClusteredShading::GenerateSpotLights()
 		spot.bounds_radius = spot.point.radius * (1 + tan_theta*tan_theta*0.5f);
 	}
 */
+	m_light_counts_ubo.flush();
 }
 
 void ClusteredShading::UpdateLightsSSBOs()
 {
 	m_lights_ssbo.flush();
+	// m_light_counts_ubo.flush();
 }
 
 void ClusteredShading::HdrEquirectangularToCubemap(const std::shared_ptr<RenderTarget::Cube>& cubemap_rt, const std::shared_ptr<Texture2D>& equirectangular_map)
@@ -1534,11 +1550,11 @@ void ClusteredShading::render()
 
 
 	// Render area lights geometry, to '_rt'
-	if(m_draw_area_lights_geometry)
+	if(m_draw_area_lights_geometry and m_light_counts_ubo->num_area_lights > 0)
 	{
 		m_draw_area_lights_geometry_shader->bind();
 		m_draw_area_lights_geometry_shader->setUniform("u_view_projection"sv, m_camera.projectionTransform() * m_camera.viewTransform());
-		glDrawArrays(GL_TRIANGLES, 0, GLsizei(6 * m_lights_ssbo->num_area_lights));
+		glDrawArrays(GL_TRIANGLES, 0, GLsizei(6 * m_light_counts_ubo->num_area_lights));
 	}
 
 	renderSkybox(); // to '_rt'
@@ -1619,7 +1635,7 @@ void ClusteredShading::render()
 	draw2d(_final_rt.color_texture(), BlendMode::Replace);
 
 
-	if(m_draw_aabb)
+	if(m_debug_draw_aabb)
 		debugDrawSceneBounds();
 	if(m_debug_draw_cluster_grid)
 		debugDrawClusterGrid();
@@ -1632,7 +1648,7 @@ static constexpr glm::vec3 s_cube_face_forward[] = {
 };
 static constexpr glm::vec3 s_cube_face_up[] = {
 	-AXIS_Y, -AXIS_Y,
-	AXIS_Z, -AXIS_Z,
+	 AXIS_Z, -AXIS_Z,
 	-AXIS_Y, -AXIS_Y,
 };
 
@@ -1640,6 +1656,8 @@ void ClusteredShading::renderShadowMaps()
 {
 	glCullFace(GL_FRONT);  // render only back faces   TODO face culling is whack! (see init_app())
 	glEnable(GL_CULL_FACE);
+	glEnable(GL_SCISSOR_TEST);
+
 	// TODO: render shadow-maps
 	// if light or meshes within its radius moved -> implies caching, somehow
 	//   cap the number of shadow maps (maybe dynamically, based on fps), e.g. top X closest
@@ -1657,48 +1675,109 @@ void ClusteredShading::renderShadowMaps()
 	}
 #endif
 
-	// need to use the scissor during atlas update; to avoid touchting pixels outside each tile
-	glEnable(GL_SCISSOR_TEST);
 
-	auto &light = m_lights_ssbo->point_lights[0];
-	auto aspect = 1.f;  // i.e. square
+	// calculate "priority" for all shadow casting lights
+	// TODO: this may be done in parallel, or even on the GPU
 
-	const glm::vec2 atlas_size { float(_shadow_atlas.width()), float(_shadow_atlas.height()) };
-
-	const auto lightProjection = glm::perspective(glm::radians(90.0f), aspect, 0.1f, light.radius);
-	auto tile_size = 1024u;
-
-	// TODO ideally, these 6 faces should generated using a single draw call
-	//   by using a geometry shader
-
-	PointLightShadowParams params;
-
-	for(auto face = 0u; face < 6; ++face)
+	struct LightImportance
 	{
-		glm::uvec4 tile_rect = {
-			(face % 3)*tile_size,
-			(face / 3)*tile_size,
-			tile_size,
-			tile_size,
-		};
+		float importance;
+		uint index;
+	};
 
-		const auto lightView = glm::lookAt(light.position, light.position + s_cube_face_forward[face], s_cube_face_up[face]);
-		const auto lightVP = lightProjection * lightView;
+	static std::vector<LightImportance> importance;
+	if(importance.capacity() == 0)
+		importance.reserve(MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS);// TODO: also area lights?
+	importance.clear();
 
-		// TODO: only render objects whose AABB intersects with the light's sphere (the clip planes help though)
-		renderShadowDepth(light.position, light.radius, lightVP, _shadow_atlas, tile_rect);
+	static const auto radius_power = 0.7f;
 
-		params.atlas_rect[face] = glm::vec4(tile_rect) / glm::vec4(atlas_size, atlas_size);
-		params.view_proj[face] = lightVP;
+	auto light_importance = [cam_pos=m_camera.position()](const PointLight &light) -> float {
+		const float distance = std::max(1.f, glm::length(light.position - cam_pos) - light.radius);
+		return std::pow(light.radius, radius_power) / distance; // radius/intensity is basically the same
+	};
 
-		m_shadow_map_params_ssbo[0] = params;
+	for(auto idx = 0u; idx < m_light_counts_ubo->num_point_lights; ++idx)
+	{
+		const auto &light = m_lights_ssbo->point_lights[idx];
+
+		if(light.base.feature_flags & LIGHT_SHADOW_CASTER)
+			importance.push_back({ .importance = light_importance(light), .index = idx });
 	}
 
+	uint32_t index_offset = MAX_POINT_LIGHTS;
+	for(auto idx = 0u; idx < m_light_counts_ubo->num_spot_lights; ++idx)
+	{
+		const auto &light = m_lights_ssbo->spot_lights[idx].point;
+
+		if(light.base.feature_flags & LIGHT_SHADOW_CASTER)
+			importance.push_back({ .importance = light_importance(light), .index = idx + index_offset });
+	}
+	// TODO: also area lights?
+
+	std::sort(importance.begin(), importance.end(), [](const auto &A, const auto &B) {
+		return A.importance > B.importance;
+	});
+
+	// TODO: distribute these priorities into 5-10 "buckets"
+	//   these buckets correspond to how large the shadowcast
+	// The different buckets is a property of the shadow atlas itself,
+	//   essentially, what it supports
+
+	// need to use the scissor during atlas update; to avoid touchting pixels outside each tile
+
+
+	static constexpr auto aspect = 1.f;  // i.e. square
+	const glm::vec2 atlas_size { float(_shadow_atlas.width()), float(_shadow_atlas.height()) };
+	auto tile_size = 1024u;
+
+	for(auto light_idx = 0u; light_idx < 1/*m_lights_ssbo->num_point_lights*/; ++light_idx)
+	{
+		auto &light = m_lights_ssbo->point_lights[light_idx];
+		if((light.base.feature_flags & LIGHT_SHADOW_CASTER) == 0)
+			continue;
+
+		// TODO: is there any non-static objects inside the lights' radius?
+		//   if only static objects, no need to update the shadow map
+
+		glm::uvec2 bottom_left { 0, 0 };
+
+		const auto lightProjection = glm::perspective(glm::radians(90.0f), aspect, 0.1f, light.radius);
+
+		// TODO ideally, these 6 faces should be generated using a single draw call
+		//   by using a geometry shader
+
+		LightShadowParams params;
+
+		for(auto face = 0u; face < 6; ++face)
+		{
+			glm::uvec4 tile_rect = {
+				(face % 3)*tile_size + bottom_left.x,
+				(face / 3)*tile_size + bottom_left.y,
+				tile_size,
+				tile_size,
+			};
+
+			const auto &view_forward = s_cube_face_forward[face];
+			const auto &view_up = s_cube_face_up[face];
+
+			const auto lightView = glm::lookAt(light.position, light.position + view_forward, view_up);
+			const auto lightVP = lightProjection * lightView;
+
+			renderShadowDepth(light.position, light.radius, lightVP, _shadow_atlas, tile_rect);
+
+			params.atlas_rect[face] = glm::vec4(tile_rect) / glm::vec4(atlas_size, atlas_size);
+			params.view_proj[face] = lightVP;
+		}
+
+		m_shadow_map_params_ssbo[light_idx] = params;
+
+		tile_size <<= 1;
+	}
 	// TODO: maybe use a set(index, value) that also sets a dirty flag
 	//   then flush only writes those?
 	m_shadow_map_params_ssbo.flush();
 
-	glDisable(GL_SCISSOR_TEST);
 #if 0
 	// lights farther away than this (squared), will not cast a shadow
 	static const float cut_off_distance_sq = 50.f * 50.f;
@@ -1789,13 +1868,9 @@ void ClusteredShading::renderShadowMaps()
 		renderShadowMap(m_area_lights[item.index]);
 #endif
 
+	glDisable(GL_SCISSOR_TEST);
 	glDisable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
-}
-
-void ClusteredShading::renderShadowMap(const PointLight &light)
-{
-	(void)light;
 }
 
 void ClusteredShading::renderSkybox()
@@ -1880,7 +1955,7 @@ void ClusteredShading::debugDrawSceneBounds()
 		debugDrawSpotLight(spot, color);
 	}
 */
-	for(auto idx = 0u; idx < m_lights_ssbo->num_point_lights; ++idx)
+	for(auto idx = 0u; idx < m_light_counts_ubo->num_point_lights; ++idx)
 	{
 		const PointLight &point = m_lights_ssbo->point_lights[idx];
 		const auto color = glm::vec4(glm::normalize(point.base.color), 1);
@@ -2196,7 +2271,7 @@ void ClusteredShading::debugDrawClusterGrid()
 			nonempty_clusters.push_back(idx);
 	}
 	std::sort(nonempty_clusters.begin(), nonempty_clusters.end());
-
+/*
 	auto index2coord = [this](auto index) -> glm::uvec3 {
 		return glm::uvec3 {
 			index % m_cluster_resolution.x,
@@ -2210,7 +2285,7 @@ void ClusteredShading::debugDrawClusterGrid()
 		size -= glm::uvec2{ 2, 2 };
 		debugDrawRect(top_left, size, cluster_color, 0.f);
 	};
-
+*/
 	// auto c_lights_view = m_cluster_lights_ssbo.view();
 	auto clusters_view = m_simple_clusters_aabb_ssbo.view();
 	// auto points_view = m_point_lights_ssbo.view();
@@ -2226,6 +2301,7 @@ void ClusteredShading::debugDrawClusterGrid()
 	visited_top.reserve(m_cluster_resolution.x * m_cluster_resolution.z);
 	visited_top.clear();
 
+	/*
 	auto keep_max = [](auto &target, auto value) {
 		if(value > target)
 			target = value;
@@ -2258,6 +2334,7 @@ void ClusteredShading::debugDrawClusterGrid()
 			keep_max(visited_top[top_coord], num_lights);
 		}
 	}
+*/
 	// std::puts("");
 
 	auto draw_light_counts = [this, &text_color](auto top_left, auto cell_size, auto visited) {
@@ -2430,10 +2507,6 @@ void ClusteredShading::renderScene(const glm::mat4 &view_projection, Shader &sha
 	//   (AnimatedMode::BoneTransform() genereates a list of bone transforms, done once, but the actual skinning is in the shader)
 
 
-	// return;
-
-
-
 	for(const auto &obj: _scenePvs)
 	{
 		shader.setUniform("u_mvp"sv,   view_projection * obj.transform);
@@ -2462,6 +2535,8 @@ void ClusteredShading::renderDepth(const glm::mat4 &view_projection, RenderTarge
 
 void ClusteredShading::renderShadowDepth(const glm::vec3 &pos, float far_z, const glm::mat4 &view_projection, RenderTarget::Texture2d &target, const glm::ivec4 &rect)
 {
+	// TODO: ideally, only render objects whose AABB intersects with the sphere { pos, far_z }
+
 	target.bindRenderTarget(RenderTarget::DepthBuffer, rect);
 
 	glDepthMask(GL_TRUE);
@@ -2579,7 +2654,7 @@ void ClusteredShading::render_gui()
 						cam_up.x, cam_up.y, cam_up.z);
 			ImGui::Text("PVS size : %lu", _scenePvs.size());
 
-			ImGui::Checkbox("Draw AABB", &m_draw_aabb);
+			ImGui::Checkbox("Draw AABB", &m_debug_draw_aabb);
 			if(ImGui::SliderFloat("FOV", &m_camera_fov, 25.f, 150.f))
 				calculateShadingClusterGrid();
 		}
@@ -2653,11 +2728,11 @@ void ClusteredShading::render_gui()
 
 		if(ImGui::CollapsingHeader("Shadows", ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			ImGui::SliderFloat("Bias constant",    &m_shadow_bias_constant,       -0.02f,   0.02f, "%.3f");
-			ImGui::SliderFloat("Bias slope scale", &m_shadow_bias_slope_scale,    0.1f,  5.f,   "%.1f");
-			ImGui::SliderFloat("Bias slope power", &m_shadow_bias_slope_power,    0.01f, 5.f,   "%.2f");
-			ImGui::SliderFloat("Bias dist. scale", &m_shadow_bias_distance_scale, 0.f,   0.001f,"%.3f");
-			ImGui::SliderFloat("Bias scale",       &m_shadow_bias_scale,          0.f,   2.f,   "%.1f");
+			ImGui::SliderFloat("Bias constant",    &m_shadow_bias_constant,      -0.02f,   0.02f, "%.3f");
+			ImGui::SliderFloat("Bias slope scale", &m_shadow_bias_slope_scale,    0.f,    5.f,   "%.1f");
+			ImGui::SliderFloat("Bias slope power", &m_shadow_bias_slope_power,    0.01f,  5.f,   "%.2f");
+			ImGui::SliderFloat("Bias dist. scale", &m_shadow_bias_distance_scale, 0.f,    0.001f,"%.3f");
+			ImGui::SliderFloat("Bias scale",       &m_shadow_bias_scale,         -0.2f,    2.f,   "%.1f");
 		}
 
 		if(ImGui::CollapsingHeader("Images", ImGuiTreeNodeFlags_DefaultOpen))

@@ -5,4 +5,4 @@
 
 #define SSBO_BIND_SHADOW_PARAMS             5
 
-#define UBO_BIND_LIGHT_COUNTERS            20
+#define UBO_BIND_LIGHT_COUNTS              20

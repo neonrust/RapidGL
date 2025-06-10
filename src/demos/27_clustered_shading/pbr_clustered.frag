@@ -41,6 +41,11 @@ layout(std430, binding = SSBO_BIND_SHADOW_PARAMS) readonly buffer ShadowParamsSS
 	LightShadowParams shadow_params[];
 };
 
+layout(std140, binding = UBO_BIND_LIGHT_COUNTS) uniform LightCountersUBO
+{
+	LightCounts light_counts;
+};
+
 vec3  fromRedToGreen(float interpolant);
 vec3  fromGreenToBlue(float interpolant);
 vec3  heatMap(float interpolant);
@@ -63,7 +68,7 @@ void main()
     MaterialProperties material = getMaterialProperties(normal);
 
     // Calculate the directional lights
-    for (uint index = 0; index < lights.num_dir_lights; ++index)
+    for (uint index = 0; index < light_counts.num_dir_lights; ++index)
     {
     	float visibility = dirLightVisibility(index);
      	if(visibility > 0)

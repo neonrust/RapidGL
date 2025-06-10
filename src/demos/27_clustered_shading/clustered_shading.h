@@ -4,6 +4,7 @@
 #include "camera.h"
 #include "sample_window.h"
 #include "ssbo.h"
+#include "ubo.h"
 #include "static_model.h"
 #include "shader.h"
 #include "shared.h"
@@ -128,7 +129,6 @@ private:
 	void renderDepth(const glm::mat4 &view_projection, RGL::RenderTarget::Texture2d &target, const glm::ivec4 &rect={0,0,0,0});
 	void renderShadowMaps();
 	void renderShadowDepth(const glm::vec3 &pos, float far_z, const glm::mat4 &view_projection, RGL::RenderTarget::Texture2d &target, const glm::ivec4 &rect={0,0,0,0});
-	void renderShadowMap(const PointLight &light);
 	void renderLighting(const RGL::Camera &camera);
 	void renderSkybox();
 	void debugDrawSceneBounds();
@@ -193,48 +193,33 @@ private:
 	bool  m_debug_cluster_geom           = false;
 	bool  m_debug_clusters_occupancy     = false;
 	float m_debug_clusters_blend_factor  = 0.7f;
-	float m_shadow_bias_constant         = 0.001f;
-	float m_shadow_bias_slope_scale      = 1.f;
-	float m_shadow_bias_slope_power      = 2.5f;
+	float m_shadow_bias_constant         = 0.f;
+	float m_shadow_bias_slope_scale      = 0.f;
+	float m_shadow_bias_slope_power      = 0.f;
 	float m_shadow_bias_distance_scale   = 0.f;
 	float m_shadow_bias_scale            = 1;
 
 
-    /// Lights
-	uint32_t  m_point_lights_count       = 0;
-	uint32_t  m_spot_lights_count        = 0;
-    uint32_t  m_directional_lights_count = 0;
-	uint32_t  m_area_lights_count        = 0;
+	bool      m_animate_lights             = false;
+	float     m_animation_speed            = 0.4f;
+	bool      m_area_lights_two_sided      = true;
+	bool      m_draw_area_lights_geometry  = true;
 
-	glm::vec2 min_max_point_light_radius = { 10, 20 };
-	glm::vec2 min_max_spot_light_radius  = { 1, 4 };
-	glm::vec2 min_max_spot_angles        = { 10, 15 };
-	glm::vec3 min_lights_bounds          = { -11,  0.2f, -6 };
-	glm::vec3 max_lights_bounds          = { 11, 12,  6 };
-
-	float     m_point_lights_intensity   = 100;
-	float     m_spot_lights_intensity    = 100;
-	float     m_area_lights_intensity    = 30;
-	glm::vec2 m_area_lights_size         = glm::vec2(0.5f);
-	float     m_animation_speed          = 0.4f;
-	bool      m_animate_lights           = false;
-    bool      m_area_lights_two_sided    = true;
-	bool      m_draw_area_lights_geometry     = true;
-	bool      m_draw_aabb                = false;
-	bool      m_debug_draw_cluster_grid        = false;
-	// GLuint    m_debug_draw_vao           = 0;
-	GLuint    m_debug_draw_vbo           = 0;
-	GLuint    _gl_time_query             = 0;
+	bool      m_debug_draw_aabb            = false;
+	bool      m_debug_draw_cluster_grid    = false;
+	GLuint    m_debug_draw_vbo             = 0;
+	GLuint    _gl_time_query               = 0;
 
 
 	std::vector<StaticObject> _scene;  // TODO: Scene _scene;
 	std::vector<StaticObject> _scenePvs;  // potentially visible set
 
-	ShaderStorageBuffer<SimpleCluster> m_simple_clusters_aabb_ssbo;
-	MappedSSBO<LightsManagement, 1> m_lights_ssbo;
-	MappedSSBO<PointLightShadowParams, MAX_POINT_LIGHTS> m_shadow_map_params_ssbo;
-	ShaderStorageBuffer<uint> m_cluster_discovery_ssbo;
-	ShaderStorageBuffer<glm::uvec3> m_cull_lights_args_ssbo;
+	RGL::buffer::ShaderStorage<SimpleCluster> m_simple_clusters_aabb_ssbo;
+	RGL::buffer::MappedSSBO<LightsManagement, 1> m_lights_ssbo;
+	RGL::buffer::Uniform<LightCounts> m_light_counts_ubo;
+	RGL::buffer::MappedSSBO<LightShadowParams, MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS + MAX_AREA_LIGHTS> m_shadow_map_params_ssbo;
+	RGL::buffer::ShaderStorage<uint> m_cluster_discovery_ssbo;
+	RGL::buffer::ShaderStorage<glm::uvec3> m_cull_lights_args_ssbo;
 
     /// Area lights variables
     std::shared_ptr<RGL::Texture2D> m_ltc_amp_lut;

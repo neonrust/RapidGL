@@ -18,6 +18,11 @@ layout(std430, binding = SSBO_BIND_LIGHTS) buffer LightsMgmtSSBO
 	LightsManagement lights;
 };
 
+layout(std140, binding = UBO_BIND_LIGHT_COUNTS) uniform LightCountersUBO
+{
+	LightCounts light_counts;
+};
+
 uniform vec3 u_fog_color;
 uniform float u_fog_density;       // [ 0, 0.1 ]   (sensible)
 
@@ -193,7 +198,7 @@ void main()
 	vec3 fog_radiance = vec3(0);
 
 	// TODO: iterate throught lights in this CLUSTER only
-	for(uint idx = 0; idx < lights.num_point_lights; ++idx)
+	for(uint idx = 0; idx < light_counts.num_point_lights; ++idx)
 	{
 		float visible = fadeByDistance(lights.point_lights[idx].position);
 		if(visible > 1e-4)
@@ -201,7 +206,7 @@ void main()
 	}
 
 	// TODO: iterate throught lights in this CLUSTER only
-	for(uint idx = 0; idx < lights.num_spot_lights; ++idx)
+	for(uint idx = 0; idx < light_counts.num_spot_lights; ++idx)
 	{
 		float visible = fadeByDistance(lights.point_lights[idx].position);
 		if(visible > 1e-4)

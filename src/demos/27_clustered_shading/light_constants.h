@@ -19,4 +19,10 @@
 
 #define CLUSTER_MAX_LIGHTS            296  // CLUSTER_MAX_POINT_LIGHTS + CLUSTER_MAX_SPOT_LIGHTS + CLUSTER_MAX_AREA_LIGHTS
 
-#define LIGHT_SHADOW_CASTER       0x01
+#define LIGHT_TYPE_POINT       0
+#define LIGHT_TYPE_SPOT        1
+#define LIGHT_TYPE_AREA        2
+#define LIGHT_TYPE_DIRECTIONAL 3
+
+#define LIGHT_SHADOW_CASTER       0x10
+#define LIGHT_TWO_SIDED           0x20   // area lights
