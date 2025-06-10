@@ -1,5 +1,6 @@
 #pragma once
 
+#include "container_types.h"
 #include <cstdint>
 #include <glm/integer.hpp>
 #include <vector>
@@ -33,6 +34,7 @@ template<typename AxisT=uint32_t>
 class SpatialAllocator
 {
 public:
+	using SizeT = AxisT;
 	using NodeIndex = uint32_t;
 	static constexpr auto BadIndex = NodeIndex(-1);
 
@@ -57,8 +59,12 @@ public:
 		AxisT h;
 	};
 
+	using AllocatedSlots = dense_map<AxisT, size_t>;
+
 public:
 	SpatialAllocator(AxisT size, AxisT min_block_size=AxisT{1}, AxisT max_block_size=AxisT(0));
+
+	[[nodiscard]] inline AxisT size() const { return _size; }
 
 	[[nodiscard]] NodeIndex allocate(AxisT size);
 	[[nodiscard]] NodeIndex allocate(AxisT size, AxisT min_size);  // demote to smaller size if necessary
@@ -66,6 +72,7 @@ public:
 
 	[[nodiscard]] Rect rect(NodeIndex index);
 
+	[[nodiscard]] inline const AllocatedSlots &allocated() const { return _allocated; }
 
 	[[nodiscard]] uint32_t level(NodeIndex index) const;
 	[[nodiscard]] AxisT size(NodeIndex index) const;
@@ -83,6 +90,7 @@ public:
 
 private:
 	[[nodiscard]] inline uint32_t size_level(AxisT size) const { assert(__builtin_popcount(size) == 1 and size < _size); return uint32_t(__builtin_ffs(int(_size / size)) - 1); }
+	[[nodiscard]] inline AxisT level_size(uint32_t level) const { return _size >> level; }
 	[[nodiscard]] static inline uint32_t levels_nodes(uint32_t levels) { return 1 << 2*levels; };
 	[[nodiscard]] static inline uint32_t level_start_index(uint32_t level) { return (levels_nodes(level) - 1)/3; };
 	[[nodiscard]] static uint32_t index_level(NodeIndex index) {
@@ -106,6 +114,7 @@ private:
 	AxisT _size;
 	AxisT _max_size;
 	AxisT _min_size;
+	AllocatedSlots _allocated;
 };
 
 template<typename AxisT>
@@ -124,6 +133,8 @@ inline SpatialAllocator<AxisT>::SpatialAllocator(AxisT size, AxisT min_block_siz
 	auto num_nodes = level_start_index(num_levels);
 	assert(num_nodes < 65536); // more nodes seems a bit excessive don't you think?
 	_nodes.resize(num_nodes);
+
+	_allocated.reserve(num_levels);
 
 	std::print("spatial allocator: {}-{}  ->  {} nodes, {} levels\n", _min_size, _size, num_nodes, num_levels);
 }
@@ -150,18 +161,23 @@ inline SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::allocate(Axis
 	min_size = std::max(min_size, _min_size);
 	min_size = std::min(min_size, size);
 
+	auto allocated_size = size;
 	auto found = BadIndex;
 	for(auto lvl = size_level(size); lvl <= size_level(min_size); ++lvl)
 	{
 		found = find_available(lvl);
 		if(found != BadIndex)
 			break;
+		allocated_size >>= 1;
 	}
 
 	if(found != BadIndex)
 	{
 		auto &n = _node(found);
 		n.allocated = true;
+		// std::print("  [sa] {} demoted {} -> {}\n", found, size, allocated_size);
+		++_allocated[allocated_size];
+
 		// increment children_allocated for ancestors (when 'parent' wraps it becomes larger than 'found')
 		for(auto parent = parent_index(found); parent >= 0 and parent < found; parent = parent_index(parent))
 		{
@@ -169,6 +185,7 @@ inline SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::allocate(Axis
 			++p.children_allocated;
 			// std::print("  [sa] {}.children_allocated++ -> {}\n", parent, p.children_allocated);
 		}
+
 	}
 
 	return found;
@@ -232,6 +249,9 @@ void SpatialAllocator<AxisT>::free(NodeIndex index)
 	assert(n.allocated);
 	assert(n.children_allocated == 0);
 	n.allocated = false;
+
+	const auto allocated_size = level_size(index_level(index));
+	--_allocated[allocated_size];
 
 	// decrement child allocation counter in ancestors
 	while(index > 0)
