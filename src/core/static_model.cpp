@@ -206,7 +206,7 @@ bool StaticModel::ParseScene(const aiScene* scene, const std::filesystem::path& 
 	/* Load materials. */
 	if (!LoadMaterials(scene, filepath))
 	{
-		std::print(stderr, "\x1b[33;1mError\x1b[m loading mesh failed: {}: Could not load the materials\n", filepath.generic_string());
+		std::print(stderr, "\x1b[97;41;1mError\x1b[m loading mesh failed: {}: Could not load the materials\n", filepath.generic_string());
 		return false;
 	}
 
@@ -344,7 +344,7 @@ bool StaticModel::LoadMaterialTextures(const aiScene* scene, const aiMaterial* m
 				}
 				else
 				{
-					std::print(stderr, "\x1b[m31;1mError\x1b[m Loading embedded texture for the model failed: {}\n", path.C_Str());
+					std::print(stderr, "\x1b[97;41;1mError\x1b[m Loading embedded texture for the model failed: {}\n", path.C_Str());
 					return false;
 				}
 			}
@@ -363,7 +363,7 @@ bool StaticModel::LoadMaterialTextures(const aiScene* scene, const aiMaterial* m
 				std::string full_path = directory + "/" + p;
 				if (!texture->Load(full_path, is_srgb))
 				{
-					std::print(stderr, "\x1b[31;1mError\x1b[m Loading texture failed {}.\n", full_path);
+					std::print(stderr, "\x1b[97;41;1mError\x1b[m Loading texture failed {}.\n", full_path);
 					return false;
 				}
 				else
