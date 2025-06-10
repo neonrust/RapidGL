@@ -7,9 +7,9 @@
 
 #include <assimp/postprocess.h>
 
-#include "util.h"
 #include "container_types.h"
 
+#include <print>
 #include <string_view>
 using namespace std::literals;
 
@@ -137,7 +137,7 @@ bool StaticModel::Load(const std::filesystem::path& filepath)
 
 	if (!scene || scene->mFlags == AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
 	{
-		fprintf(stderr, "Assimp error while loading mesh %s\n Error: %s\n", filepath.generic_string().c_str(), importer.GetErrorString());
+		std::print(stderr, "\x1b[33;1mError\x1b[m loading mesh failed: %s: %s\n", filepath.generic_string().c_str(), importer.GetErrorString());
 		return false;
 	}
 
@@ -191,14 +191,14 @@ bool StaticModel::ParseScene(const aiScene* scene, const std::filesystem::path& 
 		// max = glm::max(max, vec3_cast(mesh->mAABB.mMax));
 		_aabb.expand(vec3_cast(mesh->mAABB.mMin));
 		_aabb.expand(vec3_cast(mesh->mAABB.mMax));
-		printf("[%s]  added mesh part %d; %d vertices; AABB: %.1f, %.1f, %.1f  ->  %.1f, %.1f, %.1f   (%.1f x %.1f x %.1f)\n",
-			   filename.c_str(),
-			   idx,
-			   mesh->mNumVertices,
-			   mesh->mAABB.mMin.x, mesh->mAABB.mMin.y, mesh->mAABB.mMin.z,
-			   mesh->mAABB.mMax.x, mesh->mAABB.mMax.y, mesh->mAABB.mMax.z,
-			   mesh->mAABB.mMax.x - mesh->mAABB.mMin.x, mesh->mAABB.mMax.y - mesh->mAABB.mMin.y, mesh->mAABB.mMax.z- mesh->mAABB.mMin.z
-			   );
+		std::print("[{}]  added mesh part {}; {} vertices. AABB: {:.1f}, {:.1f}, {:.1f}  ->  {:.1f}, {:.1f}, {:.1f}   ({:.1f} x {:.1f} x {:.1f})\n",
+				   filename.string(),
+				   idx,
+				   mesh->mNumVertices,
+				   float(mesh->mAABB.mMin.x), float(mesh->mAABB.mMin.y), float(mesh->mAABB.mMin.z),
+				   float(mesh->mAABB.mMax.x), float(mesh->mAABB.mMax.y), float(mesh->mAABB.mMax.z),
+				   float(mesh->mAABB.mMax.x - mesh->mAABB.mMin.x), float(mesh->mAABB.mMax.y - mesh->mAABB.mMin.y), float(mesh->mAABB.mMax.z- mesh->mAABB.mMin.z)
+				   );
 	}
 
 	m_unit_scale = 1.0f / glm::compMax(_aabb.max() - _aabb.min());
@@ -206,7 +206,7 @@ bool StaticModel::ParseScene(const aiScene* scene, const std::filesystem::path& 
 	/* Load materials. */
 	if (!LoadMaterials(scene, filepath))
 	{
-		fprintf(stderr, "Assimp error while loading mesh %s\n Error: Could not load the materials.\n", filepath.generic_string().c_str());
+		std::print(stderr, "\x1b[33;1mError\x1b[m loading mesh failed: {}: Could not load the materials\n", filepath.generic_string());
 		return false;
 	}
 
@@ -215,7 +215,7 @@ bool StaticModel::ParseScene(const aiScene* scene, const std::filesystem::path& 
 
 	const auto T1 = steady_clock::now();
 
-	std::printf("Loaded mesh %s  (%.1f x %.1f x %.1f)  (%ld ms)\n", filepath.string().c_str(), _aabb.width(), _aabb.height(), _aabb.depth(), duration_cast<milliseconds>(T1 - T0).count());
+	std::print("Loaded mesh {}  ({:.1f} x {:.1f} x {:.1f})  ({} ms)\n", filepath.string().c_str(), _aabb.width(), _aabb.height(), _aabb.depth(), duration_cast<milliseconds>(T1 - T0));
 
 	return true;
 }
@@ -333,7 +333,7 @@ bool StaticModel::LoadMaterialTextures(const aiScene* scene, const aiMaterial* m
 
 				if (texture->Load(reinterpret_cast<unsigned char*>(paiTexture->pcData), data_size, is_srgb))
 				{
-					printf("Loaded embedded texture for the model '%s'\n", path.C_Str());
+					std::print("Loaded embedded texture for the model {}\n", path.C_Str());
 					m_materials[material_index].set(texture_type, texture);
 
 					if (texture_map_mode[0] == aiTextureMapMode_Wrap)
@@ -344,7 +344,7 @@ bool StaticModel::LoadMaterialTextures(const aiScene* scene, const aiMaterial* m
 				}
 				else
 				{
-					fprintf(stderr, "Error loading embedded texture for the model %s.\n", path.C_Str());
+					std::print(stderr, "\x1b[m31;1mError\x1b[m Loading embedded texture for the model failed: {}\n", path.C_Str());
 					return false;
 				}
 			}
@@ -363,13 +363,13 @@ bool StaticModel::LoadMaterialTextures(const aiScene* scene, const aiMaterial* m
 				std::string full_path = directory + "/" + p;
 				if (!texture->Load(full_path, is_srgb))
 				{
-					fprintf(stderr, "Error loading texture %s.\n", full_path.c_str());
+					std::print(stderr, "\x1b[31;1mError\x1b[m Loading texture failed {}.\n", full_path);
 					return false;
 				}
 				else
 				{
 					const auto T1 = steady_clock::now();
-					printf("Loaded texture '%s'  (%ld ms)\n", full_path.c_str(), duration_cast<milliseconds>(T1 - T0).count());
+					std::print("Loaded texture {}  ({} ms)\n", full_path, duration_cast<milliseconds>(T1 - T0));
 					m_materials[material_index].set(texture_type, texture);
 
 					if (texture_map_mode[0] == aiTextureMapMode_Wrap)
@@ -611,7 +611,7 @@ void StaticModel::GenCone(float height, float radius, uint32_t slices, uint32_t 
 													  -height + height * level,
 													  -glm::sin(theta) * radius * (1.0f - level)));
 			vertex_data.normals  .push_back( glm::vec3(glm::cos(theta) * height / l, radius / l, -glm::sin(theta) * height / l));
-			vertex_data.texcoords.push_back( glm::vec2(sliceCount / float(slices), level));
+			vertex_data.texcoords.push_back( glm::vec2(float(sliceCount) / float(slices), level));
 		}
 	}
 
@@ -869,7 +869,7 @@ void StaticModel::GenCylinder(float height, float radius, uint32_t slices)
 		{
 			vertex_data.positions.push_back(glm::vec3(glm::cos(theta) * radius, halfHeight * sign, -glm::sin(theta) * radius));
 			vertex_data.normals  .push_back(glm::vec3(glm::cos(theta), 0.0f, -glm::sin(theta)));
-			vertex_data.texcoords.push_back(glm::vec2(sideCount / (float)slices, (sign + 1.0f) * 0.5f));
+			vertex_data.texcoords.push_back(glm::vec2(float(sideCount) / (float)slices, (sign + 1.0f) * 0.5f));
 
 			sign = 1.0f;
 		}
@@ -1019,20 +1019,20 @@ void StaticModel::GenSphere(float radius, uint32_t slices)
 
 	float deltaPhi = glm::two_pi<float>() / static_cast<float>(slices);
 
-	uint32_t parallels = static_cast<uint32_t>(slices * 0.5f);
+	uint32_t parallels = static_cast<uint32_t>(float(slices) * 0.5f);
 
 	for (uint32_t par_idx = 0; par_idx <= parallels; ++par_idx)
 	{
 		for (uint32_t slice_idx = 0; slice_idx <= slices; ++slice_idx)
 		{
-			vertex_data.positions.push_back(glm::vec3(radius * glm::sin(deltaPhi * par_idx) * glm::sin(deltaPhi * slice_idx),
-													  radius * glm::cos(deltaPhi * par_idx),
-													  radius * glm::sin(deltaPhi * par_idx) * glm::cos(deltaPhi * slice_idx)));
-			vertex_data.normals  .push_back(glm::vec3(radius * glm::sin(deltaPhi * par_idx) * glm::sin(deltaPhi * slice_idx) / radius,
-													radius * glm::cos(deltaPhi * par_idx) / radius,
-													radius * glm::sin(deltaPhi * par_idx) * glm::cos(deltaPhi * slice_idx) / radius));
-			vertex_data.texcoords.push_back(glm::vec2(       slice_idx / static_cast<float>(slices),
-													  1.0f - par_idx / static_cast<float>(parallels)));
+			vertex_data.positions.push_back(glm::vec3(radius * glm::sin(deltaPhi * float(par_idx)) * glm::sin(deltaPhi * float(slice_idx)),
+													  radius * glm::cos(deltaPhi * float(par_idx)),
+													  radius * glm::sin(deltaPhi * float(par_idx)) * glm::cos(deltaPhi * float(slice_idx))));
+			vertex_data.normals  .push_back(glm::vec3(radius * glm::sin(deltaPhi * float(par_idx)) * glm::sin(deltaPhi * float(slice_idx)) / radius,
+													radius * glm::cos(deltaPhi * float(par_idx)) / radius,
+													radius * glm::sin(deltaPhi * float(par_idx)) * glm::cos(deltaPhi * float(slice_idx)) / radius));
+			vertex_data.texcoords.push_back(glm::vec2(       float(slice_idx) / float(slices),
+													  1.0f - float(par_idx) / float(parallels)));
 		}
 	}
 
@@ -1183,7 +1183,7 @@ void StaticModel::GenTrefoilKnot(uint32_t slices, uint32_t stacks)
 	}
 
 	uint32_t n            = 0;
-	uint32_t vertex_count = vertex_data.positions.size();
+	auto vertex_count = vertex_data.positions.size();
 
 	for (uint32_t slice_idx = 0; slice_idx < slices; ++slice_idx)
 	{

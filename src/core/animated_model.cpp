@@ -8,6 +8,7 @@
 #include <glm/gtx/dual_quaternion.hpp>
 #include <glm/gtx/component_wise.hpp>
 
+#include <print>
 #include <cmath>
 
 namespace RGL
@@ -299,7 +300,7 @@ bool AnimatedModel::Load(const std::filesystem::path& filepath)
 
 	if (!m_assimp_scene || m_assimp_scene->mFlags == AI_SCENE_FLAGS_INCOMPLETE || !m_assimp_scene->mRootNode)
 	{
-		fprintf(stderr, "Assimp error while loading mesh %s\n Error: %s\n", filepath.generic_string().c_str(), m_importer.GetErrorString());
+		std::print(stderr, "\x1b[31;1mError\x1b[m Loading mesh failed {}: {}\n", filepath.generic_string(), m_importer.GetErrorString());
 		return false;
 	}
 
@@ -377,7 +378,7 @@ bool AnimatedModel::ParseScene(const aiScene* scene, const std::filesystem::path
 	/* Load materials. */
 	if (!LoadMaterials(scene, filepath))
 	{
-		fprintf(stderr, "Assimp error while loading mesh %s\n Error: Could not load the materials.\n", filepath.generic_string().c_str());
+		std::print(stderr, "\x1b[31;1mError\x1b[m Loading mesh failed {}: Could not load the materials.\n", filepath.generic_string());
 		return false;
 	}
 
