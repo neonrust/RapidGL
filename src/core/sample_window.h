@@ -10,6 +10,7 @@ class SampleWindow
 {
 public:
 	void add(T value);
+	inline SampleWindow &operator += (T value) { add(value); return *this; }
 	void clear();
 
 	[[nodiscard]] T average(T def=T{0}) const noexcept;
