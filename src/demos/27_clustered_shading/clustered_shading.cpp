@@ -75,7 +75,7 @@ void opengl_message_callback([[maybe_unused]] GLenum source,
 							 [[maybe_unused]] const void *userParam)
 {
 	if(type == GL_DEBUG_TYPE_ERROR)
-		fprintf(stderr, "GL ERROR: type = 0x%x, severity = 0x%x \"%s\"\n", type, severity, message );
+		std::print(stderr, "GL ERROR: type = {:#x}, severity = {:#x} \"{}\"\n", type, severity, message );
 }
 
 
@@ -140,7 +140,7 @@ void ClusteredShading::init_app()
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 	// glEnable(GL_CULL_FACE);  // stops skybox from working !?
-	std::fprintf(stderr, "-------------------- ENABLE FACE CULLING -------------------\n");
+	std::print(stderr, "-------------------- ENABLE FACE CULLING -------------------\n");
 	glCullFace(GL_BACK);
 
 	// glLineWidth(2.f); // for wireframes (but >1 not commonly supported)
@@ -223,7 +223,7 @@ void ClusteredShading::init_app()
 		m_ltc_mat_lut->SetFiltering(TextureFiltering::Magnify, TextureFilteringParam::Linear);
     }
     else
-		std::fprintf(stderr, "Error: could not load texture %s\n", ltc_lut_mat_path.string().c_str());
+		std::print(stderr, "Error: could not load texture {}\n", ltc_lut_mat_path.string());
 
 	m_ltc_amp_lut = std::make_shared<Texture2D>();
     if (m_ltc_amp_lut->LoadDds(ltc_lut_amp_path))
@@ -234,7 +234,7 @@ void ClusteredShading::init_app()
 		m_ltc_amp_lut->SetFiltering(TextureFiltering::Magnify, TextureFilteringParam::Linear);
     }
     else
-		std::fprintf(stderr, "Error: could not load texture %s\n", ltc_lut_amp_path.string().c_str());
+		std::print(stderr, "Error: could not load texture %s\n", ltc_lut_amp_path.string());
 
     /// Create shaders.
 	const fs::path shaders = "src/demos/27_clustered_shading/";
@@ -423,19 +423,19 @@ void ClusteredShading::init_app()
 		auto target = u_inv_projection * glm::vec4(coord.x, coord.y, 1, 1);
 		auto direction = glm::vec3(u_inv_view * glm::vec4(glm::normalize(glm::vec3(target) / target.w), 0)); // World space
 
-		std::printf("        target: %.5f; %.5f; %.5f; %.5f\n", target.x, target.y, target.z, target.w);
+		std::print("        target: {:.5f}; {:.5f}; {:.5f}; {:.5f}\n", target.x, target.y, target.z, target.w);
 		const auto far_depth = target.z / target.w;
 		target = glm::normalize(target);
-		std::printf("   norm.target: %.5f; %.5f; %.5f   (max depth: %.1f)\n", target.x, target.y, target.z, far_depth);
-		std::printf("     direction: %.5f; %.5f; %.5f\n", direction.x, direction.y, direction.z);
+		std::print("   norm.target: {:.5f}; {:.5f}; {:.5f}   (max depth: {:.1f})\n", target.x, target.y, target.z, far_depth);
+		std::print("     direction: {:.5f}; {:.5f}; {:.5f}\n", direction.x, direction.y, direction.z);
 
-		// std::printf("   u_view: %s\n", glm::to_string(u_view).c_str());
+		// std::print("   u_view: {}\n", glm::to_string(u_view).c_str());
 
 		const glm::vec3 light_pos { -10, 2.f, 0 };
-		std::printf("  camera[ws]: %.5f; %.5f; %.5f\n", u_cam_pos.x, u_cam_pos.y, u_cam_pos.z);
-		std::printf("   light[ws]: %.5f; %.5f; %.5f\n", light_pos.x, light_pos.y, light_pos.z);
+		std::print("  camera[ws]: {:.5f}; {:.5f}; {:.5f}\n", u_cam_pos.x, u_cam_pos.y, u_cam_pos.z);
+		std::print("   light[ws]: {:.5f}; {:.5f}; {:.5f}\n", light_pos.x, light_pos.y, light_pos.z);
 		auto light_pos_cs = glm::vec3(u_view * glm::vec4(light_pos, 1));
-		std::printf("   light[cs]: %.5f; %.5f; %.5f\n", light_pos_cs.x, light_pos_cs.y, light_pos_cs.z);
+		std::print("   light[cs]: {:.5f}; {:.5f}; {:.5f}\n", light_pos_cs.x, light_pos_cs.y, light_pos_cs.z);
 
 
 		std::exit(EXIT_SUCCESS);
@@ -466,24 +466,24 @@ void ClusteredShading::init_app()
 			glm::vec4(light_center, 1)
 		};
 
-		std::printf("        X = %.3f; %.3f; %.3f\n", space_x.x, space_x.y, space_x.z);
-		std::printf("        Y = %.3f; %.3f; %.3f\n", space_y.x, space_y.y, space_y.z);
-		std::printf("        Z = %.3f; %.3f; %.3f\n", space_z.x, space_z.y, space_z.z);
+		std::print("        X = {:.3f}; {:.3f}; {:.3f}\n", space_x.x, space_x.y, space_x.z);
+		std::print("        Y = {:.3f}; {:.3f}; {:.3f}\n", space_y.x, space_y.y, space_y.z);
+		std::print("        Z = {:.3f}; {:.3f}; {:.3f}\n", space_z.x, space_z.y, space_z.z);
 
 		glm::vec3 ray_direction = glm::normalize(glm::vec3(1, 0, 0));
 
 		auto cone_ray = cone_space * glm::vec4(ray_direction, 0);
 
-		std::printf(" cone ray = %.3f; %.3f; %.3f\n", cone_ray.x, cone_ray.y, cone_ray.z);
+		std::print(" cone ray = {:.3f}; {:.3f}; {:.3f}\n", cone_ray.x, cone_ray.y, cone_ray.z);
 		std::exit(EXIT_SUCCESS);
 	}
 
 	if(false)
 	{
 		const auto space = make_common_space_from_direction({ 0, 0, -1 });
-		std::printf("        X = %.3f; %.3f; %.3f\n", space[0].x, space[0].y, space[0].z);
-		std::printf("        Y = %.3f; %.3f; %.3f\n", space[1].x, space[1].y, space[1].z);
-		std::printf("        Z = %.3f; %.3f; %.3f\n", space[2].x, space[2].y, space[2].z);
+		std::print("        X = {:.3f}; {:.3f}; {:.3f}\n", space[0].x, space[0].y, space[0].z);
+		std::print("        Y = {:.3f}; {:.3f}; {:.3f}\n", space[1].x, space[1].y, space[1].z);
+		std::print("        Z = {:.3f}; {:.3f}; {:.3f}\n", space[2].x, space[2].y, space[2].z);
 		std::exit(EXIT_SUCCESS);
 	}
 
@@ -507,11 +507,11 @@ void ClusteredShading::init_app()
 
 		std::puts("-----------------------------------------------------");
 
-		std::printf("cone center : %.1f; %.1f; %.1f\n", cone.center.x, cone.center.y, cone.center.z);
-		std::printf("cone axis   : %.1f; %.1f; %.1f\n", cone.axis.x, cone.axis.y, cone.axis.z);
-		std::printf("cone angle  : %.1f\n", glm::degrees(cone.angle));
-		std::printf("ray start   : %.1f; %.1f; %.1f\n", ray_start.x, ray_start.y, ray_start.z);
-		std::printf("ray dir     : %.1f; %.1f; %.1f\n", ray_dir.x, ray_dir.y, ray_dir.z);
+		std::print("cone center : {:.1f}; {:.1f}; {:.1f}\n", cone.center.x, cone.center.y, cone.center.z);
+		std::print("cone axis   : {:.1f}; {:.1f}; {:.1f}\n", cone.axis.x, cone.axis.y, cone.axis.z);
+		std::print("cone angle  : {:.1f}\n", glm::degrees(cone.angle));
+		std::print("ray start   : {:.1f}; {:.1f}; {:.1f}\n", ray_start.x, ray_start.y, ray_start.z);
+		std::print("ray dir     : {:.1f}; {:.1f}; {:.1f}\n", ray_dir.x, ray_dir.y, ray_dir.z);
 
 		glm::vec3 center_to_ray = ray_start - cone.center; // aka CO
 		float distance_sq = glm::dot(center_to_ray, center_to_ray);
@@ -525,16 +525,16 @@ void ClusteredShading::init_app()
 		float B = 2 * (dir_axis_dot*CO_axis_dot - glm::dot(ray_dir, center_to_ray)*cos_theta_sq);
 		float C = CO_axis_dot*CO_axis_dot - distance_sq*cos_theta_sq;
 
-		std::printf("    A = %.3f\n", A);
-		std::printf("    B = %.3f\n", B);
-		std::printf("    C = %.3f\n", C);
+		std::print("    A = {:.3f}\n", A);
+		std::print("    B = {:.3f}\n", B);
+		std::print("    C = {:.3f}\n", C);
 
 		float discriminant = B*B - 4*A*C;
 		if(discriminant < 0)
-			std::printf("no intersection\n");
+			std::print("no intersection\n");
 		else
 		{
-			std::printf("discriminant = %.3f\n", discriminant);
+			std::print("discriminant = {:.3f}\n", discriminant);
 			float sqrt_discriminant = std::sqrt(discriminant);
 			float t1 = (-B - sqrt_discriminant) / (2*A);
 			float t2 = (-B + sqrt_discriminant) / (2*A);
@@ -543,9 +543,9 @@ void ClusteredShading::init_app()
 				return ray_start + ray_dir*t;
 			};
 			auto p1 = ray_point(t1);
-			std::printf("  t1 = %.3f  ->  %.2f; %.2f; %.2f\n", t1, p1.x, p1.y, p1.z);
+			std::print("  t1 = {:.3f}  ->  {:.2f}; {:.2f}; {:.2f}\n", t1, p1.x, p1.y, p1.z);
 			auto p2 = ray_point(t2);
-			std::printf("  t2 = %.3f  ->  %.2f; %.2f; %.2f\n", t2, p2.x, p2.y, p2.z);
+			std::print("  t2 = {:.3f}  ->  {:.2f}; {:.2f}; {:.2f}\n", t2, p2.x, p2.y, p2.z);
 		}
 
 
@@ -577,13 +577,13 @@ void ClusteredShading::init_app()
 
 		std::puts("-----------------------------------------------------");
 
-		std::printf("cone center  : %.1f; %.1f; %.1f\n", cone.center.x, cone.center.y, cone.center.z);
-		std::printf("cone axis    : %.1f; %.1f; %.1f\n", cone.axis.x, cone.axis.y, cone.axis.z);
-		std::printf("cone angle   : %.1f   radius: %.1f\n", glm::degrees(cone.angle), cone.radius);
-		std::printf("ray start    : %.1f; %.1f; %.1f\n", ray_start.x, ray_start.y, ray_start.z);
-		std::printf("ray dir      : %.1f; %.1f; %.1f\n", ray_dir.x, ray_dir.y, ray_dir.z);
+		std::print("cone center  : {:.1f}; {:.1f}; {:.1f}\n", cone.center.x, cone.center.y, cone.center.z);
+		std::print("cone axis    : {:.1f}; {:.1f}; {:.1f}\n", cone.axis.x, cone.axis.y, cone.axis.z);
+		std::print("cone angle   : {:.1f}   radius: {:.1f}\n", glm::degrees(cone.angle), cone.radius);
+		std::print("ray start    : {:.1f}; {:.1f}; {:.1f}\n", ray_start.x, ray_start.y, ray_start.z);
+		std::print("ray dir      : {:.1f}; {:.1f}; {:.1f}\n", ray_dir.x, ray_dir.y, ray_dir.z);
 		const auto ray_end = ray_point(50);
-		std::printf("ray end @ 50 : %.1f; %.1f; %.1f\n", ray_end.x, ray_end.y, ray_end.z);
+		std::print("ray end @ 50 : {:.1f}; {:.1f}; {:.1f}\n", ray_end.x, ray_end.y, ray_end.z);
 
 		glm::vec3 center_to_ray = ray_start - cone.center; // aka CO
 
@@ -591,16 +591,16 @@ void ClusteredShading::init_app()
 		float B = 2 * glm::dot(center_to_ray, ray_dir);
 		float C = glm::dot(center_to_ray, center_to_ray) - cone.radius*cone.radius;
 
-		std::printf("    A = %.3f\n", A);
-		std::printf("    B = %.3f\n", B);
-		std::printf("    C = %.3f\n", C);
+		std::print("    A = {:.3f}\n", A);
+		std::print("    B = {:.3f}\n", B);
+		std::print("    C = {:.3f}\n", C);
 
 		float discriminant = B*B - 4*A*C;
 		if(discriminant < 0)
-			std::printf("NO INTERSECTION\n");
+			std::puts("NO INTERSECTION");
 		else
 		{
-			std::printf("discriminant = %.3f\n", discriminant);
+			std::print("discriminant = {:.3f}\n", discriminant);
 			float sqrt_discriminant = std::sqrt(discriminant);
 			float t1 = (-B - sqrt_discriminant) / (2*A);
 			float t2 = (-B + sqrt_discriminant) / (2*A);
@@ -634,7 +634,7 @@ void ClusteredShading::init_app()
 				auto p1 = ray_point(t1);
 				if(point_inside_cone(p1))
 				{
-					std::printf("  t1 = %.3f  ->  %.2f; %.2f; %.2f\n", t1, p1.x, p1.y, p1.z);
+					std::print("  t1 = {:.3f}  ->  {:.2f}; {:.2f}; {:.2f}\n", t1, p1.x, p1.y, p1.z);
 					got_point = true;
 				}
 			}
@@ -643,14 +643,14 @@ void ClusteredShading::init_app()
 				auto p2 = ray_point(t2);
 				if(point_inside_cone(p2))
 				{
-					std::printf("  t2 = %.3f  ->  %.2f; %.2f; %.2f\n", t2, p2.x, p2.y, p2.z);
+					std::print("  t2 = {:.3f}  ->  {:.2f}; {:.2f}; {:.2f}\n", t2, p2.x, p2.y, p2.z);
 					got_point = true;
 				}
 			}
 			if(got_point)
-				std::printf("INTERSECTION\n");
+				std::puts("INTERSECTION");
 			else
-				std::printf("NO INTERSECTION\n");
+				std::puts("NO INTERSECTION");
 		}
 
 		std::exit(EXIT_SUCCESS);
@@ -675,9 +675,9 @@ void ClusteredShading::init_app()
 		glm::vec4 wpos = inv_projection * pos;
 		wpos /= wpos.w;
 
-		std::printf("depth pos  : %.1f; %.1f; %.1f\n", pos.x, pos.y, pos.z);
+		std::print("depth pos  : {:.1f}; {:.1f}; {:.1f}\n", pos.x, pos.y, pos.z);
 
-		std::printf("world  pos : %.5f; %.5f; %.5f\n", wpos.x, wpos.y, wpos.z);
+		std::print("world  pos : {:.5f}; {:.5f}; {:.5f}\n", wpos.x, wpos.y, wpos.z);
 
 		std::exit(EXIT_SUCCESS);
 	}
@@ -702,14 +702,14 @@ void ClusteredShading::init_app()
 		};
 
 
-		std::printf("spot  : %.1f; %.1f; %.1f  %.0f° - %.0f°\n", spot_pos.x, spot_pos.y, spot_pos.z, glm::degrees(inner_angle), glm::degrees(outer_angle));
+		std::print("spot  : {:.1f}; {:.1f}; {:.1f}  {:.0f}° - {:.0f}°\n", spot_pos.x, spot_pos.y, spot_pos.z, glm::degrees(inner_angle), glm::degrees(outer_angle));
 
 		for(float x = 0.f; x <= 8.f; x += 0.2f)
 		{
 			point.x = x;
 			auto to_point = glm::normalize(point - spot_pos);
 			float att = spot_angle_att(to_point, spot_dir, outer_angle, inner_angle);
-			std::printf("point : %.1f; %.1f; %.1f  --> %f\n", point.x, point.y, point.z, att);
+			std::print("point : {:.1f}; {:.1f}; {:.1f}  --> {:f}\n", point.x, point.y, point.z, att);
 		}
 
 		std::exit(EXIT_SUCCESS);
@@ -778,7 +778,7 @@ void ClusteredShading::calculateShadingClusterGrid()
 	if(cluster_count != cluster_count_before)
 	{
 		m_clusters_count = cluster_count;
-		std::printf("Shading clusters: %d   (%d x %d x %d)\n", m_clusters_count, m_cluster_resolution.x, m_cluster_resolution.y, m_cluster_resolution.z);
+		std::print("Shading clusters: {}   ({} x {} x {})\n", m_clusters_count, m_cluster_resolution.x, m_cluster_resolution.y, m_cluster_resolution.z);
 
 		auto cluster_depth = [this](size_t slice_n) -> float {
 			return -m_camera.nearPlane() * std::pow(std::abs(m_near_k), float(slice_n));
@@ -791,9 +791,9 @@ void ClusteredShading::calculateShadingClusterGrid()
 		const float depthF0 = -cluster_depth(m_cluster_resolution.z - 1);
 		const float depthF1 = -cluster_depth(m_cluster_resolution.z);  // this should be camera's far plane (approximately)
 
-		std::printf("    cluster[0]: %.3f\n", depthN1 - depthN0);
-		std::printf("  cluster[N/2]: %.2f\n", depthM1 - depthM0);
-		std::printf("    cluster[N]: %.1f\n", depthF1 - depthF0);
+		std::print("    cluster[0]: {:.3f}\n", depthN1 - depthN0);
+		std::print("  cluster[N/2]: {:.2f}\n", depthM1 - depthM0);
+		std::print("    cluster[N]: {:.1f}\n", depthF1 - depthF0);
 
 		// {
 		// 	const float depthN0 = -doom_slice_z(0); // this should be camera's near plane
@@ -803,9 +803,9 @@ void ClusteredShading::calculateShadingClusterGrid()
 		// 	const float depthF0 = -doom_slice_z(m_cluster_grid_dim.z - 1);
 		// 	const float depthF1 = -doom_slice_z(m_cluster_grid_dim.z);  // this should be camera's far plane (approximately)
 
-		// 	std::printf("DOOM    Near: %.3f - %.3f (%.3f)\n", depthN0, depthN1, depthN1 - depthN0);
-		// 	std::printf("DOOM     MId: %.2f - %.2f (%.2f)\n", depthM0, depthM1, depthM1 - depthM0);
-		// 	std::printf("DOOM     Far: %.1f - %.1f (%.1f)\n", depthF0, depthF1, depthF1 - depthF0);
+		// 	std::print("DOOM    Near: %.3f - %.3f (%.3f)\n", depthN0, depthN1, depthN1 - depthN0);
+		// 	std::print("DOOM     MId: %.2f - %.2f (%.2f)\n", depthM0, depthM1, depthM1 - depthM0);
+		// 	std::print("DOOM     Far: %.1f - %.1f (%.1f)\n", depthF0, depthF1, depthF1 - depthF0);
 		// }
 		prepareClusterBuffers();
 	}
@@ -854,7 +854,7 @@ void ClusteredShading::input()
 	if(Input::wasKeyPressed(KeyCode::N))
 	{
 		_ray_march_noise = (_ray_march_noise + 1) % 3;
-		std::printf("ray_march_noise: %d\n", _ray_march_noise);
+		std::print("ray_march_noise: {}\n", _ray_march_noise);
 	}
 
     /* Toggle between wireframe and solid rendering */
@@ -1113,7 +1113,7 @@ void ClusteredShading::GeneratePointLights()
 		};
 		m_light_counts_ubo->num_point_lights = idx + 1;
 
-		std::printf("light[%2u] @ %5.1f; %3.1f; %5.1f  %3u,%3u,%3u  %4.0f\n",
+		std::print("light[{:2}] @ {:5.1f}; {:3.1f}; {:5.1f}  {:3},{:3},{:3}  {:4.0f}\n",
 					idx,
 					rand_pos.x, rand_pos.y, rand_pos.z,
 					uint(rand_color.r*255), uint(rand_color.g*255), uint(rand_color.b*255),
@@ -1528,9 +1528,10 @@ void ClusteredShading::render()
 	m_cull_lights_args_ssbo.clear();
 	m_collect_nonempty_clusters_shader->setUniform("u_num_clusters"sv, m_clusters_count);
 	m_collect_nonempty_clusters_shader->invoke(size_t(std::ceil(float(m_clusters_count) / 1024.f)));
-	// ------------------------------------------------------------------
 
 	m_cluster_index_time.add(_gl_timer.elapsed<microseconds>(true));
+	// ------------------------------------------------------------------
+
 	// ------------------------------------------------------------------
 
 	// Assign lights to clusters (cull lights)
@@ -1584,7 +1585,6 @@ void ClusteredShading::render()
 		// NOTE: draw b/c copy(blit) doesn't work!?!?
 		//   no biggie though, it's often faster in practice
 		draw2d(_pp_low_rt.color_texture(), _pp_full_rt);
-
 	}
 	else
 		_pp_full_rt.clear();
@@ -2309,7 +2309,7 @@ void ClusteredShading::debugDrawClusterGrid()
 
 	for(const auto &index: nonempty_clusters)
 	{
-		// std::printf(" %3u", index);
+		// std::print(" {:3}", index);
 		const auto coord = index2coord(index);
 
 		// const auto index_range = (*c_lights_view)[index];
@@ -2459,11 +2459,11 @@ const std::vector<StaticObject> &ClusteredShading::cullScene()
 	{
 		auto result = intersect::check(frustum, obj.model->aabb(), obj.transform);
 
-		// std::printf("distance to plane");
+		// std::print("distance to plane");
 		// static const char *plane_name[] = { "L", "R", "T", "B", "Fr", "Bk" };
 		// for(auto idx = 0u; idx < 6; ++idx)
-		// 	std::printf("  %s: %.3f", plane_name[idx], result.distance_to_plane[idx]);
-		// std::printf("\n");
+		// 	std::print("  {}: {:.3f}", plane_name[idx], result.distance_to_plane[idx]);
+		// std::puts("");
 
 		if(result.visible)
 			_scenePvs.push_back(obj);
@@ -2471,11 +2471,11 @@ const std::vector<StaticObject> &ClusteredShading::cullScene()
 		{
 			// TODO: visualize result based on result.culled_by_plane, etc.
 			// if(result.culled_by_aabb)
-			// 	std::printf("culled by AABB\n");
+			// 	std::puts("culled by AABB");
 			// else if(result.culled_by_plane >= 0)
-			// 	std::printf("culled by plane: %d\n", result.culled_by_plane);
+			// 	std::print("culled by plane: {}\n", result.culled_by_plane);
 			// else
-			// 	std::printf("culled by corner\n");
+			// 	std::puts("culled by corner");
 		}
 	}
 
