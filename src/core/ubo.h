@@ -11,9 +11,10 @@ template<typename T>  // must be @ubo struct
 class Uniform : public Buffer
 {
 public:
-	Uniform(std::string_view name) :
+	inline Uniform(std::string_view name) :
 		Buffer(name, GL_UNIFORM_BUFFER)
 	{
+		clear();
 	}
 
 	inline T *operator -> () {return &_data; }
@@ -26,13 +27,13 @@ private:
 };
 
 template<typename T>
-inline void Uniform<T>::clear()
+void Uniform<T>::clear()
 {
 	std::memset(&_data, 0, sizeof(_data));
 }
 
 template<typename T>
-inline void Uniform<T>::flush()
+void Uniform<T>::flush()
 {
 	ensureCreated();
 

@@ -66,7 +66,7 @@ private:
 
 
 template<typename T> // requires (std::is_same_v<T, uint32_t>)
-inline void ShaderStorage<T>::bindIndirect() const
+void ShaderStorage<T>::bindIndirect() const
 {
 	glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, id());
 }
@@ -81,7 +81,7 @@ void ShaderStorage<T>::set(const std::vector<T> &data)
 }
 
 template<typename T>
-inline bool ShaderStorage<T>::set(size_t index, const T &item)
+bool ShaderStorage<T>::set(size_t index, const T &item)
 {
 	ensureCreated();
 
@@ -93,7 +93,7 @@ inline bool ShaderStorage<T>::set(size_t index, const T &item)
 }
 
 template<typename T>
-inline void ShaderStorage<T>::resize(size_t size)
+void ShaderStorage<T>::resize(size_t size)
 {
 	ensureCreated();
 
@@ -169,7 +169,7 @@ inline ShaderStorage<T>::View::View(ShaderStorage<T> *buffer, const T *start) :
 }
 
 template<typename T>
-inline ShaderStorage<T>::View::~View()
+ShaderStorage<T>::View::~View()
 {
 	_buffer->releaseView();
 }
@@ -212,7 +212,7 @@ void AtomicCounterBuffer<count>::clear()
 }
 
 template<size_t count> requires (count <= 32)
-inline void AtomicCounterBuffer<count>::onCreate()
+void AtomicCounterBuffer<count>::onCreate()
 {
 	resize(count);
 }
@@ -278,7 +278,7 @@ void MappedSSBO<T, N>::flush()
 }
 
 template<typename T, size_t N> requires (N > 0 && sizeof(T) >= 4)
-inline void MappedSSBO<T, N>::onCreate()
+void MappedSSBO<T, N>::onCreate()
 {
 	static constexpr auto flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT;
 	static constexpr auto map_flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_FLUSH_EXPLICIT_BIT;
