@@ -77,14 +77,18 @@ void LightManager::set(const PointLight &p)
 void LightManager::flush()
 {
 	// more lights than before; upload all  (hpefully, this doesn't happen often)
-	if(_lights.size() > _lights_ssbo.size())
+	if(_lights.size() != _lights_ssbo.size() or _dirty.size() == _lights.size())
 	{
 		_lights_ssbo.set(_lights);
-		std::print(stderr, "All {} lights uploaded\n", _lights.size());
+		std::print(stderr, "[LM] All {} lights uploaded\n", _lights.size());
 	}
-	else
+	else if(not _dirty.empty())
 	{
-		_lights_ssbo.resize(1 + _last_light_idx);
+		// no lights were added or removed, but some are dirty
+
+		// TODO: upload ranges?
+		//   SSBO class doesn't support that yet.
+		//   A cntiguous array of entries is required, which probably doesn't exist...
 
 		// write dirty entries to the ssbo
 		for(const auto list_index: _dirty)
