@@ -515,6 +515,7 @@ def main():
     print(f'// Generated with {sys.argv[0]} v{VERSION} from {args.glsl_file.name} at {dt},')
     print(f'// by {getpass.getuser()} in {os.getcwd()}')
     print()
+    print('#pragma once')
     print('#include <cstdint>')
     print('#include <cstddef>')
     print('#include <glm/vec2.hpp>')
