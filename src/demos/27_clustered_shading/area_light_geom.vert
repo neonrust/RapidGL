@@ -2,9 +2,9 @@
 
 #include "shared-structs.glh"
 
-layout(std430, binding = SSBO_BIND_LIGHTS) buffer LightsMgmtSSBO
+layout(std430, binding = SSBO_BIND_LIGHTS) readonly buffer LightsSSBO
 {
-	LightsManagement lights;
+	GPULight lights[];
 };
 
 
@@ -18,10 +18,15 @@ const uint indices[6]     = { 0, 1, 2, 1, 3, 2};
 
 void main()
 {
+	// TODO: this doesn't work at all when all lights are in the same list
+	//   need to make a draw call per light?
+	//   or could a geometry shader be used; sent the light indexes generate all the vertices?
+/*
     uint light_index           = gl_VertexID / VERTICES_COUNT;
     uint vertex_position_index = indices[gl_VertexID % VERTICES_COUNT];
 
     light_color = lights.area_lights[light_index].base.color * lights.area_lights[light_index].base.intensity;
     gl_Position = u_view_projection * vec4(lights.area_lights[light_index].points[vertex_position_index].xyz, 1.0);
     two_sided   = lights.area_lights[light_index].two_sided ? 1 : 0;
+*/
 }

@@ -26,14 +26,19 @@ const vec3 debug_colors[8] = vec3[]
 );
 
 
-layout(std430, binding = SSBO_BIND_LIGHTS) readonly buffer LightsMgmtSSBO
+layout(std430, binding = SSBO_BIND_LIGHTS) readonly buffer LightsSSBO
 {
-	LightsManagement lights;
+	GPULight lights[];
 };
 
-layout(std430, binding = SSBO_BIND_SIMPLE_CLUSTERS_AABB) readonly buffer ClustersSimpleSSBO
+layout(std430, binding = SSBO_BIND_CLUSTER_AABB) readonly buffer ClusterAABBSSBO
 {
-	SimpleCluster clusters[];
+	AABB cluster_aabb[];
+};
+
+layout(std430, binding = SSBO_BIND_CLUSTER_LIGHTS) readonly buffer ClusterLightsSSBO
+{
+	ClusterLights cluster_lights[];
 };
 
 layout(std430, binding = SSBO_BIND_SHADOW_PARAMS) readonly buffer ShadowParamsSSBO
@@ -41,24 +46,20 @@ layout(std430, binding = SSBO_BIND_SHADOW_PARAMS) readonly buffer ShadowParamsSS
 	LightShadowParams shadow_params[];
 };
 
-layout(std140, binding = UBO_BIND_LIGHT_COUNTS) uniform LightCountersUBO
-{
-	LightCounts light_counts;
-};
-
 vec3  fromRedToGreen(float interpolant);
 vec3  fromGreenToBlue(float interpolant);
 vec3  heatMap(float interpolant);
+vec3 falseColor(float value);
 uint computeClusterIndex(uvec3 cluster_coord);
 uvec3 computeClusterCoord(vec2 screen_pos, float view_z);
-
 
 float dirLightVisibility(uint index);
 float pointLightVisibility(uint index);
 float spotLightVisibility(uint index);
 float areaLightVisibility(uint index);
 
-mat4 lightViewProjection(PointLight light);
+
+const uint cluster_max_lights = CLUSTER_MAX_POINT_LIGHTS + CLUSTER_MAX_SPOT_LIGHTS + CLUSTER_MAX_AREA_LIGHTS;
 
 void main()
 {
@@ -67,61 +68,68 @@ void main()
 
     MaterialProperties material = getMaterialProperties(normal);
 
-    // Calculate the directional lights
-    for (uint index = 0; index < light_counts.num_dir_lights; ++index)
-    {
-    	float visibility = dirLightVisibility(index);
-     	if(visibility > 0)
-        	radiance += visibility * calcDirectionalLight(lights.dir_lights[index], in_world_pos, material);
-    }
-
     // Locating the cluster we are in
     uvec3 cluster_coord = computeClusterCoord(gl_FragCoord.xy, in_view_pos.z);
     uint cluster_index = computeClusterIndex(cluster_coord);
 
-    SimpleCluster cluster = clusters[cluster_index];
+    ClusterLights cluster = cluster_lights[cluster_index];
 
     uint num_clusters = u_cluster_resolution.x*u_cluster_resolution.y*u_cluster_resolution.z;
 
     // Calculate the point lights contribution
-    uint num_point_lights = min(cluster.num_point_lights, CLUSTER_MAX_POINT_LIGHTS);
+    uint num_lights = min(cluster.num_lights, cluster_max_lights);
     // TODO: if cluster.num_point_lights > CLUSTER_MAX_POINT_LIGHTS, highlight the pixel?
-    for (uint i = 0; i < num_point_lights; ++i)
+    for (uint idx = 0; idx < num_lights; ++idx)
     {
-	    uint light_index = cluster.light_index[i];
-       	float visibility = pointLightVisibility(light_index);
-        if(visibility > 0)
-        	radiance += visibility * calcPointLight(lights.point_lights[light_index], in_world_pos, material);
-    }
+	    uint light_index = cluster.light_index[idx];
 
-    // Calculate the spot lights contribution
-    uint spot_offset = num_clusters;
-    uint idx_spot_offset = spot_offset*u_num_cluster_avg_lights;
+        GPULight light = lights[light_index];
 
-    uint index_offset = CLUSTER_MAX_POINT_LIGHTS;
-    uint num_spot_lights = min(cluster.num_spot_lights, CLUSTER_MAX_SPOT_LIGHTS);
-    // TODO: if cluster.num_spot_lights > CLUSTER_MAX_SPOT_LIGHTS, highlight the pixel?
-    for (uint i = 0; i < num_spot_lights; ++i)
-    {
-	    uint light_index = cluster.light_index[i + index_offset];
-       	float visibility = spotLightVisibility(light_index);
-        if(visibility > 0)
-	        radiance += visibility * calcSpotLight(lights.spot_lights[light_index], in_world_pos, material);
-    }
+        float visibility = 0;
+		vec3 contribution = vec3(0);
 
-    // Calculate the area lights contribution
-    uint area_offset = 2*num_clusters;
-    uint idx_area_offset = area_offset*u_num_cluster_avg_lights;
+		uint light_type = light.type_flags & LIGHT_TYPE_MASK;
 
-    index_offset += CLUSTER_MAX_SPOT_LIGHTS;
-    uint num_area_lights = min(cluster.num_area_lights, CLUSTER_MAX_AREA_LIGHTS);
-    // TODO: if cluster.num_area_lights > CLUSTER_MAX_AREA_LIGHTS, highlight the pixel?
-    for (uint i = 0; i < num_area_lights; ++i)
-    {
-	    uint light_index = cluster.light_index[i + index_offset];
-       	float visibility = areaLightVisibility(light_index);
-        if(visibility > 0)
-	        radiance += visibility * calcLtcAreaLight(lights.area_lights[light_index], in_world_pos, material);
+       	switch(light_type)
+       	{
+	        case LIGHT_TYPE_DIRECTIONAL:
+			{
+		        visibility = dirLightVisibility(light_index);
+		        if(visibility > 0)
+		        	contribution = calcDirectionalLight(light, in_world_pos, material);
+			}
+			break;
+
+			case LIGHT_TYPE_POINT:
+			{
+		        visibility = 1;//pointLightVisibility(light_index);
+		        if(visibility > 0)
+		        	contribution = calcPointLight(light, in_world_pos, material);
+			}
+			break;
+
+			case LIGHT_TYPE_SPOT:
+			{
+				float visibility = spotLightVisibility(light_index);
+		        if(visibility > 0)
+    				contribution = calcSpotLight(light, in_world_pos, material);
+        	}
+         	break;
+
+          	case LIGHT_TYPE_AREA:
+           	{
+	           	float visibility = areaLightVisibility(light_index);
+	            if(visibility > 0)
+		        	contribution = calcLtcAreaLight(light, in_world_pos, material);
+            }
+            break;
+
+            default:
+	            frag_color = vec4(1, 0, 0.4, 1);
+    	        break;
+		}
+
+       	radiance += visibility * contribution;
     }
 
     radiance += indirectLightingIBL(in_world_pos, material);
@@ -140,13 +148,11 @@ void main()
     }
     else if (u_debug_clusters_occupancy)
     {
-        uint total_light_count = cluster.num_point_lights \
-						       	+ cluster.num_spot_lights \
-						        + cluster.num_area_lights;
+        uint total_light_count = cluster.num_lights;
         if (total_light_count > 0)
         {
-            float normalized_light_count = total_light_count / 100.0;
-            vec3 heat_map_color = heatMap(clamp(normalized_light_count, 0.0, 1.0));
+            float normalized_light_count = float(total_light_count) / float(cluster_max_lights);
+            vec3 heat_map_color = falseColor(clamp(normalized_light_count, 0, 1));
 
             frag_color = vec4(mix(radiance, heat_map_color, u_debug_clusters_occupancy_blend_factor), 1.0);
         }
@@ -218,6 +224,45 @@ vec3 heatMap(float interpolant)
     }
 }
 
+vec3 falseColor(float value)
+{
+    value = clamp(value, 0, 1);
+
+	// TODO: could do this in a more general way,
+	//  but this is probably faster
+
+	const float N = 8.0;      // number of sub-gradients
+    const float w = 1.0 / N;
+
+    const float v = 3;
+
+    const vec3 c0 = vec3( 0,   0,  v/2);
+    const vec3 c1 = vec3( 0,   0,   v);
+	const vec3 c2 = vec3( 0,  v/2,  v);
+	const vec3 c3 = vec3( 0,   v,   v);
+    const vec3 c4 = vec3(v/2,  v,  v/2);
+    const vec3 c5 = vec3( v,   v,   0);
+    const vec3 c6 = vec3( v,  v/2,  0);
+    const vec3 c7 = vec3( v,   0,   0);
+    const vec3 c8 = vec3(v/2,  0,   0);
+
+    if (value < 1*w)
+    	return mix(c0, c1, (value - 0*w) * N);
+    if (value < 2*w)
+	    return mix(c1, c2, (value - 1*w) * N);
+    if (value < 3*w)
+    	return mix(c2, c3, (value - 2*w) * N);
+    if (value < 4*w)
+     	return mix(c3, c4, (value - 3*w) * N);
+    if (value < 5*w)
+      	return mix(c4, c5, (value - 4*w) * N);
+	if (value < 6*w)
+        return mix(c5, c6, (value - 5*w) * N);
+    if (value < 7*w)
+        return mix(c6, c7, (value - 6*w) * N);
+	return mix(c7, c8, (value - 7*w) * N);
+}
+
 vec3 unpackNormal(vec2 f)
 {
     // float z = sqrt(max(0, 1 - dot(f, f)));
@@ -241,8 +286,8 @@ float dirLightVisibility(uint index)
 
 float pointLightVisibility(uint index)
 {
-	PointLight light = lights.point_lights[index];
-	if((light.base.feature_flags & LIGHT_SHADOW_CASTER) == 0)
+	GPULight light = lights[index];
+	if(index > 0 || (light.type_flags & LIGHT_SHADOW_CASTER) == 0)
 		return 1;
 
 	LightShadowParams params = shadow_params[index];

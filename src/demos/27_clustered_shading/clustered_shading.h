@@ -7,6 +7,7 @@
 #include "ubo.h"
 #include "static_model.h"
 #include "shader.h"
+#include "lights.h"
 #include "shared.h"
 #include "rendertarget_2d.h"
 #include "rendertarget_cube.h"
@@ -15,6 +16,7 @@
 #include "pp_gaussian_blur_fixed.h"
 #include "pp_light_scattering.h"
 #include "pp_tonemapping.h"
+#include "light_manager.h"
 
 #include <memory>
 #include <vector>
@@ -38,9 +40,9 @@ namespace
     // Convert HSV to RGB:
     // Source: https://en.wikipedia.org/wiki/HSL_and_HSV#From_HSV
     // Retrieved: 28/04/2016
-    // @param H Hue in the range [0, 360)
-    // @param S Saturation in the range [0, 1]
-    // @param V Value in the range [0, 1]
+	// @param H Hue         [0, 360)
+	// @param S Saturation  [0, 1]
+	// @param V Value       [0, 1]
 	[[maybe_unused]] glm::vec3 hsv2rgb(float H, float S, float V)
     {
         float C = V * S;
@@ -187,7 +189,7 @@ private:
 	glm::uvec3 m_cluster_resolution;             // 3D dimensions of the cluster grid.
 	float      m_near_k;                       // ( 1 + ( 2 * tan( fov * 0.5 ) / ClusterGridDim.y ) ) // Used to compute the near plane for clusters at depth k.
 	float      m_log_cluster_res_y;               // 1.0f / log( NearK )  // Used to compute the k index of the cluster from the view depth of a pixel sample.
-	uint32_t   m_clusters_count { 0 };
+	uint32_t   m_cluster_count { 0 };
 
 
 	bool  m_debug_cluster_geom           = false;
@@ -214,12 +216,14 @@ private:
 	std::vector<StaticObject> _scene;  // TODO: Scene _scene;
 	std::vector<StaticObject> _scenePvs;  // potentially visible set
 
-	RGL::buffer::ShaderStorage<SimpleCluster> m_simple_clusters_aabb_ssbo;
-	RGL::buffer::MappedSSBO<LightsManagement, 1> m_lights_ssbo;
-	RGL::buffer::Uniform<LightCounts> m_light_counts_ubo;
-	RGL::buffer::MappedSSBO<LightShadowParams, MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS + MAX_AREA_LIGHTS> m_shadow_map_params_ssbo;
+	RGL::buffer::ShaderStorage<AABB> m_cluster_aabb_ssbo;
+	// RGL::buffer::MappedSSBO<LightsManagement, 1> m_lights_ssbo;
+	// RGL::buffer::Uniform<LightCounts> m_light_counts_ubo;
 	RGL::buffer::ShaderStorage<uint> m_cluster_discovery_ssbo;
 	RGL::buffer::ShaderStorage<glm::uvec3> m_cull_lights_args_ssbo;
+	RGL::buffer::ShaderStorage<ClusterLights> m_cluster_lights_ssbo;
+	RGL::buffer::MappedSSBO<LightShadowParams, MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS + MAX_AREA_LIGHTS> m_shadow_map_params_ssbo;
+	LightManager _light_mgr;
 
     /// Area lights variables
     std::shared_ptr<RGL::Texture2D> m_ltc_amp_lut;

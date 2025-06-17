@@ -7,98 +7,98 @@ using vec3 = int;
 using vec4 = int;
 using uvec3 = int;
 using uint = int;
+using mat4 = int;
 #endif
 
-// @interop
-struct BaseLight
-{
-    vec3 color;
-	float intensity;
-	float fog;
-	uint feature_flags;
-	uint uuid;
-};
+// // @interop
+// struct BaseLight
+// {
+//     vec3 color;
+// 	float intensity;
+// 	float fog;
+// 	uint feature_flags;
+// 	uint uuid;
+// };
+
+// // @interop
+// struct DirectionalLight
+// {
+//     BaseLight base;
+//     vec3 direction;
+// };
+
+// // @interop
+// struct PointLight
+// {
+//     BaseLight base;
+//     vec3 position;
+//     float radius;
+// };
+
+// // @interop
+// struct SpotLight
+// {
+//     PointLight point;
+//     vec3 direction;
+//     float inner_angle;
+//     float outer_angle;
+// 	float bounds_radius;  // also the distance from 'point.position' along 'direction'
+// };
+
+// // @interop
+// struct AreaLight
+// {
+//     BaseLight base;
+//     vec4 points[4];
+//     bool two_sided;
+// };
 
 // @interop
-struct DirectionalLight
-{
-    BaseLight base;
-    vec3 direction;
-};
-
-// @interop
-struct PointLight
-{
-    BaseLight base;
-    vec3 position;
-    float radius;
-};
-
-// @interop
-struct SpotLight
-{
-    PointLight point;
-    vec3 direction;
-    float inner_angle;
-    float outer_angle;
-	float bounds_radius;  // also the distance from 'point.position' along 'direction'
-};
-
-// @interop
-struct AreaLight
-{
-    BaseLight base;
-    vec4 points[4];
-    bool two_sided;
-};
-
-// @interop
-struct MergedLight
+struct GPULight
 {
 	// all light types in a single struct
 	//  - makes shadow map prioritization simpler
 	//  - can then use a single array (dynamic size, w/ offsets by type)
 	//     -> MUCH faster shader compilation
 
-	vec3 color;
-	uint uuid;
-    vec3 position;
+	vec3 position;
 	uint type_flags;  // LIGHT_*
-    vec3 direction;   // also directional light
+	vec3 direction;       // spot & directional lights
+	float radius;
+	float spot_bounds_radius; // tighter bounds for spot; distance from 'position', along 'direction'
 	float intensity;
-    float radius;
-    float inner_angle;
-    float outer_angle;
-	float bounds_radius; // tighter bounds for spot; distance from 'position', along 'direction'
+	// uint uuid;   // needed here?
 
-	vec4 points[4];  // only area light
+	float outer_angle;
+	float fog_intensity;  // might be separate SSBO ? e.g. together w/ other fog/scattering stuff
+	vec3 color;
+	float inner_angle;
 
-	float fog_intensity;  // might be separate SSBO ? (together w/ other fog/scattering stuff)
-	                      // removing it from here will shrink this struct, 144->128
+	vec4 area_points[4];  // only area light
 };
 
-// @ubo
-struct LightCounts
-{
-	uint num_dir_lights;
-	uint num_point_lights;
-	uint num_spot_lights;
-	uint num_area_lights;
-};
+// // @ubo
+// struct LightCounts
+// {
+// 	uint num_dir_lights;
+// 	uint num_point_lights;
+// 	uint num_spot_lights;
+// 	uint num_area_lights;
+// };
 
-// @interop
-struct LightsManagement
-{
-	DirectionalLight dir_lights[1];  // 0..1
-	PointLight point_lights[MAX_POINT_LIGHTS];
-	SpotLight spot_lights[MAX_SPOT_LIGHTS];
-	AreaLight area_lights[MAX_AREA_LIGHTS];
-};
+// // @interop
+// struct LightsManagement
+// {
+// 	DirectionalLight dir_lights[1];  // 0..1
+// 	PointLight point_lights[MAX_POINT_LIGHTS];
+// 	SpotLight spot_lights[MAX_SPOT_LIGHTS];
+// 	AreaLight area_lights[MAX_AREA_LIGHTS];
+// };
 
 // @interop
 struct LightShadowParams
 {
-	mat4 view_proj[6];
+	mat4 view_proj[6];  // maybe store 2 of the space vectors instead (e.g. forward & up)
 	vec4 atlas_rect[6];
 };
 
@@ -108,12 +108,8 @@ struct AABB
 	vec4 max;
 };
 
-// simpler variant; AABB coupled with light indexes
-struct SimpleCluster
+struct ClusterLights
 {
-	AABB aabb;
-	uint num_point_lights;
-	uint num_spot_lights;
-	uint num_area_lights;
+	uint num_lights;
 	uint light_index[CLUSTER_MAX_LIGHTS];
 };

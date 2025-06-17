@@ -13,15 +13,11 @@ layout(rgba32f, binding = 1) uniform image2D   u_output_color;
 layout(binding = 2)          uniform sampler2D u_input_depth;
 layout(binding = 3)          uniform sampler2D u_blue_noise;
 
-layout(std430, binding = SSBO_BIND_LIGHTS) buffer LightsMgmtSSBO
+layout(std430, binding = SSBO_BIND_LIGHTS) readonly buffer LightsSSBO
 {
-	LightsManagement lights;
+	GPULight lights[];
 };
 
-layout(std140, binding = UBO_BIND_LIGHT_COUNTS) uniform LightCountersUBO
-{
-	LightCounts light_counts;
-};
 
 uniform vec3 u_fog_color;
 uniform float u_fog_density;       // [ 0, 0.1 ]   (sensible)
@@ -198,9 +194,11 @@ void main()
 	vec3 fog_radiance = vec3(0);
 
 	// TODO: iterate throught lights in this CLUSTER only
-	for(uint idx = 0; idx < light_counts.num_point_lights; ++idx)
+	for(uint light_index = 0; light_index < lights.length(); ++light_index)
 	{
-		float visible = fadeByDistance(lights.point_lights[idx].position);
+		GPULight light = lights[light_index];
+
+		float visible = fadeByDistance(light.position);
 		if(visible > 1e-4)
 			fog_radiance += visible * scatterPointLight(cam_ray, lights.point_lights[idx]);
 	}

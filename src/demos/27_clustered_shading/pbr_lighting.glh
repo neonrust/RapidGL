@@ -167,10 +167,10 @@ vec3 indirectLightingIBL(vec3 world_pos, MaterialProperties material)
     return (kd * diffuse + specular) * material.ao;
 }
 
-vec3 pbr(BaseLight base, vec3 direction, vec3 world_pos, float attenuation, MaterialProperties material)
+vec3 pbr(GPULight light, vec3 direction, vec3 world_pos, float attenuation, MaterialProperties material)
 {
     vec3 wo         = normalize(u_cam_pos - world_pos);
-    vec3 radiance   = vec3(0.0);
+    vec3 radiance   = vec3(0);
 
     // fresnel reflectance at normal incidence
     vec3 F0 = vec3(0.04); // base reflectance
@@ -180,7 +180,7 @@ vec3 pbr(BaseLight base, vec3 direction, vec3 world_pos, float attenuation, Mate
     {
         vec3 wi               = normalize(direction);
         vec3 h                = normalize(wo + wi);
-        vec3 light_irradiance = base.color * base.intensity;
+        vec3 light_irradiance = light.color * light.intensity;
 
         // cook-torrance brdf
         float NDF = distributionGGX(material.normal, h, material.roughness);
@@ -226,33 +226,35 @@ float getSpotAngleAttenuation(vec3 l, vec3 light_dir, float inner_angle, float o
     return attenuation * attenuation;
 }
 
-vec3 calcDirectionalLight(DirectionalLight light, vec3 world_pos, MaterialProperties material)
+vec3 calcDirectionalLight(GPULight light, vec3 world_pos, MaterialProperties material)
 {
-    return pbr(light.base, -light.direction, world_pos, 1.0, material);
+    return pbr(light, -light.direction, world_pos, 1.0, material);
 }
 
-vec3 calcPointLight(PointLight light, vec3 world_pos, MaterialProperties material)
+vec3 calcPointLight(GPULight light, vec3 world_pos, MaterialProperties material)
 {
     vec3  light_direction = light.position - world_pos;
     float attenuation     = getSquareFalloffAttenuation(light_direction, 1.0 / light.radius);
 
-    return pbr(light.base, light_direction, world_pos, attenuation, material);
+    return pbr(light, light_direction, world_pos, attenuation, material);
 }
 
-vec3 calcSpotLight(SpotLight light, vec3 world_pos, MaterialProperties material)
+vec3 calcSpotLight(GPULight light, vec3 world_pos, MaterialProperties material)
 {
-    vec3  L            = normalize(world_pos - light.point.position);
-    vec3  pos_to_light = light.point.position - world_pos;
+    vec3  L            = normalize(world_pos - light.position);
+    vec3  pos_to_light = light.position - world_pos;
 
-    float attenuation     = getSquareFalloffAttenuation(pos_to_light, 1.0 / light.point.radius);
+    float attenuation     = getSquareFalloffAttenuation(pos_to_light, 1.0 / light.radius);
           attenuation    *= getSpotAngleAttenuation(L, -light.direction, light.inner_angle, light.outer_angle);
     vec3  light_direction = pos_to_light;
 
-    return pbr(light.point.base, light_direction, world_pos, attenuation, material);
+    return pbr(light, light_direction, world_pos, attenuation, material);
 }
 
-vec3 calcLtcAreaLight(AreaLight light, vec3 world_pos, MaterialProperties material)
+vec3 calcLtcAreaLight(GPULight light, vec3 world_pos, MaterialProperties material)
 {
+	// NOTE: this is not full PBR
+
     vec3 F0         = vec3(0.04); // base reflectance
     vec3 diff_color = material.albedo * (1.0 - material.metallic);
     vec3 spec_color = mix(F0, material.albedo, material.metallic);
@@ -261,20 +263,22 @@ vec3 calcLtcAreaLight(AreaLight light, vec3 world_pos, MaterialProperties materi
     vec3  V         = normalize(u_cam_pos - world_pos);
     float cos_theta = max(dot(N, V), 0.0);
 
+	bool two_sided = (light.type_flags & LIGHT_TWO_SIDED) > 0;
+
     // diffuse term
-    vec3 diff  = ltcEvaluate(N, V, world_pos, mat3(1), light.points, light.two_sided);
-         diff *= diff_color * light.base.color;
+    vec3 diff  = ltcEvaluate(N, V, world_pos, mat3(1), light.area_points, two_sided);
+         diff *= diff_color * light.color;
 
     // specular term
     vec2 coords  = ltcCoords(cos_theta, material.roughness);
     mat3 Minv    = ltcMatrix(s_ltc_mat, coords);
     vec2 schlick = texture2D(s_ltc_amp, coords).xy;
 
-    vec3 spec  = ltcEvaluate(N, V, world_pos, Minv, light.points, light.two_sided);
+    vec3 spec  = ltcEvaluate(N, V, world_pos, Minv, light.area_points, two_sided);
          spec *= spec_color * schlick.x + (1.0 - spec_color) * schlick.y;
 
-    vec3 radiance  = light.base.intensity * (diff + spec);
+    vec3 radiance  = light.intensity * (diff + spec);
          radiance /= 2.0 * PI;
 
-    return radiance;;
+    return radiance;
 }

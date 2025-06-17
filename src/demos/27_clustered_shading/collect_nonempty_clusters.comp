@@ -35,6 +35,7 @@ void main()
 
 	barrier();
 
+	// generate arguments for light culling
 	if(gl_LocalInvocationIndex == 0)
 		num_groups = uvec3(num_active, 1, 1);
 }

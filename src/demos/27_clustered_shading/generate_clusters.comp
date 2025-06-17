@@ -2,9 +2,9 @@
 
 #include "shared-structs.glh"
 
-layout(std430, binding = SSBO_BIND_SIMPLE_CLUSTERS_AABB) buffer ClustersSimpleSSBO
+layout(std430, binding = SSBO_BIND_CLUSTER_AABB) buffer ClusterAABBSSBO
 {
-	SimpleCluster clusters[];
+	AABB cluster_aabb[];
 };
 
 // uniforms
@@ -63,7 +63,7 @@ void main()
 	vec3 min_aabb = min(near_min, min(near_max, min(far_min, far_max)));
 	vec3 max_aabb = max(near_min, max(near_max, max(far_min, far_max)));
 
-	clusters[cluster_index].aabb = AABB(vec4(min_aabb.xyz, 1), vec4(max_aabb.xyz, 1));
+	cluster_aabb[cluster_index] = AABB(vec4(min_aabb.xyz, 1), vec4(max_aabb.xyz, 1));
 }
 
 uvec3 clusterCoordFromIndex(uint cluster_index)

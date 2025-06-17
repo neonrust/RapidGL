@@ -1,8 +1,16 @@
-#define SSBO_BIND_SIMPLE_CLUSTERS_AABB      1
-#define SSBO_BIND_LIGHTS                    2
-#define SSBO_BIND_CLUSTER_DISCOVERY         3
-#define SSBO_BIND_CULL_LIGHTS_ARGS          4
+#define SSBO_BIND_CLUSTER_AABB         1
+#define SSBO_BIND_CLUSTER_LIGHTS       2
+#define SSBO_BIND_LIGHTS               3
+#define SSBO_BIND_CLUSTER_DISCOVERY    4
+#define SSBO_BIND_CULL_LIGHTS_ARGS     5
 
-#define SSBO_BIND_SHADOW_PARAMS             5
+#define SSBO_BIND_SHADOW_PARAMS        6
 
-#define UBO_BIND_LIGHT_COUNTS              20
+
+// cluster_aabb        - static
+// lights              - static
+// nnempty_clusters
+// cull_args
+// cluster_light_lists
+// shadow_params
+
