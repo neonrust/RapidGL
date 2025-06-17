@@ -8,11 +8,16 @@
 #include <span>
 #include <print>
 #include <cstring>  // std::memset
+#include <iterator>
 
 #include "buffer.h"
 
 namespace RGL::buffer
 {
+
+template<typename Iter, typename T>
+concept IteratorOf = std::contiguous_iterator<Iter> &&
+	std::same_as<std::remove_cvref_t<decltype(*std::declval<Iter>())>, T>;
 
 template<typename T>
 class ShaderStorage : public Buffer
@@ -35,6 +40,8 @@ public:
 
 	void set(const std::vector<T> &data);
 	bool set(size_t index, const T &item);
+	template<IteratorOf<T> Iter>
+	void set(Iter begin, Iter end, size_t start_index=0);
 
 	inline size_t size() const { return _size; }
 
@@ -88,9 +95,25 @@ bool ShaderStorage<T>::set(size_t index, const T &item)
 	assert(_size > 0);
 	assert(index < _size);
 	if(index < _size)
-		upload(&item, sizeof(T), index * elem_size);
+		upload(&item, elem_size, index * elem_size);
 
 	return index < _size;
+}
+
+template<typename T>
+template<IteratorOf<T> Iter>
+void ShaderStorage<T>::set(Iter begin, Iter end, size_t start_index)
+{
+	ensureCreated();
+
+	const auto count = std::distance(begin, end);
+
+	// TODO: if range flows outside current buffer?
+	//   truncate iterator range
+	//   or resize the buffer
+	assert(_size >= start_index + count);
+
+	upload(&*begin, count * elem_size, start_index * elem_size);
 }
 
 template<typename T>
@@ -147,6 +170,7 @@ template<typename T>
 concept HasSize = requires {
 	{ T::_struct_size } -> std::convertible_to<size_t>;
 };
+
 }
 
 template<typename T>

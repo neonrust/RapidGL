@@ -63,9 +63,9 @@ void Buffer::upload(const void *ptr, size_t size)
 	// std::print("Buffer[{}]: uploaded {} bytes\n", _name, size);
 }
 
-void Buffer::upload(const void *ptr, size_t size, size_t offset)
+void Buffer::upload(const void *ptr, size_t size, size_t start_offset)
 {
-	glNamedBufferSubData(id(), GLintptr(offset), GLsizeiptr(size), ptr);
+	glNamedBufferSubData(id(), GLintptr(start_offset), GLsizeiptr(size), ptr);
 	// std::print("Buffer[{}]: uploaded {} bytes @ offset {}\n", _name, size, offset);
 }
 
