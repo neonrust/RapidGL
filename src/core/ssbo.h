@@ -85,6 +85,7 @@ bool ShaderStorage<T>::set(size_t index, const T &item)
 {
 	ensureCreated();
 
+	assert(_size > 0);
 	assert(index < _size);
 	if(index < _size)
 		upload(&item, sizeof(T), index * elem_size);
@@ -98,8 +99,12 @@ void ShaderStorage<T>::resize(size_t size)
 	ensureCreated();
 
 	assert(size > 0);
-	upload(nullptr, size * elem_size);
-	_size = size;
+
+	if(size != _size)
+	{
+		upload(nullptr, size * elem_size);
+		_size = size;
+	}
 }
 
 template<typename T>
