@@ -217,12 +217,10 @@ private:
 	std::vector<StaticObject> _scenePvs;  // potentially visible set
 
 	RGL::buffer::ShaderStorage<AABB> m_cluster_aabb_ssbo;
-	// RGL::buffer::MappedSSBO<LightsManagement, 1> m_lights_ssbo;
-	// RGL::buffer::Uniform<LightCounts> m_light_counts_ubo;
 	RGL::buffer::ShaderStorage<uint> m_cluster_discovery_ssbo;
 	RGL::buffer::ShaderStorage<glm::uvec3> m_cull_lights_args_ssbo;
 	RGL::buffer::ShaderStorage<ClusterLights> m_cluster_lights_ssbo;
-	RGL::buffer::MappedSSBO<LightShadowParams, MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS + MAX_AREA_LIGHTS> m_shadow_map_params_ssbo;
+	RGL::buffer::MappedStorage<LightShadowParams, MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS + MAX_AREA_LIGHTS> m_shadow_map_params_ssbo;
 	LightManager _light_mgr;
 
     /// Area lights variables

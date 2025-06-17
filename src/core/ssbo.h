@@ -237,11 +237,11 @@ void AtomicCounterBuffer<count>::set(uint32_t value)
 
 
 template<typename T, size_t size> requires (size > 0 && sizeof(T) >= 4)
-class MappedSSBO : protected ShaderStorage<T> // T must be @interop struct
+class MappedStorage : protected ShaderStorage<T> // T must be @interop struct
 {
 public:
 	// TODO: add control over GL_MAP_COHERENT_BIT / GL_MAP_FLUSH_EXPLICIT_BIT use?
-	inline MappedSSBO(std::string_view name, BufferUsage default_usage=DynamicDraw) :
+	inline MappedStorage(std::string_view name, BufferUsage default_usage=DynamicDraw) :
 		ShaderStorage<T>(name, default_usage)
 	{};
 
@@ -274,7 +274,7 @@ private:
 };
 
 template<typename T, size_t N> requires (N > 0 && sizeof(T) >= 4)
-void MappedSSBO<T, N>::flush()
+void MappedStorage<T, N>::flush()
 {
 	if(not this->id())  // calling this while still unmapped makes little sense
 		return;
@@ -283,7 +283,7 @@ void MappedSSBO<T, N>::flush()
 }
 
 template<typename T, size_t N> requires (N > 0 && sizeof(T) >= 4)
-void MappedSSBO<T, N>::onCreate()
+void MappedStorage<T, N>::onCreate()
 {
 	static constexpr auto flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT;
 	static constexpr auto map_flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_FLUSH_EXPLICIT_BIT;
