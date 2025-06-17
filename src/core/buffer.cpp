@@ -60,13 +60,13 @@ bool Buffer::ensureCreated() const
 void Buffer::upload(const void *ptr, size_t size)
 {
 	glNamedBufferData(id(),  GLsizeiptr(size), ptr, _default_usage);
-	std::print("Buffer[{}]: uploaded {} bytes\n", _name, size);
+	// std::print("Buffer[{}]: uploaded {} bytes\n", _name, size);
 }
 
 void Buffer::upload(const void *ptr, size_t size, size_t offset)
 {
 	glNamedBufferSubData(id(), GLintptr(offset), GLsizeiptr(size), ptr);
-	std::print("Buffer[{}]: uploaded {} bytes @ offset {}\n", _name, size, offset);
+	// std::print("Buffer[{}]: uploaded {} bytes @ offset {}\n", _name, size, offset);
 }
 
 
