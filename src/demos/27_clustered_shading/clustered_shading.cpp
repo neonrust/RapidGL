@@ -1036,18 +1036,6 @@ void ClusteredShading::update(double delta_time)
 		}
 
 
-
-  //       m_update_lights_shader->bind();
-		// m_update_lights_shader->setUniform("u_time"sv,                 time_accum);
-		// m_update_lights_shader->setUniform("u_area_two_sided"sv,       m_area_lights_two_sided);
-		// m_update_lights_shader->setUniform("u_area_rotation_matrix"sv, rotation_mat);
-
-		// auto max_lights_count = glm::max(m_point_lights.size(), glm::max(m_spot_lights.size(), glm::max(m_directional_lights.size(), m_area_lights.size())));
-		// glDispatchCompute(GLuint(glm::ceil(float(max_lights_count) / 1024.f)), 1, 1);
-  //       glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-
-		// UpdateLightsSSBOs();
-
 		UpdateLightsSSBOs();
 	}
 }
