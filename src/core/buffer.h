@@ -42,8 +42,8 @@ public:
 
 protected:
 	bool ensureCreated() const;    // returns true if it was created
-	void upload(void *ptr, size_t size);
-	void upload(void *ptr, size_t size, size_t offset);
+	void upload(const void *ptr, size_t size);
+	void upload(const void *ptr, size_t size, size_t offset);
 	virtual void onCreate() {};
 
 protected:
