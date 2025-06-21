@@ -1088,92 +1088,25 @@ void ClusteredShading::GenerateAreaLights()
 
 void ClusteredShading::GeneratePointLights()
 {
-
-#if 0
-	m_point_lights.push_back({
-		.base = {
-			.color = { .2f, 1.f, .5f },
-			.intensity = 1000
-		},
-		.position = { -5, 2.f, 4 },
-		.radius = 15,
-	});
-	m_point_lights.push_back({
-		.base = {
-			.color = { 1.f, 0.5f, .1f },
-			.intensity = 1000
-		},
-		.position = { -5, 3.f, -4 },
-		.radius = 15,
-	});
-	m_point_lights.push_back({
-		.base = {
-			.color = { .3f, 0.2f, 1.5f },
-			.intensity = 1000
-		},
-		.position = { 5, 3.f, -4 },
-		.radius = 15,
-	});
-#endif
-
-	// m_point_lights.push_back({
-	// 	.base = {
-	// 		.uuid = static_cast<uint32_t>(m_point_lights.size()), // TODO: use ECS entity ID
-	// 		.color = { 1.0f, 0.8f, 0.5f },
-	// 		.intensity = 100,
-	// 		.fog = 1.f,
-	// 		.feature_flags = LIGHT_SHADOW_CASTER,
-	// 	},
-	// 	.position = { -10, 2.f, 0 },
-	// 	.radius = 10,
-	// });
-
-	// m_point_lights.push_back({
-	// 	.base = {
-	// 		.uuid = static_cast<uint32_t>(m_point_lights.size()), // TODO: use ECS entity ID
-	// 		.color = { 0.3f, 0.5f, 1.0 },
-	// 		.intensity = 100,
-	// 		.fog = 1.f,
-	// 		.feature_flags = LIGHT_SHADOW_CASTER,
-	// 	},
-	// 	.position = { 10, 2.f, 0 },
-	// 	.radius = 10,
-	// });
-
-	// m_point_lights.push_back({
-	// 	.base = {
-	// 		.uuid = static_cast<uint32_t>(m_point_lights.size()), // TODO: use ECS entity ID
-	// 		.color = { 0.4f, 1.0f, 0.4f },
-	// 		.intensity = 100,
-	// 		.fog = 1.f,
-	// 		.feature_flags = LIGHT_SHADOW_CASTER,
-	// 	},
-	// 	.position = { 0, 2.f, -10 },
-	// 	.radius = 10,
-	// });
-	// return;
-
-	// m_light_counts_ubo->num_point_lights = 0;
-
-	for(auto idx = 0u; idx < 3; ++idx)
+	for(auto idx = 0u; idx < 5; ++idx)
 	{
-		auto rand_color= hsv2rgb(
+		const auto rand_color= hsv2rgb(
 			float(Util::RandomDouble(1, 360)),
 			float(Util::RandomDouble(0.2f, 0.9f)),
 			1.f
 		);
-		auto rand_pos = Util::RandomVec3({ -18, 0.5f, -18 }, { 18, 3.5f, 18 });
+		const auto rand_pos = Util::RandomVec3({ -18, 0.5f, -18 }, { 18, 3.5f, 18 });
 
-		auto rand_intensity = float(Util::RandomDouble(1, 100));
+		const auto rand_intensity = float(Util::RandomDouble(1, 100))*2;
 
 		_light_mgr.add(PointLightDef{
 			.color = rand_color,
 			.intensity = rand_intensity,
 			.fog = 1.f,
+			.shadow_caster = true,
 			.position = rand_pos,
 			.radius = std::pow(rand_intensity, 0.6f), // maybe this could be scaled down as the total light count goes up?
 		});
-		// m_light_counts_ubo->num_point_lights = idx + 1;
 
 		std::print("light[{:2}] @ {:5.1f}; {:3.1f}; {:5.1f}  {:3},{:3},{:3}  {:4.0f}\n",
 					idx,
@@ -1182,44 +1115,6 @@ void ClusteredShading::GeneratePointLights()
 					rand_intensity);
 	}
 
-#if 0
-	m_point_lights.push_back({
-		.base = {
-			.color = { 1.0f, 0.8f, 0.5f },
-			.intensity = 100
-		},
-		.position = { -10, 2.f, 0 },
-		.radius = 10,
-	});
-
-	m_point_lights.push_back({
-		.base = {
-			.color = { 0.3f, 0.5f, 1.0 },
-			.intensity = 100
-		},
-		.position = { 10, 2.f, 0 },
-		.radius = 10,
-	});
-
-	m_point_lights.push_back({
-		.base = {
-			.color = { 0.4f, 1.0f, 0.4f },
-			.intensity = 100
-		},
-		.position = { 0, 2.f, -10 },
-		.radius = 10,
-	});
-
-	m_point_lights.push_back({
-		.base = {
-			.color = { 1.0f, 0.1f, 0.05f },
-			.intensity = 100
-		},
-		.position = { 0, 2.f, 10 },
-		.radius = 10,
-	});
-#endif
-	// m_light_counts_ubo.flush();
 }
 
 void ClusteredShading::GenerateSpotLights()
@@ -1621,6 +1516,8 @@ void ClusteredShading::render()
 		// Assign lights to clusters (cull lights)
 		m_cluster_lights_range_ssbo.clear();
 		m_all_lights_index_ssbo.clear();
+		m_cull_lights_shader->setUniform("u_cam_pos"sv, m_camera.position());
+		m_cull_lights_shader->setUniform("u_light_max_distance"sv, std::min(100.f, m_camera.farPlane()));
 		m_cull_lights_shader->setUniform("u_view_matrix"sv, m_camera.viewTransform());
 		m_cull_lights_shader->setUniform("u_num_clusters"sv, m_cluster_count);
 		m_cull_lights_shader->setUniform("u_max_cluster_avg_lights"sv, uint32_t(CLUSTER_AVERAGE_LIGHTS));
@@ -2185,6 +2082,7 @@ void ClusteredShading::renderLighting(const Camera &camera)
 	m_clustered_pbr_shader->setUniform("u_cluster_size_ss"sv,            glm::uvec2(m_cluster_block_size));
 	m_clustered_pbr_shader->setUniform("u_log_cluster_res_y"sv,          m_log_cluster_res_y);
 	m_clustered_pbr_shader->setUniform("u_num_cluster_avg_lights"sv,     uint32_t(CLUSTER_AVERAGE_LIGHTS));
+	m_clustered_pbr_shader->setUniform("u_light_max_distance"sv,         std::min(100.f, m_camera.farPlane()));
 
 	m_clustered_pbr_shader->setUniform("u_shadow_bias_constant"sv, m_shadow_bias_constant);
 	m_clustered_pbr_shader->setUniform("u_shadow_bias_slope_scale"sv, m_shadow_bias_slope_scale);

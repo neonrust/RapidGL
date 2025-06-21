@@ -20,10 +20,12 @@ layout(std430, binding = SSBO_BIND_CLUSTER_LIGHT_RANGE) writeonly buffer Cluster
 
 SSBO_ALL_LIGHTS_rw;
 
+
+uniform vec3 u_cam_pos;
 uniform mat4 u_view_matrix;
 uniform uint u_num_clusters;
 uniform uint u_max_cluster_avg_lights;
-
+uniform float u_light_max_distance;
 
 shared uint s_cluster_index;
 shared AABB s_cluster_aabb;
@@ -47,6 +49,8 @@ void main()
 		s_light_count = 0;
     }
     barrier();
+
+	float max_distance_sq = u_light_max_distance*u_light_max_distance;
 
     const uint THREADS_COUNT = gl_WorkGroupSize.x;
 
@@ -95,8 +99,12 @@ void main()
 			break;
 		}
 
+		vec3 cam_to_center = sphere_center - u_cam_pos;
+
 		bool affecting = light_type == LIGHT_TYPE_DIRECTIONAL \
-			|| (sphere_radius > 0 && sphereInsideAABB(sphere_center, sphere_radius, s_cluster_aabb));
+			|| (sphere_radius > 0 \
+				&& dot(cam_to_center, cam_to_center) < max_distance_sq - sphere_radius*sphere_radius \
+				&& sphereInsideAABB(sphere_center, sphere_radius, s_cluster_aabb));
 		if(affecting)
 		{
 			uint next_index = atomicAdd(s_light_count, 1);

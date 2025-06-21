@@ -8,6 +8,7 @@ uniform uvec3 u_cluster_resolution;
 uniform uvec2 u_cluster_size_ss;
 uniform float u_log_cluster_res_y;
 uniform uint  u_num_cluster_avg_lights;
+uniform float u_light_max_distance;
 
 uniform bool u_debug_cluster_geom;
 uniform bool u_debug_clusters_occupancy;
@@ -60,6 +61,7 @@ float pointLightVisibility(uint index);
 float spotLightVisibility(uint index);
 float areaLightVisibility(uint index);
 
+const float max_distance_sq = u_light_max_distance * u_light_max_distance;
 
 void main()
 {
@@ -105,7 +107,7 @@ void main()
 
 			case LIGHT_TYPE_POINT:
 			{
-		        visibility = 1;//pointLightVisibility(light_index);
+		        visibility = pointLightVisibility(light_index);
 		        if(visibility > 0)
 		        	contribution = calcPointLight(light, in_world_pos, material);
 			}
@@ -284,6 +286,7 @@ vec3 unpackNormal(vec2 f)
 
 // returns [1, 0] whther the fragment corresponding to 'atlas_uv' has LOS to the light
 float lineOfSight(float current_depth, vec2 atlas_uv, vec2 texel_size);
+float fadeByDistance(float distance);
 
 float dirLightVisibility(uint index)
 {
@@ -293,8 +296,15 @@ float dirLightVisibility(uint index)
 float pointLightVisibility(uint index)
 {
 	GPULight light = lights[index];
+
+	vec3 light_to_cam = light.position - u_cam_pos;
+
+	float distanceFade = fadeByDistance(dot(light_to_cam, light_to_cam) - light.radius*light.radius);
+	if(distanceFade == 0)
+		return 0;
+
 	if(index > 0 || (light.type_flags & LIGHT_SHADOW_CASTER) == 0)
-		return 1;
+		return distanceFade;
 
 	LightShadowParams params = shadow_params[index];
 
@@ -414,7 +424,7 @@ float pointLightVisibility(uint index)
 	// float shadow_depth = texture(u_shadow_atlas, atlas_uv).r;
 	// return normalized_depth > shadow_depth ? 0 : 1;
 	vec2 texel_size = 1.0 / vec2(textureSize(u_shadow_atlas, 0));
-	return lineOfSight(normalized_depth, atlas_uv, texel_size);
+	return distanceFade * lineOfSight(normalized_depth, atlas_uv, texel_size);
 }
 
 float spotLightVisibility(uint index)
@@ -474,4 +484,9 @@ float lineOfSight(float current_depth, vec2 atlas_uv, vec2 texel_size)
 	SAMPLE(vec2( 1,  1), weights[2]);
 
 	return shadow;
+}
+
+float fadeByDistance(float distance_sq)
+{
+	return 1 - smoothstep(max_distance_sq*0.6, max_distance_sq, distance_sq);
 }
