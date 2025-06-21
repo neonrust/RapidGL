@@ -81,11 +81,10 @@ using namespace RGL;
 
 ClusteredShading::ClusteredShading() :
 	m_cluster_aabb_ssbo("cluster-aabb"sv),
-	// m_lights_ssbo("lights"sv),
-	// m_light_counts_ubo("light-counts"sv),
 	m_cluster_discovery_ssbo("cluster-discovery"sv),
 	m_cull_lights_args_ssbo("cull-lights"sv),
-	m_cluster_lights_ssbo("cluster-lights"sv),
+	m_cluster_lights_range_ssbo("cluster-lights"sv),
+	m_all_lights_index_ssbo("all-lights-index"sv),
 	m_shadow_map_params_ssbo("shadow-map-params"sv),
 	m_exposure            (0.4f),
 	m_gamma               (2.2f),
@@ -103,7 +102,8 @@ ClusteredShading::ClusteredShading() :
 	m_cluster_aabb_ssbo.setBindIndex(SSBO_BIND_CLUSTER_AABB);
 	m_shadow_map_params_ssbo.setBindIndex(SSBO_BIND_SHADOW_PARAMS);
 	m_cluster_discovery_ssbo.setBindIndex(SSBO_BIND_CLUSTER_DISCOVERY);
-	m_cluster_lights_ssbo.setBindIndex(SSBO_BIND_CLUSTER_LIGHTS);
+	m_cluster_lights_range_ssbo.setBindIndex(SSBO_BIND_CLUSTER_LIGHT_RANGE);
+	m_all_lights_index_ssbo.setBindIndex(SSBO_BIND_ALL_LIGHTS_INDEX);
 	m_cull_lights_args_ssbo.setBindIndex(SSBO_BIND_CULL_LIGHTS_ARGS);
 
 	if(false)
@@ -914,7 +914,8 @@ void ClusteredShading::prepareClusterBuffers()
 {
 	m_cluster_aabb_ssbo.resize(m_cluster_count);
 	m_cluster_discovery_ssbo.resize(1 + m_cluster_count*2);  // num_active, nonempty[N], active[N]
-	m_cluster_lights_ssbo.resize(m_cluster_count);
+	m_cluster_lights_range_ssbo.resize(m_cluster_count);
+	m_all_lights_index_ssbo.resize(1 + m_cluster_count * CLUSTER_AVERAGE_LIGHTS); // all_lights_start_index, all_lights_index[]
 	m_cull_lights_args_ssbo.resize(1);
 
 	/// Generate AABBs for clusters
@@ -1638,12 +1639,12 @@ void ClusteredShading::render()
 		// ------------------------------------------------------------------
 
 		// Assign lights to clusters (cull lights)
-		m_cluster_lights_ssbo.clear();
+		m_cluster_lights_range_ssbo.clear();
+		m_all_lights_index_ssbo.clear();
 		m_cull_lights_shader->setUniform("u_view_matrix"sv, m_camera.viewTransform());
 		m_cull_lights_shader->setUniform("u_num_clusters"sv, m_cluster_count);
 		m_cull_lights_shader->setUniform("u_max_cluster_avg_lights"sv, uint32_t(CLUSTER_AVERAGE_LIGHTS));
-
-		m_cull_lights_shader->invoke(m_cull_lights_args_ssbo);  // reads uint (num_active, 1, 1)
+		m_cull_lights_shader->invoke(m_cull_lights_args_ssbo);  // reads uvec3 num_groups
 	}
 	m_light_cull_time.add(_gl_timer.elapsed<microseconds>(true));
 	// ------------------------------------------------------------------

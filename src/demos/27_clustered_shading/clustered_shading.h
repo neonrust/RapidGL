@@ -4,7 +4,6 @@
 #include "camera.h"
 #include "sample_window.h"
 #include "ssbo.h"
-#include "ubo.h"
 #include "static_model.h"
 #include "shader.h"
 #include "lights.h"
@@ -224,7 +223,8 @@ private:
 	RGL::buffer::ShaderStorage<AABB> m_cluster_aabb_ssbo;
 	RGL::buffer::ShaderStorage<uint> m_cluster_discovery_ssbo;
 	RGL::buffer::ShaderStorage<glm::uvec3> m_cull_lights_args_ssbo;
-	RGL::buffer::ShaderStorage<ClusterLights> m_cluster_lights_ssbo;
+	RGL::buffer::ShaderStorage<IndexRange> m_cluster_lights_range_ssbo;
+	RGL::buffer::ShaderStorage<uint>       m_all_lights_index_ssbo;
 	RGL::buffer::MappedStorage<LightShadowParams, MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS + MAX_AREA_LIGHTS> m_shadow_map_params_ssbo;
 	LightManager _light_mgr;
 

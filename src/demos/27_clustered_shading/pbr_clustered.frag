@@ -36,9 +36,14 @@ layout(std430, binding = SSBO_BIND_CLUSTER_AABB) readonly buffer ClusterAABBSSBO
 	AABB cluster_aabb[];
 };
 
-layout(std430, binding = SSBO_BIND_CLUSTER_LIGHTS) readonly buffer ClusterLightsSSBO
+layout(std430, binding = SSBO_BIND_CLUSTER_LIGHT_RANGE) readonly buffer ClusterLightsSSBO
 {
-	ClusterLights cluster_lights[];
+	IndexRange cluster_lights[];
+};
+
+layout(std430, binding = SSBO_BIND_ALL_LIGHTS_INDEX) readonly buffer LightsIndexSSBO
+{
+	SSBO_ALL_LIGHTS_FIELDS;
 };
 
 layout(std430, binding = SSBO_BIND_SHADOW_PARAMS) readonly buffer ShadowParamsSSBO
@@ -59,11 +64,9 @@ float spotLightVisibility(uint index);
 float areaLightVisibility(uint index);
 
 
-const uint cluster_max_lights = CLUSTER_MAX_POINT_LIGHTS + CLUSTER_MAX_SPOT_LIGHTS + CLUSTER_MAX_AREA_LIGHTS;
-
 void main()
 {
-    vec3 radiance = vec3(0.0);
+    vec3 radiance = vec3(0);
     vec3 normal = normalize(in_normal);
 
     MaterialProperties material = getMaterialProperties(normal);
@@ -72,16 +75,19 @@ void main()
     uvec3 cluster_coord = computeClusterCoord(gl_FragCoord.xy, in_view_pos.z);
     uint cluster_index = computeClusterIndex(cluster_coord);
 
-    ClusterLights cluster = cluster_lights[cluster_index];
+    IndexRange lights_range = cluster_lights[cluster_index];
 
     uint num_clusters = u_cluster_resolution.x*u_cluster_resolution.y*u_cluster_resolution.z;
 
     // Calculate the point lights contribution
-    uint num_lights = min(cluster.num_lights, cluster_max_lights);
-    // TODO: if cluster.num_point_lights > CLUSTER_MAX_POINT_LIGHTS, highlight the pixel?
+    uint num_lights = min(lights_range.count, CLUSTER_MAX_LIGHTS);
+    // too many lights?
+    if(lights_range.count > CLUSTER_MAX_LIGHTS)
+		radiance += vec3(1, 0, 0);
+
     for (uint idx = 0; idx < num_lights; ++idx)
     {
-	    uint light_index = cluster.light_index[idx];
+	    uint light_index = all_lights_index[lights_range.start_index + idx];
 
         GPULight light = lights[light_index];
 
@@ -126,7 +132,7 @@ void main()
 
             default:
 	            frag_color = vec4(1, 0, 0.4, 1);
-    	        break;
+				return;
 		}
 
        	radiance += visibility * contribution;
@@ -148,16 +154,19 @@ void main()
     }
     else if (u_debug_clusters_occupancy)
     {
-        uint total_light_count = cluster.num_lights;
-        if (total_light_count > 0)
+        if (lights_range.count > 0)
         {
-            float normalized_light_count = float(total_light_count) / float(cluster_max_lights);
+            float normalized_light_count = float(lights_range.count) / 32.f;//float(CLUSTER_MAX_LIGHTS);
             vec3 heat_map_color = falseColor(clamp(normalized_light_count, 0, 1));
 
             frag_color = vec4(mix(radiance, heat_map_color, u_debug_clusters_occupancy_blend_factor), 1.0);
         }
         else
-	       frag_color = vec4(0.4, 0.15, 0.5, 1); // purple is not in the heat map gradient
+        {
+        	// no lights, draw "a pattern"
+        	float pattern = uint(gl_FragCoord.x / 8 + gl_FragCoord.y / 5) % 2 == 0 ? 0.3: 0.5;
+	    	frag_color = vec4(0.3, pattern, 0.4, 1); // purple is not in the heat map gradient
+		}
     }
     else
     {

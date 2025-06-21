@@ -10,49 +10,6 @@ using uint = int;
 using mat4 = int;
 #endif
 
-// // @interop
-// struct BaseLight
-// {
-//     vec3 color;
-// 	float intensity;
-// 	float fog;
-// 	uint feature_flags;
-// 	uint uuid;
-// };
-
-// // @interop
-// struct DirectionalLight
-// {
-//     BaseLight base;
-//     vec3 direction;
-// };
-
-// // @interop
-// struct PointLight
-// {
-//     BaseLight base;
-//     vec3 position;
-//     float radius;
-// };
-
-// // @interop
-// struct SpotLight
-// {
-//     PointLight point;
-//     vec3 direction;
-//     float inner_angle;
-//     float outer_angle;
-// 	float bounds_radius;  // also the distance from 'point.position' along 'direction'
-// };
-
-// // @interop
-// struct AreaLight
-// {
-//     BaseLight base;
-//     vec4 points[4];
-//     bool two_sided;
-// };
-
 // @interop
 struct GPULight
 {
@@ -77,24 +34,6 @@ struct GPULight
 	vec4 area_points[4];  // only area light
 };
 
-// // @ubo
-// struct LightCounts
-// {
-// 	uint num_dir_lights;
-// 	uint num_point_lights;
-// 	uint num_spot_lights;
-// 	uint num_area_lights;
-// };
-
-// // @interop
-// struct LightsManagement
-// {
-// 	DirectionalLight dir_lights[1];  // 0..1
-// 	PointLight point_lights[MAX_POINT_LIGHTS];
-// 	SpotLight spot_lights[MAX_SPOT_LIGHTS];
-// 	AreaLight area_lights[MAX_AREA_LIGHTS];
-// };
-
 // @interop
 struct LightShadowParams
 {
@@ -108,8 +47,13 @@ struct AABB
 	vec4 max;
 };
 
-struct ClusterLights
+// @interop
+struct IndexRange
 {
-	uint num_lights;
-	uint light_index[CLUSTER_MAX_LIGHTS];
+	uint start_index;
+	uint count;
 };
+
+#define SSBO_ALL_LIGHTS_FIELDS \
+	uint all_lights_start_index; \
+	uint all_lights_index[]

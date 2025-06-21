@@ -6,20 +6,10 @@ layout(std430, binding = SSBO_BIND_CLUSTER_AABB) readonly buffer ClusterAABBSSBO
 	AABB cluster_aabb[];
 };
 
-layout(std430, binding = SSBO_BIND_CLUSTER_LIGHTS) buffer ClusterLightsSSBO
-{
-	ClusterLights cluster_lights[];
-};
-
 layout(std430, binding = SSBO_BIND_LIGHTS) readonly buffer LightsSSBO
 {
 	GPULight lights[];
 };
-
-// layout(std140, binding = UBO_BIND_LIGHT_COUNTS) uniform LightCountersUBO
-// {
-// 	LightCounts light_counts;
-// };
 
 layout(std430, binding = SSBO_BIND_CLUSTER_DISCOVERY) readonly buffer ClusterDiscoverySSBO
 {
@@ -30,6 +20,16 @@ layout(std430, binding = SSBO_BIND_CLUSTER_DISCOVERY) readonly buffer ClusterDis
 	//    active   range - 2*range-1
 };
 
+layout(std430, binding = SSBO_BIND_CLUSTER_LIGHT_RANGE) buffer ClusterLightsSSBO
+{
+	IndexRange cluster_lights[];
+};
+
+layout(std430, binding = SSBO_BIND_ALL_LIGHTS_INDEX) buffer LightsIndexSSBO
+{
+	SSBO_ALL_LIGHTS_FIELDS;
+};
+
 uniform mat4 u_view_matrix;
 uniform uint u_num_clusters;
 uniform uint u_max_cluster_avg_lights;
@@ -38,19 +38,8 @@ uniform uint u_max_cluster_avg_lights;
 shared uint s_cluster_index;
 shared AABB s_cluster_aabb;
 
-const uint cluster_max_lights = CLUSTER_MAX_POINT_LIGHTS + CLUSTER_MAX_SPOT_LIGHTS + CLUSTER_MAX_AREA_LIGHTS;
-
 shared uint s_light_count;
-shared uint s_light_list[cluster_max_lights];
-
-// shared uint s_point_lights_count;
-// shared uint s_point_lights_list[CLUSTER_MAX_POINT_LIGHTS];
-
-// shared uint s_spot_lights_count;
-// shared uint s_spot_lights_list[CLUSTER_MAX_SPOT_LIGHTS];
-
-// shared uint s_area_lights_count;
-// shared uint s_area_lights_list[CLUSTER_MAX_AREA_LIGHTS];
+shared uint s_light_list[CLUSTER_MAX_LIGHTS];
 
 bool sphereInsideAABB(vec3 center, float radius, AABB aabb);
 float sqDistancePointAABB(vec3 point, AABB aabb);
@@ -60,9 +49,10 @@ void main()
 {
     if (gl_LocalInvocationIndex == 0) // once per cluster
     {
-	    uint active_offset = u_num_clusters;
-	    s_cluster_index = nonempty_clusters[gl_WorkGroupID.x + active_offset];
-	    s_cluster_aabb = cluster_aabb[s_cluster_index];
+		// offset index into second half of "nonempty_clusters" (first half is flagged clusters)
+		uint active_offset = u_num_clusters;
+		s_cluster_index = nonempty_clusters[gl_WorkGroupID.x + active_offset];
+		s_cluster_aabb = cluster_aabb[s_cluster_index];
 
 		s_light_count = 0;
     }
@@ -121,7 +111,7 @@ void main()
 		{
 			uint next_index = atomicAdd(s_light_count, 1);
 
-			if (next_index < cluster_max_lights)
+			if (next_index < CLUSTER_MAX_LIGHTS)
 				s_light_list[next_index] = light_index;
 		}
     }
@@ -131,15 +121,17 @@ void main()
 
     if (gl_LocalInvocationIndex == 0)
     {
-	    // Update the cluster's light list with the collected lights
-		ClusterLights cluster = cluster_lights[s_cluster_index];
+    	// copy the light indices to the global list,
+	    // and update the cluster's light range with the collected lights
 
-     	cluster.num_lights = s_light_count;
+		uint count = min(s_light_count, CLUSTER_MAX_LIGHTS);
+		uint offset = atomicAdd(all_lights_start_index, count);
 
-		for(uint idx = 0; idx < cluster.num_lights; ++idx)
-			cluster.light_index[idx] = s_light_list[idx];
+		for(uint idx = 0; idx < count; ++idx)
+			all_lights_index[offset + idx] = s_light_list[idx];
 
-		cluster_lights[s_cluster_index] = cluster;
+		cluster_lights[s_cluster_index].start_index = offset;
+		cluster_lights[s_cluster_index].count = s_light_count; // potentially greater than 'CLUSTER_MAX_LIGHTS'
 	}
 }
 
