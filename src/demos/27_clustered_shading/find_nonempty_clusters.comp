@@ -2,14 +2,7 @@
 
 #include "shared-structs.glh"
 
-layout(std430, binding = SSBO_BIND_CLUSTER_DISCOVERY) buffer ClusterDiscoverySSBO
-{
-	uint num_active;
-	uint nonempty_clusters[];      // size = range * 2
-	//  range = u_num_clusters
-	//    nonempty 0 - range-1
-	//    active   range - 2*range-1
-};
+SSBO_CLUSTER_DISCOVERY_wo;
 
 
 layout (binding = 0) uniform sampler2D u_depth_buffer;

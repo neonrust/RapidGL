@@ -54,6 +54,38 @@ struct IndexRange
 	uint count;
 };
 
-#define SSBO_ALL_LIGHTS_FIELDS \
+#define SSBO_CLUSTER_DISCOVERY_ro \
+layout(std430, binding = SSBO_BIND_CLUSTER_DISCOVERY) readonly buffer ClusterDiscoverySSBO \
+{ \
+	uint num_active; \
+	uint nonempty_clusters[]; \
+}
+
+#define SSBO_CLUSTER_DISCOVERY_wo \
+layout(std430, binding = SSBO_BIND_CLUSTER_DISCOVERY) writeonly buffer ClusterDiscoverySSBO \
+{ \
+	uint num_active; \
+	uint nonempty_clusters[]; \
+}
+
+#define SSBO_CLUSTER_DISCOVERY_rw \
+layout(std430, binding = SSBO_BIND_CLUSTER_DISCOVERY) buffer ClusterDiscoverySSBO \
+{ \
+	uint num_active; \
+	uint nonempty_clusters[]; \
+}
+
+
+#define SSBO_ALL_LIGHTS_ro \
+layout(std430, binding = SSBO_BIND_ALL_LIGHTS_INDEX) readonly buffer LightsIndexSSBO \
+{ \
 	uint all_lights_start_index; \
-	uint all_lights_index[]
+	uint all_lights_index[]; \
+}
+
+#define SSBO_ALL_LIGHTS_rw \
+layout(std430, binding = SSBO_BIND_ALL_LIGHTS_INDEX) buffer LightsIndexSSBO \
+{ \
+	uint all_lights_start_index; \
+	uint all_lights_index[]; \
+}

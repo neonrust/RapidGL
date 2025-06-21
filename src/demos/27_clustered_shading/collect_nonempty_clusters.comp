@@ -2,14 +2,7 @@
 
 #include "shared-structs.glh"
 
-layout(std430, binding = SSBO_BIND_CLUSTER_DISCOVERY) buffer ClusterDiscoverySSBO
-{
-	uint num_active;   // TDOO: this could be a shared variable?
-	uint nonempty_clusters[];      // size = range * 2
-	// range = u_num_clusters
-	//   nonempty  0 - range-1
-	//   active    range - 2*range-1
-};
+SSBO_CLUSTER_DISCOVERY_rw;
 
 layout(std430, binding = SSBO_BIND_CULL_LIGHTS_ARGS) buffer CullLightsArgsSSBO
 {

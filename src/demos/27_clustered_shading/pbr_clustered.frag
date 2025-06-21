@@ -41,10 +41,7 @@ layout(std430, binding = SSBO_BIND_CLUSTER_LIGHT_RANGE) readonly buffer ClusterL
 	IndexRange cluster_lights[];
 };
 
-layout(std430, binding = SSBO_BIND_ALL_LIGHTS_INDEX) readonly buffer LightsIndexSSBO
-{
-	SSBO_ALL_LIGHTS_FIELDS;
-};
+SSBO_ALL_LIGHTS_ro;
 
 layout(std430, binding = SSBO_BIND_SHADOW_PARAMS) readonly buffer ShadowParamsSSBO
 {

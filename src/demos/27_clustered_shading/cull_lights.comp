@@ -11,24 +11,14 @@ layout(std430, binding = SSBO_BIND_LIGHTS) readonly buffer LightsSSBO
 	GPULight lights[];
 };
 
-layout(std430, binding = SSBO_BIND_CLUSTER_DISCOVERY) readonly buffer ClusterDiscoverySSBO
-{
-	uint num_active;
-	uint nonempty_clusters[];      // size = range * 2
-	//  range = u_num_clusters
-	//    nonempty 0 - range-1
-	//    active   range - 2*range-1
-};
+SSBO_CLUSTER_DISCOVERY_ro;
 
-layout(std430, binding = SSBO_BIND_CLUSTER_LIGHT_RANGE) buffer ClusterLightsSSBO
+layout(std430, binding = SSBO_BIND_CLUSTER_LIGHT_RANGE) writeonly buffer ClusterLightsSSBO
 {
 	IndexRange cluster_lights[];
 };
 
-layout(std430, binding = SSBO_BIND_ALL_LIGHTS_INDEX) buffer LightsIndexSSBO
-{
-	SSBO_ALL_LIGHTS_FIELDS;
-};
+SSBO_ALL_LIGHTS_rw;
 
 uniform mat4 u_view_matrix;
 uniform uint u_num_clusters;
