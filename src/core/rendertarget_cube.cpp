@@ -3,6 +3,10 @@
 #include "glm/ext/matrix_clip_space.hpp"
 #include "glm/ext/matrix_transform.hpp"
 
+extern glm::vec3 AXIS_X;
+extern glm::vec3 AXIS_Y;
+extern glm::vec3 AXIS_Z;
+
 
 namespace RGL::RenderTarget
 {
@@ -128,10 +132,6 @@ void Cube::attach(GLenum attachment, GLenum internal_format, GLuint texture_id, 
 
 void Cube::set_position(const glm::vec3 pos)
 {
-	static constexpr glm::vec3 AXIS_X { 1, 0, 0 };
-	static constexpr glm::vec3 AXIS_Y { 0, 1, 0 };
-	static constexpr glm::vec3 AXIS_Z { 0, 0, 1 };
-
 	_position = pos;
 	_view_transforms[0] = glm::lookAt(pos, pos + AXIS_X, -AXIS_Y);
 	_view_transforms[1] = glm::lookAt(pos, pos - AXIS_X, -AXIS_Y);

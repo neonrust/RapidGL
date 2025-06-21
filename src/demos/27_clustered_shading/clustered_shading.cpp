@@ -12,10 +12,6 @@
 #include <chrono>
 #include <vector>
 
-static constexpr glm::vec3 AXIS_X { 1, 0, 0 };
-static constexpr glm::vec3 AXIS_Y { 0, 1, 0 };
-static constexpr glm::vec3 AXIS_Z { 0, 0, 1 };
-
 
 using namespace std::chrono;
 using namespace std::literals;

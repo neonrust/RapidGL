@@ -23,6 +23,11 @@
 
 using seconds_f = std::chrono::duration<float, std::ratio<1>>;
 
+
+inline constexpr glm::vec3 AXIS_X { 1, 0, 0 };
+inline constexpr glm::vec3 AXIS_Y { 0, 1, 0 };
+inline constexpr glm::vec3 AXIS_Z { 0, 0, 1 };
+
 namespace
 {
 	[[maybe_unused]] void setLightDirection(glm::vec3& direction, float azimuth, float elevation)

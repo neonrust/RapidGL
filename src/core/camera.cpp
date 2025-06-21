@@ -1,16 +1,16 @@
 #include "camera.h"
 
-#include "shader.h"
+#include "shader.h" // IWYU pragma: keep
 
 using namespace std::literals;
 
 
+extern glm::vec3 AXIS_X;
+extern glm::vec3 AXIS_Y;
+extern glm::vec3 AXIS_Z;
+
 namespace RGL
 {
-
-static constexpr glm::vec3 AXIS_X { 1, 0, 0 };
-static constexpr glm::vec3 AXIS_Y { 0, 1, 0 };
-static constexpr glm::vec3 AXIS_Z { 0, 0, 1 };
 
 Camera::Camera(bool is_ortho)
 	: m_view                  (1),
@@ -84,6 +84,7 @@ const Frustum &Camera::frustum()
 void Camera::setUniforms(Shader &shader) const
 {
 	// TODO: cache locations per shader?
+	// TODO: use UBO ?
 
 	shader.setUniform("u_cam_pos"sv,         position());
 	shader.setUniform("u_projection"sv,      projectionTransform()); // not used ?
