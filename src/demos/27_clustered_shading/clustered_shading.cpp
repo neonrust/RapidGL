@@ -1002,7 +1002,7 @@ void ClusteredShading::update(double delta_time)
 
 		// TODO: need API to update a specific light OR all lights (by iteration)
 
-		for(LightManager::index light_index = 0; light_index <  _light_mgr.size(); ++light_index)
+		for(LightManager::Index light_index = 0; light_index <  _light_mgr.size(); ++light_index)
 		{
 			const auto light_ =_light_mgr.get_gpu(light_index);
 			auto [uuid, L] = light_.value();
@@ -1164,7 +1164,7 @@ void ClusteredShading::GeneratePointLights()
 		);
 		auto rand_pos = Util::RandomVec3({ -18, 0.5f, -18 }, { 18, 3.5f, 18 });
 
-		auto rand_intensity = float(Util::RandomDouble(1, 100)) * 3;
+		auto rand_intensity = float(Util::RandomDouble(1, 100));
 
 		_light_mgr.add(PointLightDef{
 			.color = rand_color,

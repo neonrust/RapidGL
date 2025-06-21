@@ -51,7 +51,7 @@ void ShadowAtlas::eval_lights(const LightManager &lights)
 	decltype(_allocated) candidates;
 	candidates.reserve(_max_shadow_casters);
 
-	static std::vector<std::tuple<float, LightManager::index>> prioritized;
+	static std::vector<std::tuple<float, LightManager::Index>> prioritized;
 	// prioritized.reserve(counts.num_point_lights + counts.num_spot_lights + counts.num_area_lights);
 	prioritized.clear();
 
@@ -61,7 +61,7 @@ void ShadowAtlas::eval_lights(const LightManager &lights)
 
 
 	// TODO: iterate over all (shadow-casting) lights
-	LightManager::index light_index = 0;
+	LightManager::Index light_index = 0;
 	for(const auto &light: lights)
 	{
 		if((light.type_flags & LIGHT_SHADOW_CASTER) > 0)

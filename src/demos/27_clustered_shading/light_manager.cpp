@@ -8,6 +8,8 @@ using namespace std::literals;
 
 PointLight to_point_light(const GPULight &p, LightID uuid);
 
+using namespace RGL;
+
 
 LightManager::LightManager(/* entt registry */) :
 	_lights_ssbo("lights"sv)
@@ -15,6 +17,7 @@ LightManager::LightManager(/* entt registry */) :
 	_lights_ssbo.setBindIndex(SSBO_BIND_LIGHTS);
 
 	_dirty.reserve(1024);
+	_dirty_list.reserve(1024);
 	_id_to_index.reserve(1024);
 	_index_to_id.reserve(1024);
 }
@@ -37,7 +40,7 @@ PointLight LightManager::add(const PointLightDef &pd)
 	return to_point_light(L, _light_id);
 }
 
-std::optional<std::tuple<LightID, GPULight>> LightManager::get_gpu(index light_index) const
+std::optional<std::tuple<LightID, GPULight>> LightManager::get_gpu(Index light_index) const
 {
 	const auto &L = _lights[light_index];
 	const auto found_id = _index_to_id.find(light_index);
@@ -55,7 +58,8 @@ void LightManager::set(LightID uuid, const GPULight &L)
 	auto light_index = found->second;
 
 	_lights[light_index] = L;
-	_dirty.insert(light_index);
+	if(const auto &[_, ok] =_dirty.insert(light_index); ok)
+		_dirty_list.push_back(light_index);
 }
 
 void LightManager::set(const PointLight &p)
@@ -71,7 +75,8 @@ void LightManager::set(const PointLight &p)
 	// TODO: cmpare 'p' and 'L' if they actually differ?
 
 	_lights[light_index] = L;
-	_dirty.insert(light_index);
+	if(const auto &[_, ok] =_dirty.insert(light_index); ok)
+		_dirty_list.push_back(light_index);
 }
 
 void LightManager::flush()
@@ -86,13 +91,31 @@ void LightManager::flush()
 	{
 		// no lights were added or removed, but some are dirty
 
-		// TODO: upload ranges?
-		//   SSBO class doesn't support that yet.
-		//   A cntiguous array of entries is required, which probably doesn't exist...
+		// make as few .update() calls to the SSBO, using contiguous ranges
+		std::sort(_dirty_list.begin(), _dirty_list.end());
+		Index start;
+		auto last = Index(-1);
 
-		// write dirty entries to the ssbo
-		for(const auto list_index: _dirty)
-			_lights_ssbo.set(list_index, _lights[list_index]);
+		for(auto dirty_index: _dirty_list)
+		{
+			if(last == Index(-1))  // new, potential range
+			{
+				start = dirty_index;
+				last = start;
+			}
+			else if(dirty_index > last + 1) // index not contiguous with previous
+			{
+				// update the previous range (might be only one index)
+				_lights_ssbo.set(_lights.begin() + start, _lights.begin() + last, start);
+				start = dirty_index;
+				last = Index(-1);
+			}
+			else
+				last = dirty_index;
+		}
+		// the left over range at the end
+		if(last == Index(-1))
+			_lights_ssbo.set(_lights.begin() + start, _lights.end(), start);
 	}
 
 	// _lights_ssbo.flush();
