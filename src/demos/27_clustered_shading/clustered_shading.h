@@ -282,3 +282,22 @@ private:
 
 	RGL::GLTimer _gl_timer;
 };
+
+namespace hash
+{
+struct glmv
+{
+	inline std::size_t operator() (const glm::uvec2 &v) const noexcept
+	{
+		return std::hash<uint32_t>()(v.x) ^ std::hash<uint32_t>()(v.y);
+	}
+
+	inline bool operator() (const glm::uvec2 &l, const glm::uvec2 &r) const noexcept
+	{
+		return l.x == r.x and l.y == r.y;
+	}
+};
+} // hash
+
+template<typename T>
+using uvec2_map = ankerl::unordered_dense::map<glm::uvec2, T, hash::glmv, hash::glmv>;
