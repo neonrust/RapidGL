@@ -9,9 +9,10 @@ namespace RGL::PP
 
 bool LightScattering::create()
 {
-	new (&_shader) Shader("src/demos/27_clustered_shading/light_scattering.comp");
+	new (&_shader) Shader("src/demos/27_clustered_shading/shaders/light_scattering.comp");
 	_shader.link();
 	_shader.setPostBarrier(Shader::Barrier::Image);
+	_shader.enableLiveReload();
 
 	_blue_noise.Load("resources/textures/noise.png");
 
@@ -30,7 +31,9 @@ void LightScattering::setCameraUniforms(const Camera &camera)
 
 void LightScattering::render(const RenderTarget::Texture2d &, RenderTarget::Texture2d &out)
 {
-	out.clear();
+	// ---------
+	// out.clear();
+	// ---------
 	out.bindImage(1, RenderTarget::Access::Write);
 
 	_blue_noise.Bind(3);

@@ -13,7 +13,7 @@ Tonemapping::Tonemapping()//uint32_t width, uint32_t height)
 
 void Tonemapping::create()
 {
-	_shader = std::make_shared<RGL::Shader>("src/demos/27_clustered_shading/FSQ.vert", "src/demos/27_clustered_shading/tmo.frag");
+	_shader = std::make_shared<RGL::Shader>("src/demos/27_clustered_shading/shaders/FSQ.vert", "src/demos/27_clustered_shading/shaders/tmo.frag");
 	_shader->link();
 	assert(*_shader.get());
 

@@ -53,7 +53,21 @@ public:
 	inline const_iterator begin() const { return _lights.begin(); }
 	inline const_iterator end()   const { return _lights.end();   }
 
-	inline const GPULight &at(size_t index) const { return _lights.at(index); }
+	inline const GPULight &at(size_t light_index) const { return _lights.at(light_index); }
+
+	inline uint_fast8_t shadow_index(Index light_index) const { return GET_SHADOW_IDX(at(light_index)); }
+	inline void set_shadow_index(Index light_index, uint_fast8_t shadow_index)
+	{
+		auto &L = _lights[light_index];
+		SET_SHADOW_IDX(L, shadow_index);
+		// TODO: _shadow_dirty[light_index] = true;
+	}
+	inline void clear_shadow_index(Index light_index)
+	{
+		auto &L = _lights[light_index];
+		CLR_SHADOW_IDX(L);
+		// TODO: _shadow_dirty[light_index] = true;
+	}
 
 	inline size_t num_point_lights() const { return _num_point_lights; }
 	inline size_t num_dir_lights() const   { return _num_dir_lights; }

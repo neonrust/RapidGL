@@ -132,27 +132,28 @@ void LightManager::add(const GPULight &L, LightID uuid)
 	// TODO: support contiguous ranges
 	_dirty.insert(_last_light_idx);
 
-	switch(L.type_flags & LIGHT_TYPE_MASK)
-	{
-	case LIGHT_TYPE_POINT:       ++_num_point_lights; break;
-	case LIGHT_TYPE_SPOT:        ++_num_spot_lights;  break;
-	case LIGHT_TYPE_AREA:        ++_num_area_lights;  break;
-	case LIGHT_TYPE_DIRECTIONAL: ++_num_dir_lights;   break;
-	}
+	if(IS_POINT_LIGHT(L))
+		++_num_point_lights;
+	else if(IS_SPOT_LIGHT(L))
+		++_num_spot_lights;
+	else if(IS_AREA_LIGHT(L))
+		++_num_area_lights;
+	else if(IS_DIR_LIGHT(L))
+		++_num_dir_lights;
 }
 
 
 std::optional<PointLight> LightManager::to_point_light(const GPULight &L) const
 {
-	assert((L.type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_POINT);
-	if((L.type_flags & LIGHT_TYPE_MASK) != LIGHT_TYPE_POINT)
+	assert(IS_POINT_LIGHT(L));
+	if(not IS_POINT_LIGHT(L))
 		return std::nullopt;
 
 	PointLight pl;
 	pl.color = L.color;
 	pl.intensity = L.intensity;
 	pl.fog = L.fog_intensity;
-	pl.shadow_caster = (L.type_flags & LIGHT_SHADOW_CASTER) > 0;
+	pl.shadow_caster = IS_SHADOW_CASTER(L);
 	pl.position = L.position;
 	pl.radius = L.radius;
 
@@ -161,8 +162,8 @@ std::optional<PointLight> LightManager::to_point_light(const GPULight &L) const
 
 std::optional<DirectionalLight> LightManager::to_dir_light  (const GPULight &L) const
 {
-	assert((L.type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_DIRECTIONAL);
-	if((L.type_flags & LIGHT_TYPE_MASK) != LIGHT_TYPE_DIRECTIONAL)
+	assert(IS_DIR_LIGHT(L));
+	if(not IS_DIR_LIGHT(L))
 		return std::nullopt;
 
 	// TODO
@@ -172,8 +173,8 @@ std::optional<DirectionalLight> LightManager::to_dir_light  (const GPULight &L) 
 
 std::optional<SpotLight> LightManager::to_spot_light (const GPULight &L) const
 {
-	assert((L.type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_SPOT);
-	if((L.type_flags & LIGHT_TYPE_MASK) != LIGHT_TYPE_SPOT)
+	assert(IS_SPOT_LIGHT(L));
+	if(not IS_SPOT_LIGHT(L))
 		return std::nullopt;
 
 	// TODO
@@ -183,8 +184,8 @@ std::optional<SpotLight> LightManager::to_spot_light (const GPULight &L) const
 
 std::optional<AreaLight> LightManager::to_area_light (const GPULight &L) const
 {
-	assert((L.type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_AREA);
-	if((L.type_flags & LIGHT_TYPE_MASK) != LIGHT_TYPE_AREA)
+	assert(IS_AREA_LIGHT(L));
+	if(not IS_AREA_LIGHT(L))
 		return std::nullopt;
 
 	// TODO

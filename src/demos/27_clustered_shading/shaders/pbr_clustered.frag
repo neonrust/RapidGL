@@ -9,6 +9,7 @@ uniform uvec2 u_cluster_size_ss;
 uniform float u_log_cluster_res_y;
 uniform uint  u_num_cluster_avg_lights;
 uniform float u_light_max_distance;
+uniform float u_shadow_max_distance;
 
 uniform bool u_debug_cluster_geom;
 uniform bool u_debug_clusters_occupancy;
@@ -60,8 +61,6 @@ float dirLightVisibility(uint index);
 float pointLightVisibility(uint index);
 float spotLightVisibility(uint index);
 float areaLightVisibility(uint index);
-
-const float max_distance_sq = u_light_max_distance * u_light_max_distance;
 
 void main()
 {
@@ -286,7 +285,7 @@ vec3 unpackNormal(vec2 f)
 
 // returns [1, 0] whther the fragment corresponding to 'atlas_uv' has LOS to the light
 float lineOfSight(float current_depth, vec2 atlas_uv, vec2 texel_size);
-float fadeByDistance(float distance);
+float fadeByDistance(float distance, float hard_limit);
 
 float dirLightVisibility(uint index)
 {
@@ -297,14 +296,19 @@ float pointLightVisibility(uint index)
 {
 	GPULight light = lights[index];
 
-	vec3 light_to_cam = light.position - u_cam_pos;
-
-	float distanceFade = fadeByDistance(dot(light_to_cam, light_to_cam) - light.radius*light.radius);
-	if(distanceFade == 0)
+	float light_edge_distance = length(light.position - u_cam_pos) - light.radius;
+	// fade the whole light by distance
+	float light_fade = fadeByDistance(light_edge_distance, u_light_max_distance);
+	if(light_fade == 0)
 		return 0;
 
-	if(index > 0 || (light.type_flags & LIGHT_SHADOW_CASTER) == 0)
-		return distanceFade;
+	if(! IS_SHADOW_CASTER(light))
+		return light_fade;
+
+	// fade the shadow by distance
+	float shadow_fade = fadeByDistance(light_edge_distance, u_shadow_max_distance);
+	if(shadow_fade == 0)
+		return 0;
 
 	LightShadowParams params = shadow_params[index];
 
@@ -424,7 +428,9 @@ float pointLightVisibility(uint index)
 	// float shadow_depth = texture(u_shadow_atlas, atlas_uv).r;
 	// return normalized_depth > shadow_depth ? 0 : 1;
 	vec2 texel_size = 1.0 / vec2(textureSize(u_shadow_atlas, 0));
-	return distanceFade * lineOfSight(normalized_depth, atlas_uv, texel_size);
+	return light_fade \
+			* shadow_fade \
+			* lineOfSight(normalized_depth, atlas_uv, texel_size);
 }
 
 float spotLightVisibility(uint index)
@@ -486,7 +492,7 @@ float lineOfSight(float current_depth, vec2 atlas_uv, vec2 texel_size)
 	return shadow;
 }
 
-float fadeByDistance(float distance_sq)
+float fadeByDistance(float distance, float hard_limit)
 {
-	return 1 - smoothstep(max_distance_sq*0.6, max_distance_sq, distance_sq);
+	return 1 - smoothstep(hard_limit*0.9, hard_limit, distance);
 }

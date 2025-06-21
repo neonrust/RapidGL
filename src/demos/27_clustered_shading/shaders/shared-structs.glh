@@ -1,5 +1,5 @@
-#include "light_constants.h"
-#include "buffer_binds.h"
+#include "../light_constants.h"
+#include "../buffer_binds.h"
 
 #ifdef __cplusplus
 // simply to make it look nicer in the IDE ;)

@@ -137,8 +137,6 @@ private:
 	void renderShadowDepth(const glm::vec3 &pos, float far_z, const glm::mat4 &view_projection, RGL::RenderTarget::Texture2d &target, const glm::ivec4 &rect={0,0,0,0});
 	void renderLighting(const RGL::Camera &camera);
 	void renderSkybox();
-	void debugDrawSceneBounds();
-	void debugDrawClusterGrid();
 	void draw2d(const RGL::Texture &texture, BlendMode mode=BlendMode::Replace); // TODO: move to CoreApp
 	void draw2d(const RGL::Texture &source, RGL::RenderTarget::Texture2d &target, BlendMode blend=BlendMode::Replace); // TODO: move to CoreApp
 	void draw2d(const RGL::Texture &texture, const glm::uvec2 &top_left, const glm::uvec2 &bottom_right); // TODO: move to CoreApp
@@ -150,6 +148,8 @@ private:
 	void debugDrawSphere(const glm::vec3 &center, float radius, const glm::vec4 &color={1,1,1,1});
 	void debugDrawSphere(const glm::vec3 &center, float radius, size_t rings, size_t slices, const glm::vec4 &color={1,1,1,1});
 	void debugDrawSpotLight(const SpotLight &light, const glm::vec4 &color={1,1,1,1});
+	void debugDrawSceneBounds();
+	void debugDrawClusterGrid();
 
 	RGL::Camera m_camera;
 	float m_camera_fov { 80.f };
@@ -214,7 +214,6 @@ private:
 	bool      m_debug_draw_aabb            = false;
 	bool      m_debug_draw_cluster_grid    = false;
 	GLuint    m_debug_draw_vbo             = 0;
-	GLuint    _gl_time_query               = 0;
 
 
 	std::vector<StaticObject> _scene;  // TODO: Scene _scene;

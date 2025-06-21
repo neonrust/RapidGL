@@ -58,7 +58,7 @@ extract_define(CLUSTER_MAX_COUNT)
 extract_define(CLUSTER_MAX_LIGHTS)
 
 set(GLSL_STRUCT_SCRIPT ${CMAKE_SOURCE_DIR}/scripts/glsl_struct_to_cpp)
-set(GLSL_STRUCT_INPUT  ${CMAKE_CURRENT_LIST_DIR}/shared-structs.glh)
+set(GLSL_STRUCT_INPUT  ${CMAKE_CURRENT_LIST_DIR}/shaders/shared-structs.glh)
 set(GLSL_STRUCT_OUTPUT ${CMAKE_CURRENT_LIST_DIR}/generated/shared-structs.h)
 
 # Make sure output directory exists

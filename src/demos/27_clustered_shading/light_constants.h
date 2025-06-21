@@ -15,11 +15,27 @@
 
 #define CLUSTER_AVERAGE_LIGHTS         32
 
-#define LIGHT_TYPE_POINT       0x00
-#define LIGHT_TYPE_SPOT        0x01
-#define LIGHT_TYPE_AREA        0x02
-#define LIGHT_TYPE_DIRECTIONAL 0x03
-#define LIGHT_TYPE_MASK        0x07
+#define LIGHT_TYPE_POINT         0x00u
+#define LIGHT_TYPE_SPOT          0x01u
+#define LIGHT_TYPE_AREA          0x02u
+#define LIGHT_TYPE_DIRECTIONAL   0x03u
+#define LIGHT_TYPE_MASK          0x07u
 
-#define LIGHT_SHADOW_CASTER    0x10
-#define LIGHT_TWO_SIDED        0x20   // area lights
+#define IS_POINT_LIGHT(light)    ((light.type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_POINT)
+#define IS_SPOT_LIGHT(light)     ((light.type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_SPOT)
+#define IS_AREA_LIGHT(light)     ((light.type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_AREA)
+#define IS_DIR_LIGHT(light)      ((light.type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_DIRECTIONAL)
+
+#define LIGHT_TWO_SIDED          0x10u   // area lights
+
+// max 256 shadw-casting lights
+#define LIGHT_SHADOW_CASTER      0x008000u
+#define LIGHT_SHADOW_MASK        0xff0000u
+#define LIGHT_SHADOW_SHIFT       16u
+#define LIGHT_NO_SHADOW          0xffu
+
+#define GET_SHADOW_IDX(light)      ((light.type_flags & LIGHT_SHADOW_MASK) >> LIGHT_SHADOW_SHIFT)
+#define SET_SHADOW_IDX(light, idx) (light.type_flags = (light.type_flags & ~LIGHT_SHADOW_MASK) | uint32_t(idx << LIGHT_SHADOW_SHIFT))
+#define CLR_SHADOW_IDX(light)      SET_SHADOW_IDX(light, 0xffu)
+
+#define IS_SHADOW_CASTER(light)    ((light.type_flags & LIGHT_SHADOW_CASTER) > 0)

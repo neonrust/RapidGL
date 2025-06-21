@@ -316,7 +316,7 @@ void ClusteredShading::init_app()
 		std::print(stderr, "Error: could not load texture %s\n", ltc_lut_amp_path.string());
 
     /// Create shaders.
-	const fs::path shaders = "src/demos/27_clustered_shading/";
+	const fs::path shaders = "src/demos/27_clustered_shading/shaders/";
 
 	const auto T0 = steady_clock::now();
 
@@ -350,10 +350,6 @@ void ClusteredShading::init_app()
 	m_clustered_pbr_shader = std::make_shared<Shader>(shaders/"pbr_lighting.vert", shaders/"pbr_clustered.frag");
     m_clustered_pbr_shader->link();
 	assert(*m_clustered_pbr_shader);
-
-	// m_shadow_cube_shader = std::make_shared<Shader>(shaders/"shadow_cube.vert", shaders/"shadow_cube.frag", shaders/"shadow_cube.geom");
-	// m_shadow_cube_shader->link();
-	// assert(*m_shadow_cube_shader);
 
 	m_draw_area_lights_geometry_shader = std::make_shared<Shader>(shaders/"area_light_geom.vert", shaders/"area_light_geom.frag");
     m_draw_area_lights_geometry_shader->link();
@@ -436,10 +432,10 @@ void ClusteredShading::init_app()
 	_rt.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipNearest); // not necessary?
 
 	static constexpr size_t low_scale = 4;
-	_pp_low_rt.create("pp_low", Window::width()/low_scale, Window::height()/low_scale, RenderTarget::Color::Default, RenderTarget::Depth::None);
+	_pp_low_rt.create("pp-low", Window::width()/low_scale, Window::height()/low_scale, RenderTarget::Color::Default, RenderTarget::Depth::None);
 	_pp_low_rt.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipNearest); // not necessary?
 
-	_pp_full_rt.create("pp_full", Window::width(), Window::height(), RenderTarget::Color::Default, RenderTarget::Depth::None);
+	_pp_full_rt.create("pp-full", Window::width(), Window::height(), RenderTarget::Color::Default, RenderTarget::Depth::None);
 	_pp_full_rt.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipNearest); // not necessary?
 
 	// TODO: final_rt.cloneFrom(_rt);
@@ -455,7 +451,7 @@ void ClusteredShading::init_app()
 	{
 		namespace C = RenderTarget::Color;
 		namespace D = RenderTarget::Depth;
-		_shadow_atlas.create("shadow atlas", 4096, 4096, C::Texture | C::Float2, D::Texture | D::Float);
+		_shadow_atlas.create("shadow-atlas", 4096, 4096, C::Texture | C::Float2, D::Texture | D::Float);
 		// TODO: if we only use the color attachment (i.e. the normals) for slope comparison,
 		//   we really only need a single-channel float (basically the cos(light_to_fragment_angle)).
 
@@ -469,7 +465,7 @@ void ClusteredShading::init_app()
 
 	m_prefiltered_env_map_rt = std::make_shared<RenderTarget::Cube>();
     m_prefiltered_env_map_rt->set_position(glm::vec3(0.0));
-	m_prefiltered_env_map_rt->create("prefiltered_env", 512, 512);
+	m_prefiltered_env_map_rt->create("prefiltered-env", 512, 512);
 
     PrecomputeIndirectLight(FileSystem::getResourcesPath() / "textures/skyboxes/IBL" / m_hdr_maps_names[m_current_hdr_map_idx]);
     PrecomputeBRDF(m_brdf_lut_rt);
@@ -477,7 +473,6 @@ void ClusteredShading::init_app()
 	calculateShadingClusterGrid();  // will also call prepareClusterBuffers()
 
 	glGenBuffers(1, &m_debug_draw_vbo);
-	glGenQueries(1, &_gl_time_query);
 
 
 	if(false) // transforming into camera/view space
@@ -2083,6 +2078,7 @@ void ClusteredShading::renderLighting(const Camera &camera)
 	m_clustered_pbr_shader->setUniform("u_log_cluster_res_y"sv,          m_log_cluster_res_y);
 	m_clustered_pbr_shader->setUniform("u_num_cluster_avg_lights"sv,     uint32_t(CLUSTER_AVERAGE_LIGHTS));
 	m_clustered_pbr_shader->setUniform("u_light_max_distance"sv,         std::min(100.f, m_camera.farPlane()));
+	m_clustered_pbr_shader->setUniform("u_shadow_max_distance"sv,        std::min(100.f, m_camera.farPlane())/1.5f);
 
 	m_clustered_pbr_shader->setUniform("u_shadow_bias_constant"sv, m_shadow_bias_constant);
 	m_clustered_pbr_shader->setUniform("u_shadow_bias_slope_scale"sv, m_shadow_bias_slope_scale);

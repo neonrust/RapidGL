@@ -3,6 +3,8 @@
 #include "filesystem.h"
 #include "rendertarget_2d.h"
 
+#include <filesystem>
+
 using namespace std::literals;
 
 namespace RGL::PP
@@ -10,18 +12,18 @@ namespace RGL::PP
 
 bool Bloom::create()
 {
-	static const auto dir = "src/demos/27_clustered_shading/"s;
+	static const std::filesystem::path dir = "src/demos/27_clustered_shading/"s;
 
 	// load shaders and dirt texture
 
 	// TODO: slightly less ugly syntax ;)
 
-	new (&_downscale_shader) Shader(dir + "downscale.comp");
+	new (&_downscale_shader) Shader(dir / "shaders/downscale.comp");
 	_downscale_shader.link();
 	assert(_downscale_shader);
 	_downscale_shader.setPostBarrier(Shader::Barrier::Image | Shader::Barrier::Texture);
 
-	new (&_upscale_shader) Shader(dir + "upscale.comp");
+	new (&_upscale_shader) Shader(dir / "shaders/upscale.comp");
 	_upscale_shader.link();
 	assert(_upscale_shader);
 	_upscale_shader.setPostBarrier(Shader::Barrier::Image | Shader::Barrier::Texture);

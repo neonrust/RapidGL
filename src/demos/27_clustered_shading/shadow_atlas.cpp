@@ -64,7 +64,7 @@ void ShadowAtlas::eval_lights(const LightManager &lights)
 	LightManager::Index light_index = 0;
 	for(const auto &light: lights)
 	{
-		if((light.type_flags & LIGHT_SHADOW_CASTER) > 0)
+		if(IS_SHADOW_CASTER(light))
 			prioritized.push_back({ _importance(light), light_index });
 
 		++light_index;
