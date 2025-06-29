@@ -6,8 +6,6 @@
 
 using namespace std::literals;
 
-PointLight to_point_light(const GPULight &p, LightID uuid);
-
 using namespace RGL;
 
 
@@ -25,19 +23,25 @@ LightManager::LightManager(/* entt registry */) :
 void LightManager::reserve(size_t count)
 {
 	_lights_ssbo.resize(count);
+
+	_id_to_index.reserve(count);
+	_index_to_id.reserve(count);
+	_dirty.reserve(count);
+	_dirty_list.reserve(count);
+	_lights.reserve(count);
 }
 
 static LightID _light_id { 0 };
 
 PointLight LightManager::add(const PointLightDef &pd)
 {
-	++_light_id;  // TDO: entt EntityID
+	++_light_id;  // TODO: entt EntityID
 
 	const auto L = to_gpu_light(pd);
 
 	add(L, _light_id);
 
-	return to_point_light(L, _light_id);
+	return to_<PointLight>(L, _light_id);
 }
 
 std::optional<std::tuple<LightID, GPULight>> LightManager::get_gpu(Index light_index) const
@@ -134,111 +138,16 @@ void LightManager::add(const GPULight &L, LightID uuid)
 
 	if(IS_POINT_LIGHT(L))
 		++_num_point_lights;
+	else if(IS_DIR_LIGHT(L))
+		++_num_dir_lights;
 	else if(IS_SPOT_LIGHT(L))
 		++_num_spot_lights;
 	else if(IS_AREA_LIGHT(L))
 		++_num_area_lights;
-	else if(IS_DIR_LIGHT(L))
-		++_num_dir_lights;
-}
-
-
-std::optional<PointLight> LightManager::to_point_light(const GPULight &L) const
-{
-	assert(IS_POINT_LIGHT(L));
-	if(not IS_POINT_LIGHT(L))
-		return std::nullopt;
-
-	PointLight pl;
-	pl.color = L.color;
-	pl.intensity = L.intensity;
-	pl.fog = L.fog_intensity;
-	pl.shadow_caster = IS_SHADOW_CASTER(L);
-	pl.position = L.position;
-	pl.radius = L.radius;
-
-	return pl;
-}
-
-std::optional<DirectionalLight> LightManager::to_dir_light  (const GPULight &L) const
-{
-	assert(IS_DIR_LIGHT(L));
-	if(not IS_DIR_LIGHT(L))
-		return std::nullopt;
-
-	// TODO
-
-	return std::nullopt;
-}
-
-std::optional<SpotLight> LightManager::to_spot_light (const GPULight &L) const
-{
-	assert(IS_SPOT_LIGHT(L));
-	if(not IS_SPOT_LIGHT(L))
-		return std::nullopt;
-
-	// TODO
-
-	return std::nullopt;
-}
-
-std::optional<AreaLight> LightManager::to_area_light (const GPULight &L) const
-{
-	assert(IS_AREA_LIGHT(L));
-	if(not IS_AREA_LIGHT(L))
-		return std::nullopt;
-
-	// TODO
-
-	return std::nullopt;
-}
-
-
-PointLight LightManager::to_point_light(const GPULight &L, LightID uuid) const
-{
-	const auto found = _id_to_index.find(uuid);
-	assert(found != _id_to_index.end());
-
-	const auto list_index = found->second;
-
-	auto pl = to_point_light(L);
-
-	pl.value().uuid = uuid;
-	pl.value().list_index = list_index;
-
-	return pl.value();
-}
-
-GPULight LightManager::to_gpu_light(const PointLight &p)
-{
-	return {
-		.position       = p.position,
-		.type_flags     = uint32_t(LIGHT_TYPE_POINT | (p.shadow_caster? LIGHT_SHADOW_CASTER: 0)),
-		.direction      = {},
-		.radius         = p.radius,
-		.spot_bounds_radius = 0.f,
-		.intensity      = p.intensity,
-		.outer_angle    = 0.f,
-		.fog_intensity  = p.fog,
-		.color          = p.color,
-		.inner_angle    = 0.f,
-		.area_points    = {},
-	};
-}
-
-GPULight LightManager::to_gpu_light(const PointLightDef &p)
-{
-	return {
-		.position       = p.position,
-		.type_flags     = uint32_t(LIGHT_TYPE_POINT | (p.shadow_caster? LIGHT_SHADOW_CASTER: 0)),
-		.direction      = {},
-		.radius         = p.radius,
-		.spot_bounds_radius = 0.f,
-		.intensity      = p.intensity,
-		.outer_angle    = 0.f,
-		.fog_intensity  = p.fog,
-		.color          = p.color,
-		.inner_angle    = 0.f,
-		.area_points    = {},
-	};
+	else if(IS_TUBE_LIGHT(L))
+		++_num_tube_lights;
+	else if(IS_SPHERE_LIGHT(L))
+		++_num_sphere_lights;
+	else if(IS_DISC_LIGHT(L))
+		++_num_disc_lights;
 }

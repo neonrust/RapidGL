@@ -60,6 +60,7 @@ using namespace RGL;
 #include "spatial_allocator.h"
 
 ClusteredShading::ClusteredShading() :
+	_shadow_atlas(8192),
 	m_cluster_aabb_ssbo("cluster-aabb"sv),
 	m_cluster_discovery_ssbo("cluster-discovery"sv),
 	m_cull_lights_args_ssbo("cull-lights"sv),
@@ -993,7 +994,7 @@ void ClusteredShading::update(double delta_time)
 		// time_accum  += float(delta_time * m_animation_speed);
 		auto orbit_mat = glm::rotate(glm::mat4(1), glm::radians(-23.f * float(delta_time)) * 2.f * m_animation_speed, AXIS_Y);
 
-		auto spin_mat  = glm::rotate(glm::mat4(1), glm::radians(60.f * float(delta_time)) * 2.f * m_animation_speed, AXIS_Y);
+		// auto spin_mat  = glm::rotate(glm::mat4(1), glm::radians(60.f * float(delta_time)) * 2.f * m_animation_speed, AXIS_Y);
 
 		// TODO: need API to update a specific light OR all lights (by iteration)
 
@@ -1097,10 +1098,10 @@ void ClusteredShading::GeneratePointLights()
 		_light_mgr.add(PointLightDef{
 			.color = rand_color,
 			.intensity = rand_intensity,
+			.affect_radius = std::pow(rand_intensity, 0.6f), // maybe this could be scaled down as the total light count goes up?
 			.fog = 1.f,
 			.shadow_caster = true,
 			.position = rand_pos,
-			.radius = std::pow(rand_intensity, 0.6f), // maybe this could be scaled down as the total light count goes up?
 		});
 
 		std::print("light[{:2}] @ {:5.1f}; {:3.1f}; {:5.1f}  {:3},{:3},{:3}  {:4.0f}\n",
@@ -1126,7 +1127,7 @@ void ClusteredShading::GenerateSpotLights()
 				.intensity = 3000
 			},
 			.position = { -16, 3, -8 },
-			.radius = 35
+			.affect_radius = 35
 		},
 		.direction = { 0, 0, 1 },
 		.inner_angle = 0.f,
@@ -1140,7 +1141,7 @@ void ClusteredShading::GenerateSpotLights()
 				.intensity = 3000
 			},
 			.position = { -12, 3, -8 },
-			.radius = 35
+			.affect_radius = 35
 		},
 		.direction = { 0, 0, 1 },
 		.inner_angle = 0.f,
@@ -1154,7 +1155,7 @@ void ClusteredShading::GenerateSpotLights()
 				.intensity = 3000
 			},
 			.position = { -8, 3, -8 },
-			.radius = 35
+			.affect_radius = 35
 		},
 		.direction = { 0, 0, 1 },
 		.inner_angle = 0.f,
@@ -1168,7 +1169,7 @@ void ClusteredShading::GenerateSpotLights()
 				.intensity = 3000
 			},
 			.position = { -4, 3, -8 },
-			.radius = 35
+			.affect_radius = 35
 		},
 		.direction = { 0, 0, 1 },
 		.inner_angle = 0.f,
@@ -1183,7 +1184,7 @@ void ClusteredShading::GenerateSpotLights()
 				.intensity = 3000
 			},
 			.position = { 0, 3, -8 },
-			.radius = 35
+			.affect_radius = 35
 		},
 		.direction = { 0, 0, 1 },
 		.inner_angle = 0.f,
@@ -1198,7 +1199,7 @@ void ClusteredShading::GenerateSpotLights()
 				.intensity = 3000
 			},
 			.position = { 4, 3, -8 },
-			.radius = 35
+			.affect_radius = 35
 		},
 		.direction = { 0, 0, 1 },
 		.inner_angle = 0.f,
@@ -1212,7 +1213,7 @@ void ClusteredShading::GenerateSpotLights()
 				.intensity = 3000
 			},
 			.position = { 8, 3, -8 },
-			.radius = 35
+			.affect_radius = 35
 		},
 		.direction = { 0, 0, 1 },
 		.inner_angle = 0.f,
@@ -1226,7 +1227,7 @@ void ClusteredShading::GenerateSpotLights()
 				.intensity = 3000
 			},
 			.position = { 12, 3, -8 },
-			.radius = 35
+			.affect_radius = 35
 		},
 		.direction = { 0, 0, 1 },
 		.inner_angle = 0.f,
@@ -1240,7 +1241,7 @@ void ClusteredShading::GenerateSpotLights()
 				.intensity = 3000
 			},
 			.position = { 16, 3, -8 },
-			.radius = 35
+			.affect_radius = 35
 		},
 		.direction = { 0, 0, 1 },
 		.inner_angle = 0.f,
@@ -1528,11 +1529,11 @@ void ClusteredShading::render()
 
 
 	// Render area lights geometry, to '_rt'
-	if(m_draw_area_lights_geometry and _light_mgr.num_area_lights() > 0)
+	if(m_draw_area_lights_geometry and _light_mgr.num_lights<AreaLight>() > 0)
 	{
 		m_draw_area_lights_geometry_shader->bind();
 		m_draw_area_lights_geometry_shader->setUniform("u_view_projection"sv, m_camera.projectionTransform() * m_camera.viewTransform());
-		glDrawArrays(GL_TRIANGLES, 0, GLsizei(6 * _light_mgr.num_area_lights()));
+		glDrawArrays(GL_TRIANGLES, 0, GLsizei(6 * _light_mgr.num_lights<AreaLight>()));
 	}
 
 	renderSkybox(); // to '_rt'
@@ -1618,12 +1619,12 @@ void ClusteredShading::render()
 		debugDrawClusterGrid();
 }
 
-static constexpr glm::vec3 s_cube_face_forward[] = {
+[[maybe_unused]] static constexpr glm::vec3 s_cube_face_forward[] = {
 	AXIS_X, -AXIS_X,
 	AXIS_Y, -AXIS_Y,
 	AXIS_Z, -AXIS_Z,
 };
-static constexpr glm::vec3 s_cube_face_up[] = {
+[[maybe_unused]] static constexpr glm::vec3 s_cube_face_up[] = {
 	-AXIS_Y, -AXIS_Y,
 	 AXIS_Z, -AXIS_Z,
 	-AXIS_Y, -AXIS_Y,
@@ -1652,62 +1653,13 @@ void ClusteredShading::renderShadowMaps()
 	}
 #endif
 
-
-	// calculate "priority" for all shadow casting lights
-	// TODO: this may be done in parallel, or even on the GPU
-
-	struct LightImportance
-	{
-		float importance;
-		uint index;
-	};
-
-	static std::vector<LightImportance> importance;
-	if(importance.capacity() == 0)
-		importance.reserve(MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS);// TODO: also area lights?
-	importance.clear();
-
-	static const auto radius_power = 0.7f;
-
-	auto light_importance = [cam_pos=m_camera.position()](const PointLight &light) -> float {
-		const float distance = std::max(1.f, glm::length(light.position - cam_pos) - light.radius);
-		return std::pow(light.radius, radius_power) / distance; // radius/intensity is basically the same
-	};
-/*
-	for(auto idx = 0u; idx < _light_mgr.num_point_lights; ++idx)
-	{
-		const auto &light = m_lights_ssbo->point_lights[idx];
-
-		if(light.base.feature_flags & LIGHT_SHADOW_CASTER)
-			importance.push_back({ .importance = light_importance(light), .index = idx });
-	}
-
-	uint32_t index_offset = MAX_POINT_LIGHTS;
-	for(auto idx = 0u; idx < m_light_counts_ubo->num_spot_lights; ++idx)
-	{
-		const auto &light = m_lights_ssbo->spot_lights[idx].point;
-
-		if(light.base.feature_flags & LIGHT_SHADOW_CASTER)
-			importance.push_back({ .importance = light_importance(light), .index = idx + index_offset });
-	}
-	// TODO: also area lights?
-*/
-	std::sort(importance.begin(), importance.end(), [](const auto &A, const auto &B) {
-		return A.importance > B.importance;
-	});
-
-	// TODO: distribute these priorities into 5-10 "buckets"
-	//   these buckets correspond to how large the shadowcast
-	// The different buckets is a property of the shadow atlas itself,
-	//   essentially, what it supports
-
-	// need to use the scissor during atlas update; to avoid touchting pixels outside each tile
+	// const auto &shadow_slots = _shadow_atlas.eval_lights(_light_mgr, m_camera.position());
 
 
+	/*
 	static constexpr auto aspect = 1.f;  // i.e. square
 	const glm::vec2 atlas_size { float(_shadow_atlas.width()), float(_shadow_atlas.height()) };
 	auto tile_size = 1024u;
-/*
 	for(auto light_idx = 0u; light_idx < m_lights_ssbo->num_point_lights; ++light_idx)
 	{
 		auto &light = m_lights_ssbo->point_lights[light_idx];
@@ -1719,7 +1671,7 @@ void ClusteredShading::renderShadowMaps()
 
 		glm::uvec2 bottom_left { 0, 0 };
 
-		const auto lightProjection = glm::perspective(glm::radians(90.0f), aspect, 0.1f, light.radius);
+		const auto lightProjection = glm::perspective(glm::radians(90.0f), aspect, 0.1f, light.affect_radius);
 
 		// TODO ideally, these 6 faces should be generated using a single draw call
 		//   by using a geometry shader
@@ -1741,7 +1693,7 @@ void ClusteredShading::renderShadowMaps()
 			const auto lightView = glm::lookAt(light.position, light.position + view_forward, view_up);
 			const auto lightVP = lightProjection * lightView;
 
-			renderShadowDepth(light.position, light.radius, lightVP, _shadow_atlas, tile_rect);
+			renderShadowDepth(light.position, light.affect_radius, lightVP, _shadow_atlas, tile_rect);
 
 			params.atlas_rect[face] = glm::vec4(tile_rect) / glm::vec4(atlas_size, atlas_size);
 			params.view_proj[face] = lightVP;
@@ -1751,100 +1703,11 @@ void ClusteredShading::renderShadowMaps()
 
 		tile_size <<= 1;
 	}
-*/
 	// TODO: maybe use a set(index, value) that also sets a dirty flag
 	//   then flush only writes those?
 	m_shadow_map_params_ssbo.flush();
+*/
 
-#if 0
-	// lights farther away than this (squared), will not cast a shadow
-	static const float cut_off_distance_sq = 50.f * 50.f;
-
-	const auto cam_pos = m_camera.position();
-
-	struct LightIndex
-	{
-		uint index;
-		float importance;
-	};
-	static std::vector<LightIndex> light_index;
-	light_index.reserve(std::max(m_point_lights.size(), std::max(m_spot_lights.size(), m_area_lights.size())));
-
-	auto sq_distance = [&cam_pos](const auto &pos) {
-		const auto v = glm::vec3(pos) - cam_pos;
-		return glm::dot(v, v);
-	};
-
-	light_index.clear();
-	uint index = 0;
-	for(const auto &light: m_point_lights)
-	{
-		if((light.base.feature_flags & LIGHT_SHADOW_CASTER) > 0)
-		{
-			const auto distance = sq_distance(light.position);
-			if(distance < cut_off_distance_sq)
-			{
-				const auto importance = 1.f/distance;  // TODO: also light radius
-				light_index.push_back({ index, importance });
-			}
-		}
-		++index;
-	}
-
-	auto by_importance = [](const auto &A, const auto &B) {
-		return A.importance > B.importance;
-	};
-
-	std::sort(light_index.begin(), light_index.end(), by_importance);
-	for(const auto &item: light_index)
-		renderShadowMap(m_point_lights[item.index]);
-#endif
-
-
-
-#if 0
-	light_index.clear();
-	index = 0;
-	for(const auto &light: m_spot_lights)
-	{
-		if((light.base.feature_flags & LIGHT_SHADOW_CASTER) > 0)
-		{
-			const auto distance = sq_distance(light.point.position);
-			if(distance < cut_off_distance)
-			{
-				const auto importance = 1.f/distance; // TODO: also radius
-				light_index.push_back({ index, importance });
-			}
-		}
-		++index;
-	}
-
-	std::sort(light_index.begin(), light_index.end(), by_importance);
-	for(const auto &item: light_index)
-		renderShadowMap(m_spot_lights[item.index]);
-
-
-	light_index.clear();
-	index = 0;
-	for(const auto &light: m_area_lights)
-	{
-		if((light.base.feature_flags & LIGHT_SHADOW_CASTER) > 0)
-		{
-			const auto center = (light.points[0] + light.points[1] + light.points[2] + light.points[3]) / 4.f;
-			const auto distance = sq_distance(center);
-			if(distance < cut_off_distance)
-			{
-				const auto importance = 1.f/distance; // TODO: also radius
-				light_index.push_back({ index, importance });
-			}
-		}
-		++index;
-	}
-
-	std::sort(light_index.begin(), light_index.end(), by_importance);
-	for(const auto &item: light_index)
-		renderShadowMap(m_area_lights[item.index]);
-#endif
 
 	glDisable(GL_SCISSOR_TEST);
 	glDisable(GL_CULL_FACE);

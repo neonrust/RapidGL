@@ -13,22 +13,22 @@ static constexpr LightID NO_LIGHT_ID { std::numeric_limits<LightID>::max() };
 class LightManager;
 
 // properties common to ALL lights
-#define COMMON \
-	glm::vec3 color     { 1.f, 1.f, 1.f }; \
-	float intensity     { 10.f }; \
-	float fog           { 0.f }; \
+#define COMMON                              \
+	glm::vec3 color     { 1.f, 1.f, 1.f };  \
+	float intensity     { 10.f };           \
+	float affect_radius { 3.5f };           \
+	float fog           { 0.f };            \
 	bool shadow_caster  { false }
 
-#define INTERNAL \
-	inline LightID id() const { return uuid; } \
-private: \
-	friend class LightManager; \
-	LightID uuid        { NO_LIGHT_ID }; \
+#define INTERNAL                                \
+	inline LightID id() const { return uuid; }  \
+private:                                        \
+	friend class LightManager;                  \
+	LightID uuid        { NO_LIGHT_ID };        \
 	uint32_t list_index { std::numeric_limits<uint32_t>::max() }
 
-#define POINT \
-	glm::vec3 position  { 0, 0, 0 }; \
-	float affect_radius        { 3.5f }
+#define POINT                        \
+	glm::vec3 position  { 0, 0, 0 }  \
 
 struct DirectionalLight
 {
@@ -72,7 +72,7 @@ struct AreaLight
 struct TubeLight
 {
 	COMMON;
-	glm::vec4 points[2];  // stored in GPULight shape_points[0-1]
+	glm::vec4 end_points[2];  // stored in GPULight shape_points[0-1]
 	float thickness;      // stored in GPULight shape_points[2]
 	INTERNAL;
 };
@@ -88,7 +88,7 @@ struct SphereLight
 struct DiscLight
 {
 	COMMON;
-	glm::vec3 position;
+	POINT;
 	float disc_radius;   // stored in GPULight::shape_points[0]
 	glm::vec3 direction;
 	INTERNAL;

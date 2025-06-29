@@ -15,6 +15,7 @@
 #include "pp_gaussian_blur_fixed.h"
 #include "pp_light_scattering.h"
 #include "pp_tonemapping.h"
+#include "shadow_atlas.h"
 #include "light_manager.h"
 
 #include <memory>
@@ -158,7 +159,8 @@ private:
 	std::shared_ptr<RGL::RenderTarget::Cube>   m_irradiance_cubemap_rt;
 	std::shared_ptr<RGL::RenderTarget::Cube>   m_prefiltered_env_map_rt;
 	std::shared_ptr<RGL::RenderTarget::Texture2d> m_brdf_lut_rt;
-	RGL::RenderTarget::Texture2d _shadow_atlas;
+	// RGL::RenderTarget::Texture2d _shadow_atlas;
+	ShadowAtlas _shadow_atlas;
 
     std::shared_ptr<RGL::Shader> m_equirectangular_to_cubemap_shader;
     std::shared_ptr<RGL::Shader> m_irradiance_convolution_shader;

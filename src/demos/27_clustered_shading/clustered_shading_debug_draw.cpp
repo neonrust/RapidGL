@@ -82,12 +82,12 @@ void ClusteredShading::debugDrawSceneBounds()
 	*/
 	for(const auto &L: _light_mgr)
 	{
-		const auto &point_ = _light_mgr.to_point_light(L);
+		const auto point_ = _light_mgr.to_<PointLight>(L);
 		if(not point_)
 			continue;
 		const auto &point = point_.value();
 		const auto color = glm::vec4(glm::normalize(point.color), 1);
-		debugDrawSphere(point.position, point.radius, color);
+		debugDrawSphere(point.position, point.affect_radius, color);
 	}
 }
 
@@ -292,7 +292,7 @@ void ClusteredShading::debugDrawSpotLight(const SpotLight &light, const glm::vec
 
 	const auto dir_space = make_common_space_from_direction(L.direction);
 	const auto line_rot = glm::rotate(glm::mat4(1), -L.outer_angle, dir_space[0]);
-	const glm::vec3 dir_line = line_rot * glm::vec4(L.direction, 0)*L.radius;
+	const glm::vec3 dir_line = line_rot * glm::vec4(L.direction, 0)*L.affect_radius;
 
 	static constexpr auto num_lines = 24;
 	const auto rot_angle = glm::radians(360.f / float(num_lines));
@@ -312,7 +312,7 @@ void ClusteredShading::debugDrawSpotLight(const SpotLight &light, const glm::vec
 
 		   // center/axis
 	debugDrawLine(first_end, last_end, color);
-	debugDrawLine(L.position, L.position + L.direction*L.radius, color);
+	debugDrawLine(L.position, L.position + L.direction*L.affect_radius, color);
 
 		   // TODO: draw cap
 }
@@ -496,7 +496,7 @@ void ClusteredShading::debugDrawClusterGrid()
 			{
 				const auto light_index = all_light_index[index_offset + idx];
 				light_indices.push_back(light_index);
-				assert(light_index < _light_mgr.num_point_lights());
+				assert(light_index < _light_mgr.num_lights<PointLight>());
 			}
 			std::sort(light_indices.begin(), light_indices.end());
 			auto first = true;
