@@ -15,20 +15,26 @@
 
 #define CLUSTER_AVERAGE_LIGHTS         32
 
+#define LIGHT_TYPE_MASK          0x0fu
 #define LIGHT_TYPE_POINT         0x00u
-#define LIGHT_TYPE_SPOT          0x01u
-#define LIGHT_TYPE_AREA          0x02u
-#define LIGHT_TYPE_DIRECTIONAL   0x03u
-#define LIGHT_TYPE_MASK          0x07u
+#define LIGHT_TYPE_DIRECTIONAL   0x01u
+#define LIGHT_TYPE_SPOT          0x02u
+#define LIGHT_TYPE_AREA          0x03u
+#define LIGHT_TYPE_TUBE          0x04u
+#define LIGHT_TYPE_SPHERE        0x05u
+#define LIGHT_TYPE_DISC          0x06u
 
 #define IS_POINT_LIGHT(light)    ((light.type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_POINT)
+#define IS_DIR_LIGHT(light)      ((light.type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_DIRECTIONAL)
 #define IS_SPOT_LIGHT(light)     ((light.type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_SPOT)
 #define IS_AREA_LIGHT(light)     ((light.type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_AREA)
-#define IS_DIR_LIGHT(light)      ((light.type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_DIRECTIONAL)
+#define IS_TUBE_LIGHT(light)     ((light.type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_TUBE)
+#define IS_SPHERE_LIGHT(light)   ((light.type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_SPHERE)
+#define IS_DISC_LIGHT(light)     ((light.type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_DISC)
 
-#define LIGHT_TWO_SIDED          0x10u   // area lights
+#define LIGHT_TWO_SIDED          0x10u   // area & disc lights
 
-// max 256 shadw-casting lights
+// max 256 shadw-casting lights?
 #define LIGHT_SHADOW_CASTER      0x008000u
 #define LIGHT_SHADOW_MASK        0xff0000u
 #define LIGHT_SHADOW_SHIFT       16u
