@@ -10,7 +10,7 @@ using namespace std::chrono;
 
 ShadowAtlas::ShadowAtlas(uint32_t size) :
 	RGL::RenderTarget::Texture2d(),
-	_allocator(size)
+	_allocator(size, 64)
 {
 	assert(size >= 1024 and size <= 16384 and __builtin_popcount(size) == 1);
 
