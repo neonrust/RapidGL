@@ -14,6 +14,7 @@ namespace RGL::RenderTarget
 
 static constexpr glm::ivec4 FullScreen { 0, 0, 0, 0 };
 
+// TODO: rename to something not containing the word "texture"... e.g. "flat" ?
 struct Texture2d
 {
 	void create(const char *name, size_t width, size_t height, Color::Config color_cfg=Color::Default, Depth::Config depth_cfg=Depth::Default);
