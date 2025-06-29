@@ -17,17 +17,22 @@ namespace _private
 {
 template<typename T>
 concept LightType = std::is_same_v<PointLight, T>
-	|| std::is_same_v<DirectionalLight, T>
-	|| std::is_same_v<SpotLight, T>
-	|| std::is_same_v<AreaLight, T>
-	|| std::is_same_v<TubeLight, T>
-	|| std::is_same_v<SphereLight, T>
-	|| std::is_same_v<DiscLight, T>
+	or std::is_same_v<DirectionalLight, T>
+	or std::is_same_v<SpotLight, T>
+	or std::is_same_v<AreaLight, T>
+	or std::is_same_v<TubeLight, T>
+	or std::is_same_v<SphereLight, T>
+	or std::is_same_v<DiscLight, T>
 	;
 
 template<typename T>
 concept LightDefType = std::is_same_v<PointLightDef, T>
-	// TODO: other light types
+	or std::is_same_v<DirectionalLightDef, T>
+	or std::is_same_v<SpotLightDef, T>
+	or std::is_same_v<AreaLightDef, T>
+	or std::is_same_v<TubeLightDef, T>
+	or std::is_same_v<SphereLightDef, T>
+	or std::is_same_v<DiscLightDef, T>
 	;
 } // _private
 
@@ -250,8 +255,8 @@ inline std::optional<LT> LightManager::to_(const GPULight &L) const
 	}
 	else if constexpr (std::same_as<LT, TubeLight>)
 	{
-		assert(IS_AREA_LIGHT(L));
-		if(not IS_AREA_LIGHT(L))
+		assert(IS_TUBE_LIGHT(L));
+		if(not IS_TUBE_LIGHT(L))
 			return std::nullopt;
 
 		l.end_points[0] = L.shape_points[0];
@@ -260,16 +265,16 @@ inline std::optional<LT> LightManager::to_(const GPULight &L) const
 	}
 	else if constexpr (std::same_as<LT, SphereLight>)
 	{
-		assert(IS_AREA_LIGHT(L));
-		if(not IS_AREA_LIGHT(L))
+		assert(IS_SPHERE_LIGHT(L));
+		if(not IS_SPHERE_LIGHT(L))
 			return std::nullopt;
 
 		l.sphere_radius = L.shape_points[0];
 	}
 	else if constexpr (std::same_as<LT, DiscLight>)
 	{
-		assert(IS_AREA_LIGHT(L));
-		if(not IS_AREA_LIGHT(L))
+		assert(IS_DISC_LIGHT(L));
+		if(not IS_DISC_LIGHT(L))
 			return std::nullopt;
 
 		l.position    = L.position;
@@ -289,16 +294,16 @@ inline GPULight LightManager::to_gpu_light(const LT &l)
 	L.fog_intensity = l.fog;
 	L.affect_radius = l.affect_radius;
 
-	if constexpr (std::same_as<LT, PointLight>)
+	if constexpr (std::same_as<LT, PointLight> or std::same_as<LT, PointLightDef>)
 	{
 		L.type_flags    = LIGHT_TYPE_POINT | (l.shadow_caster? LIGHT_SHADOW_CASTER: 0);
 		L.position      = l.position;
 	}
-	else if constexpr (std::same_as<LT, DirectionalLight>)
+	else if constexpr (std::same_as<LT, DirectionalLight> or std::same_as<LT, DirectionalLightDef>)
 	{
 		L.type_flags = LIGHT_TYPE_DIRECTIONAL;
 	}
-	else if constexpr (std::same_as<LT, SpotLight>)
+	else if constexpr (std::same_as<LT, SpotLight> or std::same_as<LT, SpotLightDef>)
 	{
 		L.type_flags  = LIGHT_TYPE_SPOT | (l.shadow_caster? LIGHT_SHADOW_CASTER: 0);
 		L.position    = l.position;
@@ -306,7 +311,7 @@ inline GPULight LightManager::to_gpu_light(const LT &l)
 		L.outer_angle = l.outer_angle;
 		L.inner_angle = l.inner_angle;
 	}
-	else if constexpr (std::same_as<LT, AreaLight>)
+	else if constexpr (std::same_as<LT, AreaLight> or std::same_as<LT, AreaLightDef>)
 	{
 		L.type_flags  = LIGHT_TYPE_AREA | (l.two_sided? LIGHT_TWO_SIDED: 0);
 		L.shape_points[0] = l.points[0];
@@ -314,19 +319,19 @@ inline GPULight LightManager::to_gpu_light(const LT &l)
 		L.shape_points[2] = l.points[2];
 		L.shape_points[3] = l.points[3];
 	}
-	else if constexpr (std::same_as<LT, TubeLight>)
+	else if constexpr (std::same_as<LT, TubeLight> or std::same_as<LT, TubeLightDef>)
 	{
 		L.type_flags  = LIGHT_TYPE_SPHERE;
 		L.shape_points[0] = l.end_points[0];
 		L.shape_points[1] = l.end_points[1];
 		L.shape_points[2] = l.thickness;
 	}
-	else if constexpr (std::same_as<LT, SphereLight>)
+	else if constexpr (std::same_as<LT, SphereLight> or std::same_as<LT, SphereLightDef>)
 	{
 		L.type_flags  = LIGHT_TYPE_SPHERE;
 		L.shape_points[0] = l.sphere_radius;
 	}
-	else if constexpr (std::same_as<LT, DiscLight>)
+	else if constexpr (std::same_as<LT, DiscLight> or std::same_as<LT, DiscLightDef>)
 	{
 		L.type_flags  = LIGHT_TYPE_DISC;
 		L.position        = l.position;
