@@ -12,6 +12,8 @@ static constexpr LightID NO_LIGHT_ID { std::numeric_limits<LightID>::max() };
 
 class LightManager;
 
+// ------------------------------------------------------------------
+
 // properties common to ALL lights
 #define COMMON                              \
 	glm::vec3 color     { 1.f, 1.f, 1.f };  \
@@ -30,6 +32,7 @@ private:                                        \
 #define POINT                        \
 	glm::vec3 position  { 0, 0, 0 }  \
 
+// ------------------------------------------------------------------
 
 #define POINT_LIGHT  \
 	COMMON;          \
@@ -46,6 +49,8 @@ struct PointLight
 	INTERNAL;
 };
 
+// ------------------------------------------------------------------
+
 #define DIR_LIGHT  \
 	COMMON;        \
 	glm::vec3 direction { 0, 0, -1 }
@@ -60,6 +65,8 @@ struct DirectionalLight
 	DIR_LIGHT;
 	INTERNAL;
 };
+
+// ------------------------------------------------------------------
 
 #define SPOT_LIGHT  \
 	COMMON;         \
@@ -80,6 +87,8 @@ struct SpotLight
 	INTERNAL;
 };
 
+// ------------------------------------------------------------------
+
 #define AREA_LIGHT        \
 	COMMON;               \
 	glm::vec4 points[4];  \
@@ -95,6 +104,8 @@ struct AreaLight
 	AREA_LIGHT;
 	INTERNAL;
 };
+
+// ------------------------------------------------------------------
 
 #define TUBE_LIGHT           \
 	COMMON;                  \
@@ -112,6 +123,8 @@ struct TubeLight
 	INTERNAL;
 };
 
+// ------------------------------------------------------------------
+
 #define SPHERE_LIGHT      \
 	COMMON;               \
 	POINT;                \
@@ -128,11 +141,13 @@ struct SphereLight
 	INTERNAL;
 };
 
-#define DISC_LIGHT     \
-	COMMON;            \
-	POINT;             \
-	float disc_radius;  /* stored in GPULight::shape_points[0] */ \
-	glm::vec3 direction
+// ------------------------------------------------------------------
+
+#define DISC_LIGHT       \
+	COMMON;              \
+	POINT;               \
+	glm::vec3 direction; \
+	float disc_radius  // stored in GPULight::shape_points[0]
 
 struct DiscLightDef
 {
@@ -144,6 +159,8 @@ struct DiscLight
 	DISC_LIGHT;
 	INTERNAL;
 };
+
+// ------------------------------------------------------------------
 
 
 #undef COMMON
