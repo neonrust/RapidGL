@@ -118,10 +118,8 @@ public:
 private:
 	void calculateShadingClusterGrid();
 	void prepareClusterBuffers();
-	void GenerateAreaLights();
-    void GeneratePointLights();
-    void GenerateSpotLights();
-    void UpdateLightsSSBOs();
+	void createLights();
+	void updateLightsSSBOs();
 
 	void bindScreenRenderTarget();
 	void HdrEquirectangularToCubemap(const std::shared_ptr<RGL::RenderTarget::Cube> & cubemap_rt, const std::shared_ptr<RGL::Texture2D> & m_equirectangular_map);

@@ -241,9 +241,7 @@ void ClusteredShading::init_app()
     /// Randomly initialize lights
 	::srand(3281991);
 	// m_light_counts_ubo.clear();
-	GeneratePointLights();
-    GenerateSpotLights();
-    GenerateAreaLights();
+	createLights();
 
 	/// Create scene objects
 	{
@@ -275,7 +273,7 @@ void ClusteredShading::init_app()
 	}
 
     /// Prepare lights' SSBOs.
-	UpdateLightsSSBOs();  // initial update will create the GL buffers
+	updateLightsSSBOs();  // initial update will create the GL buffers
 
     /// Prepare SSBOs related to the clustering (light-culling) algorithm.
 	// Stores the screen-space clusters
@@ -1009,81 +1007,13 @@ void ClusteredShading::update(double delta_time)
 		}
 
 
-		UpdateLightsSSBOs();
+		updateLightsSSBOs();
 	}
 }
 
-void ClusteredShading::GenerateAreaLights()
+void ClusteredShading::createLights()
 {
-	// m_light_counts_ubo->num_area_lights = 0;
-
-	/*
-    auto computeAreaLightPoints = [](glm::vec3 position, glm::vec2 size, glm::vec4 points[4])
-    {
-		const auto p = glm::vec4(position, 1);
-		points[0] = p + glm::vec4(0,  size.y, -size.x, 0);
-		points[1] = p + glm::vec4(0, -size.y, -size.x, 0);
-		points[2] = p + glm::vec4(0,  size.y,  size.x, 0);
-		points[3] = p + glm::vec4(0, -size.y,  size.x, 0);
-    };
-
-    auto getPointOnRectPerimeter = [](float width, float height, float x0) -> glm::vec2
-    {
-		auto x = x0 * (2.f * width + 2.f * height);
-
-        if (x < width)
-            return glm::vec2(x, 0);
-
-        x -= width;
-        if (x < height)
-            return glm::vec2(width, x);
-
-        x -= height;
-        if (x < width)
-            return glm::vec2(x, height);
-        else
-            return glm::vec2(0, x - width);
-    };
-
-    m_area_lights.clear();
-    m_area_lights.resize(m_area_lights_count);
-
-	float step             = 1.f / float(m_area_lights_count >> 1);
-    float x0               = 0.0f;
-    float rect_width       = 19.0f;
-    float rect_height      = 7.0f;
-    float area_light_pos_y = 0.3f;
-
-    for (uint32_t i = 0; i < m_area_lights.size(); ++i)
-    {
-        if (i == m_area_lights_count / 2)
-        {
-            area_light_pos_y = 3.8f;
-            x0               = 0.0f;
-        }
-
-        auto& ar = m_area_lights[i];
-
-		ar.base.color     = hsv2rgb(
-			float(Util::RandomDouble(1, 360)),
-			float(Util::RandomDouble(0.1, 1.0)),
-			float(Util::RandomDouble(0.1, 1))
-		);
-        ar.base.intensity = m_area_lights_intensity;
-        ar.two_sided      = m_area_lights_two_sided;
-
-		glm::vec2 p_on_rect = getPointOnRectPerimeter(rect_width, rect_height, x0 + float(Util::RandomDouble(0, step / 2.f)));
-        glm::vec3 center    = glm::vec3(p_on_rect.x, area_light_pos_y, p_on_rect.y) + glm::vec3(-10.0f, m_area_lights_size.y * 0.5f, -3.5f);
-        computeAreaLightPoints(center, m_area_lights_size, ar.points);
-
-        x0 += step;
-    }
-*/
-	// m_light_counts_ubo.flush();
-}
-
-void ClusteredShading::GeneratePointLights()
-{
+	// point lights
 	for(auto idx = 0u; idx < 5; ++idx)
 	{
 		const auto rand_color= hsv2rgb(
@@ -1110,13 +1040,6 @@ void ClusteredShading::GeneratePointLights()
 					uint(rand_color.r*255), uint(rand_color.g*255), uint(rand_color.b*255),
 					rand_intensity);
 	}
-
-}
-
-void ClusteredShading::GenerateSpotLights()
-{
-	// m_spot_lights.clear();
-	// m_light_counts_ubo->num_spot_lights = 0;
 
 #if 0
 	m_spot_lights.push_back({
@@ -1260,9 +1183,73 @@ void ClusteredShading::GenerateSpotLights()
 	}
 */
 	// m_light_counts_ubo.flush();
+
+
+	/*
+	auto computeAreaLightPoints = [](glm::vec3 position, glm::vec2 size, glm::vec4 points[4])
+	{
+		const auto p = glm::vec4(position, 1);
+		points[0] = p + glm::vec4(0,  size.y, -size.x, 0);
+		points[1] = p + glm::vec4(0, -size.y, -size.x, 0);
+		points[2] = p + glm::vec4(0,  size.y,  size.x, 0);
+		points[3] = p + glm::vec4(0, -size.y,  size.x, 0);
+	};
+
+	 auto getPointOnRectPerimeter = [](float width, float height, float x0) -> glm::vec2
+	 {
+		 auto x = x0 * (2.f * width + 2.f * height);
+
+		  if (x < width)
+			  return glm::vec2(x, 0);
+
+		 x -= width;
+		 if (x < height)
+			 return glm::vec2(width, x);
+
+		  x -= height;
+		  if (x < width)
+			  return glm::vec2(x, height);
+		  else
+			  return glm::vec2(0, x - width);
+	  };
+
+	 m_area_lights.clear();
+	 m_area_lights.resize(m_area_lights_count);
+
+	  float step             = 1.f / float(m_area_lights_count >> 1);
+	  float x0               = 0.0f;
+	  float rect_width       = 19.0f;
+	  float rect_height      = 7.0f;
+	  float area_light_pos_y = 0.3f;
+
+	 for (uint32_t i = 0; i < m_area_lights.size(); ++i)
+	 {
+		 if (i == m_area_lights_count / 2)
+		 {
+			 area_light_pos_y = 3.8f;
+			 x0               = 0.0f;
+		 }
+
+		  auto& ar = m_area_lights[i];
+
+		 ar.base.color     = hsv2rgb(
+			 float(Util::RandomDouble(1, 360)),
+			 float(Util::RandomDouble(0.1, 1.0)),
+			 float(Util::RandomDouble(0.1, 1))
+		 );
+ ar.base.intensity = m_area_lights_intensity;
+ ar.two_sided      = m_area_lights_two_sided;
+
+		 glm::vec2 p_on_rect = getPointOnRectPerimeter(rect_width, rect_height, x0 + float(Util::RandomDouble(0, step / 2.f)));
+		 glm::vec3 center    = glm::vec3(p_on_rect.x, area_light_pos_y, p_on_rect.y) + glm::vec3(-10.0f, m_area_lights_size.y * 0.5f, -3.5f);
+		 computeAreaLightPoints(center, m_area_lights_size, ar.points);
+
+		  x0 += step;
+	  }
+  */
 }
 
-void ClusteredShading::UpdateLightsSSBOs()
+void ClusteredShading::updateLightsSSBOs()
 {
 	// m_lights_ssbo.flush();
 	// m_light_counts_ubo.flush();
