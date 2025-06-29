@@ -30,67 +30,118 @@ private:                                        \
 #define POINT                        \
 	glm::vec3 position  { 0, 0, 0 }  \
 
-struct DirectionalLight
+
+#define POINT_LIGHT  \
+	COMMON;          \
+	POINT
+
+struct PointLightDef
 {
-	COMMON;
-	glm::vec3 direction { 0, 0, -1 };
-	INTERNAL;
+	POINT_LIGHT;
 };
 
 struct PointLight
 {
-	COMMON;
-	POINT;
+	POINT_LIGHT;
 	INTERNAL;
 };
 
-struct PointLightDef
+#define DIR_LIGHT  \
+	COMMON;        \
+	glm::vec3 direction { 0, 0, -1 }
+
+struct DirectionalLightDef
 {
-	COMMON;
-	POINT;
+	DIR_LIGHT;
+};
+
+struct DirectionalLight
+{
+	DIR_LIGHT;
+	INTERNAL;
+};
+
+#define SPOT_LIGHT  \
+	COMMON;         \
+	POINT;          \
+	glm::vec3 direction   { 0, 0, -1 }; \
+	float inner_angle     { 0 };        \
+	float outer_angle     { glm::radians(15.f) }; \
+	float bounds_radius  // also the distance from 'position' along 'direction'
+
+struct SpotLightDef
+{
+	SPOT_LIGHT;
 };
 
 struct SpotLight
 {
-	COMMON;
-	POINT;
-	glm::vec3 direction   { 0, 0, -1 };
-	float inner_angle     { 0 };
-	float outer_angle     { glm::radians(15.f) };
-	float bounds_radius;  // also the distance from 'position' along 'direction'
+	SPOT_LIGHT;
 	INTERNAL;
+};
+
+#define AREA_LIGHT        \
+	COMMON;               \
+	glm::vec4 points[4];  \
+	bool two_sided
+
+struct AreaLightDef
+{
+	AREA_LIGHT;
 };
 
 struct AreaLight
 {
-	COMMON;
-	glm::vec4 points[4];
-	bool two_sided;
+	AREA_LIGHT;
 	INTERNAL;
+};
+
+#define TUBE_LIGHT           \
+	COMMON;                  \
+	glm::vec4 end_points[2];  /* stored in GPULight shape_points[0-1] */ \
+	float thickness      // stored in GPULight shape_points[2]
+
+struct TubeLightDef
+{
+	TUBE_LIGHT;
 };
 
 struct TubeLight
 {
-	COMMON;
-	glm::vec4 end_points[2];  // stored in GPULight shape_points[0-1]
-	float thickness;      // stored in GPULight shape_points[2]
+	TUBE_LIGHT;
 	INTERNAL;
+};
+
+#define SPHERE_LIGHT      \
+	COMMON;               \
+	POINT;                \
+	float sphere_radius // stored in GPULight::shape_points[0]
+
+struct SphereLightDef
+{
+	SPHERE_LIGHT;
 };
 
 struct SphereLight
 {
-	COMMON;
-	POINT;
-	float sphere_radius; // stored in GPULight::shape_points[0]
+	SPHERE_LIGHT;
 	INTERNAL;
+};
+
+#define DISC_LIGHT     \
+	COMMON;            \
+	POINT;             \
+	float disc_radius;  /* stored in GPULight::shape_points[0] */ \
+	glm::vec3 direction
+
+struct DiscLightDef
+{
+	DISC_LIGHT;
 };
 
 struct DiscLight
 {
-	COMMON;
-	POINT;
-	float disc_radius;   // stored in GPULight::shape_points[0]
-	glm::vec3 direction;
+	DISC_LIGHT;
 	INTERNAL;
 };
 
@@ -98,3 +149,10 @@ struct DiscLight
 #undef COMMON
 #undef POINT
 #undef INTERNAL
+
+#undef POINT_LIGHT
+#undef DIR_LIGHT
+#undef SPOT_LIGHT
+#undef AREA_LIGHT
+#undef SPHERE_LIGHT
+#undef DISC_LIGHT
