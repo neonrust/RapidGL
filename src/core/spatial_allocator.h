@@ -62,7 +62,7 @@ public:
 	using AllocatedSlots = dense_map<AxisT, size_t>;
 
 public:
-	SpatialAllocator(AxisT size, AxisT min_block_size=AxisT{1}, AxisT max_block_size=AxisT(0));
+	SpatialAllocator(AxisT size, AxisT min_block_size=AxisT(0), AxisT max_block_size=AxisT(0));
 
 	[[nodiscard]] inline AxisT size() const { return _size; }
 
@@ -114,8 +114,8 @@ private:
 template<typename AxisT>
 inline SpatialAllocator<AxisT>::SpatialAllocator(AxisT size, AxisT min_block_size, AxisT max_block_size) :
 	_size(size),
-	_max_size(max_block_size > 0? max_block_size: size),
-	_min_size(min_block_size)
+	_max_size(max_block_size > 0? max_block_size: size >> 3), // i.e. 1024 for size 8192
+	_min_size(min_block_size > 0? min_block_size: size >> 7)  // i.e. 64 for size 8192
 {
 	// sizes must be power of 2
 	assert(__builtin_popcount(_size) == 1);
