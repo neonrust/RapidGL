@@ -3,14 +3,26 @@
 set(DEMO_NAME "27_clustered_shading")
 
 # Add source files
-file(GLOB_RECURSE SOURCE_FILES_EXE 
-	 ${CMAKE_CURRENT_SOURCE_DIR}/*.c
-	 ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
+set(SOURCE_FILES_EXE
+	clustered_shading.cpp
+	clustered_shading_debug_draw.cpp
+	clustered_shading_ui.cpp
+	light_manager.cpp
+	main.cpp
+	shadow_atlas.cpp
+)
 
 # Add header files
-file(GLOB_RECURSE HEADER_FILES_EXE 
-	 ${CMAKE_CURRENT_SOURCE_DIR}/*.h
-	 ${CMAKE_CURRENT_SOURCE_DIR}/*.hpp)
+set(HEADER_FILES_EXE
+	buffer_binds.h
+	clustered_shading.h
+	light_constants.h
+	light_manager.h
+	lights.h
+	shadow_atlas.h
+	shared.h
+)
+
 
 file(GLOB_RECURSE SHADER_FILES
 	${CMAKE_CURRENT_SOURCE_DIR}/*.frag
@@ -18,6 +30,50 @@ file(GLOB_RECURSE SHADER_FILES
 	${CMAKE_CURRENT_SOURCE_DIR}/*.comp
 	${CMAKE_CURRENT_SOURCE_DIR}/*.glh
 )
+set(SHADER_FILES
+	shaders/area_light_geom.frag
+	shaders/area_light_geom.vert
+	shaders/area_light_ltc.glh
+	shaders/background.frag
+	shaders/background.vert
+	shaders/collect_nonempty_clusters.comp
+	shaders/cubemap.vert
+	shaders/cull_lights.comp
+	shaders/depth_pass.frag
+	shaders/depth_pass.vert
+	shaders/downscale.comp
+	shaders/draw2d_line.frag
+	shaders/draw2d_rectangle.frag
+	shaders/equirectangular_to_cubemap.frag
+	shaders/find_nonempty_clusters.comp
+	shaders/FSQ.frag
+	shaders/FSQ.vert
+	shaders/gaussian_blur.comp
+	shaders/gaussian_blur_lds.comp
+	shaders/gaussian_blur_parametric.comp
+	shaders/generate_clusters.comp
+	shaders/imgui_depth_image.frag
+	shaders/imgui_depth_image.vert
+	shaders/irradiance_convolution.frag
+	shaders/light_scattering.comp
+	shaders/line_draw.frag
+	shaders/line_draw.vert
+	shaders/mipmap_blur.comp
+	shaders/pbr_clustered.frag
+	shaders/pbr_lighting.glh
+	shaders/pbr_lighting.vert
+	shaders/precompute_brdf.frag
+	shaders/prefilter_cubemap.frag
+	shaders/seven_segment_number.frag
+	shaders/shadow_cube.frag
+	shaders/shadow_cube.vert
+	shaders/shadow_depth.frag
+	shaders/shadow_depth.vert
+	shaders/shared-structs.glh
+	shaders/tmo.frag
+	shaders/upscale.comp
+)
+
 # Define the executable
 add_executable(${DEMO_NAME} ${HEADER_FILES_EXE} ${SOURCE_FILES_EXE})
 
@@ -86,7 +142,7 @@ add_dependencies(${DEMO_NAME} generate_glsl_structs)
 #target_include_directories(${DEMO_NAME} PRIVATE ${CMAKE_BINARY_DIR}/generated)
 
 
-add_custom_target(Other-files
+add_custom_target(Shaders
 	SOURCES
 	${SHADER_FILES}
 )

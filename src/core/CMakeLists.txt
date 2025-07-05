@@ -3,18 +3,90 @@
 set(CORE_LIB_NAME "RapidGLCore" CACHE STRING "Name of the core library")
 
 # Add source files
-file(GLOB_RECURSE SOURCE_FILES_CORE 
-	 ${CMAKE_CURRENT_SOURCE_DIR}/*.c
-	 ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
-	 ${CMAKE_CURRENT_SOURCE_DIR}/gui/*.c
-	 ${CMAKE_CURRENT_SOURCE_DIR}/gui/*.cpp)
-	
+set(SOURCE_FILES_CORE
+	gui/font.cpp
+	gui/gui.cpp
+	gui/imgui_impl_glfw.cpp
+	gui/imgui_impl_opengl3.cpp
+	animated_model.cpp
+	bounds.cpp
+	buffer.cpp
+	camera.cpp
+	core_app.cpp
+	filesystem.cpp
+	frustum.cpp
+	GLTimer.cpp
+	input.cpp
+	input_bind.cpp
+	material.cpp
+	plane.cpp
+	postprocess.cpp
+	postprocess_chain.cpp
+	pp_bloom.cpp
+	pp_gaussian_blur.cpp
+	pp_gaussian_blur_fixed.cpp
+	pp_light_scattering.cpp
+	pp_mipmap_blur.cpp
+	pp_tonemapping.cpp
+	rendertarget_2d.cpp
+	rendertarget_common.cpp
+	rendertarget_cube.cpp
+	shader.cpp
+	static_model.cpp
+	texture.cpp
+	util.cpp
+	window.cpp
+	zstr.cpp
+)
+
 # Add header files
-file(GLOB_RECURSE HEADER_FILES_CORE
-     ${CMAKE_CURRENT_SOURCE_DIR}/*.h
-	 ${CMAKE_CURRENT_SOURCE_DIR}/*.hpp
-	 ${CMAKE_CURRENT_SOURCE_DIR}/gui/*.h
-	 ${CMAKE_CURRENT_SOURCE_DIR}/gui/*.hpp)
+set(HEADER_FILES_CORE
+	gui/font.h
+	gui/gui.h
+	gui/imgui_impl_glfw.h
+	gui/imgui_impl_opengl3.h
+	gui/imgui_impl_opengl3_loader.h
+	animated_model.h
+	bounds.h
+	buffer.h
+	camera.h
+	common.h
+	container_types.h
+	core_app.h
+	debug_output_gl.h
+	filesystem.h
+	frustum.h
+	gl_lookup.h
+	GLTimer.h
+	input.h
+	input_bind.h
+	material.h
+	mesh_part.h
+	plane.h
+	postprocess.h
+	postprocess_chain.h
+	pp_bloom.h
+	pp_gaussian_blur.h
+	pp_gaussian_blur_fixed.h
+	pp_light_scattering.h
+	pp_mipmap_blur.h
+	pp_tonemapping.h
+	rendertarget_2d.h
+	rendertarget_common.h
+	rendertarget_cube.h
+	sample_window.h
+	shader.h
+	spatial_allocator.h
+	ssbo.h
+	static_model.h
+	texture.h
+	timer.h
+	ubo.h
+	util.h
+	window.h
+	zstr.h
+)
+
 
 # Define the library
 add_library(${CORE_LIB_NAME} STATIC ${HEADER_FILES_CORE} ${SOURCE_FILES_CORE})
