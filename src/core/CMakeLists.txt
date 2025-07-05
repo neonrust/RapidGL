@@ -91,6 +91,8 @@ set(HEADER_FILES_CORE
 # Define the library
 add_library(${CORE_LIB_NAME} STATIC ${HEADER_FILES_CORE} ${SOURCE_FILES_CORE})
 
+add_subdirectory(tests)
+
 target_compile_definitions(${CORE_LIB_NAME} PRIVATE GLFW_INCLUDE_NONE)
 target_compile_definitions(${CORE_LIB_NAME} PRIVATE LIBRARY_SUFFIX="")
 

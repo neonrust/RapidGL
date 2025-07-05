@@ -29,10 +29,20 @@ CPMAddPackage("gh:martinus/svector@1.0.3")
 #CPMAddPackage("gh:libjxl/libjxl@0.7.2")   TODO fails with "set_target_properties can not be used on an ALIAS target"
 
 CPMAddPackage(
-        GITHUB_REPOSITORY benikabocha/tinyddsloader
-        GIT_TAG master
-        GIT_SHALLOW TRUE
-        DOWNLOAD_ONLY TRUE)
+  NAME boost-ut
+  GITHUB_REPOSITORY boost-ext/ut
+  GIT_TAG v2.3.1
+  OPTIONS "BOOST_UT_ENABLE_ASSERT=OFF"
+)
+# seems source dir isn't propagated? setting it manually
+set(boost-ut_SOURCE_DIR "${boost-ut_SOURCE_DIR}" CACHE INTERNAL "")
+
+CPMAddPackage(
+  GITHUB_REPOSITORY benikabocha/tinyddsloader
+  GIT_TAG master
+  GIT_SHALLOW TRUE
+  DOWNLOAD_ONLY TRUE
+)
 
 if (tinyddsloader_ADDED)
     add_library(tinyddsloader INTERFACE)

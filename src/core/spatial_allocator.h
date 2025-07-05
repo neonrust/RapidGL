@@ -3,6 +3,7 @@
 #include "container_types.h"
 #include <cstdint>
 #include <glm/integer.hpp>
+#include <glm/vec3.hpp>
 #include <vector>
 #include <print>
 
@@ -30,6 +31,22 @@ bottom right:  index << 2 + 4
 namespace RGL
 {
 
+namespace _private
+{
+
+// round the specified number up to the next power of 2 (i.e. if not already a power of 2)
+template<typename T>
+T round_up_pow2(T n)
+{
+	if(n == 0)
+		return 1;
+	if(__builtin_popcount(n) == 1) // already pow2
+		return n;
+	return T(1) << (sizeof(T)*8 -  __builtin_clz(n));
+}
+
+} // _private
+
 template<typename AxisT=uint32_t>
 class SpatialAllocator
 {
@@ -38,12 +55,14 @@ public:
 	using NodeIndex = uint32_t;
 	static constexpr auto BadIndex = NodeIndex(-1);
 
+	// TODO: accessing this enums from the outside is cembersome...
 	enum class NodeChild : uint32_t
 	{
 		TopLeft      = 1,  // NW
 		TopRight     = 2,  // NE
 		BottomLeft   = 3,  // SW
-		BottomRight  = 4   // SE
+		BottomRight  = 4,  // SE
+		Invalid      = 0,
 	};
 	struct Node
 	{
@@ -53,26 +72,33 @@ public:
 
 	struct Rect
 	{
-		AxisT x;
-		AxisT y;
-		AxisT w;
-		AxisT h;
+		SizeT x;
+		SizeT y;
+		SizeT w;
+		SizeT h;
 	};
 
-	using AllocatedSlots = dense_map<AxisT, size_t>;
+	using AllocatedSlots = dense_map<AxisT, size_t>; // size -> count
+
+	static constexpr AxisT default_max_size_shift = 3; // i.e. size/8    (1024 of 8192)
+	static constexpr AxisT default_min_size_shift = 6; // i.e. size/64  (128 or 8192)
 
 public:
 	SpatialAllocator(AxisT size, AxisT min_block_size=AxisT(0), AxisT max_block_size=AxisT(0));
+
+	inline SizeT max_size() const { return _max_size; };
+	inline SizeT min_size() const { return _min_size; };
 
 	[[nodiscard]] inline AxisT size() const { return _size; }
 
 	[[nodiscard]] NodeIndex allocate(AxisT size);
 	[[nodiscard]] NodeIndex allocate(AxisT size, AxisT min_size);  // allow demotion to smaller size, if necessary
-	void free(NodeIndex index);
-
-	[[nodiscard]] Rect rect(NodeIndex index);
+	bool free(NodeIndex index);
 
 	[[nodiscard]] inline const AllocatedSlots &allocated() const { return _allocated; }
+	[[nodiscard]] size_t allocated(AxisT size) const;
+
+	[[nodiscard]] Rect rect(NodeIndex index);
 
 	[[nodiscard]] uint32_t level(NodeIndex index) const;
 	[[nodiscard]] inline AxisT size(NodeIndex index) const { return _size >> level(index); }
@@ -80,12 +106,13 @@ public:
 	[[nodiscard]] inline const Node &node(NodeIndex index) const { return _nodes[index]; }
 	[[nodiscard]] inline const Node &operator [] (NodeIndex index) const { return node(index); }
 
-	[[nodiscard]] static inline NodeIndex parent_index(NodeIndex child) { return child > 0? (child - 1) >> 2: BadIndex; }
-	[[nodiscard]] static inline NodeIndex child_index(NodeIndex parent, NodeChild child=NodeChild::TopRLeft) {
-		return NodeIndex((uint32_t(parent) << 2) + uint32_t(child));
-	}
-	[[nodiscard]] static inline NodeChild node_child(NodeIndex index) { return NodeChild(uint32_t(index) & 3); }
+	[[nodiscard]] NodeIndex parent_index(NodeIndex child);
 
+	[[nodiscard]] NodeIndex child_index(NodeIndex parent, NodeChild child=NodeChild::TopRLeft);
+
+	[[nodiscard]] NodeChild node_child(NodeIndex index);
+
+	// used as "bad index" in returns
 	[[nodiscard]] inline NodeIndex end() const { return BadIndex; }
 
 private:
@@ -113,11 +140,10 @@ private:
 
 template<typename AxisT>
 inline SpatialAllocator<AxisT>::SpatialAllocator(AxisT size, AxisT min_block_size, AxisT max_block_size) :
-	_size(size),
-	_max_size(max_block_size > 0? max_block_size: size >> 3), // i.e. 1024 for size 8192
-	_min_size(min_block_size > 0? min_block_size: size >> 7)  // i.e. 64 for size 8192
+	_size(_private::round_up_pow2(size)),
+	_max_size(max_block_size > 0? _private::round_up_pow2(max_block_size): _size >> default_max_size_shift),
+	_min_size(min_block_size > 0? _private::round_up_pow2(min_block_size): _size >> default_min_size_shift)
 {
-	// sizes must be power of 2
 	assert(__builtin_popcount(_size) == 1);
 	assert(__builtin_popcount(_min_size) == 1);
 	assert(__builtin_popcount(_max_size) == 1);
@@ -130,7 +156,7 @@ inline SpatialAllocator<AxisT>::SpatialAllocator(AxisT size, AxisT min_block_siz
 
 	_allocated.reserve(num_levels);
 
-	std::print("spatial allocator: {}-{}  ->  {} nodes, {} levels\n", _min_size, _size, num_nodes, num_levels);
+	std::print("spatial allocator[{}..{}]: {} levels; {} nodes\n", _min_size, _max_size, num_levels, num_nodes);
 }
 
 template<typename AxisT>
@@ -142,8 +168,8 @@ inline SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::allocate(Axis
 template<typename AxisT>
 inline SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::allocate(AxisT size, AxisT min_size)
 {
-	assert(__builtin_popcount(size) == 1);
-	assert(__builtin_popcount(min_size) == 1);
+	size = _private::round_up_pow2(size);
+	min_size = _private::round_up_pow2(min_size);
 	assert(min_size <= size);
 
 	min_size = std::min(min_size, size);
@@ -151,39 +177,38 @@ inline SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::allocate(Axis
 	if(size < _min_size or size > _max_size)
 		return BadIndex;
 
-	if(size < _min_size or size > _max_size)
-		return BadIndex;
 	min_size = std::max(min_size, _min_size);
 	min_size = std::min(min_size, size);
 
-	auto allocated_size = size;
-	auto found = BadIndex;
-	for(auto lvl = level_from_size(size); lvl <= level_from_size(min_size); ++lvl)
-	{
-		found = find_available(lvl);
-		if(found != BadIndex)
-			break;
-		allocated_size >>= 1;
-	}
+	// auto allocated_size = size;
+	const auto max_level = level_from_size(min_size);
+	auto allocated_index = BadIndex;
+	auto lvl = level_from_size(size) - 1;
+	// TODO: optimization: find_available() can "peek" if a lower level is possible (if max_level < lvl)
+	while(allocated_index == BadIndex and lvl < max_level)
+		allocated_index = find_available(++lvl);
 
-	if(found != BadIndex)
+	if(allocated_index != BadIndex)
 	{
-		auto &n = _node(found);
-		n.allocated = true;
-		// std::print("  [sa] {} demoted {} -> {}\n", found, size, allocated_size);
+		const auto allocated_size = size_of_level(lvl);
 		++_allocated[allocated_size];
 
-		// increment children_allocated for ancestors (when 'parent' wraps it becomes larger than 'found')
-		for(auto parent = parent_index(found); parent >= 0 and parent < found; parent = parent_index(parent))
-		{
-			auto &p = _node(parent);
-			++p.children_allocated;
-			// std::print("  [sa] {}.children_allocated++ -> {}\n", parent, p.children_allocated);
-		}
+		auto &n = _node(allocated_index);
+		n.allocated = true;
+		// std::print("  [sa] {} demoted {} -> {}\n", found, size, allocated_size);
 
+		auto index = allocated_index;
+		// increment 'children_allocated' for ancestors
+		while(index > 0)
+		{
+			index = parent_index(index);
+			auto &p = _node(index);
+			++p.children_allocated;
+			// std::print("  [sa] {}.children_allocated++ -> {}\n", node, p.children_allocated);
+		}
 	}
 
-	return found;
+	return allocated_index;
 }
 
 // static auto s_indent = 0;
@@ -211,7 +236,7 @@ SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::find_available(uint3
 		// 	std::print("{:{}}  [sa] {}  not available ({} + {})\n", "", s_indent, index, n.allocated, n.children_allocated);
 		// else
 		// 	std::print("{:{}}  [sa] {} found!\n", "", s_indent, index);
-		return n.children_allocated > 0? BadIndex: index;
+		return n.children_allocated == 0? index: BadIndex;
 	}
 
 	// if the whole subtree is available, we can skip to the first child at target_level
@@ -220,7 +245,7 @@ SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::find_available(uint3
 		const auto skip_to_index = index_of_descendant(index, target_level - current_level);
 		assert(level_from_index(skip_to_index) == target_level);
 		// std::print("{:{}}  [sa] direct hop {} -> {}  (level {} -> {})\n", "", s_indent, index, skip_to_index, current_level, target_level);
-		return skip_to_index;//find_available(target_level, target_level, skip_to_index);
+		return find_available(target_level, target_level, skip_to_index);
 	}
 
 	for(auto child = 1u; child <= 4; ++child)
@@ -238,15 +263,18 @@ SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::find_available(uint3
 }
 
 template<typename AxisT>
-void SpatialAllocator<AxisT>::free(NodeIndex index)
+bool SpatialAllocator<AxisT>::free(NodeIndex index)
 {
+	if(index >= _nodes.size())
+		return false;
 	auto &n = _node(index);
-	assert(n.allocated);
+	if(not n.allocated)
+		return false;
 	assert(n.children_allocated == 0);
 	n.allocated = false;
 
 	const auto allocated_size = size_of_level(level_from_index(index));
-	--_allocated[allocated_size];
+	--_allocated[allocated_size]; // remove the entry if 0?
 
 	// decrement child allocation counter in ancestors
 	while(index > 0)
@@ -256,28 +284,43 @@ void SpatialAllocator<AxisT>::free(NodeIndex index)
 		assert(n.children_allocated > 0);
 		--n.children_allocated;
 	}
+
+	return true;
+}
+
+template<typename AxisT>
+size_t SpatialAllocator<AxisT>::allocated(AxisT size) const
+{
+	if(auto found = _allocated.find(size); found != _allocated.end())
+		return found->second;
+	return 0;
 }
 
 template<typename AxisT>
 inline SpatialAllocator<AxisT>::Rect SpatialAllocator<AxisT>::rect(NodeIndex index)
 {
-	const auto level = level_from_index(index);
-	if(level == 0)
+	if(index == 0)
 		return { 0, 0, _size, _size };
 
-	const uint32_t lvl_relative_index = index - level_start_index(level);
-	const uint32_t tiles_per_axis = 1 << level;
-	const AxisT    tile_size = size(index);
+	const auto parent_rect = rect(parent_index(index));
 
-	const AxisT tile_x = lvl_relative_index % tiles_per_axis;
-	const AxisT tile_y = lvl_relative_index / tiles_per_axis;
+	const auto half_w = parent_rect.w >> 1;
+	const auto half_h = parent_rect.h >> 1;
 
-	return Rect{
-		.x = tile_x * tile_size,
-		.y = tile_y * tile_size,
-		.w = tile_size,
-		.h = tile_size,
-	};
+	Rect rect { parent_rect.x, parent_rect.y, half_w, half_h };
+
+	switch (node_child(index))
+	{
+	case NodeChild::BottomRight:
+		rect.y += half_h;
+		// fallthrough
+	case NodeChild::TopRight:
+		rect.x += half_w;  break;
+	case NodeChild::BottomLeft:
+		rect.y += half_h;  break;
+	}
+
+	return rect;
 }
 
 template<typename AxisT>
@@ -286,7 +329,35 @@ uint32_t SpatialAllocator<AxisT>::level(NodeIndex index) const
 	return static_cast<uint32_t>(std::floor(static_cast<uint32_t>(std::log2(1 + 3 * index)) >> 1));
 }
 
+template<typename AxisT>
+typename SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::parent_index(NodeIndex child)
+{
+	if(child == 0 or child >= _nodes.size())
+	{
+		assert(false);
+		return BadIndex;
+	}
+	return (child - 1) >> 2;
+}
 
+template<typename AxisT>
+typename SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::child_index(NodeIndex parent, NodeChild child)
+{
+	if(size_of_level(level_from_index(parent)) <= _min_size)
+	{
+		assert(false);
+		return BadIndex;
+	}
+	return NodeIndex((uint32_t(parent) << 2) + uint32_t(child));
+}
+
+template<typename AxisT>
+typename SpatialAllocator<AxisT>::NodeChild SpatialAllocator<AxisT>::node_child(NodeIndex index)
+{
+	if(index == 0 or index >= _nodes.size())
+		return NodeChild::Invalid;
+	return NodeChild((uint32_t(index - 1) & 3) + 1);
+}
 
 template<typename AxisT>
 SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::index_of_descendant(NodeIndex index, uint32_t skip_levels) {
@@ -298,7 +369,5 @@ SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::index_of_descendant(
 	const auto result = target_level_start + level_offset * descendants_per_node;
 	return result;
 }
-
-
 
 } // RGL
