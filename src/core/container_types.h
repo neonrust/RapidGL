@@ -3,6 +3,8 @@
 #include <ankerl/unordered_dense.h>
 #include <ankerl/svector.h>
 
+#include "stack_container.h" // IWYU pragma: keep
+
 namespace hash
 {
 

@@ -85,6 +85,7 @@ set(HEADER_FILES_CORE
 	util.h
 	window.h
 	zstr.h
+	stack_container.h
 )
 
 
