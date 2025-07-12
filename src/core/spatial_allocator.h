@@ -237,15 +237,17 @@ SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::find_available(uint3
 	if (n.allocated or n.children_allocated == num_nodes_in_levels(target_level - current_level))
 	{
 		// std::print("{:{}}  [sa] {}  branch not available ({} + {})\n", "", s_indent, index, n.allocated, n.children_allocated);
-		return BadIndex;
+		return end();
 	}
-	else if (current_level == target_level)
+	if (current_level == target_level)
 	{
 		// if(n.children_allocated)
 		// 	std::print("{:{}}  [sa] {}  not available ({} + {})\n", "", s_indent, index, n.allocated, n.children_allocated);
 		// else
 		// 	std::print("{:{}}  [sa] {} found!\n", "", s_indent, index);
-		return n.children_allocated == 0? index: BadIndex;
+		if(n.children_allocated == 0)
+			return index;
+		return end();
 	}
 
 	// if the whole subtree is available, we can skip to the first child at target_level
