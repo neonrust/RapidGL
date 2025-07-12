@@ -57,10 +57,14 @@ vec3 falseColor(float value);
 uint computeClusterIndex(uvec3 cluster_coord);
 uvec3 computeClusterCoord(vec2 screen_pos, float view_z);
 
-float dirLightVisibility(uint index);
 float pointLightVisibility(uint index);
+float dirLightVisibility(uint index);
 float spotLightVisibility(uint index);
 float areaLightVisibility(uint index);
+float tubeLightVisibility(uint index);
+float sphereLightVisibility(uint index);
+float discLightVisibility(uint index);
+
 
 void main()
 {
@@ -96,19 +100,19 @@ void main()
 
        	switch(light_type)
        	{
-	        case LIGHT_TYPE_DIRECTIONAL:
-			{
-		        visibility = dirLightVisibility(light_index);
-		        if(visibility > 0)
-		        	contribution = calcDirectionalLight(light, in_world_pos, material);
-			}
-			break;
-
 			case LIGHT_TYPE_POINT:
 			{
 		        visibility = pointLightVisibility(light_index);
 		        if(visibility > 0)
 		        	contribution = calcPointLight(light, in_world_pos, material);
+			}
+			break;
+
+	        case LIGHT_TYPE_DIRECTIONAL:
+			{
+		        visibility = dirLightVisibility(light_index);
+		        if(visibility > 0)
+		        	contribution = calcDirectionalLight(light, in_world_pos, material);
 			}
 			break;
 
@@ -124,12 +128,37 @@ void main()
            	{
 	           	float visibility = areaLightVisibility(light_index);
 	            if(visibility > 0)
-		        	contribution = calcLtcAreaLight(light, in_world_pos, material);
+		        	contribution = calcAreaLight(light, in_world_pos, material);
+            }
+            break;
+
+           	case LIGHT_TYPE_TUBE:
+            {
+	           	float visibility = tubeLightVisibility(light_index);
+	            if(visibility > 0)
+		        	contribution = calcTubeLight(light, in_world_pos, material);
+            }
+            break;
+
+           	case LIGHT_TYPE_SPHERE:
+            {
+	           	float visibility = sphereLightVisibility(light_index);
+	            if(visibility > 0)
+		        	contribution = calcSphereLight(light, in_world_pos, material);
+            }
+            break;
+
+           	case LIGHT_TYPE_DISC:
+            {
+	           	float visibility = discLightVisibility(light_index);
+	            if(visibility > 0)
+		        	contribution = calcDiscLight(light, in_world_pos, material);
             }
             break;
 
             default:
-	            frag_color = vec4(1, 0, 0.4, 1);
+            	// set an "error" color
+	            frag_color = vec4(10, 0, 2, 1);
 				return;
 		}
 
@@ -287,16 +316,11 @@ vec3 unpackNormal(vec2 f)
 float lineOfSight(float current_depth, vec2 atlas_uv, vec2 texel_size);
 float fadeByDistance(float distance, float hard_limit);
 
-float dirLightVisibility(uint index)
-{
-	return 1; // TODO
-}
-
 float pointLightVisibility(uint index)
 {
 	GPULight light = lights[index];
 
-	float light_edge_distance = length(light.position - u_cam_pos) - light.radius;
+	float light_edge_distance = length(light.position - u_cam_pos) - light.affect_radius;
 	// fade the whole light by distance
 	float light_fade = fadeByDistance(light_edge_distance, u_light_max_distance);
 	if(light_fade == 0)
@@ -401,7 +425,7 @@ float pointLightVisibility(uint index)
 
 	// TODO: use square distance?
 	float light_distance = length(light_to_frag);
-	float normalized_depth = light_distance / light.radius;
+	float normalized_depth = light_distance / light.affect_radius;
 
 	vec2 encoded_normal = texture(u_shadow_atlas_normals, atlas_uv).xy;
 	vec3 depth_normal = unpackNormal(encoded_normal);
@@ -433,12 +457,32 @@ float pointLightVisibility(uint index)
 			* lineOfSight(normalized_depth, atlas_uv, texel_size);
 }
 
+float dirLightVisibility(uint index)
+{
+	return 1; // TODO
+}
+
 float spotLightVisibility(uint index)
 {
 	return 1; // TODO
 }
 
 float areaLightVisibility(uint index)
+{
+	return 1; // TODO
+}
+
+floag tubeLightVisibility(uint index)
+{
+	return 1; // TODO
+}
+
+floag sphereLightVisibility(uint index)
+{
+	return 1; // TODO
+}
+
+floag discLightVisibility(uint index)
 {
 	return 1; // TODO
 }

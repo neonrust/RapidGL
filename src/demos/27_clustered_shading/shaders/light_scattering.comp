@@ -286,7 +286,7 @@ vec3 scatterPointLight(Ray ray, PointLight light)
 {
 	Sphere light_sphere;
 	light_sphere.center = light.position;
-	light_sphere.radius = light.radius;
+	light_sphere.radius = light.affect_radius;
 
 	RayResult result;
 	if(! castRay(ray, light_sphere, result))
@@ -342,7 +342,7 @@ float sampleLight(PointLight light, vec3 point)
 {
 	vec3 to_light = point - light.position;
 	float distance_sq = dot(to_light, to_light);
-	float intensity = getSquareFalloffAttenuation(distance_sq, light.radius*light.radius);
+	float intensity = getSquareFalloffAttenuation(distance_sq, light.affect_radius*light.affect_radius);
 	return light.base.intensity * intensity;
 }
 
@@ -352,7 +352,7 @@ vec3 scatterSpotLight(Ray ray, SpotLight spot)
 {
 	SphericalCone outer_cone;
 	outer_cone.sphere.center  = spot.point.position;
-	outer_cone.sphere.radius  = spot.point.radius;
+	outer_cone.sphere.radius  = spot.point.affect_radius;
 	outer_cone.axis           = spot.direction;
 	outer_cone.angle          = spot.outer_angle;
 
@@ -376,7 +376,7 @@ vec3 scatterSpotLight(Ray ray, SpotLight spot)
 
 	// vec3 p_enter = rayPoint(ray, cone_enter);
 	// float dist_center = length(p_enter - spot.point.position);
-	// if(dist_center >= spot.point.radius - 0.1)
+	// if(dist_center >= spot.point.affect_radius - 0.1)
 	// 	return vec3(1, 0, 0);
 	// else
 	// 	return vec3(0, 1, 0);
@@ -391,12 +391,12 @@ vec3 scatterSpotLight(Ray ray, SpotLight spot)
 	// vec3 to_light = p_enter - spot.point.position;
 	// float center_distance_sq =  dot(to_light, to_light);
 	// float apex_distance = sqrt(center_distance_sq);
-	// if(apex_distance >= spot.point.radius - 0.1)
+	// if(apex_distance >= spot.point.affect_radius - 0.1)
 	// 	return vec3(0, 1, 0);
-	// return vec3(apex_distance / spot.point.radius);
+	// return vec3(apex_distance / spot.point.affect_radius);
 
 #if 0
-		float normalized = thickness / spot.point.radius;
+	    float normalized = thickness / spot.point.affect_radius;
 		return falseColor(normalized);
 #endif
 
@@ -429,7 +429,7 @@ vec3 scatterSpotLight(Ray ray, SpotLight spot)
 
 		// EXPERIMENT
 		// dimmer if facing towards the direction of the light
-		float along_axis = dot(p_sample - spot.point.position, spot.direction)/spot.point.radius;
+		float along_axis = dot(p_sample - spot.point.position, spot.direction)/spot.point.affect_radius;
 		intensity *= 1 - along_axis;
 
 
@@ -481,11 +481,11 @@ float sampleLight(SpotLight spot, vec3 point)
 	SphericalCone cone;
 	// need only angle and radius
 	cone.angle = spot.outer_angle;
-	cone.sphere.radius = spot.point.radius;
+	cone.sphere.radius = spot.point.affect_radius;
 	float radius_at_angle = approxDistanceToSphereCap(cos_point_angle, cone);
 	float atten_center = getSquareFalloffAttenuation(center_distance_sq, radius_at_angle*radius_at_angle);
 #else
-	float atten_center = getSquareFalloffAttenuation(center_distance_sq, spot.point.radius*spot.point.radius);
+	float atten_center = getSquareFalloffAttenuation(center_distance_sq, spot.point.affect_radius*spot.point.affect_radius);
 #endif
 
 	// Ray spot_ray;

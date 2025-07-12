@@ -1,4 +1,4 @@
-#include "../light_constants.h"
+#include "../light_constants.h"  // IWYU pragma: keep
 #include "../buffer_binds.h"
 
 #ifdef __cplusplus
@@ -19,9 +19,9 @@ struct GPULight
 	//     -> MUCH faster shader compilation
 
 	vec3 position;
-	uint type_flags;  // LIGHT_*
-	vec3 direction;       // spot & directional lights
-	float radius;
+	uint type_flags;      // LIGHT_*
+	vec3 direction;       // spot, directional & disc lights
+	float affect_radius;  // the distance (from position) where this light affect its surroundings
 	float spot_bounds_radius; // tighter bounds for spot; distance from 'position', along 'direction'
 	float intensity;
 	// uint uuid;   // needed here?
@@ -31,14 +31,14 @@ struct GPULight
 	vec3 color;
 	float inner_angle;
 
-	vec4 area_points[4];  // only area light
+	vec4 shape_points[4];  // area: 4 points, tube: 2 end points + radius, sphere: radius, disc: radius
 };
 
 // @interop
 struct LightShadowParams
 {
-	mat4 view_proj[6];  // maybe store 2 of the space vectors instead (e.g. forward & up)
-	vec4 atlas_rect[6];
+	mat4 view_proj[6];  // maybe store only forward & up instead of full matrix (might even be 2-component vectors)
+	uvec4 atlas_rect[6];
 };
 
 struct AABB

@@ -50,8 +50,6 @@ void main()
     }
     barrier();
 
-	float max_distance_sq = u_light_max_distance*u_light_max_distance;
-
     const uint THREADS_COUNT = gl_WorkGroupSize.x;
 
     // Intersect all lights against cluster AABB
@@ -63,8 +61,7 @@ void main()
       		continue;
 
 		vec3 sphere_center;
-		float sphere_radius = 0;   // if still 0 the below switch did not wrk
-
+		float sphere_radius = light.affect_radius;
 		uint light_type = light.type_flags & LIGHT_TYPE_MASK;
 
      	switch(light_type)
@@ -72,14 +69,12 @@ void main()
 			case LIGHT_TYPE_POINT:
 			{
 				sphere_center = light.position;
-				sphere_radius = light.radius;
 			}
 			break;
 
 			case LIGHT_TYPE_SPOT:
 			{
 	         	sphere_center = light.position;
-				sphere_radius = light.radius;
 				// use minimal sphere bounds, if set
 	        	if(light.spot_bounds_radius > 0)
 	   			{
@@ -94,16 +89,41 @@ void main()
 				// center from average of two diagonal points
 	            sphere_center = (light.area_points[1].xyz + light.area_points[2].xyz) / 2;
 	            // approximation of the light radius
-	            sphere_radius = 50 * light.intensity * distance(sphere_center, light.area_points[1].xyz);
+	            // sphere_radius = 50 * light.intensity * distance(sphere_center, light.area_points[1].xyz);
+			}
+			break;
+
+			case LIGHT_TYPE_TUBE:
+			{
+				// TODO
+				// center of line segment
+	            sphere_center = (light.area_points[0].xyz + light.area_points[1].xyz) / 2;
+	            // approximation of the light radius
+	            // sphere_radius = 50 * light.intensity * distance(sphere_center, light.area_points[1].xyz);
+			}
+			break;
+
+			case LIGHT_TYPE_SPHERE:
+			{
+				// TODO
+	            sphere_center = light.position;
+			}
+			break;
+
+			case LIGHT_TYPE_DISC:
+			{
+				// TODO
+				// center from average of two diagonal points
+	            sphere_center = light.position;
+	            // approximation of the light radius
+	            // sphere_radius = 50 * light.intensity * light.disc_radius;
 			}
 			break;
 		}
 
-		vec3 cam_to_center = sphere_center - u_cam_pos;
-
 		bool affecting = light_type == LIGHT_TYPE_DIRECTIONAL \
 			|| (sphere_radius > 0 \
-				&& dot(cam_to_center, cam_to_center) < max_distance_sq - sphere_radius*sphere_radius \
+				&& distance(sphere_center, u_cam_pos) - sphere_radius < u_light_max_distance \
 				&& sphereInsideAABB(sphere_center, sphere_radius, s_cluster_aabb));
 		if(affecting)
 		{

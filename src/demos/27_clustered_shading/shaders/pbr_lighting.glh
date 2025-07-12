@@ -234,7 +234,7 @@ vec3 calcDirectionalLight(GPULight light, vec3 world_pos, MaterialProperties mat
 vec3 calcPointLight(GPULight light, vec3 world_pos, MaterialProperties material)
 {
     vec3  light_direction = light.position - world_pos;
-    float attenuation     = getSquareFalloffAttenuation(light_direction, 1.0 / light.radius);
+	float attenuation     = getSquareFalloffAttenuation(light_direction, 1.f / light.affect_radius);
 
     return pbr(light, light_direction, world_pos, attenuation, material);
 }
@@ -244,14 +244,14 @@ vec3 calcSpotLight(GPULight light, vec3 world_pos, MaterialProperties material)
     vec3  L            = normalize(world_pos - light.position);
     vec3  pos_to_light = light.position - world_pos;
 
-    float attenuation     = getSquareFalloffAttenuation(pos_to_light, 1.0 / light.radius);
+	float attenuation     = getSquareFalloffAttenuation(pos_to_light, 1.f / light.affect_radius);
           attenuation    *= getSpotAngleAttenuation(L, -light.direction, light.inner_angle, light.outer_angle);
     vec3  light_direction = pos_to_light;
 
     return pbr(light, light_direction, world_pos, attenuation, material);
 }
 
-vec3 calcLtcAreaLight(GPULight light, vec3 world_pos, MaterialProperties material)
+vec3 calcAreaLight(GPULight light, vec3 world_pos, MaterialProperties material)
 {
 	// NOTE: this is not full PBR
 
@@ -281,4 +281,32 @@ vec3 calcLtcAreaLight(GPULight light, vec3 world_pos, MaterialProperties materia
          radiance /= 2.0 * PI;
 
     return radiance;
+}
+
+vec3 calcTubeLight(GPULight light, vec3 world_pos, MaterialProperties material)
+{
+	// TODO: this is nowhere close to resemblence of correct
+	// maybe see this: https://alextardif.com/arealights.html
+
+	vec3 middle = (light.shape_points[0] + light.shape_points[1]) / 2;
+    vec3 pos_to_light = middle - world_pos;
+
+	float radius = pow(light.intensity, 0.6) * distance(light.shape_points[0], light.shape_points[1]);
+	float attenuation = getSquareFalloffAttenuation(pos_to_light, 1.0 / radius);
+
+	vec3 radiance = light.intensity * attenuation;
+
+	return radience;
+}
+
+vec3 calcSphereLight(GPULight light, vec3 world_pos, MaterialProperties material)
+{
+	// TODO
+	return calcPointLight(light, world_pos, material);
+}
+
+vec3 calcDiscLight(GPULight light, vec3 world_pos, MaterialProperties material)
+{
+	// TODO
+	return calcPointLight(light, world_pos, material);
 }
