@@ -19,6 +19,11 @@ template<typename Iter, typename T>
 concept IteratorOf = std::contiguous_iterator<Iter> &&
 	std::same_as<std::remove_cvref_t<decltype(*std::declval<Iter>())>, T>;
 
+template<typename R, typename T>
+concept ContiguousRangeOf =
+		std::ranges::contiguous_range<R> &&
+		std::same_as<std::ranges::range_value_t<R>, T>;
+
 template<typename T>
 class ShaderStorage : public Buffer
 {
@@ -38,7 +43,8 @@ public:
 
 	void bindIndirect() const;
 
-	void set(const std::vector<T> &data);
+	template<ContiguousRangeOf<T> R>
+	void set(const R &data);
 	bool set(size_t index, const T &item);
 	template<IteratorOf<T> Iter>
 	void set(Iter begin, Iter end, size_t start_index=0);
@@ -79,7 +85,8 @@ void ShaderStorage<T>::bindIndirect() const
 }
 
 template<typename T>
-void ShaderStorage<T>::set(const std::vector<T> &data)
+template<ContiguousRangeOf<T> R>
+void ShaderStorage<T>::set(const R &data)
 {
 	ensureCreated();
 
