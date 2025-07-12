@@ -2,11 +2,14 @@
 
 #include "rendertarget_2d.h"
 #include "container_types.h"
+#include "spatial_allocator.h"
+#include "lights.h"
+#include "ssbo.h"
+
 #include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
 
-#include "spatial_allocator.h"
-#include "lights.h"
+#include "generated/shared-structs.h"
 
 class LightManager;
 
@@ -27,7 +30,6 @@ private:
 	RGL::SpatialAllocator<uint32_t> _allocator;
 
 public:
-	using LightIndex = uint32_t;//LightManager::Index;
 	using AllocatedIndex = decltype(_allocator)::NodeIndex;
 	using SlotSize = decltype(_allocator)::SizeT;
 
@@ -35,34 +37,51 @@ public:
 	struct AtlasLight
 	{
 		LightID uuid;
-		SlotSize slot_size;        // 0 if no slot assigned?
-		size_t num_clots;  // point: 6, all others: 1
+		SlotSize slot_size;
+		size_t num_slots;              // point: 6, all others: 1
 		std::array<AllocatedIndex, 6> map_node;
 		std::array<glm::uvec4, 6> rect;
 
+		inline bool is_dirty() const { return _dirty; }
+		inline void on_updated(Time t) const
+		{
+			_dirty = false;
+			last_used = t;
+			last_updated = t;
+		}
+
 	private:
+		mutable bool _dirty;
+		mutable Time last_used;
+		mutable Time last_updated;
 		SlotSize prev_slot_size;
 		float light_value;
 		float prev_light_value;
-		Time last_used;
-		Time last_updated;
 		Time last_size_change;
+
+		friend class ShadowAtlas;
 	};
 
 public:
-	ShadowAtlas(uint32_t size);
+
+	ShadowAtlas(uint32_t size); // TODO: specify which channels to use (e.g. depth & normals)
 	~ShadowAtlas();
 
-	bool setup();
+	bool create();
 
+	inline void set_max_casters(size_t max_casters) { _max_shadow_casters = max_casters; }
 	inline void set_max_distance(float max_distance) { _max_distance = max_distance; }
+	inline void set_min_change_interval(std::chrono::milliseconds interval) { _change_min_interval = interval; }
 
 	//const Slot &point_light(LightID uuid, float importance=1);
 
-	const std::vector<AtlasLight> &eval_lights(LightManager &lights, const glm::vec3 &view_pos);
+
+	const dense_map<LightID, AtlasLight> &eval_lights(LightManager &lights, const glm::vec3 &view_pos);
 
 private:
 	float light_value(const GPULight &light, const glm::vec3 &view_pos) const;
+	void apply_desired_slots(LightManager &lights, const stack_vector<AtlasLight, 256> &desired_slots, Time now);
+	void generate_slots();
 
 private:
 	struct SizeSlots
@@ -74,20 +93,23 @@ private:
 	{
 		float value;
 		LightID light_id;
+		LightIndex light_index;
 	};
-	struct SizeBucket
+	struct AvailableSlots
 	{
-		SlotSize size;
-		small_vec<LightID, 64> lights;
+		bool in_use;
+		decltype(_allocator)::Node node;
 	};
+	dense_map<SlotSize, small_vec<AvailableSlots, 32>> _available_slots;
 
 	small_vec<SizeSlots> _distribution;
-	//small_vec<ValueLight, 127> _value_lights;
-	//dense_map<float, LightID> _prioritized;
 	dense_map<LightID, AtlasLight> _id_to_allocated;
-	size_t _max_shadow_casters;
 
+	size_t _max_shadow_casters { 64 };
 	float _max_distance { 50.f };
 
-	std::vector<AtlasLight> _allocated_slots;
+	// shortest interval an allocated slot can change size (toggle)
+	std::chrono::milliseconds _change_min_interval;
+
+	RGL::buffer::ShaderStorage<LightShadowParams> _shadow_params_ssbo;
 };
