@@ -994,12 +994,12 @@ void ClusteredShading::update(double delta_time)
 
 		// TODO: need API to update a specific light OR all lights (by iteration)
 
-		for(LightManager::Index light_index = 0; light_index <  _light_mgr.size(); ++light_index)
+		for(LightIndex light_index = 0; light_index <  _light_mgr.size(); ++light_index)
 		{
-			const auto light_ =_light_mgr.get_gpu(light_index);
+			const auto light_ =_light_mgr.get_by_index(light_index);
 			auto [uuid, L] = light_.value();
 
-			// orbit aounr the orgin
+			// orbit around the world origin
 			L.position = orbit_mat * glm::vec4(L.position, 1);
 			_light_mgr.set(uuid, L);
 		}
@@ -1023,7 +1023,7 @@ void ClusteredShading::createLights()
 
 		const auto rand_intensity = float(Util::RandomDouble(1, 100))*2;
 
-		_light_mgr.add(PointLightDef{
+		_light_mgr.add(PointLightParams{
 			.color = rand_color,
 			.intensity = rand_intensity,
 			.affect_radius = std::pow(rand_intensity, 0.6f), // maybe this could be scaled down as the total light count goes up?
@@ -1603,17 +1603,6 @@ void ClusteredShading::render()
 	if(m_debug_draw_cluster_grid)
 		debugDrawClusterGrid();
 }
-
-[[maybe_unused]] static constexpr glm::vec3 s_cube_face_forward[] = {
-	AXIS_X, -AXIS_X,
-	AXIS_Y, -AXIS_Y,
-	AXIS_Z, -AXIS_Z,
-};
-[[maybe_unused]] static constexpr glm::vec3 s_cube_face_up[] = {
-	-AXIS_Y, -AXIS_Y,
-	 AXIS_Z, -AXIS_Z,
-	-AXIS_Y, -AXIS_Y,
-};
 
 void ClusteredShading::renderShadowMaps()
 {
