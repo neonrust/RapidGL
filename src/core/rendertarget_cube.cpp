@@ -3,9 +3,7 @@
 #include "glm/ext/matrix_clip_space.hpp"
 #include "glm/ext/matrix_transform.hpp"
 
-extern glm::vec3 AXIS_X;
-extern glm::vec3 AXIS_Y;
-extern glm::vec3 AXIS_Z;
+#include "constants.h"
 
 
 namespace RGL::RenderTarget

@@ -1,13 +1,10 @@
 #include "camera.h"
 
 #include "shader.h" // IWYU pragma: keep
+#include "constants.h"
 
 using namespace std::literals;
 
-
-extern glm::vec3 AXIS_X;
-extern glm::vec3 AXIS_Y;
-extern glm::vec3 AXIS_Z;
 
 namespace RGL
 {
