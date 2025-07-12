@@ -398,7 +398,7 @@ class LayoutComputer:
                         self.required_wrappers.add(field.type)
                     else:
                         cpp_type = base_typ
-                    decl = f"{indent}alignas(16) {cpp_type} {field.name}[{arr_len}];"
+                    decl = f"{indent}alignas(16) std::array<{cpp_type}, {arr_len}> {field.name};"
                     out.append(decl)
                     # For padding logic, array stride is always multiple of 16, so field_size is arr_stride * arr_len
                     if needs_16byte_wrapper or is_vec3_array:
