@@ -33,7 +33,7 @@ void LightManager::reserve(size_t count)
 
 static LightID _light_id { 0 };
 
-PointLight LightManager::add(const PointLightDef &pd)
+PointLight LightManager::add(const PointLightParams &pd)
 {
 	++_light_id;  // TODO: entt EntityID
 
@@ -44,11 +44,89 @@ PointLight LightManager::add(const PointLightDef &pd)
 	return to_<PointLight>(L, _light_id);
 }
 
-std::optional<std::tuple<LightID, GPULight>> LightManager::get_gpu(Index light_index) const
+DirectionalLight LightManager::add(const DirectionalLightParams &d)
+{
+	++_light_id;  // TODO: entt EntityID
+
+	const auto L = to_gpu_light(d);
+
+	add(L, _light_id);
+
+	return to_<DirectionalLight>(L, _light_id);
+}
+
+SpotLight LightManager::add(const SpotLightParams &s)
+{
+	++_light_id;  // TODO: entt EntityID
+
+	const auto L = to_gpu_light(s);
+
+	add(L, _light_id);
+
+	return to_<SpotLight>(L, _light_id);
+}
+
+AreaLight LightManager::add(const AreaLightParams &a)
+{
+	++_light_id;  // TODO: entt EntityID
+
+	const auto L = to_gpu_light(a);
+
+	add(L, _light_id);
+
+	return to_<AreaLight>(L, _light_id);
+}
+
+TubeLight LightManager::add(const TubeLightParams &t)
+{
+	++_light_id;  // TODO: entt EntityID
+
+	const auto L = to_gpu_light(t);
+
+	add(L, _light_id);
+
+	return to_<TubeLight>(L, _light_id);
+}
+
+SphereLight LightManager::add(const SphereLightParams &s)
+{
+	++_light_id;  // TODO: entt EntityID
+
+	const auto L = to_gpu_light(s);
+
+	add(L, _light_id);
+
+	return to_<SphereLight>(L, _light_id);
+}
+
+DiscLight LightManager::add(const DiscLightParams &d)
+{
+	++_light_id;  // TODO: entt EntityID
+
+	const auto L = to_gpu_light(d);
+
+	add(L, _light_id);
+
+	return to_<DiscLight>(L, _light_id);
+}
+
+std::optional<GPULight> LightManager::get_by_id(LightID light_id) const
+{
+	auto found = _id_to_index.find(light_id);
+	assert(found != _id_to_index.end());
+	if(found == _id_to_index.end())
+		return {};
+	return _lights[found->second];
+}
+
+std::optional<std::tuple<LightID, GPULight>> LightManager::get_by_index(LightIndex light_index) const
 {
 	const auto &L = _lights[light_index];
 	const auto found_id = _index_to_id.find(light_index);
 	assert(found_id != _index_to_id.end());
+	if(found_id == _index_to_id.end())
+		return {};
+
 	const auto uuid = found_id->second;
 
 	return std::make_tuple(uuid, L);
@@ -97,12 +175,12 @@ void LightManager::flush()
 
 		// make as few .update() calls to the SSBO, using contiguous ranges
 		std::sort(_dirty_list.begin(), _dirty_list.end());
-		Index start;
-		auto last = Index(-1);
+		LightIndex start;
+		auto last = LightIndex(-1);
 
 		for(auto dirty_index: _dirty_list)
 		{
-			if(last == Index(-1))  // new, potential range
+			if(last == LightIndex(-1))  // new, potential range
 			{
 				start = dirty_index;
 				last = start;
@@ -112,13 +190,13 @@ void LightManager::flush()
 				// update the previous range (might be only one index)
 				_lights_ssbo.set(_lights.begin() + start, _lights.begin() + last, start);
 				start = dirty_index;
-				last = Index(-1);
+				last = LightIndex(-1);
 			}
 			else
 				last = dirty_index;
 		}
 		// the left over range at the end
-		if(last == Index(-1))
+		if(last == LightIndex(-1))
 			_lights_ssbo.set(_lights.begin() + start, _lights.end(), start);
 	}
 
