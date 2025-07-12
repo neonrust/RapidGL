@@ -448,13 +448,11 @@ void ClusteredShading::init_app()
 	m_env_cubemap_rt->create("env", 2048, 2048);
 
 	{
-		namespace C = RenderTarget::Color;
-		namespace D = RenderTarget::Depth;
-		_shadow_atlas.create("shadow-atlas", 4096, 4096, C::Texture | C::Float2, D::Texture | D::Float);
-		// TODO: if we only use the color attachment (i.e. the normals) for slope comparison,
-		//   we really only need a single-channel float (basically the cos(light_to_fragment_angle)).
+		_shadow_atlas.create();
 
 		m_brdf_lut_rt = std::make_shared<RenderTarget::Texture2d>();
+		namespace C = RenderTarget::Color;
+		namespace D = RenderTarget::Depth;
 		m_brdf_lut_rt->create("brdf-lut", 512, 512, C::Texture | C::Float2);
 	}
 
