@@ -86,6 +86,8 @@ public:
 public:
 	SpatialAllocator(AxisT size, AxisT min_block_size=AxisT(0), AxisT max_block_size=AxisT(0));
 
+	void reset();  // free *all* allocated nodes
+
 	inline SizeT max_size() const { return _max_size; };
 	inline SizeT min_size() const { return _min_size; };
 
@@ -157,6 +159,13 @@ inline SpatialAllocator<AxisT>::SpatialAllocator(AxisT size, AxisT min_block_siz
 	_allocated.reserve(num_levels);
 
 	std::print("spatial allocator[{}..{}]: {} levels; {} nodes\n", _min_size, _max_size, num_levels, num_nodes);
+}
+
+template<typename AxisT>
+void SpatialAllocator<AxisT>::reset()
+{
+	std::memset(_nodes.data(), 0, _nodes.size() * sizeof(Node));
+	_allocated.clear();
 }
 
 template<typename AxisT>
