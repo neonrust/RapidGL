@@ -178,12 +178,15 @@ void ShadowAtlas::apply_desired_slots(LightManager &lights, const stack_vector<A
 	auto add_params = [&shadow_params, &lights](LightID light_id, const std::array<glm::uvec4, 6> &rects) {
 		auto light_ = lights.get_by_id(light_id);
 		auto &light = light_.value();
+
 		std::array<glm::mat4, 6> projs;
+		projs[0] = light_view_projection(light);
 		if(IS_POINT_LIGHT(light))
 		{
-			for(auto idx = 0u; idx < 6; ++idx)
+			for(auto idx = 1u; idx < 6; ++idx)
 				projs[idx] = light_view_projection(light, idx);
 		}
+
 		shadow_params.push_back(LightShadowParams {
 			.view_proj = projs,
 			.atlas_rect = rects,
