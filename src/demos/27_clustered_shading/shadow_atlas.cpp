@@ -137,7 +137,7 @@ const dense_map<LightID, ShadowAtlas::AtlasLight> &ShadowAtlas::eval_lights(Ligh
 	const auto start_size_idx = static_cast<uint32_t>(std::ceil(static_cast<float>(_distribution.size()) * (1 - top_light_value)));
 	std::advance(distribution_iter, start_size_idx);
 
-	auto alotted = 0u;
+	auto alloted = 0u;
 
 	for(const auto &light_index: prioritized)
 	{
@@ -156,12 +156,12 @@ const dense_map<LightID, ShadowAtlas::AtlasLight> &ShadowAtlas::eval_lights(Ligh
 
 		desired_slots.push_back(atlas_light);
 
-		++alotted;
+		++alloted;
 		if(--num_slots == 0 and ++distribution_iter == _distribution.end())
 			break;  // no more slots
 	}
 
-	std::print("Alotted {} of {} lights with shadow map space\n", alotted, prioritized.size());
+	std::print("Alloted shadow map space for {} of {} lights\n", alloted, prioritized.size());
 
 	apply_desired_slots(lights, desired_slots, now);
 
