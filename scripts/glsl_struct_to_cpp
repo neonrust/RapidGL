@@ -165,8 +165,8 @@ def parse_structs(glsl_src):
         else:
             i += 1
 
-    for name, struct in structs.items():
-        print(f"{name}: ubo={struct.ubo} interop={struct.interop} annotations={struct.annotations}", file=sys.stderr)
+    # for name, struct in structs.items():
+    #     print(f"{name}: ubo={struct.ubo} interop={struct.interop} annotations={struct.annotations}", file=sys.stderr)
 
     return structs
 
