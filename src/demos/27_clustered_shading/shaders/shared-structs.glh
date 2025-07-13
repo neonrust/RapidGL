@@ -37,7 +37,7 @@ struct GPULight
 // @interop
 struct LightShadowParams
 {
-	mat4 view_proj[6];  // maybe store only forward & up instead of full matrix (might even be 2-component vectors)
+	mat4 view_proj[6];  // storing only forward & up saves 192 bytes (480 -> 288)
 	uvec4 atlas_rect[6];
 };
 
