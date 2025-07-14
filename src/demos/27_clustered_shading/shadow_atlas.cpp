@@ -13,6 +13,7 @@
 #include "glm/ext/matrix_clip_space.hpp"
 #include "glm/ext/matrix_transform.hpp"
 #include "constants.h"
+#include "glm/ext/vector_integer.hpp"
 
 [[maybe_unused]] static constexpr glm::vec3 s_cube_face_forward[] = {
 	AXIS_X, -AXIS_X,
@@ -43,19 +44,22 @@ constexpr T sign_cmp(T a, T b)
 ShadowAtlas::ShadowAtlas(uint32_t size) :
 	Texture2d(),
 	_shadow_params_ssbo("shadow-params"),
-	_allocator(size, size >> 7, size >> 3),
+	_allocator(size, size >> 6, size >> 3),
 	_change_min_interval(3s)
 {
-	assert(size >= 1024 and size <= 16384 and __builtin_popcount(size) == 1);
+	if(__builtin_popcount(size) != 1)
+		size = 1 << (sizeof(size)*8 -  __builtin_clz(size));  // round up to next Po2
+	assert(size >= 1024 and size <= 16384);
 
 	_shadow_params_ssbo.setBindIndex(SSBO_BIND_SHADOW_PARAMS);
 
-	// TODO: receive the distribution in ctor ?
-	generate_slots();
+	generate_slots({ 24, 64, 256 });
 
-	_max_shadow_casters = std::accumulate(_distribution.begin(), _distribution.end(), 0u, [](size_t sum, const auto &item) {
-		return item.num_slots + sum;
+	_max_shadow_casters = std::accumulate(_available_slots.begin(), _available_slots.end(), 0u, [](auto sum, const auto &item) {
+		return item.second.size() + sum;
 	});
+
+	std::print("ShadowAtlas: total shadow casters: {}\n", _max_shadow_casters);
 }
 
 ShadowAtlas::~ShadowAtlas()
@@ -129,7 +133,7 @@ const dense_map<LightID, ShadowAtlas::AtlasLight> &ShadowAtlas::eval_lights(Ligh
 	//   the top light's value determines which size to start at.
 	//   the rest follows in value order, with decreasing sizes as distribution allows.
 
-	stack_vector<AtlasLight, 256> desired_slots;
+	small_vec<AtlasLight, 120> desired_slots;
 
 	const auto top_light_value = prioritized.begin()->value;
 	// value = 1 is the most important possible; gets the highest-resolution slot
@@ -139,13 +143,15 @@ const dense_map<LightID, ShadowAtlas::AtlasLight> &ShadowAtlas::eval_lights(Ligh
 
 	auto alloted = 0u;
 
+	auto slot_size = _allocator.max_size() >> start_size_idx;
+	auto num_slots = *distribution_iter;
+
 	for(const auto &light_index: prioritized)
 	{
+		assert(num_slots > 0);
 		const auto &light_ = lights.get_by_index(light_index.light_index);
 		assert(light_.has_value());
 		const auto &[light_id, light] = light_.value();
-
-		auto &[slot_size, num_slots] = *distribution_iter;
 
 		AtlasLight atlas_light;
 		atlas_light.uuid      = light_id;
@@ -157,8 +163,13 @@ const dense_map<LightID, ShadowAtlas::AtlasLight> &ShadowAtlas::eval_lights(Ligh
 		desired_slots.push_back(atlas_light);
 
 		++alloted;
-		if(--num_slots == 0 and ++distribution_iter == _distribution.end())
-			break;  // no more slots
+		if(--num_slots == 0)
+		{
+			slot_size >>= 1;
+			if(++distribution_iter == _distribution.end())
+				break;  // no more slots
+			num_slots = *distribution_iter;
+		}
 	}
 
 	std::print("Alloted shadow map space for {} of {} lights\n", alloted, prioritized.size());
@@ -170,10 +181,10 @@ const dense_map<LightID, ShadowAtlas::AtlasLight> &ShadowAtlas::eval_lights(Ligh
 
 static glm::mat4 light_view_projection(const GPULight &light, size_t idx=0);
 
-void ShadowAtlas::apply_desired_slots(LightManager &lights, const stack_vector<AtlasLight, 256> &desired_slots, const Time now)
+void ShadowAtlas::apply_desired_slots(LightManager &lights, const small_vec<AtlasLight, 120> &desired_slots, const Time now)
 {
-	stack_vector<std::tuple<bool, LightID>, 256> size_changed; // { new_slot, id }
-	stack_vector<decltype(_shadow_params_ssbo)::value_type, 128> shadow_params;
+	small_vec<std::tuple<bool, LightID>, 120> size_changed; // { new_slot, id }
+	small_vec<decltype(_shadow_params_ssbo)::value_type, 120> shadow_params;
 
 	auto add_params = [&shadow_params, &lights](LightID light_id, const std::array<glm::uvec4, 6> &rects) {
 		auto light_ = lights.get_by_id(light_id);
@@ -323,48 +334,55 @@ float ShadowAtlas::light_value(const GPULight &light, const glm::vec3 &view_pos)
 	return value;
 }
 
-void ShadowAtlas::generate_slots()
+void ShadowAtlas::generate_slots(std::initializer_list<uint32_t> distribution)
 {
-	const auto atlas_size = _allocator.size();
+	const auto T0 = steady_clock::now();
 
-	_distribution = {
-		{ atlas_size >> 3, 12 },  // e.g. space for 2 point lights or 1 point and 6 spots (1024 of 8192)
-		{ atlas_size >> 4, 24 },  // 512 of 8192
-		{ atlas_size >> 5, 32 },  // 256 of 8192
-		{ atlas_size >> 6, 64 },  // 128 of 8192
-		{ atlas_size >> 7, 0 },   // 0 = the rest -> to be calculated below
-	};
+	_distribution.assign(distribution.begin(), distribution.end());   // max_size -> min_size (last is calculated below)
+
+	_available_slots.reserve(_distribution.size() + 1); // including the left-over smallest size
+	// TODO: size of '_available_slots' should match the levels possible to allocate in '_allocator'
 
 	// use the allocator to calculate how many slots are possible
 	//  e.g. allocate the first four levels of the distribution,
 	//  than ask the allocator to count how many of the last size there is room for
-	// TODO: populate _available_slots
-	_available_slots.reserve(_distribution.size());
-	for(const auto &[size, count]: _distribution)
+	auto size = _allocator.max_size();
+
+	for(const auto count: _distribution)
 	{
 		auto &avail_slots = _available_slots[size];
+		avail_slots.reserve(count);
 
 		for(auto idx = 0u; idx < count; ++idx)
 		{
-			auto node = _allocator.allocate(size);
-			assert(node != _allocator.end());
-			avail_slots.push_back({ false, node });
+			const auto index = _allocator.allocate(size);
+			assert(index != _allocator.end());
+			avail_slots.push_back({ false, index });
 		}
+
+		size >>= 1;
 	}
-	const auto small_size = _distribution.back().size;
+
+	// then the remaining space is allocated as the smallest size
+	const auto small_size = size;
 	auto &avail_slots = _available_slots[small_size];
+	avail_slots.reserve(_distribution[_distribution.size() - 2] << 1); // at least twice as many as the previous size
 	do
 	{
-		auto node = _allocator.allocate(small_size);
-		if(node != _allocator.end())
-			avail_slots.push_back({ true, node });
+		const auto index = _allocator.allocate(small_size);
+		if(index != _allocator.end())
+			avail_slots.push_back({ true, index });
 		else
 			break;
 	}
 	while(true);
 
-	_distribution.back().num_slots = avail_slots.size();
-	std::print("ShadowAltas: {} slots of size {}\n", avail_slots.size(), small_size);
+	_distribution.push_back(avail_slots.size());
+
+	const auto Td = steady_clock::now() - T0;
+
+	std::print("ShadowAltas: {} slots of size {}, in {} µs\n",
+		avail_slots.size(), small_size, duration_cast<microseconds>(Td));
 }
 
 /*

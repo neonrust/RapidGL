@@ -80,15 +80,10 @@ public:
 
 private:
 	float light_value(const GPULight &light, const glm::vec3 &view_pos) const;
-	void apply_desired_slots(LightManager &lights, const stack_vector<AtlasLight, 256> &desired_slots, Time now);
-	void generate_slots();
+	void apply_desired_slots(LightManager &lights, const small_vec<AtlasLight, 120> &desired_slots, Time now);
+	void generate_slots(std::initializer_list<uint32_t> distribution);
 
 private:
-	struct SizeSlots
-	{
-		SlotSize size;
-		size_t num_slots;
-	};
 	struct ValueLight
 	{
 		float value;
@@ -98,11 +93,10 @@ private:
 	struct AvailableSlots
 	{
 		bool in_use;
-		decltype(_allocator)::Node node;
+		decltype(_allocator)::NodeIndex node;
 	};
-	dense_map<SlotSize, small_vec<AvailableSlots, 32>> _available_slots;
+	dense_map<SlotSize, small_vec<AvailableSlots, 120>> _available_slots;
 
-	small_vec<SizeSlots> _distribution;
 	dense_map<LightID, AtlasLight> _id_to_allocated;
 
 	size_t _max_shadow_casters { 64 };
@@ -112,4 +106,5 @@ private:
 	std::chrono::milliseconds _change_min_interval;
 
 	RGL::buffer::ShaderStorage<LightShadowParams> _shadow_params_ssbo;
+	small_vec<size_t, 16> _distribution;  // slot sizes of each of the levels (from max to min)
 };
