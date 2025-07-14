@@ -66,8 +66,8 @@ public:
 	};
 	struct Node
 	{
-		uint32_t children_allocated;
 		bool     allocated;
+		uint32_t children_allocated;
 	};
 
 	struct Rect
@@ -97,37 +97,26 @@ public:
 	[[nodiscard]] NodeIndex allocate(AxisT size, AxisT min_size);  // allow demotion to smaller size, if necessary
 	bool free(NodeIndex index);
 
-	[[nodiscard]] inline const AllocatedSlots &allocated() const { return _allocated; }
-	[[nodiscard]] size_t allocated(AxisT size) const;
+	[[nodiscard]] inline const AllocatedSlots &num_allocated() const { return _allocated; }
+	[[nodiscard]] size_t num_allocated(AxisT size) const;
 
 	[[nodiscard]] Rect rect(NodeIndex index);
-
-	[[nodiscard]] uint32_t level(NodeIndex index) const;
 	[[nodiscard]] inline AxisT size(NodeIndex index) const { return _size >> level(index); }
-
-	[[nodiscard]] inline const Node &node(NodeIndex index) const { return _nodes[index]; }
-	[[nodiscard]] inline const Node &operator [] (NodeIndex index) const { return node(index); }
-
-	[[nodiscard]] NodeIndex parent_index(NodeIndex child);
-
-	[[nodiscard]] NodeIndex child_index(NodeIndex parent, NodeChild child=NodeChild::TopRLeft);
-
-	[[nodiscard]] NodeChild node_child(NodeIndex index);
 
 	// used as "bad index" in returns
 	[[nodiscard]] inline NodeIndex end() const { return BadIndex; }
 
 private:
+	[[nodiscard]] uint32_t level(NodeIndex index) const;
+	[[nodiscard]] NodeIndex parent_index(NodeIndex child);
+	[[nodiscard]] NodeIndex child_index(NodeIndex parent, NodeChild child=NodeChild::TopRLeft);
+	[[nodiscard]] NodeChild node_child(NodeIndex index);
 	[[nodiscard]] inline uint32_t level_from_size(AxisT size) const { assert(__builtin_popcount(size) == 1 and size < _size); return uint32_t(__builtin_ffs(int(_size / size)) - 1); }
 	[[nodiscard]] inline AxisT size_of_level(uint32_t level) const { return _size >> level; }
-	[[nodiscard]] static inline uint32_t num_nodes_in_levels(uint32_t levels) { return 1 << 2*levels; };
-	[[nodiscard]] static inline uint32_t level_start_index(uint32_t level) { return (num_nodes_in_levels(level) - 1)/3; };
-	[[nodiscard]] static uint32_t level_from_index(NodeIndex index) {
-		const auto leading_zeroes = static_cast<uint32_t>(__builtin_clz(index * 3 + 1));
-		return (sizeof(index)*8 - leading_zeroes - 1)/2;
-	}
-	[[nodiscard]] static NodeIndex index_of_descendant(NodeIndex index, uint32_t skip_levels);
-	[[nodiscard]] inline Node &_node(NodeIndex index) { return _nodes[index]; }
+	[[nodiscard]] static inline uint32_t num_nodes_in_level(uint32_t level) { return 1u << 2u*level; };
+	[[nodiscard]] static inline uint32_t level_start_index(uint32_t level) { return (num_nodes_in_level(level) - 1)/3; };
+	[[nodiscard]] static uint32_t level_from_index(NodeIndex index);
+	// [[nodiscard]] static NodeIndex index_of_descendant(NodeIndex index, uint32_t skip_levels);
 
 	// search the tree for a vacant "target_level"-sized slot
 	[[nodiscard]] NodeIndex find_available(uint32_t target_level, uint32_t current_level=0, NodeIndex index=0);
@@ -152,7 +141,7 @@ inline SpatialAllocator<AxisT>::SpatialAllocator(AxisT size, AxisT min_block_siz
 	assert(_min_size < _size);
 
 	auto num_levels = level_from_size(_min_size);
-	auto num_nodes = level_start_index(num_levels);
+	auto num_nodes = level_start_index(num_levels + 1); // == the number of nodes before that level
 	assert(num_nodes < 65536); // more nodes seems a bit excessive don't you think?
 	_nodes.resize(num_nodes);
 
@@ -202,8 +191,9 @@ inline SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::allocate(Axis
 		const auto allocated_size = size_of_level(lvl);
 		++_allocated[allocated_size];
 
-		auto &n = _node(allocated_index);
+		auto &n = _nodes[allocated_index];
 		n.allocated = true;
+		assert(n.children_allocated == 0);
 		// std::print("  [sa] {} demoted {} -> {}\n", found, size, allocated_size);
 
 		auto index = allocated_index;
@@ -211,7 +201,8 @@ inline SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::allocate(Axis
 		while(index > 0)
 		{
 			index = parent_index(index);
-			auto &p = _node(index);
+			auto &p = _nodes[index];
+			assert(not p.allocated);
 			++p.children_allocated;
 			// std::print("  [sa] {}.children_allocated++ -> {}\n", node, p.children_allocated);
 		}
@@ -223,6 +214,13 @@ inline SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::allocate(Axis
 // static auto s_indent = 0;
 
 template<typename AxisT>
+uint32_t SpatialAllocator<AxisT>::level_from_index(NodeIndex index)
+{
+	const auto leading_zeroes = static_cast<uint32_t>(__builtin_clz(index * 3 + 1));
+	return (sizeof(index)*8 - leading_zeroes - 1)/2;
+}
+
+template<typename AxisT>
 SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::find_available(uint32_t target_level, uint32_t current_level, NodeIndex index)
 {
 	// if(index == 0)
@@ -231,10 +229,10 @@ SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::find_available(uint3
 	// 	std::print("  [sa] find @ level {}\n", target_level);
 	// }
 
-	const auto &n = _node(index);
+	const auto &n = _nodes[index];
 
 	// skip branches that are fully allocated
-	if (n.allocated or n.children_allocated == num_nodes_in_levels(target_level - current_level))
+	if (n.allocated)// or n.children_allocated == num_nodes_in_levels(target_level - current_level))
 	{
 		// std::print("{:{}}  [sa] {}  branch not available ({} + {})\n", "", s_indent, index, n.allocated, n.children_allocated);
 		return end();
@@ -251,13 +249,13 @@ SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::find_available(uint3
 	}
 
 	// if the whole subtree is available, we can skip to the first child at target_level
-	if(not n.allocated and n.children_allocated == 0)
-	{
-		const auto skip_to_index = index_of_descendant(index, target_level - current_level);
-		assert(level_from_index(skip_to_index) == target_level);
-		// std::print("{:{}}  [sa] direct hop {} -> {}  (level {} -> {})\n", "", s_indent, index, skip_to_index, current_level, target_level);
-		return find_available(target_level, target_level, skip_to_index);
-	}
+	// if(not n.allocated and n.children_allocated == 0)
+	// {
+	// 	const auto skip_to_index = index_of_descendant(index, target_level - current_level);
+	// 	assert(level_from_index(skip_to_index) == target_level);
+	// 	// std::print("{:{}}  [sa] direct hop {} -> {}  (level {} -> {})\n", "", s_indent, index, skip_to_index, current_level, target_level);
+	// 	return find_available(target_level, target_level, skip_to_index);
+	// }
 
 	for(auto child = 1u; child <= 4; ++child)
 	{
@@ -278,10 +276,11 @@ bool SpatialAllocator<AxisT>::free(NodeIndex index)
 {
 	if(index >= _nodes.size())
 		return false;
-	auto &n = _node(index);
+	auto &n = _nodes[index];
 	if(not n.allocated)
 		return false;
 	assert(n.children_allocated == 0);
+
 	n.allocated = false;
 
 	const auto allocated_size = size_of_level(level_from_index(index));
@@ -291,7 +290,7 @@ bool SpatialAllocator<AxisT>::free(NodeIndex index)
 	while(index > 0)
 	{
 		index = parent_index(index);
-		auto &n = _node(index);
+		auto &n = _nodes[index];
 		assert(n.children_allocated > 0);
 		--n.children_allocated;
 	}
@@ -300,7 +299,7 @@ bool SpatialAllocator<AxisT>::free(NodeIndex index)
 }
 
 template<typename AxisT>
-size_t SpatialAllocator<AxisT>::allocated(AxisT size) const
+size_t SpatialAllocator<AxisT>::num_allocated(AxisT size) const
 {
 	if(auto found = _allocated.find(size); found != _allocated.end())
 		return found->second;
@@ -369,7 +368,7 @@ typename SpatialAllocator<AxisT>::NodeChild SpatialAllocator<AxisT>::node_child(
 		return NodeChild::Invalid;
 	return NodeChild((uint32_t(index - 1) & 3) + 1);
 }
-
+/*
 template<typename AxisT>
 SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::index_of_descendant(NodeIndex index, uint32_t skip_levels) {
 	assert(skip_levels > 0);
@@ -380,5 +379,5 @@ SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::index_of_descendant(
 	const auto result = target_level_start + level_offset * descendants_per_node;
 	return result;
 }
-
+*/
 } // RGL
