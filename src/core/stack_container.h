@@ -68,4 +68,5 @@ public:
 		// no harm in reserving up front; the instance is already using the stack space anyway
 		this->reserve(capacity);
 	}
+	inline stack_vector(std::initializer_list<T> il) : std::vector<T, stack_allocator<T, capacity>>(il) {};
 };
