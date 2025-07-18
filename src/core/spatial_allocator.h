@@ -114,7 +114,7 @@ private:
 	[[nodiscard]] NodeIndex child_index(NodeIndex parent, NodeChild child=NodeChild::TopRLeft);
 	[[nodiscard]] NodeChild node_child(NodeIndex index);
 	[[nodiscard]] inline uint32_t level_from_size(AxisT size) const { assert(__builtin_popcount(size) == 1 and size < _size); return uint32_t(__builtin_ffs(int(_size / size)) - 1); }
-	[[nodiscard]] inline AxisT size_of_level(uint32_t level) const { return _size >> level; }
+	[[nodiscard]] inline AxisT size_at_level(uint32_t level) const { return _size >> level; }
 	[[nodiscard]] static inline uint32_t num_nodes_in_level(uint32_t level) { return 1u << 2u*level; };
 	[[nodiscard]] static inline uint32_t level_start_index(uint32_t level) { return (num_nodes_in_level(level) - 1)/3; };
 	[[nodiscard]] static uint32_t level_from_index(NodeIndex index);
@@ -201,7 +201,7 @@ SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::allocate(AxisT size,
 
 	if(allocated_index != BadIndex)
 	{
-		const auto allocated_size = size_of_level(lvl);
+		const auto allocated_size = size_at_level(lvl);
 		++_allocated[allocated_size];
 
 		auto &n = _nodes[allocated_index];
@@ -297,7 +297,7 @@ bool SpatialAllocator<AxisT>::free(NodeIndex index)
 
 	n.allocated = false;
 
-	const auto allocated_size = size_of_level(level_from_index(index));
+	const auto allocated_size = size_at_level(level_from_index(index));
 	--_allocated[allocated_size]; // remove the entry if 0?
 
 	// decrement child allocation counter in ancestors
@@ -367,7 +367,7 @@ typename SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::parent_inde
 template<typename AxisT>
 typename SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::child_index(NodeIndex parent, NodeChild child)
 {
-	if(size_of_level(level_from_index(parent)) <= _min_size)
+	if(size_at_level(level_from_index(parent)) <= _min_size)
 	{
 		assert(false);
 		return BadIndex;
