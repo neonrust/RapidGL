@@ -30,6 +30,11 @@ int main()
 		expect(a.min_size() == 512 >> 6) << std::to_string(a.min_size());
 	};
 
+	"num_allocatable"_test = [] {
+		SpatialAllocator a(1024, 64, 256);
+		expect(a.num_allocatable_levels() == 3) << "64, 128, 256";
+	};
+
 	"allocate_1"_test = [] {
 		SpatialAllocator a(1024, 64, 256);
 		expect(a.num_allocated(256) == 0);
