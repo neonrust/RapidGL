@@ -162,11 +162,7 @@ void SpatialAllocator<AxisT>::reset()
 template<typename AxisT>
 size_t SpatialAllocator<AxisT>::num_allocatable_levels() const
 {
-	auto num = 1u;
-	auto s = min_size();
-	while((s << num) <= max_size())
-		++num;
-	return num;
+	return 32 - __builtin_clz(max_size() / min_size());
 }
 
 template<typename AxisT>

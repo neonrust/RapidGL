@@ -31,8 +31,12 @@ int main()
 	};
 
 	"num_allocatable"_test = [] {
-		SpatialAllocator a(1024, 64, 256);
-		expect(a.num_allocatable_levels() == 3) << "64, 128, 256";
+		SpatialAllocator a1(1024, 64, 256);
+		expect(a1.num_allocatable_levels() == 3) << "64, 128, 256";
+		SpatialAllocator a2(8192, 64, 1024);
+		expect(a2.num_allocatable_levels() == 5) << "64, 128, 256, 512, 1024";
+		SpatialAllocator a3(8192, 1024, 1024);
+		expect(a3.num_allocatable_levels() == 1) << "1024";
 	};
 
 	"allocate_1"_test = [] {
