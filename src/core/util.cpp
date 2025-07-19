@@ -122,11 +122,12 @@ namespace RGL
 					}
 					if(not include_data.empty())
 					{
+						new_source.append("#line 1\n");
 						new_source.append(include_data);
 						new_source.append("\n"sv);
 
 						new_source.append("#line ");
-						new_source.append(std::to_string(line_num));
+						new_source.append(std::to_string(line_num + 1));
 						new_source.append("\n");
 
 						files_included = true;
