@@ -8,8 +8,10 @@
 #include <cstdint>
 
 using LightID = uint32_t;  // entity ID
-using LightIndex = uint32_t;
 static constexpr LightID NO_LIGHT_ID { std::numeric_limits<LightID>::max() };
+
+using LightIndex = uint32_t;
+static constexpr LightID NO_LIGHT_INDEX { std::numeric_limits<LightIndex>::max() };
 
 class LightManager;
 
