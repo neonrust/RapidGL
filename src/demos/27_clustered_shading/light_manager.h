@@ -96,7 +96,7 @@ public:
 	// 	auto &L = _lights[light_index];
 	// 	SET_SHADOW_IDX(L, shadow_index);
 	// }
-	inline void set_shadow_index(LightID light_id, uint_fast8_t shadow_index)
+	inline void set_shadow_index(LightID light_id, uint_fast16_t shadow_index)
 	{
 		auto found = _id_to_index.find(light_id);
 		if(found == _id_to_index.end())
