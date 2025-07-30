@@ -137,7 +137,7 @@ private:
 
 private:
 	dense_map<LightID, LightIndex> _id_to_index;
-	dense_map<LightIndex, LightID> _index_to_id;
+	dense_map<LightIndex, LightID> _index_to_id; // TODO: can this be a vector?
 	// TODO: support contiguous ranges
 	dense_set<LightIndex> _dirty;
 	std::vector<LightIndex> _dirty_list;
