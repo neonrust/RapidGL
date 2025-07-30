@@ -264,7 +264,7 @@ vec3 falseColor(float value)
 {
     value = clamp(value, 0, 1);
 
-	// TODO: could do this in a more general way,
+	// TODO: could do this in a more general way (i.e. a gradient)
 	//  but this is probably faster
 
 	const float N = 8.0;      // number of sub-gradients
@@ -472,17 +472,17 @@ float areaLightVisibility(uint index)
 	return 1; // TODO
 }
 
-floag tubeLightVisibility(uint index)
+float tubeLightVisibility(uint index)
 {
 	return 1; // TODO
 }
 
-floag sphereLightVisibility(uint index)
+float sphereLightVisibility(uint index)
 {
 	return 1; // TODO
 }
 
-floag discLightVisibility(uint index)
+float discLightVisibility(uint index)
 {
 	return 1; // TODO
 }

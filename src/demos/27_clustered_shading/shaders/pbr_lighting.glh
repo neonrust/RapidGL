@@ -266,7 +266,7 @@ vec3 calcAreaLight(GPULight light, vec3 world_pos, MaterialProperties material)
 	bool two_sided = (light.type_flags & LIGHT_TWO_SIDED) > 0;
 
     // diffuse term
-    vec3 diff  = ltcEvaluate(N, V, world_pos, mat3(1), light.area_points, two_sided);
+    vec3 diff  = ltcEvaluate(N, V, world_pos, mat3(1), light.shape_points, two_sided);
          diff *= diff_color * light.color;
 
     // specular term
@@ -274,7 +274,7 @@ vec3 calcAreaLight(GPULight light, vec3 world_pos, MaterialProperties material)
     mat3 Minv    = ltcMatrix(s_ltc_mat, coords);
     vec2 schlick = texture2D(s_ltc_amp, coords).xy;
 
-    vec3 spec  = ltcEvaluate(N, V, world_pos, Minv, light.area_points, two_sided);
+    vec3 spec  = ltcEvaluate(N, V, world_pos, Minv, light.shape_points, two_sided);
          spec *= spec_color * schlick.x + (1.0 - spec_color) * schlick.y;
 
     vec3 radiance  = light.intensity * (diff + spec);
@@ -288,15 +288,13 @@ vec3 calcTubeLight(GPULight light, vec3 world_pos, MaterialProperties material)
 	// TODO: this is nowhere close to resemblence of correct
 	// maybe see this: https://alextardif.com/arealights.html
 
-	vec3 middle = (light.shape_points[0] + light.shape_points[1]) / 2;
+	vec3 middle = (light.shape_points[0].xyz + light.shape_points[1].xyz) / 2;
     vec3 pos_to_light = middle - world_pos;
 
 	float radius = pow(light.intensity, 0.6) * distance(light.shape_points[0], light.shape_points[1]);
 	float attenuation = getSquareFalloffAttenuation(pos_to_light, 1.0 / radius);
 
-	vec3 radiance = light.intensity * attenuation;
-
-	return radience;
+	return light.color*light.intensity * attenuation;
 }
 
 vec3 calcSphereLight(GPULight light, vec3 world_pos, MaterialProperties material)
