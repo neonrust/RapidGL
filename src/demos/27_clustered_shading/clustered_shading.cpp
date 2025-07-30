@@ -911,7 +911,7 @@ void ClusteredShading::update(double delta_time)
 void ClusteredShading::createLights()
 {
 	// point lights
-	for(auto idx = 0u; idx < 5; ++idx)
+	for(auto idx = 0u; idx < 1024; ++idx)
 	{
 		const auto rand_color= hsv2rgb(
 			float(Util::RandomDouble(1, 360)),
@@ -1517,18 +1517,22 @@ void ClusteredShading::renderShadowMaps()
 	//   Scale shadow map size is deduced based on distance from camera (far away, small shadow map),
 	//     also light radius.
 	//   maybe not update the shadow maps every frame?  (preferably, as little as possible)
+	// NOTE: render only "dirty" shadow maps AND if their sphere intersects the camera frustum
 
-#if 0
-	for(const auto &light: m_directional_lights)
+	const auto now = steady_clock::now();
+
+	const auto &shadow_slots = _shadow_atlas.eval_lights(_light_mgr, m_camera.position());
+	// const auto &shadow_params = _shadow_atlas.shadow_params();
+
+	for(const auto &[light_id, slot]: shadow_slots)
 	{
-		if((light.base.feature_flags & LIGHT_SHADOW_CASTER) > 0)
-			renderShadowMap(light);
+		if(slot.is_dirty())
+		{
+			// TODO: render shadow map(s) for this light
+
+			slot.on_rendered(now);
+		}
 	}
-#endif
-
-	// const auto &shadow_slots = _shadow_atlas.eval_lights(_light_mgr, m_camera.position());
-
-
 	/*
 	static constexpr auto aspect = 1.f;  // i.e. square
 	const glm::vec2 atlas_size { float(_shadow_atlas.width()), float(_shadow_atlas.height()) };
