@@ -69,8 +69,8 @@ public:
 	inline float nearPlane()     const { return m_near; }
 	inline float farPlane()      const { return m_far; }
 	inline float verticalFov()   const { return m_fovy; }
-
-	const Frustum &frustum();
+	
+	const Frustum &frustum() const;
 
 	inline const glm::mat4 &projectionTransform() const { return m_projection; }
 	inline const glm::mat4 &viewTransform() const { return m_view; }

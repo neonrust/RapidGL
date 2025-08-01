@@ -71,10 +71,10 @@ void Camera::setOrtho(float left, float right, float bottom, float top, float z_
 	m_is_dirty     = true;
 }
 
-const Frustum &Camera::frustum()
+const Frustum &Camera::frustum() const
 {
 	if(m_is_dirty)
-		updateFrustum();
+		const_cast<Camera *>(this)->updateFrustum();
 	return _frustum;
 }
 
