@@ -911,6 +911,8 @@ void ClusteredShading::createLights()
 	// point lights
 	for(auto idx = 0u; idx < 8; ++idx)
 	{
+		if(idx != 1)
+			continue;
 		const auto rand_color= hsv2rgb(
 			float(Util::RandomDouble(1, 360)),
 			float(Util::RandomDouble(0.2f, 0.9f)),
@@ -1520,18 +1522,46 @@ void ClusteredShading::renderShadowMaps()
 
 	const auto now = steady_clock::now();
 
-	const auto &shadow_slots = _shadow_atlas.eval_lights(_light_mgr, m_camera.position());
-	// const auto &shadow_params = _shadow_atlas.shadow_params();
+	static steady_clock::time_point last_eval_time;
 
-	for(const auto &[light_id, slot]: shadow_slots)
+	if(now - last_eval_time > 50ms)
+	{
+		last_eval_time = now;
+		//TODO: probably should be a separate setting
+		_shadow_atlas.set_max_distance(std::min(100.f, m_camera.farPlane())/2.f);
+
+		auto num_changes = _shadow_atlas.eval_lights(_light_mgr, m_camera.position(), m_camera.forwardVector());
+		if(num_changes)
+			std::print("     changed shadow maps: {}\n", num_changes);
+	}
+
+	auto num_rendered = 0;
+
+	for(auto &[light_id, slot]: _shadow_atlas.allocated())
 	{
 		if(slot.is_dirty())
 		{
-			// TODO: render shadow map(s) for this light
+			// render shadow map(s) for this light
+			const auto &light_ = _light_mgr.get_by_id(light_id);
+			const auto &light = light_.value().get();
+
+			const auto params_index = _light_mgr.shadow_index(light_id);
+
+			for(auto idx = 0u; idx < slot.num_slots; ++idx)
+			{
+				const auto slot_rect = slot.slots[idx].rect;
+
+				renderSceneShadow(light.position, light.affect_radius, params_index, idx, _shadow_atlas, slot_rect);
+			}
 
 			slot.on_rendered(now);
+
+			++num_rendered;
 		}
 	}
+	if(num_rendered)
+		std::print("    rendered shadow maps: {}\n", num_rendered);
+
 	/*
 	static constexpr auto aspect = 1.f;  // i.e. square
 	const glm::vec2 atlas_size { float(_shadow_atlas.width()), float(_shadow_atlas.height()) };
@@ -1689,7 +1719,7 @@ void ClusteredShading::draw2d(const Texture &texture, const glm::uvec2 &top_left
 	// glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
-const std::vector<StaticObject> &ClusteredShading::cullScene()
+const std::vector<StaticObject> &ClusteredShading::cullScene(const Camera &camera)
 {
 	const auto T0 = steady_clock::now();
 	// TODO: in theory, this could be done in multiple threads
@@ -1700,8 +1730,8 @@ const std::vector<StaticObject> &ClusteredShading::cullScene()
 
 	// perform frustum culling of all objects in the scene (or a partition there of)
 
-	const auto view_pos = m_camera.position();
-	const auto &frustum = m_camera.frustum();
+	const auto view_pos = camera.position();
+	const auto &frustum = camera.frustum();
 	// TODO: _scenePvs = _scene.cull(view_pos, frustum)
 
 	for(const auto &obj: _scene) // TODO _scene.near(view_pos, m_camera.farPlane()) i.e. everything within range of the camera's far plane
@@ -1750,12 +1780,6 @@ const std::vector<StaticObject> &ClusteredShading::cullScene()
 
 void ClusteredShading::renderScene(const glm::mat4 &view_projection, Shader &shader, MaterialCtrl materialCtrl)
 {
-	// TODO: for each model:
-	//   this should frustum cull models (and cache the result for other passes)
-	//   this would also include skinned meshes (don't want to do the skinning computations multiple times)
-	//   (AnimatedMode::BoneTransform() genereates a list of bone transforms, done once, but the actual skinning is in the shader)
-
-
 	for(const auto &obj: _scenePvs)
 	{
 		shader.setUniform("u_mvp"sv,   view_projection * obj.transform);
@@ -1768,6 +1792,7 @@ void ClusteredShading::renderScene(const glm::mat4 &view_projection, Shader &sha
 			obj.model->Render();
 	}
 }
+
 
 void ClusteredShading::renderDepth(const glm::mat4 &view_projection, RenderTarget::Texture2d &target, const glm::ivec4 &rect)
 {
@@ -1782,7 +1807,7 @@ void ClusteredShading::renderDepth(const glm::mat4 &view_projection, RenderTarge
 	renderScene(view_projection, *m_depth_prepass_shader, NoMaterials);
 }
 
-void ClusteredShading::renderShadowDepth(const glm::vec3 &pos, float far_z, const glm::mat4 &view_projection, RenderTarget::Texture2d &target, const glm::ivec4 &rect)
+void ClusteredShading::renderSceneShadow(const glm::vec3 &pos, float far_z, uint32_t shadow_params_index, uint32_t shadow_map_index, RenderTarget::Texture2d &target, const glm::ivec4 &rect)
 {
 	// TODO: ideally, only render objects whose AABB intersects with the sphere { pos, far_z }
 
@@ -1796,8 +1821,16 @@ void ClusteredShading::renderShadowDepth(const glm::vec3 &pos, float far_z, cons
 
 	m_shadow_depth_shader->setUniform("u_cam_pos"sv, pos);
 	m_shadow_depth_shader->setUniform("u_far_z"sv, far_z);
+	m_shadow_depth_shader->setUniform("u_shadow_params_index"sv, shadow_params_index); // for 'mvp'
+	m_shadow_depth_shader->setUniform("u_shadow_map_index"sv, shadow_map_index);
 
-	renderScene(view_projection, *m_shadow_depth_shader, NoMaterials);
+	for(const auto &obj: _scenePvs)
+	{
+		m_shadow_depth_shader->setUniform("u_model"sv, obj.transform);
+		m_shadow_depth_shader->setUniform("u_normal_matrix"sv, glm::transpose(glm::inverse(glm::mat3(obj.transform))));
+
+		obj.model->Render();
+	}
 }
 
 void ClusteredShading::renderLighting(const Camera &camera)
