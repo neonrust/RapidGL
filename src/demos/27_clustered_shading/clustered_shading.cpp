@@ -57,8 +57,6 @@ void opengl_message_callback([[maybe_unused]] GLenum source,
 
 using namespace RGL;
 
-#include "spatial_allocator.h"
-
 ClusteredShading::ClusteredShading() :
 	_shadow_atlas(8192),
 	m_cluster_aabb_ssbo("cluster-aabb"sv),
