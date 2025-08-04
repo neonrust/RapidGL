@@ -141,7 +141,7 @@ private:
 	void debugDrawRect(const glm::uvec2 &top_left, const glm::uvec2 &size, const glm::vec4 &color, float thickness);
 	void debugDrawNumber(uint32_t number, const glm::uvec2 &bottom_left, float height=20.f, const glm::vec4 &color=glm::vec4(1), float thickness=1.f);
 	void debugDrawSphere(const glm::vec3 &center, float radius, const glm::vec4 &color={1,1,1,1});
-	void debugDrawSphere(const glm::vec3 &center, float radius, size_t rings, size_t slices, const glm::vec4 &color={1,1,1,1});
+	void debugDrawSphere(const glm::vec3 &center, float radius, size_t stacks, size_t slices, const glm::vec4 &color={1,1,1,1});
 	void debugDrawSpotLight(const SpotLight &light, const glm::vec4 &color={1,1,1,1});
 	void debugDrawSceneBounds();
 	void debugDrawClusterGrid();
