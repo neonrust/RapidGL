@@ -1,9 +1,9 @@
 #include "clustered_shading.h"
 
 #include "window.h"
-#include "constants.h"
 
 using namespace std::literals;
+using namespace std::chrono;
 
 using namespace RGL;
 
@@ -73,21 +73,41 @@ void ClusteredShading::debugDrawSceneBounds()
 	glEnable(GL_DEPTH_TEST);
 	glDisableVertexAttribArray(0);
 
-	/*
-		for(const auto &spot: m_spot_lights)
-		{
-			const auto color = glm::vec4(glm::normalize(spot.point.base.color), 1);
-			debugDrawSpotLight(spot, color);
-		}
-	*/
+	const auto &shadow_maps = _shadow_atlas.allocated();
+
+	static const dense_map<uint32_t, size_t> shadow_size_res = {
+		{ 1024, 32 },
+		{  512, 16 },
+		{  256, 8 },
+		{  128, 4 },
+	};
+
+	static const glm::vec4 color { 1.f, 0.2, 0.7f, 0.5f };
+	LightIndex light_index = 0;
 	for(const auto &L: _light_mgr)
 	{
-		const auto point_ = _light_mgr.to_<PointLight>(L);
-		if(not point_)
-			continue;
-		const auto &point = point_.value();
-		const auto color = glm::vec4(glm::normalize(point.color), 1);
-		debugDrawSphere(point.position, point.affect_radius, color);
+		if(IS_POINT_LIGHT(L))
+		{
+			const auto point_ = _light_mgr.to_<PointLight>(L);
+			const auto &point = point_.value();
+			const auto light_id = _light_mgr.light_id(light_index);
+
+			size_t res = 4;
+			auto found = shadow_maps.find(light_id);
+			if(found != shadow_maps.end())
+				res = shadow_size_res.find(found->second.slots[0].size)->second;
+
+			debugDrawSphere(point.position, point.affect_radius, res, size_t(float(res)*1.5f), color);
+		}
+		else if(IS_SPOT_LIGHT(L))
+		{
+			const auto spot_ = _light_mgr.to_<SpotLight>(L);
+			const auto &spot = spot_.value();
+
+			debugDrawSpotLight(spot, glm::vec4(spot.color, 1));
+		}
+
+		++light_index;
 	}
 }
 
@@ -96,8 +116,8 @@ void ClusteredShading::debugDrawLine(const glm::vec3 &p1, const glm::vec3 &p2, c
 	const auto view_projection = m_camera.projectionTransform() * m_camera.viewTransform();
 
 	m_line_draw_shader->bind();
-	m_line_draw_shader->setUniform("u_line_color"sv, color);
 	m_line_draw_shader->setUniform("u_mvp"sv, view_projection); // no model transform needed; we'll generate vertices in world-space
+	m_line_draw_shader->setUniform("u_line_color"sv, color);
 
 	glDisable(GL_DEPTH_TEST);
 	glEnable(GL_LINE_SMOOTH);
@@ -314,11 +334,11 @@ void ClusteredShading::debugDrawSpotLight(const SpotLight &light, const glm::vec
 		last_end = end_point;
 	}
 
-		   // center/axis
+	// center/axis
 	debugDrawLine(first_end, last_end, color);
 	debugDrawLine(L.position, L.position + L.direction*L.affect_radius, color);
 
-		   // TODO: draw cap
+	// TODO: draw cap
 }
 
 void ClusteredShading::debugDrawClusterGrid()
