@@ -20,7 +20,7 @@ void main()
 	if (alpha < 0.5) discard;
 
 
-	 // manual linearized, radial depth
+	// manual linearized, radial depth
     float dist = length(in_world_pos - u_cam_pos);  // assuming 'light.position' is available or passed as uniform
     gl_FragDepth = dist / u_far_z;  // [0, 1] depth relative to light range
 

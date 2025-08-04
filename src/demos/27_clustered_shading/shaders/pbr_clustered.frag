@@ -30,24 +30,19 @@ const vec3 debug_colors[8] = vec3[]
 
 layout(std430, binding = SSBO_BIND_LIGHTS) readonly buffer LightsSSBO
 {
-	GPULight lights[];
-};
-
-layout(std430, binding = SSBO_BIND_CLUSTER_AABB) readonly buffer ClusterAABBSSBO
-{
-	AABB cluster_aabb[];
+	GPULight ssbo_lights[];
 };
 
 layout(std430, binding = SSBO_BIND_CLUSTER_LIGHT_RANGE) readonly buffer ClusterLightsSSBO
 {
-	IndexRange cluster_lights[];
+	IndexRange ssbo_cluster_lights[];
 };
 
 SSBO_ALL_LIGHTS_ro;
 
 layout(std430, binding = SSBO_BIND_SHADOW_PARAMS) readonly buffer ShadowParamsSSBO
 {
-	LightShadowParams shadow_params[];
+	LightShadowParams ssbo_shadow_params[];
 };
 
 vec3  fromRedToGreen(float interpolant);
@@ -77,7 +72,7 @@ void main()
     uvec3 cluster_coord = computeClusterCoord(gl_FragCoord.xy, in_view_pos.z);
     uint cluster_index = computeClusterIndex(cluster_coord);
 
-    IndexRange lights_range = cluster_lights[cluster_index];
+    IndexRange lights_range = ssbo_cluster_lights[cluster_index];
 
     uint num_clusters = u_cluster_resolution.x*u_cluster_resolution.y*u_cluster_resolution.z;
 
@@ -91,7 +86,7 @@ void main()
     {
 	    uint light_index = all_lights_index[lights_range.start_index + idx];
 
-        GPULight light = lights[light_index];
+        GPULight light = ssbo_lights[light_index];
 
         float visibility = 0;
 		vec3 contribution = vec3(0);
@@ -318,7 +313,7 @@ float fadeByDistance(float distance, float hard_limit);
 
 float pointLightVisibility(uint index)
 {
-	GPULight light = lights[index];
+	GPULight light = ssbo_lights[index];
 
 	float light_edge_distance = length(light.position - u_cam_pos) - light.affect_radius;
 	// fade the whole light by distance
@@ -334,7 +329,7 @@ float pointLightVisibility(uint index)
 	if(shadow_fade == 0)
 		return 0;
 
-	LightShadowParams params = shadow_params[index];
+	LightShadowParams params = ssbo_shadow_params[index];
 
 	vec3 light_to_frag = in_world_pos - light.position;
 
