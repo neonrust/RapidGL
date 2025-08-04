@@ -1330,7 +1330,8 @@ void ClusteredShading::render()
 
 
 	// determine visible meshes  (only if camera or meshes moved (much))
-	cullScene();
+	cullScene(m_camera);
+	// TODO: store the culling result in the camera? (or associated with)
 
 
 	_gl_timer.start();

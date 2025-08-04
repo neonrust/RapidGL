@@ -125,7 +125,7 @@ private:
 	void PrecomputeBRDF             (const std::shared_ptr<RGL::RenderTarget::Texture2d>& rt);
     void GenSkyboxGeometry();
 
-	const std::vector<StaticObject> &cullScene();
+	const std::vector<StaticObject> &cullScene(const RGL::Camera &camera);
 	void renderScene(const glm::mat4 &view_projection, RGL::Shader &shader, MaterialCtrl matCtrl=UseMaterials);
 	void renderDepth(const glm::mat4 &view_projection, RGL::RenderTarget::Texture2d &target, const glm::ivec4 &rect={0,0,0,0});
 	void renderShadowMaps();
