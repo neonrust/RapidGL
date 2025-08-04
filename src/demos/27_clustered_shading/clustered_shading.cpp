@@ -911,7 +911,7 @@ void ClusteredShading::update(double delta_time)
 void ClusteredShading::createLights()
 {
 	// point lights
-	for(auto idx = 0u; idx < 1024; ++idx)
+	for(auto idx = 0u; idx < 8; ++idx)
 	{
 		const auto rand_color= hsv2rgb(
 			float(Util::RandomDouble(1, 360)),
