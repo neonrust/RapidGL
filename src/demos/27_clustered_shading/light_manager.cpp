@@ -115,7 +115,16 @@ std::optional<GPULight> LightManager::get_by_id(LightID light_id) const
 	auto found = _id_to_index.find(light_id);
 	assert(found != _id_to_index.end());
 	if(found == _id_to_index.end())
-		return {};
+		return std::nullopt;
+	return _lights[found->second];
+}
+
+std::optional<std::reference_wrapper<GPULight>> LightManager::get_by_id(LightID light_id)
+{
+	auto found = _id_to_index.find(light_id);
+	assert(found != _id_to_index.end());
+	if(found == _id_to_index.end())
+		return std::nullopt;
 	return _lights[found->second];
 }
 
@@ -125,7 +134,7 @@ std::optional<std::tuple<LightID, GPULight>> LightManager::get_by_index(LightInd
 	const auto found_id = _index_to_id.find(light_index);
 	assert(found_id != _index_to_id.end());
 	if(found_id == _index_to_id.end())
-		return {};
+		return std::nullopt;
 
 	const auto uuid = found_id->second;
 

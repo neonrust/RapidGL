@@ -26,7 +26,7 @@ concept LightType = std::is_same_v<PointLight, T>
 	;
 
 template<typename T>
-concept LightDefType = std::is_same_v<PointLightParams, T>
+concept LightParamsType = std::is_same_v<PointLightParams, T>
 	or std::is_same_v<DirectionalLightParams, T>
 	or std::is_same_v<SpotLightParams, T>
 	or std::is_same_v<AreaLightParams, T>
@@ -40,6 +40,7 @@ class LightManager
 {
 public:
 	using LightList = std::vector<GPULight>;
+	// TODO: using LightList = std::vector<std::pair<LightID, GPULight>>;
 	using const_iterator = LightList::const_iterator;
 
 public:
@@ -61,8 +62,9 @@ public:
 	template<_private::LightType LT>
 	std::optional<LT> get(LightID uuid);
 
-	// ideally, this whould be an overload of get(), but it's not possible since LightID and LightIndex are both integers (and I don't want to wrap them)
 	std::optional<GPULight> get_by_id(LightID light_id) const;
+	std::optional<std::reference_wrapper<GPULight> > get_by_id(LightID light_id);
+
 	std::optional<std::tuple<LightID, GPULight>> get_by_index(LightIndex light_index) const;
 
 	template<_private::LightType LT>
@@ -90,7 +92,9 @@ public:
 
 	inline const GPULight &at(size_t light_index) const { return _lights.at(light_index); }
 
-	inline uint_fast8_t shadow_index(LightIndex light_index) const { return GET_SHADOW_IDX(at(light_index)); }
+	inline uint_fast8_t shadow_index(LightID light_id) const {
+		return GET_SHADOW_IDX(get_by_id(light_id).value());
+	}
 	// inline void set_shadow_index(LightIndex light_index, uint_fast8_t shadow_index)
 	// {
 	// 	auto &L = _lights[light_index];
@@ -132,7 +136,7 @@ private:
 	template<_private::LightType LT>
 	LT to_(const GPULight &L, LightID uuid) const;
 
-	template<typename LT> requires _private::LightType<LT> || _private::LightDefType<LT>
+	template<typename LT> requires _private::LightType<LT> || _private::LightParamsType<LT>
 	static GPULight to_gpu_light(const LT &l);
 
 private:
@@ -302,7 +306,7 @@ std::optional<LT> LightManager::to_(const GPULight &L) const
 	return l;
 }
 
-template<typename LT> requires _private::LightType<LT> || _private::LightDefType<LT>
+template<typename LT> requires _private::LightType<LT> || _private::LightParamsType<LT>
 GPULight LightManager::to_gpu_light(const LT &l)
 {
 	GPULight L;

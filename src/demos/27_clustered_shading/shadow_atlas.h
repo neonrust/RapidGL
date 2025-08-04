@@ -50,21 +50,18 @@ public:
 		inline void on_rendered(Time t) const
 		{
 			_dirty = false;
-			last_used = t;
 			last_rendered = t;
 		}
 
 	private:
 		mutable bool _dirty;
-		mutable Time last_used;
-		mutable Time last_rendered;
-		SlotSize prev_slot_size;
-		float light_value;
 		float prev_light_value;
+		mutable Time last_rendered;   // TODO: define a "pixels per second" limit for how many shadow map slots can be updated (in light-value/age order?)
 		Time last_size_change;
 
 		friend class ShadowAtlas;
 	};
+	static_assert(sizeof(AtlasLight) == 184);
 
 public:
 
@@ -74,16 +71,26 @@ public:
 	bool create();
 
 	inline void set_max_casters(size_t max_casters) { _max_shadow_slots = max_casters; }
-	inline void set_max_distance(float max_distance) { _max_distance = max_distance; }
+	inline void set_max_distance(float max_distance) { _max_distance = max_distance; _large_light_radius = _max_distance; }
 	inline void set_min_change_interval(std::chrono::milliseconds interval) { _change_min_interval = interval; }
 
-	[[nodiscard]] const dense_map<LightID, AtlasLight> &eval_lights(LightManager &lights, const glm::vec3 &view_pos);
+	size_t eval_lights(LightManager &lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward);
+
+	[[nodiscard]] const dense_map<LightID, AtlasLight> &allocated() const { return _id_to_allocated; }
 
 	void set_rendered(LightID uuid, std::chrono::steady_clock::time_point t=std::chrono::steady_clock::now());
 
 private:
-	float light_value(const GPULight &light, const glm::vec3 &view_pos) const;
-	void apply_desired_slots(LightManager &lights, const small_vec<AtlasLight, 120> &desired_slots, Time now);
+	float light_value(const GPULight &light, const glm::vec3 &view_pos, const glm::vec3 &view_forward) const;
+	struct ApplyCounters
+	{
+		size_t allocated;
+		size_t retained;
+		size_t promoted;
+		size_t demoted;
+		size_t change_pending;
+	};
+	ApplyCounters apply_desired_slots(LightManager &lights, const small_vec<AtlasLight, 120> &desired_slots, Time now);
 	void generate_slots(std::initializer_list<uint32_t> distribution);
 	SlotID alloc_slot(SlotSize size);
 	void free_slot(SlotSize size, SlotID node_index);
@@ -104,6 +111,7 @@ private:
 
 	size_t _max_shadow_slots;
 	float _max_distance { 50.f };
+	float _large_light_radius { 50.f };
 
 	// shortest interval an allocated slot can change size (toggle)
 	std::chrono::milliseconds _change_min_interval;
