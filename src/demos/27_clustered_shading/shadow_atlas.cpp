@@ -240,7 +240,7 @@ size_t ShadowAtlas::eval_lights(LightManager &lights, const glm::vec3 &view_pos,
 
 	for(const auto &prio_light: prioritized)
 	{
-		const auto &light_ = lights.get_by_id(prio_light.light_id);
+		const auto light_ = lights.get_by_id(prio_light.light_id);
 		assert(light_.has_value());
 		const auto &light = light_.value().get();
 

@@ -1542,7 +1542,7 @@ void ClusteredShading::renderShadowMaps()
 		if(slot.is_dirty())
 		{
 			// render shadow map(s) for this light
-			const auto &light_ = _light_mgr.get_by_id(light_id);
+			const auto light_ = _light_mgr.get_by_id(light_id);
 			const auto &light = light_.value().get();
 
 			const auto params_index = _light_mgr.shadow_index(light_id);
