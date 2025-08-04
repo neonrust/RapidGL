@@ -24,13 +24,13 @@
 #define LIGHT_TYPE_SPHERE        0x05u
 #define LIGHT_TYPE_DISC          0x06u
 
-#define IS_POINT_LIGHT(light)    ((light.type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_POINT)
-#define IS_DIR_LIGHT(light)      ((light.type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_DIRECTIONAL)
-#define IS_SPOT_LIGHT(light)     ((light.type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_SPOT)
-#define IS_AREA_LIGHT(light)     ((light.type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_AREA)
-#define IS_TUBE_LIGHT(light)     ((light.type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_TUBE)
-#define IS_SPHERE_LIGHT(light)   ((light.type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_SPHERE)
-#define IS_DISC_LIGHT(light)     ((light.type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_DISC)
+#define IS_POINT_LIGHT(light)    (((light).type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_POINT)
+#define IS_DIR_LIGHT(light)      (((light).type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_DIRECTIONAL)
+#define IS_SPOT_LIGHT(light)     (((light).type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_SPOT)
+#define IS_AREA_LIGHT(light)     (((light).type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_AREA)
+#define IS_TUBE_LIGHT(light)     (((light).type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_TUBE)
+#define IS_SPHERE_LIGHT(light)   (((light).type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_SPHERE)
+#define IS_DISC_LIGHT(light)     (((light).type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_DISC)
 
 #define LIGHT_TWO_SIDED          0x10u   // area & disc lights
 
@@ -40,8 +40,13 @@
 #define LIGHT_SHADOW_SHIFT       16u
 #define LIGHT_NO_SHADOW          0xffu
 
-#define GET_SHADOW_IDX(light)      ((light.type_flags & LIGHT_SHADOW_MASK) >> LIGHT_SHADOW_SHIFT)
-#define SET_SHADOW_IDX(light, idx) (light.type_flags = (light.type_flags & ~LIGHT_SHADOW_MASK) | uint32_t(idx << LIGHT_SHADOW_SHIFT))
+#define GET_SHADOW_IDX(light)      (((light).type_flags & LIGHT_SHADOW_MASK) >> LIGHT_SHADOW_SHIFT)
+#ifdef __cplusplus
+void SET_SHADOW_IDX(auto &light, auto idx)
+{
+	light.type_flags = (light.type_flags & ~LIGHT_SHADOW_MASK) | uint32_t(idx << LIGHT_SHADOW_SHIFT);
+}
+#endif
 #define CLR_SHADOW_IDX(light)      SET_SHADOW_IDX(light, 0xffu)
 
-#define IS_SHADOW_CASTER(light)    ((light.type_flags & LIGHT_SHADOW_CASTER) > 0)
+#define IS_SHADOW_CASTER(light)    (((light).type_flags & LIGHT_SHADOW_CASTER) > 0)
