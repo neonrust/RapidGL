@@ -192,10 +192,10 @@ void ClusteredShading::debugDrawSphere(const glm::vec3 &center, float radius, co
 	debugDrawSphere(center, radius, 8, 10, color);
 }
 
-void ClusteredShading::debugDrawSphere(const glm::vec3 &center, float radius, size_t rings, size_t slices, const glm::vec4 &color)
+void ClusteredShading::debugDrawSphere(const glm::vec3 &center, float radius, size_t stacks, size_t slices, const glm::vec4 &color)
 {
-	auto view_projection = m_camera.projectionTransform() * m_camera.viewTransform();
-	auto transform = view_projection * glm::translate(glm::mat4(1), center) * glm::scale(glm::mat4(1), { radius, radius, radius });
+	const auto view_projection = m_camera.projectionTransform() * m_camera.viewTransform();
+	const auto transform = view_projection * glm::translate(glm::mat4(1), center) * glm::scale(glm::mat4(1), { radius, radius, radius });
 
 	m_line_draw_shader->bind();
 	m_line_draw_shader->setUniform("u_line_color"sv, color);
@@ -209,78 +209,82 @@ void ClusteredShading::debugDrawSphere(const glm::vec3 &center, float radius, si
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), nullptr);
 
+	static dense_map<uint64_t, std::tuple<std::vector<glm::vec3>, std::vector<uint32_t>>> cached_data;
 
-	static std::vector<glm::vec3> vertices;
-	vertices.reserve(6 * (rings + 1) * slices);
-	vertices.clear();
+	const auto cache_key = (uint64_t(slices) << 32) + stacks;
 
-		   // this bit was "borrowed" from Raylib's DrawSphereEx()  (c++-ified)
-
-	const auto ring_step = glm::radians(180.f/float(rings + 1));
-	const auto slice_step = glm::radians(360.f/float(slices));
-
-		   // const auto ring_rot = glm::angleAxis(ring_step, AXIS_Y);
-
-	const auto ring_cos = std::cos(ring_step);
-	const auto ring_sin = std::sin(ring_step);
-	const auto slice_cos = std::cos(slice_step);
-	const auto slice_sin = std::sin(slice_step);
-
-		   // rotation matrix around z axis
-		   // const auto ring_rotate = glm::rotate(glm::mat4(1),  ring_step, AXIS_Z);
-		   // rotation matrix around y axis
-		   // const auto slice_rotate = glm::rotate(glm::mat4(1), slice_step, AXIS_Y);
-
-	std::array<glm::vec3, 4> base_verts;
-	base_verts[2] = AXIS_Y;
-	base_verts[3] = { ring_sin, ring_cos, 0 };
-
-	for(auto ring = 0u; ring < rings + 1; ++ring)
+	auto found = cached_data.find(cache_key);
+	if(found == cached_data.end())
 	{
-		for(auto slice = 0u; slice < slices; ++slice)
+		const auto T0 = steady_clock::now();
+
+		std::vector<glm::vec3> vertices;
+		vertices.reserve((slices + 1) * (stacks + 1));
+		vertices.clear();
+
+		std::vector<uint32_t> indices;
+		indices.reserve(2*(stacks - 1) * slices + 2*slices*stacks);
+		indices.clear();
+
+		// latitude rings (horizontal)
+		for(size_t stack = 0; stack <= stacks; ++stack)
 		{
-			// rotate around y axis to set up vertices for next face
-			base_verts[0] = base_verts[2];
-			base_verts[1] = base_verts[3];
-			// base_verts[2] = slice_rotate * glm::vec4(base_verts[2], 0);
-			// base_verts[3] = slice_rotate * glm::vec4(base_verts[3], 0);
-			base_verts[2] = {
-				slice_cos*base_verts[2].x - slice_sin*base_verts[2].z,
-				base_verts[2].y,
-				slice_sin*base_verts[2].x + slice_cos*base_verts[2].z
-			};
-			base_verts[3] = {
-				slice_cos*base_verts[3].x - slice_sin*base_verts[3].z,
-				base_verts[3].y,
-				slice_sin*base_verts[3].x + slice_cos*base_verts[3].z
-			};
+			float theta = glm::pi<float>() * (float(stack) / float(stacks) - 0.5f);
+			float cosTheta = std::cos(theta);
+			float sinTheta = std::sin(theta);
 
-			vertices.push_back(base_verts[0]);
-			vertices.push_back(base_verts[3]);
-			vertices.push_back(base_verts[1]);
+			for(size_t slice = 0; slice <= slices; ++slice)
+			{
+				float phi = glm::two_pi<float>() * float(slice) / float(slices);
+				float cosPhi = std::cos(phi);
+				float sinPhi = std::sin(phi);
 
-			vertices.push_back(base_verts[0]);
-			vertices.push_back(base_verts[2]);
-			vertices.push_back(base_verts[3]);
+				vertices.push_back({ cosTheta * cosPhi, sinTheta, cosTheta * sinPhi });
+			}
 		}
 
-			   // rotate around z axis to set up  starting vertices for next ring
-		base_verts[2] = base_verts[3];
-		// base_verts[3] = ring_rotate * glm::vec4(base_verts[3], 0);
-		base_verts[3] = { // rotation matrix around z axis
-			ring_cos*base_verts[3].x + ring_sin*base_verts[3].y,
-			-ring_sin*base_verts[3].x + ring_cos*base_verts[3].y,
-			base_verts[3].z
-		};
+
+		// Latitude lines
+		for (size_t stack = 1; stack < stacks; ++stack)
+		{
+			for (size_t slice = 0; slice < slices; ++slice)
+			{
+				auto idx0 = stack * (slices + 1) + slice;
+				auto idx1 = idx0 + 1;
+				indices.push_back(uint32_t(idx0));
+				indices.push_back(uint32_t(idx1));
+			}
+		}
+
+			   // Longitude lines
+		for (size_t slice = 0; slice < slices; ++slice)
+		{
+			for (size_t stack = 0; stack < stacks; ++stack)
+			{
+				auto idx0 = stack * (slices + 1) + slice;
+				auto idx1 = (stack + 1) * (slices + 1) + slice;
+				indices.push_back(uint32_t(idx0));
+				indices.push_back(uint32_t(idx1));
+			}
+		}
+
+		auto elapsed = duration_cast<microseconds>(steady_clock::now() - T0);
+		std::print("generated sphere data ({} x {}), in {}\n", stacks, slices, elapsed);
+
+		glNamedBufferData(m_debug_draw_vbo, GLsizeiptr(vertices.size()*sizeof(vertices[0])), vertices.data(), GL_STREAM_DRAW);
+		glDrawElements(GL_LINES, GLsizei(indices.size()), GL_UNSIGNED_INT, &indices[0]);
+
+		cached_data[cache_key] = { std::move(vertices), std::move(indices) };
+	}
+	else
+	{
+		const auto &[vertices, indices] = found->second;
+
+		glNamedBufferData(m_debug_draw_vbo, GLsizeiptr(vertices.size()*sizeof(vertices[0])), vertices.data(), GL_STREAM_DRAW);
+		glDrawElements(GL_LINES, GLsizei(indices.size()), GL_UNSIGNED_INT, &indices[0]);
 	}
 
-		   // TODO: cache vertices? (key: rings + slices)
-
-	glNamedBufferData(m_debug_draw_vbo, GLsizeiptr(vertices.size()*sizeof(vertices[0])), &vertices[0], GL_STREAM_DRAW);
-	glDrawArrays(GL_LINES, 0, GLsizei(vertices.size()));
-
-
-		   // restore some states
+	// restore some states
 	glDepthMask(GL_TRUE);
 	glEnable(GL_DEPTH_TEST);
 	glDisableVertexAttribArray(0);
