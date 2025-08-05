@@ -494,42 +494,25 @@ float ShadowAtlas::light_value(const GPULight &light, const glm::vec3 &view_pos,
 	const auto normalized_dist = distance / _max_distance;
 	const auto normalized_radius = light.affect_radius / _large_light_radius;
 
-#if 0
-	// distance from camera to edge of the light's radius sphere
-	distance = glm::max(0.f, distance - light.affect_radius);
-
-	if(distance == 0.f)
-		return 1.f;
-
-	// distance = 0 means view_pos is inside the light's sphere
-	// scale as a fraction of the max distance
-	auto value = glm::clamp(1.f - distance / _max_distance, 0.f, 1.f);
-
-	// TODO: scale down small-radius lights ?
-	//   maybe based on size of the far plane in world units?
-	//   essentially, pick a "pixels per meter" and scale based on that.
-
-	// non-linearize it "a bit"  TODO: pick good exponent :)
-	value = 1 - std::pow(1 - value, 2.f);
-#else
-	// susggested by ChatGPT:
-
 	const auto importance = glm::min(1.2f * normalized_radius / glm::max(normalized_dist, 1e-4f), 1.f);
 	const auto base_weight = importance * importance; // inverse square falloff
 
 	const auto type_weight = 1.f; // e.g. 0.8f for point, 1.f for spot, etc.
 
-	const auto facing = glm::clamp(glm::dot(glm::normalize(light.position - view_pos), view_forward), 0.f, 1.f);
-	const auto facing_weight = 0.5f + 0.5f * facing; // scales from 0.5 (behind) to 1.f (in front)
+	float facing_weight = 1.f;
+	if(distance > light.affect_radius)
+	{
+		const auto facing = glm::clamp(glm::dot(glm::normalize(light.position - view_pos), view_forward), 0.f, 1.f);
+		facing_weight = 0.5f + 0.5f * facing; // scales from 0.5 (behind) to 1.f (in front)
+	}
 
-	const auto manual_priority = 1.f;  // [0, 1] range, default = 1
-	const auto dynamic_boost = 1.f;    // light.has_dynamic_content ? 1.f : 0.9f;
+	const auto manual_priority = 1.f;  // TODO [0, 1] range, default = 1
+	const auto dynamic_boost = 1.f;    // TODO light.has_dynamic_content ? 1.f : 0.9f;
 
 	const auto value = glm::clamp(base_weight * type_weight * facing_weight * manual_priority * dynamic_boost, 0.f, 1.f);
-#endif
 
-	std::print("  D {:.0f}%  importance {:4.2f}   base {:4.2f}  facing {:3.1f}  ->  {:3.2f}\n",
-			   100.f*distance/_max_distance, importance, base_weight, facing_weight, value);
+	// std::print("  D {:.0f}%  importance {:4.2f}   base {:4.2f}  facing {:3.1f}  ->  {:3.2f}\n",
+	// 		   100.f*distance/_max_distance, importance, base_weight, facing_weight, value);
 
 	return value;
 }
