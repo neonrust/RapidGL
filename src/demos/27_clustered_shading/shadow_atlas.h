@@ -72,7 +72,7 @@ public:
 
 	inline void set_max_casters(size_t max_casters) { _max_shadow_slots = max_casters; }
 	inline void set_max_distance(float max_distance) { _max_distance = max_distance; _large_light_radius = _max_distance; }
-	inline void set_min_change_interval(std::chrono::milliseconds interval) { _change_min_interval = interval; }
+	inline void set_min_change_interval(std::chrono::milliseconds interval) { _min_change_interval = interval; }
 
 	size_t eval_lights(LightManager &lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward);
 
@@ -114,7 +114,7 @@ private:
 	float _large_light_radius { 50.f };
 
 	// shortest interval an allocated slot can change size (toggle)
-	std::chrono::milliseconds _change_min_interval;
+	std::chrono::milliseconds _min_change_interval;
 
 	RGL::buffer::ShaderStorage<LightShadowParams> _shadow_params_ssbo;
 	small_vec<size_t, 16> _distribution;  // slot sizes of each of the levels (from max to min)

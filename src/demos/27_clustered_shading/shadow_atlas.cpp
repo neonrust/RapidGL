@@ -66,7 +66,7 @@ constexpr T sign_cmp(T a, T b)
 ShadowAtlas::ShadowAtlas(uint32_t size) :
 	Texture2d(),
 	_allocator(size, size >> 6, size >> 3),
-	_change_min_interval(1s),
+	_min_change_interval(1s),
 	_shadow_params_ssbo("shadow-params")
 {
 	if(__builtin_popcount(size) != 1)
@@ -379,7 +379,7 @@ ShadowAtlas::ApplyCounters ShadowAtlas::apply_desired_slots(LightManager &lights
 			const auto size_diff = int32_t(desired.slots[0].size) - int32_t(atlas_light.slots[0].size);
 			const auto change_age = now - atlas_light.last_size_change;
 
-			if(size_diff == 0 or change_age < _change_min_interval)
+			if(size_diff == 0 or change_age < _min_change_interval)
 			{
 				++num_retained;
 
