@@ -178,13 +178,10 @@ SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::allocate(AxisT size,
 	min_size = _private::round_up_pow2(min_size);
 	assert(min_size <= size);
 
-	min_size = std::min(min_size, size);
-
 	if(size < _min_size or size > _max_size)
 		return BadIndex;
 
-	min_size = std::max(min_size, _min_size);
-	min_size = std::min(min_size, size);
+	min_size = glm::clamp(min_size, _min_size, size);
 
 	// auto allocated_size = size;
 	const auto max_level = level_from_size(min_size);
