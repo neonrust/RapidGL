@@ -176,7 +176,7 @@ void LightManager::flush()
 	if(_lights.size() != _lights_ssbo.size() or _dirty.size() == _lights.size())
 	{
 		_lights_ssbo.set(_lights);
-		std::print(stderr, "[LM] All {} lights uploaded\n", _lights.size());
+		// std::print(stderr, "[LM] All {} lights uploaded\n", _lights.size());
 	}
 	else if(not _dirty.empty())
 	{
