@@ -332,7 +332,7 @@ float pointLightVisibility(uint index)
 	uint shadow_idx = GET_SHADOW_IDX(light);
 	if(shadow_idx == LIGHT_NO_SHADOW)
 		return 1;
-	LightShadowParams params = ssbo_shadow_params[shadw_idx];
+	LightShadowParams params = ssbo_shadow_params[shadow_idx];
 
 	vec3 light_to_frag = in_world_pos - light.position;
 
