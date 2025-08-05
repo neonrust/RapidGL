@@ -404,7 +404,8 @@ ShadowAtlas::ApplyCounters ShadowAtlas::apply_desired_slots(LightManager &lights
 
 				// free the previous size slot to the pool
 				std::print("  [{}]  free {} slots:    ({})\n", light_id, atlas_light.num_slots, size_diff > 0?"pro":"dem");
-				for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
+				auto idx = atlas_light.num_slots;  // in reverse to "put back" in the same order
+				while(idx-- != 0)
 					free_slot(atlas_light.slots[idx].size, atlas_light.slots[idx].node_index);
 			}
 		}
@@ -545,7 +546,8 @@ void ShadowAtlas::generate_slots(std::initializer_list<uint32_t> distribution)
 		{
 			const auto index = _allocator.allocate(size);
 			assert(index != _allocator.end());
-			free_slots.push_back(index);
+			// prepend so they're allocated in "correct" order (uses pop_back())
+			free_slots.insert(free_slots.begin(), index);
 		}
 		_max_shadow_slots += free_slots.size();
 
