@@ -1531,8 +1531,8 @@ void ClusteredShading::renderShadowMaps()
 		_shadow_atlas.set_max_distance(std::min(100.f, m_camera.farPlane())/2.f);
 
 		auto num_changes = _shadow_atlas.eval_lights(_light_mgr, m_camera.position(), m_camera.forwardVector());
-		if(num_changes)
-			std::print("     changed shadow maps: {}\n", num_changes);
+		// if(num_changes)
+		// 	std::print("     changed shadow maps: {}\n", num_changes);
 	}
 
 	// auto num_rendered = 0;
