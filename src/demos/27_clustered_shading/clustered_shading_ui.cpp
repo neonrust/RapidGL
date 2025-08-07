@@ -54,7 +54,7 @@ void ClusteredShading::render_gui()
 			const float heading_angle = std::acos(glm::clamp(glm::dot(AXIS_Z, fwd_xz), -1.f, 1.f));
 
 
-			ImGui::Text("     Yaw : %6.1f   Pitch : %5.1f\n"
+			ImGui::Text("     Yaw : %6.1f° Pitch : %5.1f°\n"
 						"Position : %5.1f ; %5.1f ; %5.1f\n"
 						"Forward  : %5.2f ; %5.2f ; %5.2f   %5.1f°\n"
 						"Right    : %5.2f ; %5.2f ; %5.2f\n"
