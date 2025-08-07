@@ -97,6 +97,8 @@ add_subdirectory(tests)
 
 target_compile_definitions(${CORE_LIB_NAME} PRIVATE GLFW_INCLUDE_NONE)
 target_compile_definitions(${CORE_LIB_NAME} PRIVATE LIBRARY_SUFFIX="")
+# If the debug configuration pass the DEBUG define to the compiler
+target_compile_definitions(${CORE_LIB_NAME} PRIVATE $<$<CONFIG:Debug>:DEBUG>)
 
 target_include_directories(${CORE_LIB_NAME}
 	PUBLIC

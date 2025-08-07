@@ -76,6 +76,8 @@ set(SHADER_FILES
 
 # Define the executable
 add_executable(${DEMO_NAME} ${HEADER_FILES_EXE} ${SOURCE_FILES_EXE})
+# If the debug configuration pass the DEBUG define to the compiler
+target_compile_definitions(${DEMO_NAME} PRIVATE $<$<CONFIG:Debug>:DEBUG>)
 
 # Define the include DIRs
 get_target_property(CORE_LIB_INCLUDE ${CORE_LIB_NAME} INCLUDE_DIRECTORIES)
