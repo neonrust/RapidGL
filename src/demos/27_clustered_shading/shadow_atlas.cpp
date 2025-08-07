@@ -219,7 +219,7 @@ size_t ShadowAtlas::eval_lights(LightManager &lights, const glm::vec3 &view_pos,
 		for(const auto &prio: std::ranges::subrange(prioritized.begin() + ptrdiff_t(space_for_lights), prioritized.end()))
 		{
 			// free the previous slot (if any)
-			if(remove_allocation(prio.light_id));
+			if(remove_allocation(prio.light_id))
 			{
 				++num_dropped;
 				lights.clear_shadow_index(prio.light_id);
