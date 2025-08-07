@@ -1,5 +1,6 @@
 #include "clustered_shading.h"
 
+#include "constants.h"
 #include "window.h"
 
 using namespace std::literals;
@@ -82,7 +83,8 @@ void ClusteredShading::debugDrawSceneBounds()
 		{  128, 4 },
 	};
 
-	static const glm::vec4 color { 1.f, 0.2, 0.7f, 0.5f };
+	static const glm::vec3 shadow_color { .8f, 0.2f, 0.5f };
+	static const glm::vec3 no_shadow_color { 0.4f, 0.4f, 0.4f };
 	LightIndex light_index = 0;
 	for(const auto &L: _light_mgr)
 	{
@@ -92,18 +94,26 @@ void ClusteredShading::debugDrawSceneBounds()
 			const auto &point = point_.value();
 			const auto light_id = _light_mgr.light_id(light_index);
 
-			size_t res = 4;
 			auto found = shadow_maps.find(light_id);
 			if(found != shadow_maps.end())
-				res = shadow_size_res.find(found->second.slots[0].size)->second;
+			{
+				auto res = shadow_size_res.find(found->second.slots[0].size)->second;
+				const auto alpha = std::sqrt(float(res)/32.f);
+				debugDrawSphere(point.position, point.affect_radius, res, size_t(float(res)*1.5f), glm::vec4(shadow_color, alpha));
+				//debugDrawCircle(point.position,  15.f, point.color);
+				debugDrawLine(point.position + AXIS_X*0.5f, point.position - AXIS_X*0.5f, glm::vec4(point.color, 1.f));
+				debugDrawLine(point.position + AXIS_Y*0.5f, point.position - AXIS_Y*0.5f, glm::vec4(point.color, 1.f));
+				debugDrawLine(point.position + AXIS_Z*0.5f, point.position - AXIS_Z*0.5f, glm::vec4(point.color, 1.f));
+			}
+			else
+				debugDrawSphere(point.position, point.affect_radius, glm::vec4(no_shadow_color, 0.5f));
 
-			debugDrawSphere(point.position, point.affect_radius, res, size_t(float(res)*1.5f), color);
 		}
 		else if(IS_SPOT_LIGHT(L))
 		{
 			const auto spot_ = _light_mgr.to_<SpotLight>(L);
 			const auto &spot = spot_.value();
-
+			// TODO: take shadow map (size) into account
 			debugDrawSpotLight(spot, glm::vec4(spot.color, 1));
 		}
 
@@ -223,6 +233,8 @@ void ClusteredShading::debugDrawSphere(const glm::vec3 &center, float radius, si
 
 	glDisable(GL_DEPTH_TEST);
 	glEnable(GL_LINE_SMOOTH);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glDepthMask(GL_FALSE);
 
 	glBindBuffer(GL_ARRAY_BUFFER, m_debug_draw_vbo);
@@ -306,6 +318,7 @@ void ClusteredShading::debugDrawSphere(const glm::vec3 &center, float radius, si
 
 	// restore some states
 	glDepthMask(GL_TRUE);
+	glDisable(GL_BLEND);
 	glEnable(GL_DEPTH_TEST);
 	glDisableVertexAttribArray(0);
 }
