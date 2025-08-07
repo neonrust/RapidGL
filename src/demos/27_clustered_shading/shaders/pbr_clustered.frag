@@ -331,8 +331,9 @@ float pointLightVisibility(uint index)
 
 	uint shadow_idx = GET_SHADOW_IDX(light);
 	if(shadow_idx == LIGHT_NO_SHADOW)
-		return 1;
+		return 1;  // no shadow map allocated  :(
 	LightShadowParams params = ssbo_shadow_params[shadow_idx];
+	// TODO: fade out shadow based on light importance (e.g. the last 0.1)
 
 	vec3 light_to_frag = in_world_pos - light.position;
 
