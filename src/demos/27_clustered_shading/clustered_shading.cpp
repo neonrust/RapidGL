@@ -932,10 +932,10 @@ void ClusteredShading::createLights()
 		});
 
 		std::print("light[{:2}] @ {:5.1f}; {:3.1f}; {:5.1f}  {:3},{:3},{:3}  {:4.0f}\n",
-					idx,
-					rand_pos.x, rand_pos.y, rand_pos.z,
-					uint(rand_color.r*255), uint(rand_color.g*255), uint(rand_color.b*255),
-					rand_intensity);
+				   l.id(),
+				   rand_pos.x, rand_pos.y, rand_pos.z,
+				   uint(rand_color.r*255), uint(rand_color.g*255), uint(rand_color.b*255),
+				   rand_intensity);
 	}
 
 #if 0
