@@ -1811,7 +1811,7 @@ void ClusteredShading::renderDepth(const glm::mat4 &view_projection, RenderTarge
 	renderScene(view_projection, *m_depth_prepass_shader, NoMaterials);
 }
 
-void ClusteredShading::renderSceneShadow(const glm::vec3 &pos, float far_z, uint32_t shadow_params_index, uint32_t shadow_map_index, RenderTarget::Texture2d &target, const glm::ivec4 &rect)
+void ClusteredShading::renderSceneShadow(const glm::vec3 &pos, float far_z, uint_fast16_t shadow_params_index, uint32_t shadow_map_index, RenderTarget::Texture2d &target, const glm::ivec4 &rect)
 {
 	// TODO: ideally, only render objects whose AABB intersects with the sphere { pos, far_z }
 
@@ -1825,7 +1825,7 @@ void ClusteredShading::renderSceneShadow(const glm::vec3 &pos, float far_z, uint
 
 	m_shadow_depth_shader->setUniform("u_cam_pos"sv, pos);
 	m_shadow_depth_shader->setUniform("u_far_z"sv, far_z);
-	m_shadow_depth_shader->setUniform("u_shadow_params_index"sv, shadow_params_index); // for 'mvp'
+	m_shadow_depth_shader->setUniform("u_shadow_params_index"sv, uint32_t(shadow_params_index)); // for 'mvp'
 	m_shadow_depth_shader->setUniform("u_shadow_map_index"sv, shadow_map_index);
 
 	for(const auto &obj: _scenePvs)
