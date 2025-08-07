@@ -40,11 +40,12 @@ public:
 		SlotID node_index;
 		glm::uvec4 rect;       // TODO: only store 'top_left'? rect.zw is same as 'size'
 	};
+	using LightSlots = std::array<SlotDef, 6>;
 	struct AtlasLight
 	{
 		LightID uuid;
-		size_t num_slots;               // point: 6, dir: 3?, all others: 1
-		std::array<SlotDef, 6> slots;   // per slot:
+		size_t num_slots;     // point: 6, dir: 3?, all others: 1
+		LightSlots slots;     // per slot:
 
 		inline bool is_dirty() const { return _dirty; }
 		inline void on_rendered(Time t) const
@@ -92,6 +93,8 @@ private:
 	};
 	ApplyCounters apply_desired_slots(LightManager &lights, const small_vec<AtlasLight, 120> &desired_slots, Time now);
 	void generate_slots(std::initializer_list<uint32_t> distribution);
+	bool slots_available(const AtlasLight &atlas_light) const;
+	bool remove_allocation(LightID light_id);
 	SlotID alloc_slot(SlotSize size);
 	void free_slot(SlotSize size, SlotID node_index);
 
