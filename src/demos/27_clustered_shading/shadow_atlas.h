@@ -80,6 +80,8 @@ public:
 	[[nodiscard]] const dense_map<LightID, AtlasLight> &allocated_lights() const { return _id_to_allocated; }
 
 	void set_rendered(LightID uuid, std::chrono::steady_clock::time_point t=std::chrono::steady_clock::now());
+	// calculate a hash that changes if it affects shadow map
+	size_t light_hash(const GPULight &light) const;
 
 private:
 	float light_value(const GPULight &light, const glm::vec3 &view_pos, const glm::vec3 &view_forward) const;
