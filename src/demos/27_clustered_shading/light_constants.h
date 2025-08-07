@@ -34,13 +34,14 @@
 #define LIGHT_TYPE_SPHERE        0x05u
 #define LIGHT_TYPE_DISC          0x06u
 
-#define IS_POINT_LIGHT(light)    (((light).type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_POINT)
-#define IS_DIR_LIGHT(light)      (((light).type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_DIRECTIONAL)
-#define IS_SPOT_LIGHT(light)     (((light).type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_SPOT)
-#define IS_AREA_LIGHT(light)     (((light).type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_AREA)
-#define IS_TUBE_LIGHT(light)     (((light).type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_TUBE)
-#define IS_SPHERE_LIGHT(light)   (((light).type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_SPHERE)
-#define IS_DISC_LIGHT(light)     (((light).type_flags & LIGHT_TYPE_MASK) == LIGHT_TYPE_DISC)
+#define GET_LIGHT_TYPE(light)    ((light).type_flags & LIGHT_TYPE_MASK)
+#define IS_POINT_LIGHT(light)    (GET_LIGHT_TYPE(light) == LIGHT_TYPE_POINT)
+#define IS_DIR_LIGHT(light)      (GET_LIGHT_TYPE(light) == LIGHT_TYPE_DIRECTIONAL)
+#define IS_SPOT_LIGHT(light)     (GET_LIGHT_TYPE(light) == LIGHT_TYPE_SPOT)
+#define IS_AREA_LIGHT(light)     (GET_LIGHT_TYPE(light) == LIGHT_TYPE_AREA)
+#define IS_TUBE_LIGHT(light)     (GET_LIGHT_TYPE(light) == LIGHT_TYPE_TUBE)
+#define IS_SPHERE_LIGHT(light)   (GET_LIGHT_TYPE(light) == LIGHT_TYPE_SPHERE)
+#define IS_DISC_LIGHT(light)     (GET_LIGHT_TYPE(light) == LIGHT_TYPE_DISC)
 
 #define LIGHT_TWO_SIDED          0x10u   // area & disc lights
 
