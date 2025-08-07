@@ -1535,15 +1535,18 @@ void ClusteredShading::renderShadowMaps()
 			std::print("     changed shadow maps: {}\n", num_changes);
 	}
 
-	auto num_rendered = 0;
+	// auto num_rendered = 0;
 
 	for(auto &[light_id, slot]: _shadow_atlas.allocated_lights())
 	{
-		if(slot.is_dirty())
+		const auto light_ = _light_mgr.get_by_id(light_id);
+		const auto &light = light_.value().get();
+
+		const auto hash = _shadow_atlas.light_hash(light);
+
+		if(slot.is_dirty() or hash != slot.hash)
 		{
 			// render shadow map(s) for this light
-			const auto light_ = _light_mgr.get_by_id(light_id);
-			const auto &light = light_.value().get();
 
 			const auto params_index = _light_mgr.shadow_index(light_id);
 
@@ -1554,13 +1557,14 @@ void ClusteredShading::renderShadowMaps()
 				renderSceneShadow(light.position, light.affect_radius, params_index, idx, _shadow_atlas, slot_rect);
 			}
 
-			slot.on_rendered(now);
+			slot.on_rendered(now, hash);
 
-			++num_rendered;
+			// ++num_rendered;
+			// std::print("  slot[0] {} @ {},{}  ({})\n", slot.slots[0].size, slot.slots[0].rect.x, slot.slots[0].rect.y, slot.slots[0].node_index);
 		}
 	}
-	if(num_rendered)
-		std::print("    rendered shadow maps: {}\n", num_rendered);
+	// if(num_rendered)
+	// 	std::print("    rendered shadow maps: {}\n", num_rendered);
 
 	/*
 	static constexpr auto aspect = 1.f;  // i.e. square

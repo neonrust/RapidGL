@@ -127,16 +127,6 @@ bool ShadowAtlas::create()
 	return bool(this);
 }
 
-void ShadowAtlas::set_rendered(LightID uuid, steady_clock::time_point t)
-{
-	auto found = _id_to_allocated.find(uuid);
-	if(found == _id_to_allocated.end())
-		return;
-
-	found->second.on_rendered(t);
-}
-
-
 size_t ShadowAtlas::eval_lights(LightManager &lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward)
 {
 	const Time T0 = steady_clock::now();

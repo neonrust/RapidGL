@@ -48,11 +48,14 @@ public:
 		LightSlots slots;     // per slot:
 
 		inline bool is_dirty() const { return _dirty; }
-		inline void on_rendered(Time t) const
+		inline void on_rendered(Time t, size_t new_hash) const
 		{
 			_dirty = false;
 			last_rendered = t;
+			hash = new_hash;
 		}
+
+		mutable size_t hash;
 
 	private:
 		mutable bool _dirty;
@@ -62,7 +65,7 @@ public:
 
 		friend class ShadowAtlas;
 	};
-	static_assert(sizeof(AtlasLight) == 184);
+	static_assert(sizeof(AtlasLight) == 192);
 
 public:
 
@@ -79,7 +82,6 @@ public:
 
 	[[nodiscard]] const dense_map<LightID, AtlasLight> &allocated_lights() const { return _id_to_allocated; }
 
-	void set_rendered(LightID uuid, std::chrono::steady_clock::time_point t=std::chrono::steady_clock::now());
 	// calculate a hash that changes if it affects shadow map
 	size_t light_hash(const GPULight &light) const;
 
