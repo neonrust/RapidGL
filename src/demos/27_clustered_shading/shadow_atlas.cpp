@@ -305,7 +305,7 @@ size_t ShadowAtlas::eval_lights(LightManager &lights, const glm::vec3 &view_pos,
 				   counters.demoted,
 				   counters.change_pending,
 				   duration_cast<microseconds>(steady_clock::now() - T0));
-		_dump_allocated();
+		_dump_allocated_counts();
 	}
 
 	// return how many shadow maps changed  (new, dropped, promoted, demoted)
@@ -340,7 +340,7 @@ void ShadowAtlas::_dump_desired(const small_vec<ShadowAtlas::AtlasLight, 120> &d
 	}
 }
 
-void ShadowAtlas::_dump_allocated()
+void ShadowAtlas::_dump_allocated_counts()
 {
 	static dense_map<SlotSize, size_t> size_counts;
 	if(size_counts.empty())
@@ -366,6 +366,7 @@ void ShadowAtlas::_dump_allocated()
 	if(not sizes.empty())
 	{
 		std::ranges::sort(sizes);
+		std::print("  sizes:");
 		for(const auto &slot_size: sizes)
 			std::print("  {}:{}", slot_size, size_counts[slot_size]);
 		std::puts("");

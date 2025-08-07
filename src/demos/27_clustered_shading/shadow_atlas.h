@@ -99,7 +99,7 @@ private:
 	void free_slot(SlotSize size, SlotID node_index);
 
 	void _dump_desired(const small_vec<AtlasLight, 120> &desired_slots);
-	void _dump_allocated();
+	void _dump_allocated_counts();
 
 private:
 	struct ValueLight
