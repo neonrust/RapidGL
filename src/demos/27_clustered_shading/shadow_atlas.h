@@ -77,7 +77,7 @@ public:
 
 	size_t eval_lights(LightManager &lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward);
 
-	[[nodiscard]] const dense_map<LightID, AtlasLight> &allocated() const { return _id_to_allocated; }
+	[[nodiscard]] const dense_map<LightID, AtlasLight> &allocated_lights() const { return _id_to_allocated; }
 
 	void set_rendered(LightID uuid, std::chrono::steady_clock::time_point t=std::chrono::steady_clock::now());
 

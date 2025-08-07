@@ -1537,7 +1537,7 @@ void ClusteredShading::renderShadowMaps()
 
 	auto num_rendered = 0;
 
-	for(auto &[light_id, slot]: _shadow_atlas.allocated())
+	for(auto &[light_id, slot]: _shadow_atlas.allocated_lights())
 	{
 		if(slot.is_dirty())
 		{

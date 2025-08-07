@@ -74,7 +74,7 @@ void ClusteredShading::debugDrawSceneBounds()
 	glEnable(GL_DEPTH_TEST);
 	glDisableVertexAttribArray(0);
 
-	const auto &shadow_maps = _shadow_atlas.allocated();
+	const auto &shadow_maps = _shadow_atlas.allocated_lights();
 
 	static const dense_map<uint32_t, size_t> shadow_size_res = {
 		{ 1024, 32 },
