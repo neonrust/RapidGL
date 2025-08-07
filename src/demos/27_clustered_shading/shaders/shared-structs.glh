@@ -6,6 +6,7 @@
 using vec3 = int;
 using vec4 = int;
 using uvec3 = int;
+using uvec4 = int;
 using uint = int;
 using mat4 = int;
 #endif
@@ -18,8 +19,11 @@ struct GPULight
 	//  - can then use a single array (dynamic size, w/ offsets by type)
 	//     -> MUCH faster shader compilation
 
+	// TODO: several of the specific float values can utilize the 'shape_points' field (obviously renamed to something better)
+	//   e.g. spot parameters
+
 	vec3 position;
-	uint type_flags;      // LIGHT_*
+	uint type_flags;      // see light_constants.h
 	vec3 direction;       // spot, directional & disc lights
 	float affect_radius;  // the distance (from position) where this light affect its surroundings
 	float spot_bounds_radius; // tighter bounds for spot; distance from 'position', along 'direction'
