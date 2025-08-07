@@ -92,7 +92,7 @@ public:
 
 	inline const GPULight &at(size_t light_index) const { return _lights.at(light_index); }
 
-	inline uint_fast8_t shadow_index(LightID light_id) const {
+	inline uint_fast16_t shadow_index(LightID light_id) const {
 		return GET_SHADOW_IDX(get_by_id(light_id).value());
 	}
 	// inline void set_shadow_index(LightIndex light_index, uint_fast8_t shadow_index)
