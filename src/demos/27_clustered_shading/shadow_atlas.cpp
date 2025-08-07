@@ -141,12 +141,14 @@ size_t ShadowAtlas::eval_lights(LightManager &lights, const glm::vec3 &view_pos,
 	{
 		if(IS_SHADOW_CASTER(light))
 		{
-			const auto light_id = lights.light_id(light_index);
-			std::print("  [{}] ", light_id);
+			// const auto light_id = lights.light_id(light_index);
+			// std::print("  [{}] ", light_id);
 			const auto value = light_value(light, view_pos, view_forward);
 
 			if(value > 0)
 			{
+				const auto light_id = lights.light_id(light_index);
+
 				if(IS_DIR_LIGHT(light) and value > strongest_dir_value)
 				{
 					_allocated_sun.uuid = light_id;
@@ -163,6 +165,8 @@ size_t ShadowAtlas::eval_lights(LightManager &lights, const glm::vec3 &view_pos,
 			}
 			else
 			{
+				const auto light_id = lights.light_id(light_index);
+
 				// light has no value  (e.g. too far away)
 				if(remove_allocation(light_id))
 				{
@@ -284,7 +288,7 @@ size_t ShadowAtlas::eval_lights(LightManager &lights, const glm::vec3 &view_pos,
 		}
 	}
 
-	_dump_desired(desired_slots);
+	// _dump_desired(desired_slots);
 
 	const auto counters = apply_desired_slots(lights, desired_slots, T0);
 
@@ -301,7 +305,9 @@ size_t ShadowAtlas::eval_lights(LightManager &lights, const glm::vec3 &view_pos,
 				   counters.demoted,
 				   counters.change_pending,
 				   duration_cast<microseconds>(steady_clock::now() - T0));
+		_dump_allocated();
 	}
+
 	// return how many shadow maps changed  (new, dropped, promoted, demoted)
 	return num_changes;
 }
@@ -334,12 +340,43 @@ void ShadowAtlas::_dump_desired(const small_vec<ShadowAtlas::AtlasLight, 120> &d
 	}
 }
 
+void ShadowAtlas::_dump_allocated()
+{
+	static dense_map<SlotSize, size_t> size_counts;
+	if(size_counts.empty())
+		size_counts.reserve(_distribution.size());
+	size_counts.clear();
+	static std::vector<SlotSize> sizes;
+	if(sizes.capacity() == 0)
+		sizes.reserve(_distribution.size());
+	sizes.clear();
+
+	for(const auto &[light_id, allocated]: _id_to_allocated)
+	{
+		auto slot_size = allocated.slots[0].size;
+		auto found = size_counts.find(slot_size);
+		if(found == size_counts.end())
+		{
+			sizes.push_back(slot_size);
+			size_counts[slot_size] = 1;
+		}
+		else
+			++found->second;
+	}
+	if(not sizes.empty())
+	{
+		std::ranges::sort(sizes);
+		for(const auto &slot_size: sizes)
+			std::print("  {}:{}", slot_size, size_counts[slot_size]);
+		std::puts("");
+	}
+}
 
 static glm::mat4 light_view_projection(const GPULight &light, size_t idx=0);
 
 ShadowAtlas::ApplyCounters ShadowAtlas::apply_desired_slots(LightManager &lights, const small_vec<AtlasLight, 120> &desired_slots, const Time now)
 {
-	std::puts("-- apply_desired_slots()");
+	// std::puts("-- apply_desired_slots()");
 
 	small_vec<decltype(_shadow_params_ssbo)::value_type, 120> shadow_params;
 
@@ -385,8 +422,8 @@ ShadowAtlas::ApplyCounters ShadowAtlas::apply_desired_slots(LightManager &lights
 
 			auto atlas_light = desired;
 
-			std::print("  [{}] alloc {} slots:   {}", light_id, atlas_light.num_slots, atlas_light.slots[0].size);
-			std::fflush(stdout);
+			// std::print("  [{}] alloc {} slots:   {}", light_id, atlas_light.num_slots, atlas_light.slots[0].size);
+			// std::fflush(stdout);
 
 			for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
 			{
@@ -396,7 +433,7 @@ ShadowAtlas::ApplyCounters ShadowAtlas::apply_desired_slots(LightManager &lights
 				atlas_light.slots[idx].rect = to_uvec4(_allocator.rect(node_index));
 				rects[idx] = atlas_light.slots[idx].rect;
 			}
-			std::print("; {} remaining\n", _slot_sets[atlas_light.slots[0].size].size());
+			// std::print("; {} remaining\n", _slot_sets[atlas_light.slots[0].size].size());
 
 			atlas_light._dirty = true;
 			_id_to_allocated[light_id] = atlas_light;
@@ -437,8 +474,8 @@ ShadowAtlas::ApplyCounters ShadowAtlas::apply_desired_slots(LightManager &lights
 					++num_demoted;
 
 				// free the previous size slot to the pool
-				std::print("  [{}]  free {} slots:    {}: {} (-> {})",
-						   light_id, atlas_light.num_slots, size_diff > 0?"pro":"dem", atlas_light.slots[0].size, desired.slots[0].size);
+				// std::print("  [{}]  free {} slots:    {}: {} (-> {})",
+				// 		   light_id, atlas_light.num_slots, size_diff > 0?"pro":"dem", atlas_light.slots[0].size, desired.slots[0].size);
 				std::fflush(stdout);
 				auto idx = atlas_light.num_slots;  // in reverse to "put back" in the same order
 				while(idx-- != 0)
@@ -446,7 +483,7 @@ ShadowAtlas::ApplyCounters ShadowAtlas::apply_desired_slots(LightManager &lights
 					const auto &slot = atlas_light.slots[idx];
 					free_slot(slot.size, slot.node_index);
 				}
-				std::print("; {} remaining\n", _slot_sets[atlas_light.slots[0].size].size());
+				// std::print("; {} remaining\n", _slot_sets[atlas_light.slots[0].size].size());
 			}
 		}
 
@@ -466,8 +503,8 @@ ShadowAtlas::ApplyCounters ShadowAtlas::apply_desired_slots(LightManager &lights
 
 		auto &atlas_light = found->second;
 
-		std::print("  [{}] alloc {} slots:   {}", light_id, atlas_light.num_slots, desired.slots[0].size);
-		std::fflush(stdout);
+		// std::print("  [{}] alloc {} slots:   {}", light_id, atlas_light.num_slots, desired.slots[0].size);
+		// std::fflush(stdout);
 
 		for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
 		{
@@ -479,7 +516,7 @@ ShadowAtlas::ApplyCounters ShadowAtlas::apply_desired_slots(LightManager &lights
 			atlas_light.slots[idx].rect = to_uvec4(_allocator.rect(node_index));
 			rects[idx] = atlas_light.slots[idx].rect;
 		}
-		std::print("; {} remaining\n", _slot_sets[desired.slots[0].size].size());
+		// std::print("; {} remaining\n", _slot_sets[desired.slots[0].size].size());
 
 		atlas_light.last_size_change = now;
 		atlas_light._dirty = true;
@@ -614,8 +651,8 @@ float ShadowAtlas::light_value(const GPULight &light, const glm::vec3 &view_pos,
 
 	const auto value = glm::clamp(base_weight * type_weight * facing_weight * manual_priority * dynamic_boost, 0.f, 1.f);
 
-	std::print("  D {:.0f}%  importance {:4.2f}   base {:4.2f}  facing {:4.2f}  ->  {:4.2f}\n",
-			   100.f*distance/_max_distance, importance, base_weight, facing_weight, value);
+	// std::print("  D {:.0f}%  importance {:4.2f}   base {:4.2f}  facing {:4.2f}  ->  {:4.2f}\n",
+	// 		   100.f*distance/_max_distance, importance, base_weight, facing_weight, value);
 
 	return value;
 }
