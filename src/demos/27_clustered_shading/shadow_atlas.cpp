@@ -93,6 +93,11 @@ ShadowAtlas::ShadowAtlas(uint32_t size) :
 	_distribution.reserve(4);
 	generate_slots({ 24 + 1, 64 + 1, 256 + 1 });  // +1 for directional/sun light
 
+	// TODO: these sohould be configurable
+	_render_intervals.push_back(0ms);
+	_render_intervals.push_back(25ms);
+	_render_intervals.push_back(50ms);
+	_render_intervals.push_back(100ms);
 
 	// set aside 3 sots to sun light (uses CSM)
 	// will be used by the (strongest) directional light
@@ -340,6 +345,20 @@ size_t ShadowAtlas::light_hash(const GPULight &L) const
 	}
 
 	return 0;
+}
+
+bool ShadowAtlas::should_render(const AtlasLight &atlas_light, Time now, size_t light_hash) const
+{
+	if(atlas_light.is_dirty() or light_hash == atlas_light.hash)
+		return true;
+
+	const auto size_idx = _allocator.level_from_size(atlas_light.slots[0].size) - _allocator.min_level();
+	const auto interval = _render_intervals[size_idx];
+
+	// TODO: hm, average FPS should be a factor in this decisionm?
+	//   or should the "interval" be a number of frames?
+
+	return (now - atlas_light.last_rendered) >= interval;
 }
 
 bool ShadowAtlas::remove_allocation(LightID light_id)

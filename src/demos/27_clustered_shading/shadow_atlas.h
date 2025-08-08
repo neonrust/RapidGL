@@ -84,6 +84,7 @@ public:
 
 	// calculate a hash that changes if it affects shadow map
 	size_t light_hash(const GPULight &light) const;
+	bool should_render(const AtlasLight &atlas_light, Time now, size_t hash) const;
 
 private:
 	float light_value(const GPULight &light, const glm::vec3 &view_pos, const glm::vec3 &view_forward) const;
@@ -123,6 +124,7 @@ private:
 
 	// shortest interval an allocated slot can change size (toggle)
 	std::chrono::milliseconds _min_change_interval;
+	small_vec<std::chrono::milliseconds, 8> _render_intervals;
 
 	RGL::buffer::ShaderStorage<LightShadowParams> _shadow_params_ssbo;
 	small_vec<size_t, 16> _distribution;  // slot sizes of each of the levels (from max to min)

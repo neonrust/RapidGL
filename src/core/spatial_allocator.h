@@ -90,6 +90,8 @@ public:
 
 	inline SizeT max_size() const { return _max_size; };
 	inline SizeT min_size() const { return _min_size; };
+	inline uint32_t max_level() const { return level_from_size(_min_size); }
+	inline uint32_t min_level() const { return level_from_size(_max_size); }
 
 	size_t num_allocatable_levels() const;
 
@@ -107,13 +109,13 @@ public:
 
 	// used as "bad index" in returns
 	[[nodiscard]] inline NodeIndex end() const { return BadIndex; }
+	[[nodiscard]] inline uint32_t level_from_size(AxisT size) const { assert(__builtin_popcount(size) == 1 and size < _size); return uint32_t(__builtin_ffs(int(_size / size)) - 1); }
 
 private:
 	[[nodiscard]] uint32_t level(NodeIndex index) const;
 	[[nodiscard]] NodeIndex parent_index(NodeIndex child);
 	[[nodiscard]] NodeIndex child_index(NodeIndex parent, NodeChild child=NodeChild::TopRLeft);
 	[[nodiscard]] NodeChild node_child(NodeIndex index);
-	[[nodiscard]] inline uint32_t level_from_size(AxisT size) const { assert(__builtin_popcount(size) == 1 and size < _size); return uint32_t(__builtin_ffs(int(_size / size)) - 1); }
 	[[nodiscard]] inline AxisT size_at_level(uint32_t level) const { return _size >> level; }
 	[[nodiscard]] static inline uint32_t num_nodes_in_level(uint32_t level) { return 1u << 2u*level; };
 	[[nodiscard]] static inline uint32_t level_start_index(uint32_t level) { return (num_nodes_in_level(level) - 1)/3; };

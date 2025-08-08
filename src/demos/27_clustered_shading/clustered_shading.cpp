@@ -1537,27 +1537,28 @@ void ClusteredShading::renderShadowMaps()
 
 	// auto num_rendered = 0;
 
-	for(auto &[light_id, slot]: _shadow_atlas.allocated_lights())
+	for(auto &[light_id, atlas_light]: _shadow_atlas.allocated_lights())
 	{
 		const auto light_ = _light_mgr.get_by_id(light_id);
 		const auto &light = light_.value().get();
 
-		const auto hash = _shadow_atlas.light_hash(light);
+		const auto light_hash = _shadow_atlas.light_hash(light);
 
-		if(slot.is_dirty() or hash != slot.hash)
+		if(_shadow_atlas.should_render(atlas_light, now, light_hash))
 		{
 			// render shadow map(s) for this light
 
 			const auto params_index = _light_mgr.shadow_index(light_id);
 
-			for(auto idx = 0u; idx < slot.num_slots; ++idx)
+			// TODO: possible to render all cube faces in one draw call, using a geomety shader?
+			for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
 			{
-				const auto slot_rect = slot.slots[idx].rect;
+				const auto slot_rect = atlas_light.slots[idx].rect;
 
 				renderSceneShadow(light.position, light.affect_radius, params_index, idx, _shadow_atlas, slot_rect);
 			}
 
-			slot.on_rendered(now, hash);
+			atlas_light.on_rendered(now, light_hash);
 
 			// ++num_rendered;
 			// std::print("  slot[0] {} @ {},{}  ({})\n", slot.slots[0].size, slot.slots[0].rect.x, slot.slots[0].rect.y, slot.slots[0].node_index);
@@ -1565,59 +1566,6 @@ void ClusteredShading::renderShadowMaps()
 	}
 	// if(num_rendered)
 	// 	std::print("    rendered shadow maps: {}\n", num_rendered);
-
-	/*
-	static constexpr auto aspect = 1.f;  // i.e. square
-	const glm::vec2 atlas_size { float(_shadow_atlas.width()), float(_shadow_atlas.height()) };
-	auto tile_size = 1024u;
-	for(auto light_idx = 0u; light_idx < m_lights_ssbo->num_point_lights; ++light_idx)
-	{
-		auto &light = m_lights_ssbo->point_lights[light_idx];
-		if((light.base.feature_flags & LIGHT_SHADOW_CASTER) == 0)
-			continue;
-
-		// TODO: is there any non-static objects inside the lights' radius?
-		//   if only static objects, no need to update the shadow map
-
-		glm::uvec2 bottom_left { 0, 0 };
-
-		const auto lightProjection = glm::perspective(glm::radians(90.0f), aspect, 0.1f, light.affect_radius);
-
-		// TODO ideally, these 6 faces should be generated using a single draw call
-		//   by using a geometry shader
-
-		LightShadowParams params;
-
-		for(auto face = 0u; face < 6; ++face)
-		{
-			glm::uvec4 tile_rect = {
-				(face % 3)*tile_size + bottom_left.x,
-				(face / 3)*tile_size + bottom_left.y,
-				tile_size,
-				tile_size,
-			};
-
-			const auto &view_forward = s_cube_face_forward[face];
-			const auto &view_up = s_cube_face_up[face];
-
-			const auto lightView = glm::lookAt(light.position, light.position + view_forward, view_up);
-			const auto lightVP = lightProjection * lightView;
-
-			renderShadowDepth(light.position, light.affect_radius, lightVP, _shadow_atlas, tile_rect);
-
-			params.atlas_rect[face] = glm::vec4(tile_rect) / glm::vec4(atlas_size, atlas_size);
-			params.view_proj[face] = lightVP;
-		}
-
-		m_shadow_map_params_ssbo[light_idx] = params;
-
-		tile_size <<= 1;
-	}
-	// TODO: maybe use a set(index, value) that also sets a dirty flag
-	//   then flush only writes those?
-	m_shadow_map_params_ssbo.flush();
-*/
-
 
 	glDisable(GL_SCISSOR_TEST);
 	glDisable(GL_CULL_FACE);
