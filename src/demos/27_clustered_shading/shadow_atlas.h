@@ -86,6 +86,8 @@ public:
 	size_t light_hash(const GPULight &light) const;
 	bool should_render(const AtlasLight &atlas_light, Time now, size_t hash) const;
 
+	void update_shadow_params(LightManager &lights);
+
 private:
 	float light_value(const GPULight &light, const glm::vec3 &view_pos, const glm::vec3 &view_forward) const;
 	struct ApplyCounters
@@ -96,7 +98,7 @@ private:
 		size_t demoted;
 		size_t change_pending;
 	};
-	ApplyCounters apply_desired_slots(LightManager &lights, const small_vec<AtlasLight, 120> &desired_slots, Time now);
+	ApplyCounters apply_desired_slots(const small_vec<AtlasLight, 120> &desired_slots, Time now);
 	void generate_slots(std::initializer_list<uint32_t> distribution);
 	bool slots_available(const AtlasLight &atlas_light) const;
 	bool remove_allocation(LightID light_id);

@@ -299,7 +299,7 @@ size_t ShadowAtlas::eval_lights(LightManager &lights, const glm::vec3 &view_pos,
 
 	// _dump_desired(desired_slots);
 
-	const auto counters = apply_desired_slots(lights, desired_slots, T0);
+	const auto counters = apply_desired_slots(desired_slots, T0);
 
 	const auto num_changes = counters.allocated + num_dropped + counters.promoted + counters.demoted;
 
@@ -424,28 +424,44 @@ void ShadowAtlas::_dump_allocated_counts()
 
 static glm::mat4 light_view_projection(const GPULight &light, size_t idx=0);
 
-ShadowAtlas::ApplyCounters ShadowAtlas::apply_desired_slots(LightManager &lights, const small_vec<AtlasLight, 120> &desired_slots, const Time now)
+void ShadowAtlas::update_shadow_params(LightManager &lights)
 {
-	// std::puts("-- apply_desired_slots()");
+	static std::vector<decltype(_shadow_params_ssbo)::value_type> shadow_params;
+	shadow_params.reserve(_id_to_allocated.size());
+	shadow_params.clear();
 
-	small_vec<decltype(_shadow_params_ssbo)::value_type, 120> shadow_params;
+	auto shadow_index = 0u;
 
-	auto add_params = [&shadow_params, &lights](LightID light_id, const std::array<glm::uvec4, 6> &rects) {
-		auto light_ = lights.get_by_id(light_id);
-		auto &light = light_.value().get();
+	for(auto &[light_id, atlas_light]: allocated_lights())
+	{
+		const auto light_ = lights.get_by_id(light_id);
+		const auto &light = light_.value().get();
 
 		std::array<glm::mat4, 6> projs;
-		const size_t num_projs = LIGHT_NUM_SLOTS(light);
-		for(auto idx = 0u; idx < num_projs; ++idx)
+		std::array<glm::uvec4, 6> rects;
+		for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
+		{
 			projs[idx] = light_view_projection(light, idx);
+			rects[idx] = atlas_light.slots[idx].rect;
+		}
 
 		shadow_params.push_back(LightShadowParams {
 			.view_proj = projs,
 			.atlas_rect = rects,
 		});
 
-		lights.set_shadow_index(light_id, uint_fast16_t(shadow_params.size() - 1));
-	};
+		lights.set_shadow_index(light_id, shadow_index);
+		++shadow_index;
+	}
+
+	_shadow_params_ssbo.set(shadow_params);
+}
+
+ShadowAtlas::ApplyCounters ShadowAtlas::apply_desired_slots(const small_vec<AtlasLight, 120> &desired_slots, const Time now)
+{
+	// std::puts("-- apply_desired_slots()");
+
+	// small_vec<decltype(_shadow_params_ssbo)::value_type, 120> shadow_params;
 
 	auto num_retained = 0u;
 	auto num_allocated = 0u;
@@ -462,15 +478,13 @@ ShadowAtlas::ApplyCounters ShadowAtlas::apply_desired_slots(LightManager &lights
 	{
 		const auto light_id = desired.uuid;
 
-		std::array<glm::uvec4, 6> rects; // rects to be stored in the shadow params SSBO
-
 		auto found = _id_to_allocated.find(light_id);
 		if(found == _id_to_allocated.end())
 		{
 			// new shadow slot
 			++num_allocated;
 
-			auto atlas_light = desired;
+			auto atlas_light = desired;  // must copy :(   (surely not everything?)
 
 			// std::print("  [{}] alloc {} slots:   {}", light_id, atlas_light.num_slots, atlas_light.slots[0].size);
 			// std::fflush(stdout);
@@ -481,7 +495,6 @@ ShadowAtlas::ApplyCounters ShadowAtlas::apply_desired_slots(LightManager &lights
 
 				atlas_light.slots[idx].node_index = node_index;
 				atlas_light.slots[idx].rect = to_uvec4(_allocator.rect(node_index));
-				rects[idx] = atlas_light.slots[idx].rect;
 			}
 			// std::print("; {} remaining\n", _slot_sets[atlas_light.slots[0].size].size());
 
@@ -504,12 +517,6 @@ ShadowAtlas::ApplyCounters ShadowAtlas::apply_desired_slots(LightManager &lights
 
 				if(size_diff != 0)
 					++num_change_pending;
-
-				// no change to _id_to_allocated
-				for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
-					rects[idx] = atlas_light.slots[idx].rect;
-
-				add_params(light_id, rects);
 			}
 			else
 			{
@@ -546,8 +553,6 @@ ShadowAtlas::ApplyCounters ShadowAtlas::apply_desired_slots(LightManager &lights
 		const auto &desired = desired_slots[index];
 		const auto light_id = desired.uuid;
 
-		std::array<glm::uvec4, 6> rects;
-
 		auto found = _id_to_allocated.find(light_id);
 		assert(found != _id_to_allocated.end());
 
@@ -558,13 +563,13 @@ ShadowAtlas::ApplyCounters ShadowAtlas::apply_desired_slots(LightManager &lights
 
 		for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
 		{
+			auto &slot = atlas_light.slots[idx];
+
 			// get the new slots from the desired slot size
 			auto node_index = alloc_slot(desired.slots[idx].size);
-			atlas_light.slots[idx].node_index = node_index;
-
-			atlas_light.slots[idx].size = desired.slots[idx].size;
-			atlas_light.slots[idx].rect = to_uvec4(_allocator.rect(node_index));
-			rects[idx] = atlas_light.slots[idx].rect;
+			slot.node_index = node_index;
+			slot.size = desired.slots[idx].size;
+			slot.rect = to_uvec4(_allocator.rect(node_index));
 		}
 		// std::print("; {} remaining\n", _slot_sets[desired.slots[0].size].size());
 
@@ -572,11 +577,7 @@ ShadowAtlas::ApplyCounters ShadowAtlas::apply_desired_slots(LightManager &lights
 		atlas_light._dirty = true;
 
 		_id_to_allocated[light_id] = atlas_light;
-
-		add_params(light_id, rects);
 	}
-
-	_shadow_params_ssbo.set(shadow_params);
 
 	return { num_allocated, num_retained, num_promoted, num_demoted, num_change_pending };
 }
