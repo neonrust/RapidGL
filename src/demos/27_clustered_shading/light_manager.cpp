@@ -230,13 +230,13 @@ void LightManager::flush()
 
 void LightManager::add(const GPULight &L, LightID uuid)
 {
-	++_last_light_idx;
-	assert(_last_light_idx == _lights.size());
+	const auto next_index = LightIndex(_lights.size());
+
 	_lights.push_back(L);
-	_id_to_index[uuid] = _last_light_idx;
-	_index_to_id[_last_light_idx] = uuid;
+	_id_to_index[uuid] = next_index;
+	_index_to_id[next_index] = uuid;
 	// TODO: support contiguous ranges
-	_dirty.insert(_last_light_idx);
+	_dirty.insert(next_index);
 
 	if(IS_POINT_LIGHT(L))
 		++_num_point_lights;
