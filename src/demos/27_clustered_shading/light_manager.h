@@ -59,6 +59,8 @@ public:
 	SphereLight add(const SphereLightParams &s);
 	DiscLight add(const DiscLightParams &d);
 
+	void clear();
+
 	template<_private::LightType LT>
 	std::optional<LT> get(LightID uuid);
 
@@ -95,11 +97,6 @@ public:
 	inline uint_fast16_t shadow_index(LightID light_id) const {
 		return GET_SHADOW_IDX(get_by_id(light_id).value());
 	}
-	// inline void set_shadow_index(LightIndex light_index, uint_fast8_t shadow_index)
-	// {
-	// 	auto &L = _lights[light_index];
-	// 	SET_SHADOW_IDX(L, shadow_index);
-	// }
 	inline void set_shadow_index(LightID light_id, uint_fast16_t shadow_index)
 	{
 		auto found = _id_to_index.find(light_id);
@@ -108,12 +105,6 @@ public:
 		auto &L = _lights[found->second];
 		SET_SHADOW_IDX(L, shadow_index);
 	}
-	// void set_shadow_index(auto, auto) = delete;
-	// inline void clear_shadow_index(LightIndex light_index)
-	// {
-	// 	auto &L = _lights[light_index];
-	// 	CLR_SHADOW_IDX(L);
-	// }
 	inline void clear_shadow_index(LightID light_id)
 	{
 		auto found = _id_to_index.find(light_id);
@@ -122,7 +113,6 @@ public:
 		auto &L = _lights[found->second];
 		CLR_SHADOW_IDX(L);
 	}
-	// void clear_shadow_index(auto) = delete;
 
 	template<typename LT=GPULight> requires (std::same_as<LT, GPULight> || _private::LightType<LT>)
 	inline size_t num_lights() const;
@@ -141,23 +131,22 @@ private:
 
 private:
 	dense_map<LightID, LightIndex> _id_to_index;
-	dense_map<LightIndex, LightID> _index_to_id; // TODO: can this be a vector?
-	// TODO: support contiguous ranges
+	dense_map<LightIndex, LightID> _index_to_id; // TODO: can this be a vector? store directly in '_lights'?
+
 	dense_set<LightIndex> _dirty;
 	std::vector<LightIndex> _dirty_list;
-	// essentially a CPU-local mirror of the SSBO
+	// essentially a CPU-side mirror of the SSBO  (otherwise we'd use a mapping container)
 	LightList _lights;
 
 	RGL::buffer::ShaderStorage<GPULight> _lights_ssbo;
-	LightIndex _last_light_idx { LightIndex(-1) };
 
-	size_t _num_point_lights { 0 };
-	size_t _num_dir_lights { 0 };
-	size_t _num_spot_lights { 0 };
-	size_t _num_area_lights { 0 };
-	size_t _num_tube_lights { 0 };
+	size_t _num_point_lights  { 0 };
+	size_t _num_dir_lights    { 0 };
+	size_t _num_spot_lights   { 0 };
+	size_t _num_area_lights   { 0 };
+	size_t _num_tube_lights   { 0 };
 	size_t _num_sphere_lights { 0 };
-	size_t _num_disc_lights { 0 };
+	size_t _num_disc_lights   { 0 };
 };
 
 template<_private::LightType LT>

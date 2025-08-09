@@ -110,13 +110,28 @@ DiscLight LightManager::add(const DiscLightParams &d)
 	return to_<DiscLight>(L, _light_id);
 }
 
+void LightManager::clear()
+{
+	_id_to_index.clear();
+	_index_to_id.clear();
+	_lights.clear();
+
+	_num_point_lights = 0;
+	_num_dir_lights = 0;
+	_num_spot_lights = 0;
+	_num_area_lights = 0;
+	_num_tube_lights = 0;
+	_num_sphere_lights = 0;
+	_num_disc_lights = 0;
+}
+
 std::optional<GPULight> LightManager::get_by_id(LightID light_id) const
 {
 	auto found = _id_to_index.find(light_id);
 	assert(found != _id_to_index.end());
 	if(found == _id_to_index.end())
 		return std::nullopt;
-	return _lights[found->second];
+	return std::optional<GPULight>(_lights[found->second]);
 }
 
 std::optional<std::reference_wrapper<GPULight>> LightManager::get_by_id(LightID light_id)
