@@ -174,6 +174,7 @@ void Texture2d::bindRenderTarget(BufferMask clear_mask, glm::ivec4 rect)
 	}
 	glViewport(rect.x, rect.y, rect.z, rect.w);
 
+	// TODO: do this in a separate call?
 	if(clear_mask != 0)
 	{
 		if(not _has_color)
