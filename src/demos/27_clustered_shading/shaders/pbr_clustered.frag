@@ -517,6 +517,7 @@ float lineOfSight(float current_depth, vec2 atlas_uv, vec2 texel_size)
 
 	texel_size = vec2(1)/4096.f;
 
+	// sample a 3x3 box around the sample
 #define SAMPLE(uv_offset, weight) \
 	sample_depth = texture(u_shadow_atlas, atlas_uv + uv_offset*texel_size).r; \
  	shadow += current_depth > sample_depth ? 0.0 : (weight);
