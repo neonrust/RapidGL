@@ -257,7 +257,6 @@ size_t ShadowAtlas::eval_lights(LightManager &lights, const glm::vec3 &view_pos,
 	for(const auto &prio_light: prioritized)
 	{
 		const auto light_ = lights.get_by_id(prio_light.light_id);
-		assert(light_.has_value());
 		const auto &light = light_.value().get();
 
 		AtlasLight atlas_light;
@@ -356,7 +355,7 @@ bool ShadowAtlas::should_render(const AtlasLight &atlas_light, Time now, size_t 
 	const auto interval = _render_intervals[size_idx];
 
 	// TODO: hm, average FPS should be a factor in this decisionm?
-	//   or should the "interval" be a number of frames?
+	//   or should the "interval" be a number of frames? plus a "minimum interval"?
 
 	return (now - atlas_light.last_rendered) >= interval;
 }
@@ -786,8 +785,8 @@ static glm::mat4 light_view_projection(const GPULight &light, size_t idx)
 	{
 		static constexpr auto aspect = 1.f;  // i.e. square
 
-		const auto &view_forward = s_cube_face_forward[idx];
-		const auto &view_up      = s_cube_face_up[idx];
+		const auto &view_forward   = s_cube_face_forward[idx];
+		const auto &view_up        = s_cube_face_up[idx];
 
 		const auto light_view      = glm::lookAt(light.position, light.position + view_forward, view_up);
 		const auto face_projection = glm::perspective(glm::radians(90.0f), aspect, 0.05f, light.affect_radius);
@@ -804,12 +803,12 @@ static glm::mat4 light_view_projection(const GPULight &light, size_t idx)
 	{
 		static constexpr auto aspect = 1.f;  // i.e. square
 
-		const auto view_forward = light.direction;
+		const auto view_forward   = light.direction;
 		auto view_up = AXIS_Z;
 
-		const auto light_view = glm::lookAt(light.position, light.position + view_forward, view_up);
-		const auto projection = glm::perspective(glm::radians(light.outer_angle), aspect, 0.05f, light.affect_radius);
-		const auto light_vp   = projection * light_view;
+		const auto light_view     = glm::lookAt(light.position, light.position + view_forward, view_up);
+		const auto projection     = glm::perspective(glm::radians(light.outer_angle), aspect, 0.05f, light.affect_radius);
+		const auto light_vp       = projection * light_view;
 
 		return light_vp;
 	}
