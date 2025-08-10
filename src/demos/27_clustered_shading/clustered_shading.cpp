@@ -1332,7 +1332,11 @@ void ClusteredShading::render()
 
 	// determine visible meshes  (only if camera or meshes moved (much))
 	cullScene(m_camera);
-	// TODO: store the culling result in the camera? (or associated with)
+	// TODO: to make it more general, the culling result (_scenePvs)
+	//   could be stored in the 'view' (e.g. camera or a point light shadow map cube face)
+	//   or "in relation to" the view, e.g. a map of ID -> PVS
+	//     _scene_cull_sets[m_camera.entity_id()] = _scenePvs;
+	//     _scene_cull_sets[(light.entity_id() << 3) + face] = _scenePvs;
 
 
 	_gl_timer.start();
