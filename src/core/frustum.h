@@ -61,6 +61,8 @@ struct frustum_cull_result
 
 	bool visible { false };
 
+	inline operator bool () const { return visible; }
+
 	bool culled_by_aabb { false };
 	std::int_fast8_t culled_by_plane;
 	std::array<float, 6> distance_to_plane;
