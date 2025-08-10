@@ -33,15 +33,15 @@ const uint MAX_DIGITS = 4;
 
 const uint DIGIT_SEGMENTS[10] = uint[10](
     A|B|C|D|E|F,   // 0 -> 0111111
-    B|C,           // 1 -> 0000110
-    A|B|D|E|G,     // 2 -> 1011011
-    A|B|C|D|G,     // 3 -> 1001111
-    B|C|F|G,       // 4 -> 1100110
-    A|C|D|F|G,     // 5 -> 1101101
-    A|C|D|E|F|G,   // 6 -> 1111101
+      B|C,         // 1 -> 0000110
+    A|B  |D|E|G,   // 2 -> 1011011
+    A|B|C|D  |G,   // 3 -> 1001111
+      B|C    |F|G, // 4 -> 1100110
+    A  |C|D  |F|G, // 5 -> 1101101
+    A  |C|D|E|F|G, // 6 -> 1111101
     A|B|C,         // 7 -> 0000111
     A|B|C|D|E|F|G, // 8 -> 1111111
-    A|B|C|D|F|G    // 9 -> 1101111
+    A|B|C|D  |F|G  // 9 -> 1101111
 );
 
 float draw_line(vec2 p, vec2 a, vec2 b);
@@ -62,7 +62,7 @@ void main()
 
     uint number = u_number;
     float alpha = 0;
-    for(uint idx = 0; idx < MAX_DIGITS && (number > 0 || idx == 0); idx++)
+    for(uint idx = 0; idx < MAX_DIGITS && (number > 0 || idx == 0); ++idx)
     {
     	uint digit = number % 10;
 
