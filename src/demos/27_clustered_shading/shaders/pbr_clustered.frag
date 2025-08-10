@@ -434,7 +434,7 @@ float pointLightVisibility(uint index)
 
 	float bias = 0;
 
-	// depth-scaled bias
+	// bias by depth
 	bias += u_shadow_bias_distance_scale * normalized_depth;
 
 	// bias based on surface normals
@@ -443,8 +443,8 @@ float pointLightVisibility(uint index)
 	angle = clamp(angle, 0.0, 0.99);
 	bias += (0.001 / angle) * u_shadow_bias_slope_scale;
 
-	bias = u_shadow_bias_constant + bias * u_shadow_bias_scale;
-	bias = clamp(bias, 0.0, 0.05);
+	bias = u_shadow_bias_constant + bias;
+	bias = clamp(bias, 0.0, 0.05) * u_shadow_bias_scale;
 
 	normalized_depth -= bias;
 
