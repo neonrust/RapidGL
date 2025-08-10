@@ -922,7 +922,7 @@ void ClusteredShading::createLights()
 
 		const auto rand_intensity = float(Util::RandomDouble(1, 100))*2;
 
-		_light_mgr.add(PointLightParams{
+		auto l = _light_mgr.add(PointLightParams{
 			.color = rand_color,
 			.intensity = rand_intensity,
 			.affect_radius = std::pow(rand_intensity, 0.6f), // maybe this could be scaled down as the total light count goes up?
@@ -930,6 +930,7 @@ void ClusteredShading::createLights()
 			.shadow_caster = true,
 			.position = rand_pos,
 		});
+
 
 		std::print("light[{:2}] @ {:5.1f}; {:3.1f}; {:5.1f}  {:3},{:3},{:3}  {:4.0f}\n",
 				   l.id(),
