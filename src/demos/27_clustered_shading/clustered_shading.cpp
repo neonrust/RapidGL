@@ -914,9 +914,9 @@ void ClusteredShading::createLights()
 		if(idx != 1)
 			continue;
 		const auto rand_color= hsv2rgb(
-			float(Util::RandomDouble(1, 360)),
-			float(Util::RandomDouble(0.2f, 0.9f)),
-			1.f
+			float(Util::RandomDouble(1, 360)),       // hue
+			float(Util::RandomDouble(0.1f, 0.7f)),   // saturation
+			1.f                                      // value (brightness)
 		);
 		const auto rand_pos = Util::RandomVec3({ -18, 0.5f, -18 }, { 18, 3.5f, 18 });
 
