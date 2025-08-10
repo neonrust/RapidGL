@@ -186,6 +186,7 @@ namespace RGL
 				render();
 				_render_time.add(duration_cast<microseconds>(steady_clock::now() - T0));
 
+				glBindFramebuffer(GL_FRAMEBUFFER, 0);
                 GUI::prepare();
                 {
                     render_gui();
