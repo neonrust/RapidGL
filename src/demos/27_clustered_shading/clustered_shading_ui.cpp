@@ -10,6 +10,22 @@ using namespace RGL;
 
 void ImGui_ImageEx(ImTextureID texture_id, ImVec2 size, ImVec2 uv0, ImVec2 uv1, GLuint shader_id);
 
+
+inline ImVec2 operator + (const ImVec2 &A, const ImVec2 &B)
+{
+	return { A.x + B.x, A.y + B.y };
+}
+
+inline ImVec2 operator * (const ImVec2 &A, float scale)
+{
+	return { A.x * scale, A.y * scale };
+}
+
+inline ImVec2 operator / (const ImVec2 &A, float div)
+{
+	return { A.x / div, A.y / div };
+}
+
 void ClusteredShading::render_gui()
 {
 	/* This method is responsible for rendering GUI using ImGUI. */
