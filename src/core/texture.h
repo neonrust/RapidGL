@@ -176,7 +176,7 @@ public:
 
 	void GenerateMipMaps();
 
-	virtual ImageData GetMetadata() const { return m_metadata; };
+	virtual const ImageData &GetMetadata() const { return m_metadata; };
 
 	static uint8_t calculateMipMapLevels(size_t width, size_t height=0, size_t depth=0, size_t min_size=0, size_t max_levels=64);
 
