@@ -782,7 +782,7 @@ static glm::mat4 light_view_projection(const GPULight &light, size_t idx)
 		const auto &view_up        = s_cube_face_up[idx];
 
 		const auto light_view      = glm::lookAt(light.position, light.position + view_forward, view_up);
-		const auto face_projection = glm::perspective(glm::radians(90.0f), aspect, 0.05f, light.affect_radius);
+		const auto face_projection = glm::perspective(glm::half_pi<float>(), square, 0.05f, light.affect_radius);
 		const auto light_vp        = face_projection * light_view;
 
 		return light_vp;
