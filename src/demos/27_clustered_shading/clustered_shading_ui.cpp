@@ -243,7 +243,7 @@ void ClusteredShading::render_gui()
 				{
 					const auto &texture = rt->depth_texture();
 
-						   // render with shader to show as gray scale
+					// render with shader to show as gray scale
 					ImGui_ImageEx(texture.texture_id(), img_size, top_left, bottom_right, m_imgui_depth_texture_shader->program_id());
 
 					const auto depth_f = rt->depth_format();
