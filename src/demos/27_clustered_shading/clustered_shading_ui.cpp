@@ -231,7 +231,7 @@ void ClusteredShading::render_gui()
 
 				if(rt->has_color() and rt->color_texture())
 				{
-					auto &texture = rt->color_texture();
+					const auto &texture = rt->color_texture();
 
 					ImGui_ImageEx(texture.texture_id(), img_size, top_left, bottom_right, 0);
 
@@ -241,7 +241,7 @@ void ClusteredShading::render_gui()
 
 				if(rt->has_depth() and rt->depth_texture())
 				{
-					auto &texture = rt->depth_texture();
+					const auto &texture = rt->depth_texture();
 
 						   // render with shader to show as gray scale
 					ImGui_ImageEx(texture.texture_id(), img_size, top_left, bottom_right, m_imgui_depth_texture_shader->program_id());
@@ -259,7 +259,7 @@ void ClusteredShading::render_gui()
 
 				if(rtc->has_color() and rtc->color_texture())
 				{
-					auto &texture = rtc->color_texture();
+					const auto &texture = rtc->color_texture();
 
 					const char *names[] = { "right", "left", "up", "down", "front", "back" };
 					for(auto face = 0u; face < 6; ++face)
