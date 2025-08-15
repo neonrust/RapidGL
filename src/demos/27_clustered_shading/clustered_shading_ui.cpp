@@ -274,11 +274,6 @@ void ClusteredShading::render_gui()
 	ImGui::End();
 }
 
-inline ImVec2 operator + (const ImVec2 &A, const ImVec2 &B)
-{
-	return { A.x + B.x, A.y + B.y };
-}
-
 void ImGui_ImageEx(ImTextureID texture_id, ImVec2 size, ImVec2 uv0, ImVec2 uv1, GLuint shader_id)
 {
 	struct CB_args
