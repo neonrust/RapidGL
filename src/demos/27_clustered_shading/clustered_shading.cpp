@@ -1529,18 +1529,24 @@ void ClusteredShading::renderShadowMaps()
 
 	static steady_clock::time_point last_eval_time;
 
-	if(now - last_eval_time > 50ms)
+	// bake this decision into ShadowAtlas -> call to update_shadow_params() can be moved to eval_lights()
+	//   UNLESS, we want to only update it when the specific shadow map needs to be rendered
+	if(now - last_eval_time > 100ms)
 	{
 		last_eval_time = now;
 		//TODO: probably should be a separate setting
 		_shadow_atlas.set_max_distance(std::min(100.f, m_camera.farPlane())/2.f);
 
-		auto num_changes = _shadow_atlas.eval_lights(_light_mgr, m_camera.position(), m_camera.forwardVector());
+		[[maybe_unused]] auto num_changes = _shadow_atlas.eval_lights(_light_mgr, m_camera.position(), m_camera.forwardVector());
 		// if(num_changes)
 		// 	std::print("     changed shadow maps: {}\n", num_changes);
 	}
 
-	// auto num_rendered = 0;
+	// light projections needs to be updated more often than the allocation
+	//   actually, every time it's rendered!
+	_shadow_atlas.update_shadow_params(_light_mgr);
+
+	[[maybe_unused]] auto num_rendered = 0;
 
 	for(auto &[light_id, atlas_light]: _shadow_atlas.allocated_lights())
 	{
