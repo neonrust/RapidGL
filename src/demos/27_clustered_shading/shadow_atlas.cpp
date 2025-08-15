@@ -776,7 +776,7 @@ static glm::mat4 light_view_projection(const GPULight &light, size_t idx)
 {
 	if(IS_POINT_LIGHT(light))
 	{
-		static constexpr auto aspect = 1.f;  // i.e. square
+		static constexpr auto square = 1.f;
 
 		const auto &view_forward   = s_cube_face_forward[idx];
 		const auto &view_up        = s_cube_face_up[idx];
@@ -794,14 +794,14 @@ static glm::mat4 light_view_projection(const GPULight &light, size_t idx)
 	}
 	if(IS_SPOT_LIGHT(light))
 	{
-		static constexpr auto aspect = 1.f;  // i.e. square
+		static constexpr auto square = 1.f;
 
 		const auto view_forward   = light.direction;
 		auto view_up = AXIS_Z;
 
 		const auto light_view     = glm::lookAt(light.position, light.position + view_forward, view_up);
-		const auto projection     = glm::perspective(glm::radians(light.outer_angle), aspect, 0.05f, light.affect_radius);
 		const auto light_vp       = projection * light_view;
+		const auto projection  = glm::perspective(glm::radians(light.outer_angle), square, 0.05f, light.affect_radius);
 
 		return light_vp;
 	}
