@@ -10,5 +10,6 @@ void main()
 {
 	float d = texture(u_depth, texcoord).r;     // raw depth
 	d = pow(d, 0.5);                            // optional gamma
+	d = 1 - d;                                  // invert; brighter = closer
 	frag_color = vec4(d, d, d, 1);              // grayscale output
 }
