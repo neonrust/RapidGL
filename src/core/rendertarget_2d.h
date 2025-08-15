@@ -68,6 +68,7 @@ struct Texture2d
 
 	void clear();
 	void fillColor(const glm::vec4 &color);
+	void fillDepth(float value=1.f);
 
 	operator bool () const;
 

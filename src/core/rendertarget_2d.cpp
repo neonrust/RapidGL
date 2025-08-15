@@ -250,6 +250,13 @@ void Texture2d::fillColor(const glm::vec4 &color)
 		glClearNamedFramebufferfv(_fbo_id, GL_COLOR, 0, glm::value_ptr(color));
 }
 
+void Texture2d::fillDepth(float value)
+{
+	assert(_has_depth);
+	if(_has_depth)
+		glClearNamedFramebufferfv(_fbo_id, GL_DEPTH, 0, &value);
+}
+
 Texture2d::operator bool() const
 {
 	return _fbo_id
