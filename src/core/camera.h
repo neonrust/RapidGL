@@ -55,6 +55,8 @@ public:
 	inline float pitch() const { return _pitch; }
 
 	void setFov(float fov);
+	inline float verticalFov()   const { return m_fovy; }
+
 	void setFarPlane(float f);
 	void setNearPlane(float n);
 
@@ -63,12 +65,11 @@ public:
 
 	inline glm::vec3 directionVector() const { return m_direction; }
 	inline glm::vec3 forwardVector()   const { return -m_direction; }
-		   glm::vec3 rightVector()     const;
-		   glm::vec3 upVector()        const;
+		   glm::vec3  rightVector()     const;
+		   glm::vec3  upVector()        const;
 	inline float aspectRatio()   const { return float(m_width) / float(m_height); }
 	inline float nearPlane()     const { return m_near; }
 	inline float farPlane()      const { return m_far; }
-	inline float verticalFov()   const { return m_fovy; }
 	
 	const Frustum &frustum() const;
 
