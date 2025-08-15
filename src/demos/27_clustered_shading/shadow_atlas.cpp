@@ -348,8 +348,19 @@ size_t ShadowAtlas::light_hash(const GPULight &L) const
 
 bool ShadowAtlas::should_render(const AtlasLight &atlas_light, Time now, size_t light_hash) const
 {
-	if(atlas_light.is_dirty() or light_hash == atlas_light.hash)
+
+	if(atlas_light.is_dirty())
+	{
+		// std::print("light dirty\n");
 		return true;
+	}
+	if(light_hash != atlas_light.hash)
+	{
+		// std::print("different hash\n");
+		return true;
+	}
+
+	// TODO: also check whether there are dynamic objects inside the light's sphere
 
 	const auto size_idx = _allocator.level_from_size(atlas_light.slots[0].size) - _allocator.min_level();
 	const auto interval = _render_intervals[size_idx];
@@ -357,7 +368,12 @@ bool ShadowAtlas::should_render(const AtlasLight &atlas_light, Time now, size_t 
 	// TODO: hm, average FPS should be a factor in this decisionm?
 	//   or should the "interval" be a number of frames? plus a "minimum interval"?
 
-	return (now - atlas_light.last_rendered) >= interval;
+	const auto stale = (now - atlas_light.last_rendered) >= interval;
+
+	// if(stale)
+	// 	std::print("stale\n");
+
+	return stale;
 }
 
 bool ShadowAtlas::remove_allocation(LightID light_id)
