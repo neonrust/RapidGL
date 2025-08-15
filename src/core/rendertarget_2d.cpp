@@ -243,20 +243,24 @@ void Texture2d::clear()
 	}
 }
 
+std::pair<GLenum, GLenum> _clear_format(GLenum internalFormat);
+
 void Texture2d::clear(const glm::uvec4 &rect)
 {
 	if(_has_color)
 	{
 		if(color_texture())
 		{
+			const auto &[format, type] = _clear_format(_color_format);
+
 			// hm, this doesn't seem to work?
 			static constexpr float clear_color[] = { 0, 0 };
 			glClearTexSubImage(color_texture().texture_id(),
 							   0,                   // mip level
 							   GLint(rect.x), GLint(rect.y), 0, // offset (xyz)
 							   GLsizei(rect.z), GLsizei(rect.w), 1, // size (xyz)
-							   _color_format,  // format
-							   _color_format == GL_RG16F? GL_HALF_FLOAT: GL_FLOAT,  // type  TODO: better logic
+							   format,            // format
+							   type,              // type
 							   &clear_color);
 		}
 		else
@@ -267,7 +271,7 @@ void Texture2d::clear(const glm::uvec4 &rect)
 	{
 		if(depth_texture())
 		{
-			static constexpr auto clear_depth = 0.f;
+			static constexpr auto clear_depth = 1.f; // far plane
 			glClearTexSubImage(depth_texture().texture_id(),
 							   0,                   // mip level
 							   GLint(rect.x), GLint(rect.y), 0, // offset (xyz)
@@ -324,6 +328,77 @@ void Texture2d::SetDepthWrapping(TextureWrappingAxis axis, TextureWrappingParam 
 {
 	assert(_depth_texture);
 	_depth_texture.SetWrapping(axis, wrapping);
+}
+
+
+std::pair<GLenum, GLenum> _clear_format(GLenum internalFormat)
+{
+	switch (internalFormat)
+	{
+	// ---- Red channel ----
+	case GL_R8:          return { GL_RED, GL_UNSIGNED_BYTE };
+	case GL_R8_SNORM:    return { GL_RED, GL_BYTE };
+	case GL_R16:         return { GL_RED, GL_UNSIGNED_SHORT };
+	case GL_R16_SNORM:   return { GL_RED, GL_SHORT };
+	case GL_R16F:        return { GL_RED, GL_HALF_FLOAT };
+	case GL_R32F:        return { GL_RED, GL_FLOAT };
+
+	case GL_R8UI:        return { GL_RED_INTEGER, GL_UNSIGNED_BYTE };
+	case GL_R8I:         return { GL_RED_INTEGER, GL_BYTE };
+	case GL_R16UI:       return { GL_RED_INTEGER, GL_UNSIGNED_SHORT };
+	case GL_R16I:        return { GL_RED_INTEGER, GL_SHORT };
+	case GL_R32UI:       return { GL_RED_INTEGER, GL_UNSIGNED_INT };
+	case GL_R32I:        return { GL_RED_INTEGER, GL_INT };
+
+			   // ---- RG ----
+	case GL_RG8:         return { GL_RG, GL_UNSIGNED_BYTE };
+	case GL_RG8_SNORM:   return { GL_RG, GL_BYTE };
+	case GL_RG16:        return { GL_RG, GL_UNSIGNED_SHORT };
+	case GL_RG16_SNORM:  return { GL_RG, GL_SHORT };
+	case GL_RG16F:       return { GL_RG, GL_HALF_FLOAT };
+	case GL_RG32F:       return { GL_RG, GL_FLOAT };
+
+	case GL_RG8UI:       return { GL_RG_INTEGER, GL_UNSIGNED_BYTE };
+	case GL_RG8I:        return { GL_RG_INTEGER, GL_BYTE };
+	case GL_RG16UI:      return { GL_RG_INTEGER, GL_UNSIGNED_SHORT };
+	case GL_RG16I:       return { GL_RG_INTEGER, GL_SHORT };
+	case GL_RG32UI:      return { GL_RG_INTEGER, GL_UNSIGNED_INT };
+	case GL_RG32I:       return { GL_RG_INTEGER, GL_INT };
+
+			   // ---- RGB ----
+	case GL_RGB8:        return { GL_RGB, GL_UNSIGNED_BYTE };
+	case GL_RGB8_SNORM:  return { GL_RGB, GL_BYTE };
+	case GL_RGB16:       return { GL_RGB, GL_UNSIGNED_SHORT };
+	case GL_RGB16_SNORM: return { GL_RGB, GL_SHORT };
+	case GL_RGB16F:      return { GL_RGB, GL_HALF_FLOAT };
+	case GL_RGB32F:      return { GL_RGB, GL_FLOAT };
+
+	case GL_RGB8UI:      return { GL_RGB_INTEGER, GL_UNSIGNED_BYTE };
+	case GL_RGB8I:       return { GL_RGB_INTEGER, GL_BYTE };
+	case GL_RGB16UI:     return { GL_RGB_INTEGER, GL_UNSIGNED_SHORT };
+	case GL_RGB16I:      return { GL_RGB_INTEGER, GL_SHORT };
+	case GL_RGB32UI:     return { GL_RGB_INTEGER, GL_UNSIGNED_INT };
+	case GL_RGB32I:      return { GL_RGB_INTEGER, GL_INT };
+
+			   // ---- RGBA ----
+	case GL_RGBA8:       return { GL_RGBA, GL_UNSIGNED_BYTE };
+	case GL_RGBA8_SNORM: return { GL_RGBA, GL_BYTE };
+	case GL_RGBA16:      return { GL_RGBA, GL_UNSIGNED_SHORT };
+	case GL_RGBA16_SNORM:return { GL_RGBA, GL_SHORT };
+	case GL_RGBA16F:     return { GL_RGBA, GL_HALF_FLOAT };
+	case GL_RGBA32F:     return { GL_RGBA, GL_FLOAT };
+
+	case GL_RGBA8UI:     return { GL_RGBA_INTEGER, GL_UNSIGNED_BYTE };
+	case GL_RGBA8I:      return { GL_RGBA_INTEGER, GL_BYTE };
+	case GL_RGBA16UI:    return { GL_RGBA_INTEGER, GL_UNSIGNED_SHORT };
+	case GL_RGBA16I:     return { GL_RGBA_INTEGER, GL_SHORT };
+	case GL_RGBA32UI:    return { GL_RGBA_INTEGER, GL_UNSIGNED_INT };
+	case GL_RGBA32I:     return { GL_RGBA_INTEGER, GL_INT };
+
+	default:
+		assert(false);
+		return { 0, 0 };
+	}
 }
 
 } // RGL::RenderTarget
