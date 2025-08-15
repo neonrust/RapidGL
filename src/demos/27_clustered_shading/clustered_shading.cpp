@@ -1772,9 +1772,9 @@ void ClusteredShading::renderDepth(const glm::mat4 &view_projection, RenderTarge
 
 void ClusteredShading::renderSceneShadow(const glm::vec3 &pos, float far_z, uint_fast16_t shadow_params_index, uint32_t shadow_map_index, RenderTarget::Texture2d &target, const glm::ivec4 &rect)
 {
-	// TODO: ideally, only render objects whose AABB intersects with the sphere { pos, far_z }
+	// TODO: ideally, only render objects whose AABB intersects with the light's projection (frustum)
 
-	target.bindRenderTarget(RenderTarget::DepthBuffer, rect);
+	target.bindRenderTarget(RenderTarget::DepthBuffer | RenderTarget::ColorBuffer, rect);  // TODO: the first argument is misleading
 
 	glDepthMask(GL_TRUE);
 	glColorMask(GL_TRUE, GL_TRUE, GL_FALSE, GL_FALSE);  // writing 2-component normals
@@ -1794,6 +1794,8 @@ void ClusteredShading::renderSceneShadow(const glm::vec3 &pos, float far_z, uint
 
 		obj.model->Render();
 	}
+
+	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);  // writing 2-component normals
 }
 
 void ClusteredShading::renderLighting(const Camera &camera)
@@ -1815,11 +1817,11 @@ void ClusteredShading::renderLighting(const Camera &camera)
 	m_clustered_pbr_shader->setUniform("u_light_max_distance"sv,         std::min(100.f, m_camera.farPlane()));
 	m_clustered_pbr_shader->setUniform("u_shadow_max_distance"sv,        std::min(100.f, m_camera.farPlane())/1.5f);
 
-	m_clustered_pbr_shader->setUniform("u_shadow_bias_constant"sv, m_shadow_bias_constant);
-	m_clustered_pbr_shader->setUniform("u_shadow_bias_slope_scale"sv, m_shadow_bias_slope_scale);
-	m_clustered_pbr_shader->setUniform("u_shadow_bias_slope_power"sv, m_shadow_bias_slope_power);
+	m_clustered_pbr_shader->setUniform("u_shadow_bias_constant"sv,       m_shadow_bias_constant);
+	m_clustered_pbr_shader->setUniform("u_shadow_bias_slope_scale"sv,    m_shadow_bias_slope_scale);
+	m_clustered_pbr_shader->setUniform("u_shadow_bias_slope_power"sv,    m_shadow_bias_slope_power);
 	m_clustered_pbr_shader->setUniform("u_shadow_bias_distance_scale"sv, m_shadow_bias_distance_scale);
-	m_clustered_pbr_shader->setUniform("u_shadow_bias_scale"sv, m_shadow_bias_scale);
+	m_clustered_pbr_shader->setUniform("u_shadow_bias_scale"sv,          m_shadow_bias_scale);
 
 	m_clustered_pbr_shader->setUniform("u_debug_cluster_geom"sv,                    m_debug_cluster_geom);
 	m_clustered_pbr_shader->setUniform("u_debug_clusters_occupancy"sv,              m_debug_clusters_occupancy);
