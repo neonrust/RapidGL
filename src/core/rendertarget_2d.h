@@ -67,6 +67,7 @@ struct Texture2d
 	void copyFrom(const Texture2d &source, BufferMask mask=ColorBuffer | DepthBuffer, TextureFilteringParam filter=TextureFilteringParam::Linear);
 
 	void clear();
+	void clear(const glm::uvec4 &rect);
 	void fillColor(const glm::vec4 &color);
 	void fillDepth(float value=1.f);
 

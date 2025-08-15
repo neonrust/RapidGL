@@ -243,6 +243,44 @@ void Texture2d::clear()
 	}
 }
 
+void Texture2d::clear(const glm::uvec4 &rect)
+{
+	if(_has_color)
+	{
+		if(color_texture())
+		{
+			// hm, this doesn't seem to work?
+			static constexpr float clear_color[] = { 0, 0 };
+			glClearTexSubImage(color_texture().texture_id(),
+							   0,                   // mip level
+							   GLint(rect.x), GLint(rect.y), 0, // offset (xyz)
+							   GLsizei(rect.z), GLsizei(rect.w), 1, // size (xyz)
+							   _color_format,  // format
+							   _color_format == GL_RG16F? GL_HALF_FLOAT: GL_FLOAT,  // type  TODO: better logic
+							   &clear_color);
+		}
+		else
+			; // TODO: clear framebuffer?
+	}
+
+	if(_has_depth)
+	{
+		if(depth_texture())
+		{
+			static constexpr auto clear_depth = 0.f;
+			glClearTexSubImage(depth_texture().texture_id(),
+							   0,                   // mip level
+							   GLint(rect.x), GLint(rect.y), 0, // offset (xyz)
+							   GLsizei(rect.z), GLsizei(rect.w), 1, // size (xyz)
+							   GL_DEPTH_COMPONENT,  // format
+							   GL_FLOAT,            // type
+							   &clear_depth);
+		}
+		else
+			; // TODO: clear framebuffer?
+	}
+}
+
 void Texture2d::fillColor(const glm::vec4 &color)
 {
 	assert(_has_color);
