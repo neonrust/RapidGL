@@ -75,7 +75,12 @@ public:
 	bool create();
 
 	inline void set_max_casters(size_t max_casters) { _max_shadow_slots = max_casters; }
-	inline void set_max_distance(float max_distance) { _max_distance = max_distance; _large_light_radius = _max_distance; }
+	inline void set_max_distance(float max_distance)
+	{
+		assert(max_distance > 0);
+		_max_distance = max_distance;
+		_large_light_radius = _max_distance;
+	}
 	inline void set_min_change_interval(std::chrono::milliseconds interval) { _min_change_interval = interval; }
 
 	size_t eval_lights(LightManager &lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward);
