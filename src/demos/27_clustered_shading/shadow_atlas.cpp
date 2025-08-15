@@ -799,9 +799,9 @@ static glm::mat4 light_view_projection(const GPULight &light, size_t idx)
 		const auto view_forward   = light.direction;
 		auto view_up = AXIS_Z;
 
-		const auto light_view     = glm::lookAt(light.position, light.position + view_forward, view_up);
-		const auto light_vp       = projection * light_view;
+		const auto light_view  = glm::lookAt(light.position, light.position + view_forward, view_up);
 		const auto projection  = glm::perspective(glm::radians(light.outer_angle), square, 0.05f, light.affect_radius);
+		const auto light_vp    = projection * light_view;
 
 		return light_vp;
 	}
