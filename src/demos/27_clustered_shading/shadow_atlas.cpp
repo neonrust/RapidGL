@@ -44,6 +44,7 @@ struct hash<glm::vec3>
 	-AXIS_Y, -AXIS_Y,
 };
 
+// textual names for each light type, see light_constants.h
 [[maybe_unused]] static const std::string_view _light_type_names[] {
 	"point"sv,
 	"directional"sv,
