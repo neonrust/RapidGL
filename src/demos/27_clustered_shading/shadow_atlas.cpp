@@ -525,6 +525,8 @@ ShadowAtlas::ApplyCounters ShadowAtlas::apply_desired_slots(const small_vec<Atla
 			const auto size_diff = int32_t(desired.slots[0].size) - int32_t(atlas_light.slots[0].size);
 			const auto change_age = now - atlas_light.last_size_change;
 
+			// TODO: this is tested before the if-stmt to simplify debugging
+			//   it should be inside the condition (thus only called when necessary)
 			const auto has_slots = slots_available(desired);
 
 			if(size_diff == 0 or change_age < _min_change_interval or not has_slots)
@@ -538,24 +540,29 @@ ShadowAtlas::ApplyCounters ShadowAtlas::apply_desired_slots(const small_vec<Atla
 			{
 				changed_size.push_back(desired_index);
 
-				// first deallocate demotions and promotions first,
-				//   then the corresponding allocation
-
 				if(size_diff > 0)
 					++num_promoted;
 				else
 					++num_demoted;
 
-				// free the previous size slot to the pool
+				// first deallocate demotions and promotions first,
+				//   then the corresponding allocation (separate loop below)
+
+				// return the previous size slot to the pool
 				// std::print("  [{}]  free {} slots:    {}: {} (-> {})",
 				// 		   light_id, atlas_light.num_slots, size_diff > 0?"pro":"dem", atlas_light.slots[0].size, desired.slots[0].size);
 				std::fflush(stdout);
-				auto idx = atlas_light.num_slots;  // in reverse to "put back" in the same order
+				auto idx = atlas_light.num_slots;  // in reverse to "put back" in the same order as allocated
 				while(idx-- != 0)
 				{
 					const auto &slot = atlas_light.slots[idx];
 					free_slot(slot.size, slot.node_index);
 				}
+
+				// TODO: is it worth it to blit-copy the existing rendered slots to the new ones?
+				//   to avoid rendering it again.
+				//   at least for dmotions, this could be done.
+
 				// std::print("; {} remaining\n", _slot_sets[atlas_light.slots[0].size].size());
 			}
 		}
