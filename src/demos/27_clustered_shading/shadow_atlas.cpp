@@ -660,14 +660,7 @@ void ShadowAtlas::free_slot(SlotSize size, SlotID node_index)
 
 #if defined(DEBUG)
 	const auto &rect = _allocator.rect(node_index);
-	static const auto clear_depth = 0.f;
-	glClearTexSubImage(depth_texture().texture_id(),
-					   0,                   // mip level
-					   GLint(rect.x), GLint(rect.y), 0, // offset
-					   GLsizei(rect.w), GLsizei(rect.h), 1, // size
-					   GL_DEPTH_COMPONENT,  // format
-					   GL_FLOAT,            // type
-					   &clear_depth);   // pointer to depth value (e.g. 1.0f)
+	clear({ rect.x, rect.y, rect.w, rect.h });
 #endif
 
 	free_slots.push_back(node_index);
