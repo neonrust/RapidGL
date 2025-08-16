@@ -1701,26 +1701,9 @@ const std::vector<StaticObject> &ClusteredShading::cullScene(const Camera &camer
 
 	for(const auto &obj: _scene) // TODO _scene.near(view_pos, m_camera.farPlane()) i.e. everything within range of the camera's far plane
 	{
-		auto result = intersect::check(frustum, obj.model->aabb(), obj.transform);
-
-		// std::print("distance to plane");
-		// static const char *plane_name[] = { "L", "R", "T", "B", "Fr", "Bk" };
-		// for(auto idx = 0u; idx < 6; ++idx)
-		// 	std::print("  {}: {:.3f}", plane_name[idx], result.distance_to_plane[idx]);
-		// std::puts("");
-
-		if(result.visible)
+		auto visible = intersect::check(frustum, obj.model->aabb(), obj.transform);
+		if(visible)
 			_scenePvs.push_back(obj);
-		else
-		{
-			// TODO: visualize result based on result.culled_by_plane, etc.
-			// if(result.culled_by_aabb)
-			// 	std::puts("culled by AABB");
-			// else if(result.culled_by_plane >= 0)
-			// 	std::print("culled by plane: {}\n", result.culled_by_plane);
-			// else
-			// 	std::puts("culled by corner");
-		}
 	}
 
 	// TODO: cull invisible objects in the scene, using any method available
