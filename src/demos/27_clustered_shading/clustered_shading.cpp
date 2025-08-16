@@ -911,8 +911,6 @@ void ClusteredShading::createLights()
 	// point lights
 	for(auto idx = 0u; idx < 8; ++idx)
 	{
-		if(idx != 1)
-			continue;
 		const auto rand_color= hsv2rgb(
 			float(Util::RandomDouble(1, 360)),       // hue
 			float(Util::RandomDouble(0.1f, 0.7f)),   // saturation
