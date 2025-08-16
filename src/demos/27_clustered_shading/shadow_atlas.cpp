@@ -305,16 +305,24 @@ size_t ShadowAtlas::eval_lights(LightManager &lights, const glm::vec3 &view_pos,
 
 	if(num_changes)
 	{
-		std::print("ShadowAtlas: {} -> new: {} kept: {} dropped: {} promote: {} demote: {} (pending: {}), in {}\n",
-				   prioritized.size(),
-				   counters.allocated,
-				   counters.retained,
-				   num_dropped,
-				   counters.promoted,
-				   counters.demoted,
-				   counters.change_pending,
-				   duration_cast<microseconds>(steady_clock::now() - T0));
+		std::print("ShadowAtlas: {}:", prioritized.size());
+		if(counters.allocated)
+			std::print(" ★{}", counters.allocated);
+		if(counters.retained)
+			std::print(" ={}", counters.retained);
+		if(num_dropped)
+			std::print(" ❌{}", num_dropped);
+		if(counters.promoted)
+			std::print(" ➚{}", counters.promoted);
+		if(counters.demoted)
+			std::print(" ➘{}", counters.demoted);
+		if(counters.change_pending)
+			std::print(" ..{}", counters.change_pending);
+		std::print(", in {} ->", duration_cast<microseconds>(steady_clock::now() - T0));
+#if defined(DEBUG)
 		_dump_allocated_counts();
+#endif
+		std::puts("");
 	}
 
 	// return how many shadow maps changed  (new, dropped, promoted, demoted)
@@ -416,8 +424,11 @@ void ShadowAtlas::_dump_allocated_counts()
 		sizes.reserve(_distribution.size());
 	sizes.clear();
 
+	auto num_used = 0u;
+
 	for(const auto &[light_id, allocated]: _id_to_allocated)
 	{
+		num_used += allocated.num_slots;
 		auto slot_size = allocated.slots[0].size;
 		auto found = size_counts.find(slot_size);
 		if(found == size_counts.end())
@@ -430,11 +441,23 @@ void ShadowAtlas::_dump_allocated_counts()
 	}
 	if(not sizes.empty())
 	{
-		std::ranges::sort(sizes);
-		std::print("  sizes:");
+		std::ranges::sort(sizes, std::greater<SlotSize>());
+		std::print(" {{ ");
+		auto first = true;
 		for(const auto &slot_size: sizes)
-			std::print("  {}:{}", slot_size, size_counts[slot_size]);
-		std::puts("");
+		{
+			if(not first)
+				std::print(", ");
+			first = false;
+			std::print("{}:{}", slot_size, size_counts[slot_size]);
+		}
+		std::print(" }}");
+
+		auto num_available = 0u;
+		for(const auto &[size, slot_set]: _slot_sets)
+			num_available += slot_set.size();
+
+		assert(num_available + num_used + 3 == _max_shadow_slots);  // 3 = CSM slots for directional light
 	}
 }
 
