@@ -138,7 +138,7 @@ size_t ShadowAtlas::eval_lights(LightManager &lights, const glm::vec3 &view_pos,
 	const Time T0 = steady_clock::now();
 
 	static std::vector<ValueLight> prioritized;
-	prioritized.reserve(lights.size());
+	prioritized.reserve(std::max(64ul, lights.size()));
 	prioritized.clear();
 
 	auto counters = prioritize_lights(lights, view_pos, view_forward, prioritized);
