@@ -107,7 +107,7 @@ ShadowAtlas::ShadowAtlas(uint32_t size) :
 	for(auto idx = 0u; idx < _allocated_sun.num_slots; ++idx)
 	{
 		_allocated_sun.slots[idx].size = size >> (3 + idx);
-		_allocated_sun.slots[idx].node_index = alloc_slot(_allocated_sun.slots[idx].size);
+		_allocated_sun.slots[idx].node_index = alloc_slot(_allocated_sun.slots[idx].size, false);
 		_allocated_sun.slots[idx].rect = to_uvec4(_allocator.rect(_allocated_sun.slots[idx].node_index));
 	}
 	_allocated_sun._dirty = true;
@@ -687,15 +687,25 @@ bool ShadowAtlas::slots_available(const AtlasLight &atlas_light) const
 	return true;
 }
 
-ShadowAtlas::SlotID ShadowAtlas::alloc_slot(SlotSize size)
+ShadowAtlas::SlotID ShadowAtlas::alloc_slot(SlotSize size, bool first)
 {
 	assert(_slot_sets.contains(size));
 
 	auto &free_slots = _slot_sets[size];
 	assert(not free_slots.empty());
 
-	auto node_index = free_slots.back();
-	free_slots.pop_back();
+	SlotID node_index;
+	if(first)
+	{
+		node_index = free_slots.back();
+		free_slots.pop_back();
+	}
+	else
+	{
+		// this is only used once; the reservatioon for a "sun" light
+		node_index = free_slots.front();
+		free_slots.erase(free_slots.begin());
+	}
 
 	// std::print("    alloc {:>4} -> {}    rem: {}\n", size, node_index, free_slots.size());
 

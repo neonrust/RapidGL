@@ -143,7 +143,7 @@ private:
 	void generate_slots(std::initializer_list<uint32_t> distribution);
 	bool slots_available(const AtlasLight &atlas_light) const;
 	bool remove_allocation(LightID light_id);
-	SlotID alloc_slot(SlotSize size);
+	SlotID alloc_slot(SlotSize size, bool first=true);
 	void free_slot(SlotSize size, SlotID node_index);
 
 	void _dump_desired(const small_vec<AtlasLight, 120> &desired_slots);
