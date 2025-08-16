@@ -43,15 +43,21 @@ public:
 	using LightSlots = std::array<SlotDef, 6>;
 	struct AtlasLight
 	{
+		inline AtlasLight() {};
+		AtlasLight(const AtlasLight &other);
+		AtlasLight &operator = (const AtlasLight &other) = default;
+
 		LightID uuid;
 		size_t num_slots;     // point: 6, dir: 3?, all others: 1
 		LightSlots slots;     // per slot:
 
 		inline bool is_dirty() const { return _dirty; }
-		inline void on_rendered(Time t, size_t new_hash) const
+
+		inline void set_dirty() const { _dirty = true; }       // called from allocated_lights(); const
+		inline void on_rendered(Time t, size_t new_hash) const // called from allocated_lights(); const
 		{
 			_dirty = false;
-			last_rendered = t;
+			_last_rendered = t;
 			hash = new_hash;
 		}
 
@@ -59,9 +65,9 @@ public:
 
 	private:
 		mutable bool _dirty;
-		float prev_light_value;
-		mutable Time last_rendered;   // TODO: define a "pixels per second" limit for how many shadow map slots can be updated (in light-value/age order?)
-		Time last_size_change;
+		float _prev_light_value;
+		mutable Time _last_rendered;   // TODO: define a "pixels per second" limit for how many shadow map slots can be updated (in light-value/age order?)
+		Time _last_size_change;
 
 		friend class ShadowAtlas;
 	};
@@ -95,15 +101,45 @@ public:
 
 private:
 	float light_value(const GPULight &light, const glm::vec3 &view_pos, const glm::vec3 &view_forward) const;
-	struct ApplyCounters
+	struct Counters
 	{
-		size_t allocated;
-		size_t retained;
-		size_t promoted;
-		size_t demoted;
-		size_t change_pending;
+		inline Counters() :
+			allocated(0),
+			retained(0),
+			dropped(0),
+			promoted(0),
+			demoted(0),
+			change_pending(0)
+		{}
+		uint32_t allocated;
+		uint32_t retained;
+		uint32_t dropped;
+		uint32_t promoted;
+		uint32_t demoted;
+		uint32_t change_pending;
+
+		inline Counters &operator += (const Counters &other)
+		{
+			allocated += other.allocated;
+			retained += other.retained;
+			dropped += other.dropped;
+			promoted += other.promoted;
+			demoted += other.demoted;
+			change_pending += other.change_pending;
+			return *this;
+		}
+
+		inline uint32_t changed() const { return allocated + dropped + promoted + demoted; }
 	};
-	ApplyCounters apply_desired_slots(const small_vec<AtlasLight, 120> &desired_slots, Time now);
+	struct ValueLight
+	{
+		float value;
+		LightID light_id;
+		size_t num_slots;
+	};
+
+	Counters prioritize_lights(LightManager &lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward, std::vector<ValueLight> &prioritized);
+	Counters apply_desired_slots(const small_vec<AtlasLight, 120> &desired_slots, LightManager &lights, Time now);
 	void generate_slots(std::initializer_list<uint32_t> distribution);
 	bool slots_available(const AtlasLight &atlas_light) const;
 	bool remove_allocation(LightID light_id);
@@ -114,12 +150,6 @@ private:
 	void _dump_allocated_counts();
 
 private:
-	struct ValueLight
-	{
-		float value;
-		LightID light_id;
-		size_t num_slots;
-	};
 	dense_map<SlotSize, std::vector<SlotID>> _slot_sets;
 
 	dense_map<LightID, AtlasLight> _id_to_allocated;
