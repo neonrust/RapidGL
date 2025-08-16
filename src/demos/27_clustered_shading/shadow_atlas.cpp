@@ -363,13 +363,15 @@ bool ShadowAtlas::should_render(const AtlasLight &atlas_light, Time now, size_t 
 		// std::print("light dirty\n");
 		return true;
 	}
-	if(light_hash != atlas_light.hash)
+
+	// TODO: check for dynamic objects inside the light's sphere
+
+	if(light_hash == atlas_light.hash)
 	{
 		// std::print("different hash\n");
-		return true;
+		return false;
 	}
 
-	// TODO: also check whether there are dynamic objects inside the light's sphere
 
 	const auto size_idx = _allocator.level_from_size(atlas_light.slots[0].size) - _allocator.min_level();
 	const auto interval = _render_intervals[size_idx];
