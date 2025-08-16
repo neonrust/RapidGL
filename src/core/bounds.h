@@ -97,9 +97,10 @@ namespace RGL
 namespace intersect
 {
 
-bool check(const bounds::AABB &A, const bounds::AABB &B);
-bool check(const bounds::AABB   &box, const glm::vec3 &point);
-bool check(const bounds::Sphere &sphere, const glm::vec3 &point);
+bool check(const bounds::AABB   &A,      const bounds::AABB   &B);
+bool check(const bounds::AABB   &box,    const bounds::Sphere &sphere);
+bool check(const bounds::AABB   &box,    const    glm::vec3   &point);
+bool check(const bounds::Sphere &sphere, const    glm::vec3   &point);
 
 } // intersect
 

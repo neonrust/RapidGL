@@ -316,24 +316,23 @@ frustum_cull_result check(const Frustum &f, const bounds::AABB &box, const glm::
 	// check each axis; wether the frustum corners are all outside the AABB box
 	std::uint_fast8_t out = 0;
 	result.visible = false;
-	// TODO: faster with branch?
-	//   if(corner.x > box_max.x) ++out; else break;
-	for(const auto &corner: f.corners())  out += (corner.x > box_max.x) ? 1 : 0;
+
+	for(const auto &corner: f.corners())  out += (corner.x > box_max.x)? 1: 0;
 	if(out == 8) return result;
 	out = 0;
-	for(const auto &corner: f.corners())  out += (corner.x < box_min.x) ? 1 : 0;
+	for(const auto &corner: f.corners())  out += (corner.x < box_min.x)? 1: 0;
 	if(out == 8) return result;
 	out = 0;
-	for(const auto &corner: f.corners())  out += (corner.y > box_max.y) ? 1 : 0;
+	for(const auto &corner: f.corners())  out += (corner.y > box_max.y)? 1: 0;
 	if(out == 8) return result;
 	out = 0;
-	for(const auto &corner: f.corners())  out += (corner.y < box_min.y) ? 1 : 0;
+	for(const auto &corner: f.corners())  out += (corner.y < box_min.y)? 1: 0;
 	if(out == 8) return result;
 	out = 0;
-	for(const auto &corner: f.corners())  out += (corner.z > box_max.z) ? 1 : 0;
+	for(const auto &corner: f.corners())  out += (corner.z > box_max.z)? 1: 0;
 	if(out == 8) return result;
 	out = 0;
-	for(const auto &corner: f.corners())  out += (corner.z < box_min.z) ? 1 : 0;
+	for(const auto &corner: f.corners())  out += (corner.z < box_min.z)? 1: 0;
 	if(out == 8) return result;
 
 	// some of the frustum's points were inside the AABB
@@ -350,6 +349,21 @@ bool check(const Frustum &f, const glm::vec3 &point)
 	return math::facing(f.back(), point) and math::facing(f.front(), point)
 		and math::facing(f.left(), point) and math::facing(f.right(), point)
 		and math::facing(f.top(), point) and math::facing(f.bottom(), point);
+}
+
+bool check(const Frustum &f, const bounds::Sphere &sphere)
+{
+	// early-out: sphere outside frustum's AABB
+	if(not intersect::check(f.aabb(), sphere))
+		return false;
+
+	if(math::distance(f.front(), sphere.center())  < -sphere.radius()) return false;
+	if(math::distance(f.left(), sphere.center())   < -sphere.radius()) return false;
+	if(math::distance(f.right(), sphere.center())  < -sphere.radius()) return false;
+	if(math::distance(f.top(), sphere.center())    < -sphere.radius()) return false;
+	if(math::distance(f.bottom(), sphere.center()) < -sphere.radius()) return false;
+
+	return true;
 }
 
 } // intersect

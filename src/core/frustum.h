@@ -70,6 +70,7 @@ struct frustum_cull_result
 
 frustum_cull_result check(const Frustum &f, const bounds::AABB &box, const glm::mat4 &box_transform);
 bool check(const Frustum &f, const glm::vec3 &point);
+bool check(const Frustum &f, const bounds::Sphere &sphere);
 
 }
 

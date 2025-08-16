@@ -183,6 +183,19 @@ bool check(const bounds::AABB &A, const bounds::AABB &B)
 	return xrange and yrange and zrange;
 }
 
+bool check(const bounds::AABB &box, const bounds::Sphere &sphere)
+{
+	glm::vec3 closest;
+	for(auto axis = 0; axis < 3; ++axis)
+		closest[axis] = glm::clamp(sphere.center()[axis], box.min()[axis], box.max()[axis]);
+
+	const auto closest_to_center = closest - sphere.center();
+
+	const auto sq_distance = glm::dot(closest_to_center, closest_to_center);
+
+	return sq_distance <= sphere.radius() * sphere.radius();
+}
+
 bool check(const bounds::AABB &box, const glm::vec3 &point)
 {
 	return point.x > box.min().x and
