@@ -1684,7 +1684,7 @@ void ClusteredShading::draw2d(const Texture &texture, const glm::uvec2 &top_left
 	// glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
-const std::vector<StaticObject> &ClusteredShading::cullScene(const Camera &camera)
+const std::vector<StaticObject> &ClusteredShading::cullScene(const Camera &view)
 {
 	const auto T0 = steady_clock::now();
 	// TODO: in theory, this could be done in multiple threads
@@ -1695,11 +1695,12 @@ const std::vector<StaticObject> &ClusteredShading::cullScene(const Camera &camer
 
 	// perform frustum culling of all objects in the scene (or a partition there of)
 
-	const auto view_pos = camera.position();
-	const auto &frustum = camera.frustum();
-	// TODO: _scenePvs = _scene.cull(view_pos, frustum)
+	const auto view_pos = view.position();
+	const auto &frustum = view.frustum();
 
-	for(const auto &obj: _scene) // TODO _scene.near(view_pos, m_camera.farPlane()) i.e. everything within range of the camera's far plane
+	// TODO do something like:
+	//    view.near(_scene)  i.e. everything in range of the view
+	for(const auto &obj: _scene)
 	{
 		auto visible = intersect::check(frustum, obj.model->aabb(), obj.transform);
 		if(visible)
