@@ -1344,7 +1344,6 @@ void ClusteredShading::render()
 	m_shadow_time.add(_gl_timer.elapsed<microseconds>(true));
 
 
-
 	// Depth pre-pass  (only if camera/meshes moved, probably always)
 	renderDepth(m_camera.projectionTransform() * m_camera.viewTransform(), m_depth_pass_rt);
 
@@ -1415,7 +1414,6 @@ void ClusteredShading::render()
 	renderLighting(m_camera);
 	m_shading_time.add(_gl_timer.elapsed<microseconds>(true));
 
-
 	// Render area lights geometry, to '_rt'
 	if(m_draw_area_lights_geometry and _light_mgr.num_lights<AreaLight>() > 0)
 	{
@@ -1478,7 +1476,6 @@ void ClusteredShading::render()
 	// write the result to some SSBO, so tonemapping can pick it up
 	// TODO: compute new desired exposure, blend 'm_eposure' over time towards that value
 
-
 	// Bloom
     if (m_bloom_enabled)
     {
@@ -1497,7 +1494,7 @@ void ClusteredShading::render()
 	m_tmo_pp.render(_rt, _final_rt);
 
 
-	// draw the final result on the screen
+	// draw the final result to the screen
 	draw2d(_final_rt.color_texture(), BlendMode::Replace);
 
 
@@ -1532,7 +1529,7 @@ void ClusteredShading::renderShadowMaps()
 	if(now - last_eval_time > 100ms)
 	{
 		last_eval_time = now;
-		//TODO: probably should be a separate setting
+		// TODO: probably should be a separate setting
 		_shadow_atlas.set_max_distance(std::min(100.f, m_camera.farPlane())/2.f);
 
 		[[maybe_unused]] auto num_changes = _shadow_atlas.eval_lights(_light_mgr, m_camera.position(), m_camera.forwardVector());
@@ -1563,13 +1560,13 @@ void ClusteredShading::renderShadowMaps()
 			for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
 			{
 				const auto slot_rect = atlas_light.slots[idx].rect;
-
+				// std::print("{}   rect: {:4},{:4} {}x{}    ({})\n", idx, slot_rect.x, slot_rect.y, slot_rect.z, slot_rect.w, atlas_light.slots[idx].node_index);
 				renderSceneShadow(light.position, light.affect_radius, params_index, idx, _shadow_atlas, slot_rect);
 			}
 
 			atlas_light.on_rendered(now, light_hash);
 
-			// ++num_rendered;
+			++num_rendered;
 			// std::print("  slot[0] {} @ {},{}  ({})\n", slot.slots[0].size, slot.slots[0].rect.x, slot.slots[0].rect.y, slot.slots[0].node_index);
 		}
 	}
