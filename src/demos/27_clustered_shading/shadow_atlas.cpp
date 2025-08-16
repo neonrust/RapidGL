@@ -311,7 +311,7 @@ bool ShadowAtlas::should_render(const AtlasLight &atlas_light, Time now, size_t 
 
 	// TODO: check for dynamic objects inside the light's sphere
 
-	if(light_hash == atlas_light.hash)
+	if(light_hash == atlas_light.hash /* and no dynamic objects */)
 	{
 		// std::print("different hash\n");
 		return false;
@@ -321,7 +321,7 @@ bool ShadowAtlas::should_render(const AtlasLight &atlas_light, Time now, size_t 
 	const auto size_idx = _allocator.level_from_size(atlas_light.slots[0].size) - _allocator.min_level();
 	const auto interval = _render_intervals[size_idx];
 
-	// TODO: hm, average FPS should be a factor in this decisionm?
+	// TODO: hm, should average FPS be a factor in this decisionm?
 	//   or should the "interval" be a number of frames? plus a "minimum interval"?
 
 	const auto stale = (now - atlas_light._last_rendered) >= interval;
