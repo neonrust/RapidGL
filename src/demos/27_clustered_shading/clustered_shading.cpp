@@ -1548,6 +1548,13 @@ void ClusteredShading::renderShadowMaps()
 		const auto light_ = _light_mgr.get_by_id(light_id);
 		const auto &light = light_.value().get();
 
+		const bounds::Sphere light_sphere{ light.position, light.affect_radius };
+		if(not intersect::check(m_camera.frustum(), light_sphere))
+		{
+			atlas_light.set_dirty(); // to force a render if/when it comes into view again
+			continue;
+		}
+
 		const auto light_hash = _shadow_atlas.light_hash(light);
 
 		if(_shadow_atlas.should_render(atlas_light, now, light_hash))
