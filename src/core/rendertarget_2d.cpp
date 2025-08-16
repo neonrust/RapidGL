@@ -71,7 +71,6 @@ void Texture2d::create(const char *name, size_t width, size_t height, Color::Con
 		_depth_texture.SetFiltering(TextureFiltering::Magnify, TextureFilteringParam::Nearest);
 		_depth_texture.SetWrapping (TextureWrappingAxis::U,    TextureWrappingParam::ClampToEdge);
 		_depth_texture.SetWrapping (TextureWrappingAxis::V,    TextureWrappingParam::ClampToEdge);
-		_depth_texture.SetBorderColor(1, 1, 1, 1);
 	}
 
 	glCreateFramebuffers(1, &_fbo_id);

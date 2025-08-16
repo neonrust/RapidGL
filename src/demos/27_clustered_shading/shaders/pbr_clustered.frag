@@ -308,7 +308,7 @@ vec3 unpackNormal(vec2 f)
 }
 
 // returns [1, 0] whther the fragment corresponding to 'atlas_uv' has LOS to the light
-float sampleShadow(float current_depth, vec2 atlas_uv, vec2 texel_size);
+float sampleShadow(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max, vec2 texel_size);
 float fadeByDistance(float distance, float hard_limit);
 
 void detectCubeFaceSlot(vec3 light_to_frag, LightShadowParams params, out mat4 view_proj, out vec4 rect);
@@ -342,6 +342,11 @@ vec3 pointLightVisibility(uint index)
 	mat4 proj;
 	vec4 rect;
 	detectCubeFaceSlot(light_to_frag, params, proj, rect);
+	// ignore edge pixels
+	rect.x += 1;
+	rect.y += 1;
+	rect.z -= 2;
+	rect.w -= 2;
 
 	vec2 texel_size = 1.0 / vec2(textureSize(u_shadow_atlas, 0));
 	vec4 rect_uv = rect * vec4(texel_size, texel_size);
@@ -355,7 +360,7 @@ vec3 pointLightVisibility(uint index)
 	float light_distance = length(light_to_frag);
 	float normalized_depth = light_distance / light.affect_radius;
 
-	vec2 atlas_uv = rect_uv.xy + face_uv * rect_uv.zw;
+	vec2 atlas_uv = rect_uv.xy + face_uv * (rect_uv.zw + texel_size);
 	vec2 encoded_normal = textureLod(u_shadow_atlas_normals, atlas_uv, 0).xy;
 	vec3 depth_normal = unpackNormal(encoded_normal);
 	vec3 light_dir = normalize(-light_to_frag);
@@ -377,7 +382,9 @@ vec3 pointLightVisibility(uint index)
 
 	normalized_depth -= bias;
 
-	return vec3(light_fade * shadow_fade * sampleShadow(normalized_depth, atlas_uv, texel_size));
+	vec2 uv_min = vec2(rect_uv.x, rect_uv.y);
+	vec2 uv_max = vec2(rect_uv.x + rect_uv.z - texel_size.x, rect_uv.y + rect_uv.w - texel_size.y);
+	return vec3(light_fade * shadow_fade * sampleShadow(normalized_depth, atlas_uv, uv_min, uv_max, texel_size));
 }
 
 vec3 dirLightVisibility(uint index)
@@ -428,7 +435,7 @@ vec3 discLightVisibility(uint index)
 // 	return shadow / 9.0;
 // }
 
-float sampleShadow(float current_depth, vec2 atlas_uv, vec2 texel_size)
+float sampleShadow(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max, vec2 texel_size)
 {
 	// 3x3 gauss kernel
 
@@ -436,14 +443,20 @@ float sampleShadow(float current_depth, vec2 atlas_uv, vec2 texel_size)
 	//    https://www.youtube.com/watch?v=NCptEJ1Uevg&t=380s
 	//    https://www.youtube.com/watch?v=3FMONJ1O39U&t=850s
 
+	vec2 uv;
 	float shadow = 0;
 	float sample_depth;
 
-	texel_size = vec2(1)/4096.f;
+	// NOTE: UV is capped to stay withing the single shadow map slot (cube face)
+	//   but strictly, the sampling should in those cases instead sample from the
+	//   "spatial naighbour" slot. That is, however, quite complicated... :|
 
 	// sample a 3x3 box around the sample
 #define SAMPLE(uv_offset, weight) \
-	sample_depth = textureLod(u_shadow_atlas, atlas_uv + uv_offset*texel_size, 0).r; \
+	uv = atlas_uv + uv_offset*texel_size; \
+	uv.x = clamp(uv.x, uv_min.x, uv_max.x); \
+	uv.y = clamp(uv.y, uv_min.y, uv_max.y); \
+	sample_depth = textureLod(u_shadow_atlas, uv, 0).r; \
  	shadow += current_depth > sample_depth ? 0.0 : (weight);
 
   	const float weights[3] = { 0.25, 0.125, 0.0625 };
