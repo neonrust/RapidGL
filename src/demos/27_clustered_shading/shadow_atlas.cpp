@@ -776,8 +776,13 @@ float ShadowAtlas::light_value(const GPULight &light, const glm::vec3 &view_pos,
 			facing_weight = 0.5f + 0.5f * facing_weight; // scales from 0.5 (behind) to 1.f (in front)
 		}
 	}
+	else
+	{
+		// TODO: player's shadow might be visible
+		//   essentially the inverse of the above, booost if facing away from the light
+	}
 
-	const auto manual_priority = 1.f;  // TODO [0, 1] range, default = 1
+	const auto manual_priority = 1.f;  // TODO light.priority  [0, 1] range, default = 1
 	const auto dynamic_boost = 1.f;    // TODO light.has_dynamic_content ? 1.f : 0.9f;
 
 	const auto value = glm::clamp(base_weight * type_weight * facing_weight * manual_priority * dynamic_boost, 0.f, 1.f);
