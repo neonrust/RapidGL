@@ -115,6 +115,8 @@ void LightManager::clear()
 	_id_to_index.clear();
 	_index_to_id.clear();
 	_lights.clear();
+	_dirty.clear();
+	_dirty_list.clear();
 
 	_num_point_lights = 0;
 	_num_dir_lights = 0;
