@@ -1563,12 +1563,16 @@ void ClusteredShading::renderShadowMaps()
 
 			const auto params_index = _light_mgr.shadow_index(light_id);
 
+			// render only up to the light's radius
+			const auto far_z = light.affect_radius;
+
 			// TODO: possible to render all cube faces in one draw call, using a geomety shader?
 			for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
 			{
 				const auto slot_rect = atlas_light.slots[idx].rect;
+				_shadow_atlas.bindRenderTarget(RenderTarget::DepthBuffer | RenderTarget::ColorBuffer, slot_rect);  // TODO: the first argument is misleading
 				// std::print("{}   rect: {:4},{:4} {}x{}    ({})\n", idx, slot_rect.x, slot_rect.y, slot_rect.z, slot_rect.w, atlas_light.slots[idx].node_index);
-				renderSceneShadow(light.position, light.affect_radius, params_index, idx, _shadow_atlas, slot_rect);
+				renderSceneShadow(light.position, far_z, params_index, idx);
 			}
 
 			atlas_light.on_rendered(now, light_hash);
@@ -1756,11 +1760,9 @@ void ClusteredShading::renderDepth(const glm::mat4 &view_projection, RenderTarge
 	renderScene(view_projection, *m_depth_prepass_shader, NoMaterials);
 }
 
-void ClusteredShading::renderSceneShadow(const glm::vec3 &pos, float far_z, uint_fast16_t shadow_params_index, uint32_t shadow_map_index, RenderTarget::Texture2d &target, const glm::ivec4 &rect)
+void ClusteredShading::renderSceneShadow(const glm::vec3 &pos, float far_z, uint_fast16_t shadow_params_index, uint32_t shadow_map_index)
 {
 	// TODO: ideally, only render objects whose AABB intersects with the light's projection (frustum)
-
-	target.bindRenderTarget(RenderTarget::DepthBuffer | RenderTarget::ColorBuffer, rect);  // TODO: the first argument is misleading
 
 	glDepthMask(GL_TRUE);
 	glColorMask(GL_TRUE, GL_TRUE, GL_FALSE, GL_FALSE);  // writing 2-component normals
