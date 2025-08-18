@@ -75,7 +75,9 @@ public:
 
 public:
 
-	ShadowAtlas(uint32_t size); // TODO: specify which channels to use (e.g. depth & normals)
+	// TODO: specify which channels to use (e.g. depth & normals) ?
+	//    ALso take LightManager argument? ? can it be replaced for any reason?
+	ShadowAtlas(uint32_t size);
 	~ShadowAtlas();
 
 	bool create();
@@ -98,6 +100,8 @@ public:
 	bool should_render(const AtlasLight &atlas_light, Time now, size_t hash) const;
 
 	void update_shadow_params(LightManager &lights);
+
+	void clear();
 
 private:
 	float light_value(const GPULight &light, const glm::vec3 &view_pos, const glm::vec3 &view_forward) const;

@@ -444,6 +444,22 @@ void ShadowAtlas::update_shadow_params(LightManager &lights)
 	_shadow_params_ssbo.set(shadow_params);
 }
 
+void ShadowAtlas::clear()
+{
+	Counters counters;
+	for(const auto &[light_id, atlas_light]: _id_to_allocated)
+	{
+		if(remove_allocation(light_id))
+		{
+			++counters.dropped;
+			// lights.clear_shadow_idx(light_id);
+		}
+	}
+	_id_to_allocated.clear();
+
+//	_dump_changes(counters);
+}
+
 ShadowAtlas::Counters ShadowAtlas::prioritize_lights(LightManager &lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward, std::vector<ShadowAtlas::ValueLight> &prioritized)
 {
 	float strongest_dir_value { -1.f };
