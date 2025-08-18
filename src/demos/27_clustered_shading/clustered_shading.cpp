@@ -1548,12 +1548,15 @@ void ClusteredShading::renderShadowMaps()
 		const auto light_ = _light_mgr.get_by_id(light_id);
 		const auto &light = light_.value().get();
 
+		// skip lights whose bounding sphere is not in the camera's frustum
 		const bounds::Sphere light_sphere{ light.position, light.affect_radius };
 		if(not intersect::check(m_camera.frustum(), light_sphere))
 		{
 			atlas_light.set_dirty(); // to force a render if/when it comes into view again
 			continue;
 		}
+		// TODO: also, lights that do not affect any shading cluster can be skipped as well
+		//    this info is available in SSBO ALL_LIGHTS_INDEX (which f course is over on the GPU side...)
 
 		const auto light_hash = _shadow_atlas.light_hash(light);
 
