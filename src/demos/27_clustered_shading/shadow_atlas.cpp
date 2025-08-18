@@ -735,7 +735,7 @@ void ShadowAtlas::free_slot(SlotSize size, SlotID node_index)
 
 #if defined(DEBUG)
 	const auto &rect = _allocator.rect(node_index);
-	clear({ rect.x, rect.y, rect.w, rect.h });
+	Texture2d::clear({ rect.x, rect.y, rect.w, rect.h });
 #endif
 
 	free_slots.push_back(node_index);
