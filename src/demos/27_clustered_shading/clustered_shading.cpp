@@ -1572,9 +1572,10 @@ void ClusteredShading::renderShadowMaps()
 			// TODO: possible to render all cube faces in one draw call, using a geomety shader?
 			for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
 			{
-				const auto slot_rect = atlas_light.slots[idx].rect;
-				_shadow_atlas.bindRenderTarget(RenderTarget::DepthBuffer | RenderTarget::ColorBuffer, slot_rect);  // TODO: the first argument is misleading
+				const auto &slot_rect = atlas_light.slots[idx].rect;
 				// std::print("{}   rect: {:4},{:4} {}x{}    ({})\n", idx, slot_rect.x, slot_rect.y, slot_rect.z, slot_rect.w, atlas_light.slots[idx].node_index);
+
+				_shadow_atlas.bindRenderTarget(slot_rect);
 				renderSceneShadow(light.position, far_z, params_index, idx);
 			}
 
@@ -1752,7 +1753,7 @@ void ClusteredShading::renderScene(const glm::mat4 &view_projection, Shader &sha
 
 void ClusteredShading::renderDepth(const glm::mat4 &view_projection, RenderTarget::Texture2d &target, const glm::ivec4 &rect)
 {
-	target.bindRenderTarget(RenderTarget::DepthBuffer, rect);
+	target.bindRenderTarget(rect, RenderTarget::DepthBuffer);
 
 	glDepthMask(GL_TRUE);
 	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);

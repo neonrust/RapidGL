@@ -160,7 +160,12 @@ void Texture2d::bindDepthTextureSampler(GLuint unit) const
 	_depth_texture.Bind(unit);
 }
 
-void Texture2d::bindRenderTarget(BufferMask clear_mask, glm::ivec4 rect)
+void Texture2d::bindRenderTarget(BufferMask clear_mask)
+{
+	bindRenderTarget({ 0, 0, m_metadata.width, m_metadata.height }, clear_mask);
+}
+
+void Texture2d::bindRenderTarget(glm::ivec4 rect, BufferMask clear_mask)
 {
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _fbo_id);
 
