@@ -95,10 +95,10 @@ ShadowAtlas::ShadowAtlas(uint32_t size) :
 	generate_slots({ 24 + 1, 64 + 1, 256 + 1 });  // +1 for directional/sun light
 
 	// TODO: these sohould be configurable
-	_render_intervals.push_back(0ms);
-	_render_intervals.push_back(25ms);
-	_render_intervals.push_back(50ms);
-	_render_intervals.push_back(100ms);
+	_render_intervals.push_back({ 0, 0ms });
+	_render_intervals.push_back({ 1, 25ms });
+	_render_intervals.push_back({ 2, 50ms });
+	_render_intervals.push_back({ 4, 100ms });
 
 	// set aside 3 sots to sun light (uses CSM)
 	// will be used by the (strongest) directional light
@@ -304,32 +304,28 @@ bool ShadowAtlas::should_render(const AtlasLight &atlas_light, Time now, size_t 
 {
 
 	if(atlas_light.is_dirty())
-	{
-		// std::print("light dirty\n");
 		return true;
-	}
 
 	// TODO: check for dynamic objects inside the light's sphere
 
 	if(light_hash == atlas_light.hash /* and no dynamic objects */)
-	{
-		// std::print("different hash\n");
 		return false;
-	}
 
+
+	// light has changed or there are dynamic objects within range!
+	//   render if either enough frames skipped or enough time has passed  (AND ?)
 
 	const auto size_idx = _allocator.level_from_size(atlas_light.slots[0].size) - _allocator.min_level();
-	const auto interval = _render_intervals[size_idx];
+	assert(size_idx < _render_intervals.size());
+	const auto &[skip_frames, interval] = _render_intervals[size_idx];
 
-	// TODO: hm, should average FPS be a factor in this decisionm?
-	//   or should the "interval" be a number of frames? plus a "minimum interval"?
+	const auto overdue = (skip_frames == 0 or atlas_light._frames_skipped < skip_frames)
+		or (now - atlas_light._last_rendered) >= interval;
 
-	const auto stale = (now - atlas_light._last_rendered) >= interval;
+	if(not overdue and atlas_light._frames_skipped)
+		--atlas_light._frames_skipped;
 
-	// if(stale)
-	// 	std::print("stale\n");
-
-	return stale;
+	return overdue;
 }
 
 bool ShadowAtlas::remove_allocation(LightID light_id)

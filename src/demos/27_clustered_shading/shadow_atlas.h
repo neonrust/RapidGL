@@ -59,6 +59,7 @@ public:
 			_dirty = false;
 			_last_rendered = t;
 			hash = new_hash;
+			_frames_skipped = 0;
 		}
 
 		mutable size_t hash;
@@ -67,11 +68,12 @@ public:
 		mutable bool _dirty;
 		float _prev_light_value;
 		mutable Time _last_rendered;   // TODO: define a "pixels per second" limit for how many shadow map slots can be updated (in light-value/age order?)
+		mutable uint32_t _frames_skipped;
 		Time _last_size_change;
 
 		friend class ShadowAtlas;
 	};
-	static_assert(sizeof(AtlasLight) == 192);
+	static_assert(sizeof(AtlasLight) == 200);
 
 public:
 
@@ -82,7 +84,9 @@ public:
 
 	bool create();
 
-	inline void set_max_casters(size_t max_casters) { _max_shadow_slots = max_casters; }
+	// lights smaller htan 'min radius' will never cast a shadow
+	inline void set_min_radius(float radius) { _min_light_radius = radius; }
+	// lights further away than 'max distance' will never cast a shadw
 	inline void set_max_distance(float max_distance)
 	{
 		assert(max_distance > 0);
@@ -160,12 +164,14 @@ private:
 	AtlasLight _allocated_sun;
 
 	size_t _max_shadow_slots;
+
+	float _min_light_radius { 2.f };
 	float _max_distance { 50.f };
 	float _large_light_radius { 50.f };
 
 	// shortest interval an allocated slot can change size (toggle)
 	std::chrono::milliseconds _min_change_interval;
-	small_vec<std::chrono::milliseconds, 8> _render_intervals;
+	small_vec<std::pair<uint32_t, std::chrono::milliseconds>, 8> _render_intervals;
 
 	RGL::buffer::ShaderStorage<LightShadowParams> _shadow_params_ssbo;
 	small_vec<size_t, 16> _distribution;  // slot sizes of each of the levels (from max to min)
