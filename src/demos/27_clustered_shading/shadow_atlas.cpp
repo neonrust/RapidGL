@@ -758,7 +758,7 @@ float ShadowAtlas::light_value(const GPULight &light, const glm::vec3 &view_pos,
 	// nrmalize the radius using a "large" radius
 	const auto normalized_radius = std::min(light.affect_radius / _large_light_radius, 1.f);
 
-	const auto importance = glm::min(1.2f * normalized_radius / glm::max(normalized_dist, 1e-4f), 1.f);
+	const auto importance = std::min(1.2f * normalized_radius / glm::max(normalized_dist, 1e-4f), 1.f);
 	const auto base_weight = importance * importance; // inverse square falloff
 
 	const auto type_weight = 1.f; // e.g. 0.8f for point, 1.f for spot, etc.
