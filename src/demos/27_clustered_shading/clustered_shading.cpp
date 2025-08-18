@@ -1557,6 +1557,7 @@ void ClusteredShading::renderShadowMaps()
 		}
 		// TODO: also, lights that do not affect any shading cluster can be skipped as well
 		//    this info is available in SSBO ALL_LIGHTS_INDEX (which f course is over on the GPU side...)
+		//    Presumably, this implies the whole shadow map allocation needs to be moved to a compute shader?
 
 		const auto light_hash = _shadow_atlas.light_hash(light);
 
