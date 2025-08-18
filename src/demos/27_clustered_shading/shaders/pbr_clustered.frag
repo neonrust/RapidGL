@@ -336,6 +336,7 @@ vec3 pointLightVisibility(uint index)
 		return vec3(1);  // no shadow map allocated  :(
 	LightShadowParams params = ssbo_shadow_params[shadow_idx];
 	// TODO: fade out shadow based on light importance (e.g. the last 0.1)
+	//   however, there's no way to know if/when the shadow will be deallocated...
 
 	vec3 light_to_frag = in_world_pos - light.position;
 
@@ -356,7 +357,6 @@ vec3 pointLightVisibility(uint index)
 	light_space.xyz /= light_space.w; // NDC
 	vec2 face_uv = light_space.xy * 0.5 + 0.5; // [0, 1]
 
-	// TODO: use square distance?
 	float light_distance = length(light_to_frag);
 	float normalized_depth = light_distance / light.affect_radius;
 
