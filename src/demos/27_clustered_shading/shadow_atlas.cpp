@@ -356,6 +356,35 @@ void ShadowAtlas::_dump_desired(const small_vec<ShadowAtlas::AtlasLight, 120> &d
 	}
 }
 
+std::vector<std::pair<ShadowAtlas::SlotSize, size_t>> ShadowAtlas::allocated_counts() const
+{
+	static dense_map<SlotSize, size_t> size_counts_map;
+	if(size_counts_map.empty())
+		size_counts_map.reserve(_distribution.size());
+	size_counts_map.clear();
+
+	for(const auto &[light_id, atlas_light]: _id_to_allocated)
+	{
+		auto slot_size = atlas_light.slots[0].size;
+		auto found = size_counts_map.find(slot_size);
+		if(found == size_counts_map.end())
+			size_counts_map[slot_size] = 1;
+		else
+			++found->second;
+	}
+
+	std::vector<std::pair<SlotSize, size_t>> size_counts;
+	size_counts.reserve(size_counts_map.size());
+	for(const auto &[size, count]: size_counts_map)
+		size_counts.push_back({ size, count });
+
+	std::ranges::sort(size_counts, [](const auto &A, const auto &B) {
+		return A.first > B.first;
+	});
+
+	return size_counts;
+}
+
 void ShadowAtlas::debug_dump_allocated(const LightManager &lights, bool details)
 {
 	static dense_map<SlotSize, size_t> size_counts;

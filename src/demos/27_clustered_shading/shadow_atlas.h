@@ -109,6 +109,8 @@ public:
 
 	void debug_dump_allocated(const LightManager &lights, bool details=false);
 
+	std::vector<std::pair<SlotSize, size_t>> allocated_counts() const;
+
 private:
 	float light_value(const GPULight &light, const glm::vec3 &view_pos, const glm::vec3 &view_forward) const;
 	struct Counters
