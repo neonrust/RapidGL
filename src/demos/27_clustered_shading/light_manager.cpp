@@ -163,10 +163,10 @@ void LightManager::set(LightID uuid, const GPULight &L)
 	auto found = _id_to_index.find(uuid);
 	assert(found != _id_to_index.end());
 
-	auto light_index = found->second;
+	const auto light_index = found->second;
 
 	_lights[light_index] = L;
-	if(const auto &[_, ok] =_dirty.insert(light_index); ok)
+	if(const auto &[_, ok] = _dirty.insert(light_index); ok)
 		_dirty_list.push_back(light_index);
 }
 
@@ -176,7 +176,7 @@ void LightManager::set(const PointLight &p)
 	auto found = _id_to_index.find(p.id());
 	assert(found != _id_to_index.end());
 
-	auto light_index = found->second;
+	const auto light_index = found->second;
 
 	const auto L = to_gpu_light(p);
 
@@ -228,6 +228,36 @@ void LightManager::flush()
 
 	// _lights_ssbo.flush();
 	_dirty.clear();
+}
+
+void LightManager::set_shadow_index(LightID light_id, uint_fast16_t shadow_index)
+{
+	auto found = _id_to_index.find(light_id);
+	if(found == _id_to_index.end())
+		return;
+
+	const auto light_index = found->second;
+
+	auto &L = _lights[light_index];
+	SET_SHADOW_IDX(L, shadow_index);
+
+	if(const auto &[_, ok] = _dirty.insert(light_index); ok)
+		_dirty_list.push_back(light_index);
+}
+
+void LightManager::clear_shadow_index(LightID light_id)
+{
+	auto found = _id_to_index.find(light_id);
+	if(found == _id_to_index.end())
+		return;
+
+	const auto light_index = found->second;
+
+	auto &L = _lights[light_index];
+	CLR_SHADOW_IDX(L);
+
+	if(const auto &[_, ok] = _dirty.insert(light_index); ok)
+		_dirty_list.push_back(light_index);
 }
 
 void LightManager::add(const GPULight &L, LightID uuid)

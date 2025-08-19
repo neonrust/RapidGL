@@ -97,22 +97,8 @@ public:
 	inline uint_fast16_t shadow_index(LightID light_id) const {
 		return GET_SHADOW_IDX(get_by_id(light_id).value());
 	}
-	inline void set_shadow_index(LightID light_id, uint_fast16_t shadow_index)
-	{
-		auto found = _id_to_index.find(light_id);
-		if(found == _id_to_index.end())
-			return;
-		auto &L = _lights[found->second];
-		SET_SHADOW_IDX(L, shadow_index);
-	}
-	inline void clear_shadow_index(LightID light_id)
-	{
-		auto found = _id_to_index.find(light_id);
-		if(found == _id_to_index.end())
-			return;
-		auto &L = _lights[found->second];
-		CLR_SHADOW_IDX(L);
-	}
+	void set_shadow_index(LightID light_id, uint_fast16_t shadow_index);
+	void clear_shadow_index(LightID light_id);
 
 	template<typename LT=GPULight> requires (std::same_as<LT, GPULight> || _private::LightType<LT>)
 	inline size_t num_lights() const;

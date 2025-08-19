@@ -438,6 +438,7 @@ void ShadowAtlas::update_shadow_params(LightManager &lights)
 	}
 
 	_shadow_params_ssbo.set(shadow_params);
+	lights.flush();
 }
 
 void ShadowAtlas::clear()
