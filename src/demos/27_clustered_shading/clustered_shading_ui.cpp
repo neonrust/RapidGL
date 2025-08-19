@@ -161,6 +161,9 @@ void ClusteredShading::render_gui()
 			ImGui::SliderFloat("Bias slope power", &m_shadow_bias_slope_power,    0.01f,  5.f,   "%.2f");
 			ImGui::SliderFloat("Bias dist. scale", &m_shadow_bias_distance_scale, 0.f,    0.001f,"%.3f");
 			ImGui::SliderFloat("Bias scale",       &m_shadow_bias_scale,         -0.2f,    2.f,   "%.1f");
+
+			for(const auto &[size, count]: _shadow_atlas.allocated_counts())
+				ImGui::Text("  %4d: %ld", size, count);
 		}
 
 		if(ImGui::CollapsingHeader("Images", ImGuiTreeNodeFlags_DefaultOpen))
