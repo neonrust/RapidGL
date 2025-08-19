@@ -107,6 +107,8 @@ public:
 
 	void clear();
 
+	void debug_dump_allocated(const LightManager &lights, bool details=false);
+
 private:
 	float light_value(const GPULight &light, const glm::vec3 &view_pos, const glm::vec3 &view_forward) const;
 	struct Counters
@@ -155,7 +157,6 @@ private:
 	void free_slot(SlotSize size, SlotID node_index);
 
 	void _dump_desired(const small_vec<AtlasLight, 120> &desired_slots);
-	void _dump_allocated_counts();
 
 private:
 	dense_map<SlotSize, std::vector<SlotID>> _slot_sets;

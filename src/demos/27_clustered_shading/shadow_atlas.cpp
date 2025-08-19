@@ -265,7 +265,7 @@ size_t ShadowAtlas::eval_lights(LightManager &lights, const glm::vec3 &view_pos,
 			std::print(" \x1b[1m?\x1b[m{}", counters.change_pending);
 		std::print(", in {} ->", duration_cast<microseconds>(steady_clock::now() - T0));
 #if defined(DEBUG)
-		_dump_allocated_counts();
+		debug_dump_allocated(lights, false);
 #endif
 		std::puts("");
 	}
@@ -356,7 +356,7 @@ void ShadowAtlas::_dump_desired(const small_vec<ShadowAtlas::AtlasLight, 120> &d
 	}
 }
 
-void ShadowAtlas::_dump_allocated_counts()
+void ShadowAtlas::debug_dump_allocated(const LightManager &lights, bool details)
 {
 	static dense_map<SlotSize, size_t> size_counts;
 	if(size_counts.empty())
@@ -369,10 +369,10 @@ void ShadowAtlas::_dump_allocated_counts()
 
 	auto num_used = 0u;
 
-	for(const auto &[light_id, allocated]: _id_to_allocated)
+	for(const auto &[light_id, atlas_light]: _id_to_allocated)
 	{
-		num_used += allocated.num_slots;
-		auto slot_size = allocated.slots[0].size;
+		num_used += atlas_light.num_slots;
+		auto slot_size = atlas_light.slots[0].size;
 		auto found = size_counts.find(slot_size);
 		if(found == size_counts.end())
 		{
@@ -381,6 +381,22 @@ void ShadowAtlas::_dump_allocated_counts()
 		}
 		else
 			++found->second;
+
+		if(details)
+		{
+			std::print("  - {:3}  {:2} slots:  [{}]\n", light_id, atlas_light.num_slots, lights.shadow_index(light_id));
+			auto slots = atlas_light.slots;
+			std::sort(slots.begin(), slots.begin() + atlas_light.num_slots, [](const auto &A, const auto &B){
+				return A.rect.x < B.rect.x or A.rect.y < B.rect.y;
+			});
+			for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
+			{
+				const auto &slot = slots[idx];
+				std::print("      {:3}: {:4},{:4}   {:4}  \n", slot.node_index, slot.rect.x, slot.rect.y, slot.size);
+				assert(slot.rect.z == slot.size);
+				assert(slot.rect.w == slot.size);
+			}
+		}
 	}
 	if(not sizes.empty())
 	{
