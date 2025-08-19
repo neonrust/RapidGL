@@ -331,10 +331,10 @@ vec3 pointLightVisibility(uint index)
 	if(shadow_fade == 0)
 		return vec3(0);
 
-	uint shadow_idx = GET_SHADOW_IDX(light);
-	if(shadow_idx == LIGHT_NO_SHADOW)
-		return vec3(1);  // no shadow map allocated  :(
-	LightShadowParams params = ssbo_shadow_params[shadow_idx];
+	uint params_idx = GET_SHADOW_IDX(light);
+	if(params_idx == LIGHT_NO_SHADOW)
+		return vec3(1);  // no shadow map allocated
+	LightShadowParams params = ssbo_shadow_params[params_idx];
 	// TODO: fade out shadow based on light importance (e.g. the last 0.1)
 	//   however, there's no way to know if/when the shadow will be deallocated...
 

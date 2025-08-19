@@ -200,7 +200,7 @@ void LightManager::flush()
 		// no lights were added or removed, but some are dirty
 
 		// make as few .update() calls to the SSBO, using contiguous ranges
-		std::sort(_dirty_list.begin(), _dirty_list.end());
+		std::ranges::sort(_dirty_list);
 		LightIndex start;
 		auto last = LightIndex(-1);
 
@@ -228,6 +228,7 @@ void LightManager::flush()
 
 	// _lights_ssbo.flush();
 	_dirty.clear();
+	_dirty_list.clear();
 }
 
 void LightManager::set_shadow_index(LightID light_id, uint_fast16_t shadow_index)
@@ -239,10 +240,15 @@ void LightManager::set_shadow_index(LightID light_id, uint_fast16_t shadow_index
 	const auto light_index = found->second;
 
 	auto &L = _lights[light_index];
-	SET_SHADOW_IDX(L, shadow_index);
 
-	if(const auto &[_, ok] = _dirty.insert(light_index); ok)
-		_dirty_list.push_back(light_index);
+	const auto prev_idx = GET_SHADOW_IDX(L);
+	if(shadow_index != prev_idx)
+	{
+		SET_SHADOW_IDX(L, shadow_index);
+
+		if(const auto &[_, ok] = _dirty.insert(light_index); ok)
+			_dirty_list.push_back(light_index);
+	}
 }
 
 void LightManager::clear_shadow_index(LightID light_id)
@@ -254,10 +260,15 @@ void LightManager::clear_shadow_index(LightID light_id)
 	const auto light_index = found->second;
 
 	auto &L = _lights[light_index];
-	CLR_SHADOW_IDX(L);
 
-	if(const auto &[_, ok] = _dirty.insert(light_index); ok)
-		_dirty_list.push_back(light_index);
+	const auto prev_idx = GET_SHADOW_IDX(L);
+	if(prev_idx != LIGHT_NO_SHADOW)
+	{
+		CLR_SHADOW_IDX(L);
+
+		if(const auto &[_, ok] = _dirty.insert(light_index); ok)
+			_dirty_list.push_back(light_index);
+	}
 }
 
 void LightManager::add(const GPULight &L, LightID uuid)

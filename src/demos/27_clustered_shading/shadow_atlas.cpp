@@ -412,8 +412,6 @@ void ShadowAtlas::update_shadow_params(LightManager &lights)
 	shadow_params.reserve(_id_to_allocated.size());
 	shadow_params.clear();
 
-	auto shadow_index = 0u;
-
 	for(auto &[light_id, atlas_light]: allocated_lights())
 	{
 		const auto light_ = lights.get_by_id(light_id);
@@ -428,13 +426,11 @@ void ShadowAtlas::update_shadow_params(LightManager &lights)
 			rects[idx] = atlas_light.slots[idx].rect;
 		}
 
+		lights.set_shadow_index(light_id, shadow_params.size());
 		shadow_params.push_back(LightShadowParams {
 			.view_proj = projs,
 			.atlas_rect = rects,
 		});
-
-		lights.set_shadow_index(light_id, shadow_index);
-		++shadow_index;
 	}
 
 	_shadow_params_ssbo.set(shadow_params);

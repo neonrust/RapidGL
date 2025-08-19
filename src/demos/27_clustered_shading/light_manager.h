@@ -297,19 +297,19 @@ GPULight LightManager::to_gpu_light(const LT &l)
 	}
 	else if constexpr (std::same_as<LT, DirectionalLight> or std::same_as<LT, DirectionalLightParams>)
 	{
-		L.type_flags = LIGHT_TYPE_DIRECTIONAL;
+		L.type_flags    = LIGHT_TYPE_DIRECTIONAL;
 	}
 	else if constexpr (std::same_as<LT, SpotLight> or std::same_as<LT, SpotLightParams>)
 	{
-		L.type_flags  = LIGHT_TYPE_SPOT | (l.shadow_caster? LIGHT_SHADOW_CASTER: 0);
-		L.position    = l.position;
-		L.direction   = l.direction;
-		L.outer_angle = l.outer_angle;
-		L.inner_angle = l.inner_angle;
+		L.type_flags     = LIGHT_TYPE_SPOT | (l.shadow_caster? LIGHT_SHADOW_CASTER: 0);
+		L.position       = l.position;
+		L.direction      = l.direction;
+		L.outer_angle    = l.outer_angle;
+		L.inner_angle    = l.inner_angle;
 	}
 	else if constexpr (std::same_as<LT, AreaLight> or std::same_as<LT, AreaLightParams>)
 	{
-		L.type_flags  = LIGHT_TYPE_AREA | (l.two_sided? LIGHT_TWO_SIDED: 0);
+		L.type_flags      = LIGHT_TYPE_AREA | (l.two_sided? LIGHT_TWO_SIDED: 0);
 		L.shape_points[0] = l.points[0];
 		L.shape_points[1] = l.points[1];
 		L.shape_points[2] = l.points[2];
@@ -317,23 +317,25 @@ GPULight LightManager::to_gpu_light(const LT &l)
 	}
 	else if constexpr (std::same_as<LT, TubeLight> or std::same_as<LT, TubeLightParams>)
 	{
-		L.type_flags  = LIGHT_TYPE_SPHERE;
+		L.type_flags        = LIGHT_TYPE_SPHERE;
 		L.shape_points[0]   = l.end_points[0];
 		L.shape_points[1]   = l.end_points[1];
 		L.shape_points[2].x = l.thickness;
 	}
 	else if constexpr (std::same_as<LT, SphereLight> or std::same_as<LT, SphereLightParams>)
 	{
-		L.type_flags  = LIGHT_TYPE_SPHERE;
+		L.type_flags        = LIGHT_TYPE_SPHERE;
 		L.shape_points[0].x = l.sphere_radius;
 	}
 	else if constexpr (std::same_as<LT, DiscLight> or std::same_as<LT, DiscLightParams>)
 	{
-		L.type_flags  = LIGHT_TYPE_DISC;
+		L.type_flags        = LIGHT_TYPE_DISC;
 		L.position          = l.position;
 		L.direction         = l.direction;
 		L.shape_points[0].x = l.disc_radius;
 	}
+
+	CLR_SHADOW_IDX(L);
 
 	return L;
 }
