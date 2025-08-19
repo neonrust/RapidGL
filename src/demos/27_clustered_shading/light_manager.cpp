@@ -1,5 +1,7 @@
 #include "light_manager.h"
 
+#include <ranges>
+
 #include "buffer_binds.h"
 #include "light_constants.h"
 
@@ -199,34 +201,23 @@ void LightManager::flush()
 	{
 		// no lights were added or removed, but some are dirty
 
-		// make as few .update() calls to the SSBO, using contiguous ranges
+		// make as few .update() calls as possible to the SSBO, using contiguous ranges
 		std::ranges::sort(_dirty_list);
-		LightIndex start;
-		auto last = LightIndex(-1);
 
-		for(auto dirty_index: _dirty_list)
+		auto contiguous = [](auto a, auto b){
+			return b == a + 1;
+		};
+		for(auto subrange : _dirty_list | std::views::chunk_by(contiguous))
 		{
-			if(last == LightIndex(-1))  // new, potential range
-			{
-				start = dirty_index;
-				last = start;
-			}
-			else if(dirty_index > last + 1) // index not contiguous with previous
-			{
-				// update the previous range (might be only one index)
-				_lights_ssbo.set(_lights.begin() + start, _lights.begin() + last, start);
-				start = dirty_index;
-				last = LightIndex(-1);
-			}
+			auto s = *subrange.begin();
+			auto e = *std::prev(subrange.end());
+			if (s == e)
+				_lights_ssbo.set(s, _lights[s]);
 			else
-				last = dirty_index;
+				_lights_ssbo.set(_lights.begin() + s, _lights.begin() + e+ 1, s);
 		}
-		// the left over range at the end
-		if(last == LightIndex(-1))
-			_lights_ssbo.set(_lights.begin() + start, _lights.end(), start);
 	}
 
-	// _lights_ssbo.flush();
 	_dirty.clear();
 	_dirty_list.clear();
 }
