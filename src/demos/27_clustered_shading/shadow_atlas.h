@@ -111,6 +111,8 @@ public:
 
 	std::vector<std::pair<SlotSize, size_t>> allocated_counts() const;
 
+	inline size_t slot_size_idx(SlotSize size) const { return _allocator.level_from_size(size) - _allocator.min_level(); }
+
 private:
 	float light_value(const GPULight &light, const glm::vec3 &view_pos, const glm::vec3 &view_forward) const;
 	struct Counters
@@ -153,7 +155,7 @@ private:
 	Counters prioritize_lights(LightManager &lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward, std::vector<ValueLight> &prioritized);
 	Counters apply_desired_slots(const small_vec<AtlasLight, 120> &desired_slots, LightManager &lights, Time now);
 	void generate_slots(std::initializer_list<uint32_t> distribution);
-	bool slots_available(const AtlasLight &atlas_light) const;
+	bool has_slots_available(const AtlasLight &atlas_light, const std::array<size_t, 6> &num_promised) const;
 	bool remove_allocation(LightID light_id);
 	SlotID alloc_slot(SlotSize size, bool first=true);
 	void free_slot(SlotSize size, SlotID node_index);

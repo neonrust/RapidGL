@@ -315,7 +315,7 @@ bool ShadowAtlas::should_render(const AtlasLight &atlas_light, Time now, size_t 
 	// light has changed or there are dynamic objects within range!
 	//   render if either enough frames skipped or enough time has passed  (AND ?)
 
-	const auto size_idx = _allocator.level_from_size(atlas_light.slots[0].size) - _allocator.min_level();
+	const auto size_idx = slot_size_idx(atlas_light.slots[0].size);
 	assert(size_idx < _render_intervals.size());
 	const auto &[skip_frames, interval] = _render_intervals[size_idx];
 
@@ -572,6 +572,8 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const small_vec<AtlasLigh
 	small_vec<uint32_t, 120> changed_size;
 	auto desired_index = 0u;
 
+	std::array<size_t, 6> size_promised = { 0, 0, 0, 0, 0, 0 }; // max to min level slot sized promised
+
 	// (re)allocate slots according to declared desire
 	for(const auto &desired: desired_slots)
 	{
@@ -582,12 +584,24 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const small_vec<AtlasLigh
 		{
 			// new shadow map allocation
 
+			if(not has_slots_available(desired, size_promised))
+			{
+				if(remove_allocation(light_id))
+				{
+					++counters.dropped;
+					lights.clear_shadow_index(light_id);
+				}
+				std::print("  [{}] RAN out of slots of size {}\n", light_id, desired.slots[0].size);
+				++desired_index;
+				continue;
+			}
+
 			++counters.allocated;
+
 			auto atlas_light = desired;  // must copy :(   (surely not everything?)
 
-			// std::print("  [{}] alloc {} slots:   {}", light_id, atlas_light.num_slots, atlas_light.slots[0].size);
+			// std::print("  [{}] alloc {} slots:   new {}", light_id, atlas_light.num_slots, atlas_light.slots[0].size);
 			// std::fflush(stdout);
-
 			for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
 			{
 				const auto node_index = alloc_slot(atlas_light.slots[idx].size);
@@ -608,12 +622,10 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const small_vec<AtlasLigh
 			const auto size_diff = int32_t(desired.slots[0].size) - int32_t(atlas_light.slots[0].size);
 			const auto change_age = now - atlas_light._last_size_change;
 
-			// TODO: this is tested before the if-stmt to simplify debugging
-			//   it should be inside the condition (thus only called when necessary)
-			const auto has_slots = slots_available(desired);
-
-			if(size_diff == 0 or change_age < _min_change_interval or not has_slots)
+			if(size_diff == 0 or change_age < _min_change_interval or not has_slots_available(desired, size_promised))
 			{
+				// in the case of demotion, if no slots are available, demute further?
+
 				++counters.retained;
 
 				if(size_diff != 0)
@@ -639,12 +651,12 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const small_vec<AtlasLigh
 				{
 					const auto &slot = atlas_light.slots[idx];
 					free_slot(slot.size, slot.node_index);
+					// and we promise to allocate the new size later
+					++size_promised[slot_size_idx(desired.slots[idx].size)];
 				}
 
-				// TODO: is it worth it to blit-copy the existing rendered slots to the new ones?
-				//   to avoid rendering it again.
-				//   at least for demotions, this could be done.
-				//   MUCH later and ONLY if proven to be a bottleneck
+				// TODO: possible to blit-copy the existing rendered slots to the new ones for demotions
+				//   However, this should only be implemented if really beneficial on a larger scale!
 
 				// std::print("; {} remaining\n", _slot_sets[atlas_light.slots[0].size].size());
 			}
@@ -664,9 +676,8 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const small_vec<AtlasLigh
 
 		auto &atlas_light = found->second;
 
-		// std::print("  [{}] alloc {} slots:   {}", light_id, atlas_light.num_slots, desired.slots[0].size);
+		// std::print("  [{}] alloc {} slots:  pro/de -> {}", light_id, atlas_light.num_slots, desired.slots[0].size);
 		// std::fflush(stdout);
-
 		for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
 		{
 			auto &slot = atlas_light.slots[idx];
@@ -688,57 +699,95 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const small_vec<AtlasLigh
 	return counters;
 }
 
-bool ShadowAtlas::slots_available(const AtlasLight &atlas_light) const
+bool ShadowAtlas::has_slots_available(const AtlasLight &atlas_light, const std::array<size_t, 6> &size_promised) const
 {
-	// TODO: check if slots from 'beg' to 'end' are available to allocate
-	auto need1_size = 0u;
-	auto need1 = 0u;
-	auto need2_size = 0u;
-	auto need2 = 0u;
-	auto need3_size = 0u;
-	auto need3 = 0u;
+	struct SizeCount
+	{
+		SlotSize size;
+		size_t count;
+	};
+
+	small_vec<SizeCount, 3> size_counts;   // at most 3 unique sizes
 
 	for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
 	{
-		auto slot_size = atlas_light.slots[idx].size;
+		const auto &slot = atlas_light.slots[idx];
 
-		if(need1_size == 0)
+		bool found = false;
+		for(auto &ss: size_counts)
 		{
-			need1_size = slot_size;
-			++need1;
+			found = ss.size == slot.size;
+			if(found)
+			{
+				++ss.count;
+				break;
+			}
 		}
-		else if(need1_size == slot_size)
-			++need1;
-		else if(need2_size == 0)
+		if(not found)
 		{
-			need2_size = slot_size;
-			++need2;
+			assert(size_counts.size() < 3);
+			size_counts.push_back({ slot.size, 1 });
 		}
-		else if(need2_size == slot_size)
-			++need2;
-		else if(need3_size == 0)
-		{
-			need3_size = slot_size;
-			++need3;
-		}
-		else if(need3_size == slot_size)
-			++need3;
 	}
 
-	if(_slot_sets.find(need1_size)->second.size() < need1)
-		return false;
-
-	if(need2_size == 0)
-		return true;
-	if(_slot_sets.find(need2_size)->second.size() < need2)
-		return false;
-
-	if(need3_size == 0)
-		return true;
-	if(_slot_sets.find(need3_size)->second.size() < need3)
-		return false;
+	for(const auto &ss: size_counts)
+	{
+		const auto promised = size_promised[slot_size_idx(ss.size)];
+		const auto num_free = _slot_sets.find(ss.size)->second.size();
+		if(num_free - promised < ss.count)
+			return false;
+	}
 
 	return true;
+
+	// auto need1_size = 0u;
+	// auto need1 = 0u;
+	// auto need2_size = 0u;
+	// auto need2 = 0u;
+	// auto need3_size = 0u;
+	// auto need3 = 0u;
+
+	// for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
+	// {
+	// 	auto slot_size = atlas_light.slots[idx].size;
+
+	// 	if(need1_size == 0)
+	// 	{
+	// 		need1_size = slot_size;
+	// 		++need1;
+	// 	}
+	// 	else if(need1_size == slot_size)
+	// 		++need1;
+	// 	else if(need2_size == 0)
+	// 	{
+	// 		need2_size = slot_size;
+	// 		++need2;
+	// 	}
+	// 	else if(need2_size == slot_size)
+	// 		++need2;
+	// 	else if(need3_size == 0)
+	// 	{
+	// 		need3_size = slot_size;
+	// 		++need3;
+	// 	}
+	// 	else if(need3_size == slot_size)
+	// 		++need3;
+	// }
+
+	// if(_slot_sets.find(need1_size)->second.size() < need1)
+	// 	return false;
+
+	// if(need2_size == 0)
+	// 	return true;
+	// if(_slot_sets.find(need2_size)->second.size() < need2)
+	// 	return false;
+
+	// if(need3_size == 0)
+	// 	return true;
+	// if(_slot_sets.find(need3_size)->second.size() < need3)
+	// 	return false;
+
+	// return true;
 }
 
 ShadowAtlas::SlotID ShadowAtlas::alloc_slot(SlotSize size, bool first)
@@ -981,6 +1030,7 @@ static glm::mat4 light_view_projection(const GPULight &light, size_t idx)
 
 	return glm::mat4(1);
 }
+
 ShadowAtlas::AtlasLight::AtlasLight(const AtlasLight &other) :
 	uuid(other.uuid),
 	num_slots(other.num_slots),
