@@ -570,52 +570,20 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const small_vec<AtlasLigh
 
 	// size changes must be done in two phases; remember which they were
 	small_vec<uint32_t, 120> changed_size;
-	auto desired_index = 0u;
 
-	std::array<size_t, 6> size_promised = { 0, 0, 0, 0, 0, 0 }; // max to min level slot sized promised
+	std::array<size_t, 6> size_promised = { 0, 0, 0, 0, 0, 0 };  // max to min level slot sizes promised (used for pro/demotions)
 
-	// (re)allocate slots according to declared desire
-	for(const auto &desired: desired_slots)
+	// deallocate for pro/demotions first, then new allocations and allocations for pro/demotions
+
+	// deallocate lights for pro/demotions
+	for(const auto &[desired_index, desired]: std::views::enumerate(desired_slots))
 	{
 		const auto light_id = desired.uuid;
 
 		auto found = _id_to_allocated.find(light_id);
-		if(found == _id_to_allocated.end())
+		if(found != _id_to_allocated.end())
 		{
-			// new shadow map allocation
-
-			if(not has_slots_available(desired, size_promised))
-			{
-				if(remove_allocation(light_id))
-				{
-					++counters.dropped;
-					lights.clear_shadow_index(light_id);
-				}
-				std::print("  [{}] RAN out of slots of size {}\n", light_id, desired.slots[0].size);
-				++desired_index;
-				continue;
-			}
-
-			++counters.allocated;
-
-			auto atlas_light = desired;  // must copy :(   (surely not everything?)
-
-			// std::print("  [{}] alloc {} slots:   new {}", light_id, atlas_light.num_slots, atlas_light.slots[0].size);
-			// std::fflush(stdout);
-			for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
-			{
-				const auto node_index = alloc_slot(atlas_light.slots[idx].size);
-
-				atlas_light.slots[idx].node_index = node_index;
-				atlas_light.slots[idx].rect = to_uvec4(_allocator.rect(node_index));
-			}
-			// std::print("; {} remaining\n", _slot_sets[atlas_light.slots[0].size].size());
-
-			_id_to_allocated[light_id] = atlas_light;
-		}
-		else
-		{
-			// was allocated before, check if it needs to be changed
+			// existing allocation, check if it desires to be changed
 
 			auto &atlas_light = found->second;
 
@@ -624,7 +592,7 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const small_vec<AtlasLigh
 
 			if(size_diff == 0 or change_age < _min_change_interval or not has_slots_available(desired, size_promised))
 			{
-				// in the case of demotion, if no slots are available, demute further?
+				// TODO: in the case of demotion, if no slots are available, demute further?
 
 				++counters.retained;
 
@@ -633,14 +601,14 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const small_vec<AtlasLigh
 			}
 			else
 			{
-				changed_size.push_back(desired_index);
+				changed_size.push_back(uint32_t(desired_index));
 
 				if(size_diff > 0)
 					++counters.promoted;
 				else
 					++counters.demoted;
 
-				// first deallocate the ld size, then allocate the new (separate loop below)
+				// first deallocate the old size (new size allocated in the loop below)
 
 				// return the previous size slot to the pool
 				// std::print("  [{}]  free {} slots:    {}: {} (-> {})",
@@ -651,7 +619,8 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const small_vec<AtlasLigh
 				{
 					const auto &slot = atlas_light.slots[idx];
 					free_slot(slot.size, slot.node_index);
-					// and we promise to allocate the new size later
+
+					// and we promise to allocate the new size later (loop below)
 					++size_promised[slot_size_idx(desired.slots[idx].size)];
 				}
 
@@ -661,11 +630,9 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const small_vec<AtlasLigh
 				// std::print("; {} remaining\n", _slot_sets[atlas_light.slots[0].size].size());
 			}
 		}
-
-		++desired_index;
 	}
 
-	// allocate the new slots for lights that changed size
+	// allocate the new slots for pro/demotions
 	for(const auto index: changed_size)
 	{
 		const auto &desired = desired_slots[index];
@@ -693,7 +660,53 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const small_vec<AtlasLigh
 		atlas_light._last_size_change = now;
 		atlas_light._dirty = true;
 
-		_id_to_allocated[light_id] = atlas_light;
+		found->second = atlas_light;
+	}
+
+	// no more promises!  (we already did those above)
+	size_promised = { 0, 0, 0, 0, 0, 0 };
+
+	// finally, allocate totally NEW slots
+	for(const auto &desired: desired_slots)
+	{
+		const auto light_id = desired.uuid;
+
+		auto found = _id_to_allocated.find(light_id);
+		if(found == _id_to_allocated.end())
+		{
+			// new shadow map allocation
+
+			if(not has_slots_available(desired, size_promised))
+			{
+				// this should not happen, I think...
+
+				if(remove_allocation(light_id))
+				{
+					++counters.dropped;
+					lights.clear_shadow_index(light_id);
+				}
+				std::print("  [{}] RAN out of slots of size {}\n", light_id, desired.slots[0].size);
+				assert(false);
+				continue;
+			}
+
+			++counters.allocated;
+
+			auto atlas_light = desired;  // must copy :(   (surely not everything?)
+
+			// std::print("  [{}] alloc {} slots:   new {}", light_id, atlas_light.num_slots, atlas_light.slots[0].size);
+			// std::fflush(stdout);
+			for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
+			{
+				const auto node_index = alloc_slot(atlas_light.slots[idx].size);
+
+				atlas_light.slots[idx].node_index = node_index;
+				atlas_light.slots[idx].rect = to_uvec4(_allocator.rect(node_index));
+			}
+			// std::print("; {} remaining\n", _slot_sets[atlas_light.slots[0].size].size());
+
+			_id_to_allocated[light_id] = atlas_light;
+		}
 	}
 
 	return counters;
