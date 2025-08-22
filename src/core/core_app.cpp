@@ -5,7 +5,7 @@
 using namespace std::chrono;
 
 #include "stb_image_write.h"
-#include "stb_image_resize.h"
+#include "stb_image_resize2.h"
 
 #include "filesystem.h"
 #include "input.h"
@@ -104,7 +104,7 @@ namespace RGL
         if (resize)
         {
             auto resized_image = image;
-			stbir_resize_uint8(image.data(), GLsizei(width), GLsizei(height), 0, resized_image.data(), int(dst_width), int(dst_height), 0, 3);
+			stbir_resize_uint8_linear(image.data(), GLsizei(width), GLsizei(height), 0, resized_image.data(), int(dst_width), int(dst_height), 0, STBIR_RGB);
 
             width  = dst_width;
             height = dst_height;
