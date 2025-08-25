@@ -1,19 +1,11 @@
 #include "spatial_allocator.h"
+using namespace RGL;
+
 #include <boost/ut.hpp>
-
-#include <chrono>
-#include <print>
-#include <format>
+using namespace boost::ut;
 
 
-int main()
-{
-	using namespace RGL;
-	using namespace boost::ut;
-
-	using namespace std::chrono;
-
-	const auto T0 = steady_clock::now();
+suite<fixed_string("SpatialAllocator")> sa_suite([]{
 
 	"ctor"_test = [] {
 		SpatialAllocator a(8192);
@@ -117,18 +109,18 @@ int main()
 		// more?
 	};
 
-	// "level"_test = [] {
-	// 	SpatialAllocator a(8192);
-	// 	expect(a.level(0) == 0);
-	// 	expect(a.level(1) == 1);
-	// 	expect(a.level(2) == 1);
-	// 	expect(a.level(3) == 1);
-	// 	expect(a.level(4) == 1);
-	//
-	// 	expect(a.level(6) == 2);
-	//
-	// 	expect(a.level(28) == 3);
-	// };
+	   // "level"_test = [] {
+	   // 	SpatialAllocator a(8192);
+	   // 	expect(a.level(0) == 0);
+	   // 	expect(a.level(1) == 1);
+	   // 	expect(a.level(2) == 1);
+	   // 	expect(a.level(3) == 1);
+	   // 	expect(a.level(4) == 1);
+	   //
+	   // 	expect(a.level(6) == 2);
+	   //
+	   // 	expect(a.level(28) == 3);
+	   // };
 
 	"size"_test = [] {
 		SpatialAllocator a(8192);
@@ -169,13 +161,4 @@ int main()
 	//
 	// 	expect(a.child_of_parent(28) == decltype(a)::NodeChild::BottomRight);
 	// };
-
-
-	const auto T1 = steady_clock::now();
-	auto duration = T1 - T0;
-	std::print("\x1b[32;1mTest duration:\x1b[m ");
-	if(duration < 5000us)
-		std::print("\x1b[97;1m{}\x1b[m\n", duration_cast<microseconds>(duration));
-	else
-		std::print("\x1b[97;1m{}\x1b[m\n", duration_cast<milliseconds>(duration));
-}
+});
