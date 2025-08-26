@@ -20,19 +20,26 @@ suite<fixed_string("RingBuffer")> rb_suite([]{
 			expect(v == *(values.begin() + idx));
 	};
 
-	"add_full"_test = [] {
+	"partial"_test = [] {
 		RingBuffer<int, 4> r;
 		expect(r.size() == 0);
 		expect(r.empty());
 		expect(not r.full());
 		r.push(1);
-		expect(r.size() == 1);
-		expect(not r.empty());
-		expect(not r.full());
+		expect(r.head() == 1);
+		expect(r.tail() == 1);
 		r.push(2);
+		expect(r.head() == 2);
+		expect(r.tail() == 1);
 		expect(r.size() == 2);
 		expect(not r.empty());
 		expect(not r.full());
+	};
+
+	"full"_test = [] {
+		RingBuffer<int, 4> r;
+		r.push(1);
+		r.push(2);
 		r.push(3);
 		expect(r.size() == 3);
 		expect(not r.empty());
@@ -43,7 +50,7 @@ suite<fixed_string("RingBuffer")> rb_suite([]{
 		expect(r.full());
 	};
 
-	"add_overflow"_test = [] {
+	"overflow"_test = [&expect_range] {
 		RingBuffer<int, 4> r;
 		for(auto idx = 0; idx < 4; ++idx)
 			r.push(100 + idx);
@@ -51,25 +58,147 @@ suite<fixed_string("RingBuffer")> rb_suite([]{
 		expect(r.size() == 4);
 		expect(not r.empty());
 		expect(r.full());
-		static const int expected[] = { 101, 102, 103, 42 };
-		auto idx = 0u;
-		for(const auto &v:r)
-			expect(v == expected[idx++]);
+		expect(r.tail() == 101);
+		expect(r.head() == 42);
+		expect_range(r, { 101, 102, 103, 42 });
 	};
 
-	"add_overflow_many"_test = [&expect_range] {
+	"overflow_many"_test = [&expect_range] {
 		RingBuffer<int, 4> r;
 		for(auto idx = 0; idx < 30; ++idx)
 			r.push(100 + idx);
 		r.push(42);
 		r.push(43);
 		r.push(44);
-		r.push(45);
 		expect(r.size() == 4);
 		expect(not r.empty());
 		expect(r.full());
-		expect_range(r, { 42, 43, 44, 45 });
+		expect(r.tail() == 129);
+		expect(r.head() == 44);
+		expect_range(r, { 129, 42, 43, 44 });
 	};
 
-	// TODO: more
+	"push_list"_test = [] {
+		RingBuffer<int, 4> r;
+		r.push({ 42, 43, 44, 45 });
+		expect(r.size() == 4);
+		expect(not r.empty());
+		expect(r.full());
+	};
+
+	"push_list_overflow"_test = [&expect_range] {
+		RingBuffer<int, 4> r;
+		r.push({ 42, 43, 44, 45, 47, 48, 49, 50, 51, 52, 53 });
+		expect(r.size() == 4);
+		expect(not r.empty());
+		expect(r.full());
+		expect(r.tail() == 50);
+		expect(r.head() == 53);
+		expect_range(r, { 50, 51, 52, 53 });
+	};
+
+	"empty_oob_at"_test = [] {
+		RingBuffer<int, 4> r;
+		const std::array<int, 4> a { 0, 1, 2, 3 };
+		expect(throws<std::out_of_range>([&r]() {
+			auto _ = r.at(0);
+		}));
+	};
+
+	"partial_oob_at"_test = [] {
+		RingBuffer<int, 4> r;
+		r.push(42);
+		r.push(43);
+		expect(r[0] == 42);
+		expect(r[1] == 43);
+		expect(throws<std::out_of_range>([&r]() {
+			auto _ = r.at(2);
+		}));
+	};
+
+	"overflow_oob_at"_test = [] {
+		RingBuffer<int, 4> r;
+		for(auto idx = 0; idx < 30; ++idx)
+			r.push(100 + idx);
+		r.push(42);
+		r.push(43);
+		r.push(44);
+		expect(r[0] == 129);
+		expect(r[1] == 42);
+		expect(r[2] == 43);
+		expect(r[3] == 44);
+		expect(throws<std::out_of_range>([&r]() {
+			auto _ = r.at(4);
+		}));
+	};
+
+	"empty_iter"_test = [] {
+		RingBuffer<int, 4> r;
+		expect(r.begin() == r.end());
+		for(const auto &_: r)
+			expect(false);
+	};
+
+	"push_pop_tail"_test = [] {
+		RingBuffer<int, 4> r;
+		r.push(42);
+		expect(r.size() == 1);
+		r.pop_tail();
+		expect(r.empty());
+	};
+
+	"push_pop_head"_test = [] {
+		RingBuffer<int, 4> r;
+		r.push(42);
+		expect(r.size() == 1);
+		r.pop_head();
+		expect(r.empty());
+	};
+
+	"push2_pop_tail"_test = [] {
+		RingBuffer<int, 4> r;
+		r.push(42);
+		r.push(123);
+		expect(r.size() == 2);
+		r.pop_tail();
+		expect(r.size() == 1);
+		expect(r.tail() == 123);
+		expect(r.head() == 123);
+	};
+
+	"push2_pop_jead"_test = [] {
+		RingBuffer<int, 4> r;
+		r.push(42);
+		r.push(123);
+		expect(r.size() == 2);
+		r.pop_head();
+		expect(r.size() == 1);
+		expect(r.tail() == 42);
+		expect(r.head() == 42);
+	};
+
+	"full_pop_tail"_test = [] {
+		RingBuffer<int, 4> r;
+		r.push({ 42, 43, 44, 45 });
+		expect(r.head() == 45);
+		expect(r.size() == 4);
+		r.pop_tail();
+		expect(not r.empty());
+		expect(r.size() == 3);
+		expect(r.tail() == 43);
+		expect(r.head() == 45);
+	};
+
+	"full_pop_head"_test = [] {
+		RingBuffer<int, 4> r;
+		r.push({ 42, 43, 44, 45 });
+		expect(r.head() == 45);
+		expect(r.size() == 4);
+		r.pop_head();
+		expect(not r.empty());
+		expect(r.size() == 3);
+		expect(r.tail() == 42);
+		expect(r.head() == 44);
+	};
+
 });

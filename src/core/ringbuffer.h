@@ -1,21 +1,15 @@
 #pragma once
 
-#include <string>
-#include <vector>
+#include <array>
 #include <stdexcept>
 #include <cassert>
 
-#if !defined(NDEBUG)
-#include <array>
-#include <print>
-#endif
-
-// capacity  : how many elements can fit in the buffer
+// capacity  : how many elements can fit in the buffer (fixed, at compile-time)
 // _size     : how many elements are currently in the buffer
 // _head     : raw index where next element will be written
 // _tail     : raw index where the oldest existing element is (if _size > 0, else n/a)
 
-// TODO: having both '_tail' and '_size' is redundant; at a pinch one of them can be removed.
+// TODO: '_tail' and '_size' is redundant; '_tail' should be removed, at some point.
 
 // terminology:
 //    position : [ 0, _size )       (virtual position seen from the outside)
@@ -57,12 +51,6 @@ inline size_t stamp()
 	return ++_stamp;
 }
 
-template<typename T>
-std::string elem_fmt(const T &v) requires std::integral<T> or std::floating_point<T>
-{
-	return std::to_string(v);
-}
-
 template<typename iT, size_t capacity> requires (capacity > 1)
 class RingBuffer_std_iterator;
 
@@ -73,15 +61,11 @@ class RingBuffer
 	static_assert(not std::is_const_v<T>);
 
 public:
-	enum reclaim_mode
+	enum class reclaim_method
 	{
-		reclaim_tail = 0,
-		reclaim_head = 1,
+		tail = 0,
+		head = 1,
 	};
-
-#if !defined(NDEBUG)
-	bool trace { false };
-#endif
 
 public:
 	RingBuffer();
@@ -102,30 +86,31 @@ public:
 	// inline size_t capacity() const { return capacity; }
 
 	// add an element at the head
-	T &push(const T &elem);
-	void push(const std::vector<T> &elems);
+	T &push(const T &elem) noexcept;
+	template <std::ranges::input_range Range>
+	void push(const Range& elems) noexcept requires std::same_as<std::ranges::range_value_t<Range>, T>;
+	void push(std::initializer_list<T> elems) noexcept;
+	template <typename It>
+	void push(It first, It last) noexcept;
+	void pop_head();
+	void pop_tail();
 
-	[[nodiscard]] inline size_t size() const { return _size; }
-	[[nodiscard]] inline bool empty() const { return _size == 0; }
-	[[nodiscard]] inline bool full() const  { return _size == capacity; }
+	[[nodiscard]] inline size_t size() const noexcept { return _size; }
+	[[nodiscard]] inline bool  empty() const noexcept { return _size == 0; }
+	[[nodiscard]] inline bool  full()  const noexcept { return _size == capacity; }
 
-	[[nodiscard]] inline const T &operator [] (size_t position) const throw()
-	{
-		if(position >= _size)
-			throw std::out_of_range("position out of range");
+	[[nodiscard]]       reference at(size_t position);
+	[[nodiscard]] const_reference at(size_t position) const;
 
-		return _buffer[_position_index(position)];
-	}
+	[[nodiscard]] inline       reference operator [] (size_t position)       noexcept { return _buffer[_position_index(position)]; }
+	[[nodiscard]] inline const_reference operator [] (size_t position) const noexcept { return _buffer[_position_index(position)]; }
 
-	[[nodiscard]] inline const T &head() const throw() { assert(_size > 0); return operator [] (_size - 1); }
-	[[nodiscard]] inline const T &tail() const throw() { return operator [] (0); }
+	[[nodiscard]] inline       T &head()       { return operator [] (_size - 1); }
+	[[nodiscard]] inline const T &head() const { return operator [] (_size - 1); }
+	[[nodiscard]] inline       T &tail()       { return operator [] (0); }
+	[[nodiscard]] inline const T &tail() const { return operator [] (0); }
 
-	inline void clear()
-	{
-		_tail = 0;
-		_head = 0;
-		_size = 0;
-	}
+	inline void clear() { _tail = 0; _head = 0; _size = 0; }
 
 	// inline mutating_iterator mutating_iterator() { return mutating_iterator(_tail, 0u, *this); }
 	[[nodiscard]] inline       iterator  begin()       noexcept { return       iterator(this,    0u); }
@@ -135,40 +120,38 @@ public:
 	[[nodiscard]] inline const_iterator cbegin() const noexcept { return begin(); }
 	[[nodiscard]] inline const_iterator cend()   const noexcept { return end(); }
 
-#if !defined(NDEBUG)
-	void debug_dump(std::string_view title) const;
-#endif
-
-	void remove(size_t position, reclaim_mode mode=reclaim_tail) throw();
+	void remove(size_t position, reclaim_method mode=reclaim_method::tail);
 
 private:
 	inline size_t _position_index(size_t position) const { return (_tail + position) % capacity; }
 	inline size_t _next_index(size_t index) const { return (index + 1) % capacity; }
 	inline size_t _prev_index(size_t index) const { return (index + capacity - 1) % capacity; }
 
+	template<typename It>
+	void _push(It first, It last) noexcept;
 	// removing an element. if in the middle, copies an element from the head/front
 	void _remove_reclaim_head(size_t position);
 	// removing an element. if in the middle, copies an element from the tail/back
 	void _remove_reclaim_tail(size_t position);
 
 private:
-	T _buffer[capacity];
+	std::array<T, capacity> _buffer;
 
-	size_t _tail;
 	size_t _head;
+	size_t _tail;
 	size_t _size;
 };
 
 template<typename T, size_t capacity> requires (capacity > 1)
 RingBuffer<T, capacity>::RingBuffer() :
-	  _tail(0),
-	  _head(0),
-	  _size(0)
+	_head(0),
+	_tail(0),
+	_size(0)
 {
 }
 
 template<typename T, size_t capacity> requires (capacity > 1)
-T &RingBuffer<T, capacity>::push(const T &elem)
+T &RingBuffer<T, capacity>::push(const T &elem) noexcept
 {
 	const auto at = _head;
 
@@ -176,22 +159,18 @@ T &RingBuffer<T, capacity>::push(const T &elem)
 
 	_head = _next_index(_head);
 
-	if(_size != capacity)   // ring isn't full
-		++_size;
-	else
-	{
+	if(_size == capacity)   // ring was already full
 		// ring is full; advance tail as well (we just overwrote the oldest element)
 		_tail = _next_index(_tail);
-	}
+	else
+		++_size;
 
-#if !defined(NDEBUG)
-	//	debug_dump("added");
-#endif
 	return _buffer[at];
 }
 
 template<typename T, size_t capacity> requires (capacity > 1)
-void RingBuffer<T, capacity>::push(const std::vector<T> &elems)
+template<std::ranges::input_range Range>
+void RingBuffer<T, capacity>::push(const Range &elems) noexcept requires std::same_as<std::ranges::range_value_t<Range>, T>
 {
 	auto iter = elems.begin();
 
@@ -199,16 +178,81 @@ void RingBuffer<T, capacity>::push(const std::vector<T> &elems)
 	if(elems.size() > capacity)
 		std::advance(iter, elems.size() - capacity);
 
-	// TODO: this could probably be done more efficiently
-	//   e.g. computing what the '_head' & '_tail' should be
-	//        and just do the necessary memcpy() (max 3 calls)
+	_push(iter, elems.end());
+}
 
-	for(; iter != elems.end(); ++iter)
-		 add(*iter);
+
+template<typename T, size_t capacity> requires (capacity > 1)
+void RingBuffer<T, capacity>::push(std::initializer_list<T> elems) noexcept
+{
+	auto iter = std::cbegin(elems);
+	const auto d = std::distance(iter, std::cend(elems));
+	if(d >= capacity)
+		std::advance(iter, d - capacity);
+	_push(iter, std::cend(elems));
 }
 
 template<typename T, size_t capacity> requires (capacity > 1)
-inline void RingBuffer<T, capacity>::remove(size_t position, reclaim_mode mode) throw()
+template<typename It>
+void RingBuffer<T, capacity>::push(It first, It last) noexcept
+{
+	auto iter = first;
+	const auto d = std::distance(iter, last);
+	if(d >= capacity)
+		std::advance(iter, d - capacity);
+
+	_push(iter, last);
+}
+
+template<typename T, size_t capacity> requires (capacity > 1)
+template<typename It>
+void RingBuffer<T, capacity>::_push(It first, It last) noexcept
+{
+	// TODO: this could probably be done more idiomatically (or something)
+	//   e.g. a single std::copy() call
+
+	for(auto iter = first; iter != last; ++iter)
+		push(*iter);
+}
+
+template<typename T, size_t capacity> requires (capacity > 1)
+void RingBuffer<T, capacity>::pop_head()
+{
+	if(empty())
+		throw std::out_of_range("empty buffer");
+	_head = _prev_index(_head);
+	--_size;
+}
+
+template<typename T, size_t capacity> requires (capacity > 1)
+void RingBuffer<T, capacity>::pop_tail()
+{
+	if(empty())
+		throw std::out_of_range("empty buffer");
+	_tail = _next_index(_tail);
+	--_size;
+}
+
+template<typename T, size_t capacity> requires (capacity > 1)
+RingBuffer<T, capacity>::reference RingBuffer<T, capacity>::at(size_t position)
+{
+	if(position >= _size)
+		throw std::out_of_range("position out of range");
+
+	return operator [] (position);
+}
+
+template<typename T, size_t capacity> requires (capacity > 1)
+RingBuffer<T, capacity>::const_reference RingBuffer<T, capacity>::at(size_t position) const
+{
+	if(position >= _size)
+		throw std::out_of_range("position out of range");
+
+	return operator [] (position);
+}
+
+template<typename T, size_t capacity> requires (capacity > 1)
+void RingBuffer<T, capacity>::remove(size_t position, reclaim_method mode)
 {
 	if(position >= _size)
 		throw std::out_of_range("position out of range");
@@ -217,7 +261,7 @@ inline void RingBuffer<T, capacity>::remove(size_t position, reclaim_mode mode) 
 		_tail = _next_index(_tail);
 	else if(position == _size - 1)   // removing last element; need only move head backwards
 		_head = _prev_index(_head);
-	else if(mode == reclaim_tail)
+	else if(mode == reclaim_method::tail)
 		_remove_reclaim_tail(position);
 	else
 		_remove_reclaim_head(position);
@@ -230,11 +274,10 @@ template<typename T, size_t capacity> requires (capacity > 1)
 void RingBuffer<T, capacity>::_remove_reclaim_head(size_t position)
 {
 	// removing in the middle; copy the front-most element here (i.e. "frontloaded"), and move head
-	_head = _prev_index(_head);
-
 	const auto index = _position_index(position);
 
-	_buffer[index] = _buffer[_head];
+	_head = _prev_index(_head);
+	_buffer[index] = std::move(_buffer[_head]);
 }
 
 template<typename T, size_t capacity> requires (capacity > 1)
@@ -243,24 +286,9 @@ void RingBuffer<T, capacity>::_remove_reclaim_tail(size_t position)
 	// removing in the middle; copy the back-most element here (i.e. "backloaded"), and move tail
 	const auto index = _position_index(position);
 
-	_buffer[index] = _buffer[_tail];
+	_buffer[index] = std::move(_buffer[_tail]);
 	_tail = _next_index(_tail);
 }
-
-#if !defined(NDEBUG)
-template<typename T, size_t capacity> requires (capacity > 1)
-void RingBuffer<T, capacity>::debug_dump(std::string_view title) const
-{
-	std::print("{} \x1b[33;1mrb.dump: \x1b[0;32;1;3m{}\x1b[0;33;1m size: \x1b[m{}\x1b[0;33;1m head: \x1b[0;34;1m[{}]\x1b[33;1m tail: \x1b[0;34;1m[{}]\n", stamp(), title, _size, _head, _tail);
-	std::print("\x1b[33;1m  items: \x1b[m{{");
-	for(size_t idx = 0; idx < _size; idx++)
-	{
-		const auto raw_idx = ((idx + _tail) % capacity);
-		std::print(" {}\x1b[0;34;1m[{}]\x1b[0;32;1m:\x1b[m{}", idx, raw_idx, elem_fmt(_buffer[raw_idx]));
-	}
-	std::print("}}\n");
-}
-#endif
 
 // ------------------------------------------------------------------
 
