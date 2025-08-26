@@ -74,6 +74,7 @@ set(HEADER_FILES_CORE
 	rendertarget_2d.h
 	rendertarget_common.h
 	rendertarget_cube.h
+	ringbuffer.h
 	sample_window.h
 	shader.h
 	spatial_allocator.h
