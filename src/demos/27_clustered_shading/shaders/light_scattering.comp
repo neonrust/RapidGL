@@ -15,7 +15,7 @@ layout(binding = 3)          uniform sampler2D u_blue_noise;
 
 layout(std430, binding = SSBO_BIND_LIGHTS) readonly buffer LightsSSBO
 {
-	GPULight lights[];
+	GPULight lights_ssbo[];
 };
 
 
@@ -87,8 +87,8 @@ float getSpotAngleAttenuation(vec3 to_light, vec3 spot_axis, float outer_angle, 
 
 // vec3 scatterLightsInCluster(Ray eye_ray, uvec3 cluster_coord, float max_depth);
 
-vec3 scatterPointLight(Ray ray, PointLight light);
-vec3 scatterSpotLight(Ray ray, SpotLight light);
+vec3 scatterPointLight(Ray ray, GPULight light);
+vec3 scatterSpotLight(Ray ray, GPULight light);
 
 bool castRay(Ray ray, Sphere sphere, out RayResult result);
 bool castRay(Ray ray, SphericalCone cone, out RayResult result);
@@ -193,22 +193,30 @@ void main()
 
 	vec3 fog_radiance = vec3(0);
 
-	// TODO: iterate throught lights in this CLUSTER only
-	for(uint light_index = 0; light_index < lights.length(); ++light_index)
-	{
-		GPULight light = lights[light_index];
+	// TODO: iterate through lights in this CLUSTER only
 
-		float visible = fadeByDistance(light.position);
-		if(visible > 1e-4)
-			fog_radiance += visible * scatterPointLight(cam_ray, lights.point_lights[idx]);
-	}
-
-	// TODO: iterate throught lights in this CLUSTER only
-	for(uint idx = 0; idx < light_counts.num_spot_lights; ++idx)
+	for(uint light_index = 0; light_index < lights_ssbo.length(); ++light_index)
 	{
-		float visible = fadeByDistance(lights.point_lights[idx].position);
-		if(visible > 1e-4)
-			fog_radiance += visible * scatterSpotLight(cam_ray, lights.spot_lights[idx]);
+		GPULight light = lights_ssbo[light_index];
+
+		switch(GET_LIGHT_TYPE(light))
+       	{
+			case LIGHT_TYPE_POINT:
+			{
+				float visible = fadeByDistance(light.position);
+				if(visible > 1e-4)
+					fog_radiance += visible * scatterPointLight(cam_ray, light);
+			}
+			break;
+
+			case LIGHT_TYPE_SPOT:
+			{
+				float visible = fadeByDistance(light.position + light.spot_bounds_radius*light.direction);
+				if(visible > 1e-4)
+					fog_radiance += visible * scatterSpotLight(cam_ray, light);
+			}
+			break;
+		}
 	}
 
 	// TODO: area lights
@@ -280,9 +288,9 @@ float fadeByDistance(vec3 pos)
 	return 1 - smoothstep(FADE_START, FADE_END, distance);
 }
 
-float sampleLight(PointLight light, vec3 point);
+float samplePointLight(GPULight light, vec3 point);
 
-vec3 scatterPointLight(Ray ray, PointLight light)
+vec3 scatterPointLight(Ray ray, GPULight light)
 {
 	Sphere light_sphere;
 	light_sphere.center = light.position;
@@ -323,7 +331,7 @@ vec3 scatterPointLight(Ray ray, PointLight light)
 	for(; ray_t < exit; ray_t += stride)
 	{
 		vec3 p_sample = rayPoint(ray, ray_t);
-		float intensity = sampleLight(light, p_sample)*stride;
+		float intensity = samplePointLight(light, p_sample)*stride;
 
 		radiance += transmittance * stepOpacity * intensity;
 		transmittance *= exp_absorption;
@@ -333,26 +341,26 @@ vec3 scatterPointLight(Ray ray, PointLight light)
 	}
 	// lastly, sample end-point
 	vec3 p_sample = rayPoint(ray, ray_t);
-	radiance += sampleLight(light, p_sample)*stride;
+	radiance += samplePointLight(light, p_sample)*stride;
 
-	return radiance * light.base.color;
+	return radiance * light.color;
 }
 
-float sampleLight(PointLight light, vec3 point)
+float samplePointLight(GPULight light, vec3 point)
 {
 	vec3 to_light = point - light.position;
 	float distance_sq = dot(to_light, to_light);
 	float intensity = getSquareFalloffAttenuation(distance_sq, light.affect_radius*light.affect_radius);
-	return light.base.intensity * intensity;
+	return light.intensity * intensity;
 }
 
-float sampleLight(SpotLight spot, vec3 point);
+float sampleSpotLight(GPULight spot, vec3 point);
 
-vec3 scatterSpotLight(Ray ray, SpotLight spot)
+vec3 scatterSpotLight(Ray ray, GPULight spot)
 {
 	SphericalCone outer_cone;
-	outer_cone.sphere.center  = spot.point.position;
-	outer_cone.sphere.radius  = spot.point.affect_radius;
+	outer_cone.sphere.center  = spot.position;
+	outer_cone.sphere.radius  = spot.affect_radius;
 	outer_cone.axis           = spot.direction;
 	outer_cone.angle          = spot.outer_angle;
 
@@ -396,7 +404,7 @@ vec3 scatterSpotLight(Ray ray, SpotLight spot)
 	// return vec3(apex_distance / spot.point.affect_radius);
 
 #if 0
-	    float normalized = thickness / spot.point.affect_radius;
+	    float normalized = thickness / spot.affect_radius;
 		return falseColor(normalized);
 #endif
 
@@ -424,12 +432,12 @@ vec3 scatterSpotLight(Ray ray, SpotLight spot)
 	for(; ray_t < t_exit; ray_t += stride)
 	{
 		vec3 p_sample = rayPoint(ray, ray_t);
-		float intensity = sampleLight(spot, p_sample)*stride;
+		float intensity = sampleSpotLight(spot, p_sample)*stride;
 
 
 		// EXPERIMENT
 		// dimmer if facing towards the direction of the light
-		float along_axis = dot(p_sample - spot.point.position, spot.direction)/spot.point.affect_radius;
+		float along_axis = dot(p_sample - spot.position, spot.direction)/spot.affect_radius;
 		intensity *= 1 - along_axis;
 
 
@@ -441,7 +449,7 @@ vec3 scatterSpotLight(Ray ray, SpotLight spot)
 	}
 	// lastly, sample end-point
 	vec3 p_sample = rayPoint(ray, ray_t);
-	radiance += sampleLight(spot, p_sample)*stride;
+	radiance += sampleSpotLight(spot, p_sample)*stride;
 
 	// TODO: intensify (near center) if rays start inside cone and facing the light
 
@@ -450,7 +458,7 @@ vec3 scatterSpotLight(Ray ray, SpotLight spot)
 	// however, pbr_lighting seems to do the opposite;
 	//   behaves as if 'intensity' is per cone degree or something.
 
-	return radiance * spot.point.base.color;
+	return radiance * spot.color;
 }
 
 // Approximated distance from the apex to the sphere cap along a ray
@@ -471,21 +479,21 @@ float approxDistanceToSphereCap(float cosAlpha, SphericalCone cone)
 
 //#define SPHERE_CAP_ATT
 
-float sampleLight(SpotLight spot, vec3 point)
+float sampleSpotLight(GPULight spot, vec3 point)
 {
 	// attenuation along spot axis
-	vec3 to_light = point - spot.point.position;
+	vec3 to_light = point - spot.position;
 	float center_distance_sq =  dot(to_light, to_light);
 #ifdef SPHERE_CAP_ATT
-	float cos_point_angle = dot(normalize(point - spot.point.position), spot.direction);
+	float cos_point_angle = dot(normalize(point - spot.position), spot.direction);
 	SphericalCone cone;
 	// need only angle and radius
 	cone.angle = spot.outer_angle;
-	cone.sphere.radius = spot.point.affect_radius;
+	cone.sphere.radius = spot.affect_radius;
 	float radius_at_angle = approxDistanceToSphereCap(cos_point_angle, cone);
 	float atten_center = getSquareFalloffAttenuation(center_distance_sq, radius_at_angle*radius_at_angle);
 #else
-	float atten_center = getSquareFalloffAttenuation(center_distance_sq, spot.point.affect_radius*spot.point.affect_radius);
+	float atten_center = getSquareFalloffAttenuation(center_distance_sq, spot.affect_radius*spot.affect_radius);
 #endif
 
 	// Ray spot_ray;
@@ -501,7 +509,7 @@ float sampleLight(SpotLight spot, vec3 point)
 	float atten_axis = getSpotAngleAttenuation(normalize(to_light), spot.direction, spot.outer_angle, 0);
 	// atten_axis = 1;
 
-	return spot.point.base.intensity * atten_center * atten_axis;
+	return spot.intensity * atten_center * atten_axis;
 }
 
 float atan_approx(float x)

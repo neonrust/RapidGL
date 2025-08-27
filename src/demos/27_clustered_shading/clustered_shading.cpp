@@ -1358,52 +1358,45 @@ void ClusteredShading::render()
 	static auto prev_cam_fwd = m_camera.forwardVector();
 	static auto last_discovery_T = steady_clock::now();
 
-	// static const auto MOVE_THRESHOLD = 0.1f;
-	// static const auto FWD_THRESHOLD = 0.01f;
-	// static const auto MAX_UPDATE_AGE = 200ms;
-
-	// const auto cam_moved = glm::length(m_camera.position() - prev_cam_pos) > MOVE_THRESHOLD;
-	// const auto cam_dir_changed = glm::length(prev_cam_fwd - m_camera.forwardVector()) > FWD_THRESHOLD;
-	if(true)//cam_moved or cam_dir_changed or duration_cast<milliseconds>(now - last_discovery_T) > MAX_UPDATE_AGE)
-	{
-		// std::print("cull lights, after {} ms\n", duration_cast<milliseconds>(now - last_discovery_T));
-		prev_cam_pos = m_camera.position();
-		prev_cam_fwd = m_camera.forwardVector();
-		last_discovery_T = now;
+	// TODO: is it possible to not do this every frame?
+	//   some threshold for camera movement and if dynamic objects is in the frustum?
+	// std::print("cull lights, after {} ms\n", duration_cast<milliseconds>(now - last_discovery_T));
+	prev_cam_pos = m_camera.position();
+	prev_cam_fwd = m_camera.forwardVector();
+	last_discovery_T = now;
 
 
+		   // find clusters with fragments in them (the only ones we need to process in the light culling step)
+	m_find_nonempty_clusters_shader->setUniform("u_near_z"sv,             m_camera.nearPlane());
+	m_find_nonempty_clusters_shader->setUniform("u_far_z"sv,              m_camera.farPlane());
+	m_find_nonempty_clusters_shader->setUniform("u_log_cluster_res_y"sv,  m_log_cluster_res_y);
+	m_find_nonempty_clusters_shader->setUniform("u_cluster_size_ss"sv,    glm::uvec2(m_cluster_block_size));
+	m_find_nonempty_clusters_shader->setUniform("u_cluster_resolution"sv, m_cluster_resolution);
 
-		// find clusters with fragments in them (the only ones we need to process in the light culling step)
-		m_find_nonempty_clusters_shader->setUniform("u_near_z"sv,             m_camera.nearPlane());
-		m_find_nonempty_clusters_shader->setUniform("u_far_z"sv,              m_camera.farPlane());
-		m_find_nonempty_clusters_shader->setUniform("u_log_cluster_res_y"sv,  m_log_cluster_res_y);
-		m_find_nonempty_clusters_shader->setUniform("u_cluster_size_ss"sv,    glm::uvec2(m_cluster_block_size));
-		m_find_nonempty_clusters_shader->setUniform("u_cluster_resolution"sv, m_cluster_resolution);
+	m_cluster_discovery_ssbo.clear();
+	m_depth_pass_rt.bindDepthTextureSampler(0);
+	m_find_nonempty_clusters_shader->invoke(size_t(glm::ceil(float(m_depth_pass_rt.width()) / 32.f)),
+											size_t(glm::ceil(float(m_depth_pass_rt.height()) / 32.f)));
 
-		m_cluster_discovery_ssbo.clear();
-		m_depth_pass_rt.bindDepthTextureSampler(0);
-		m_find_nonempty_clusters_shader->invoke(size_t(glm::ceil(float(m_depth_pass_rt.width()) / 32.f)),
-												size_t(glm::ceil(float(m_depth_pass_rt.height()) / 32.f)));
+	m_cluster_find_time.add(_gl_timer.elapsed<microseconds>(true));
+	// ------------------------------------------------------------------
+	m_cull_lights_args_ssbo.clear();
+	m_collect_nonempty_clusters_shader->setUniform("u_num_clusters"sv, m_cluster_count);
+	m_collect_nonempty_clusters_shader->invoke(size_t(std::ceil(float(m_cluster_count) / 1024.f)));
 
-		m_cluster_find_time.add(_gl_timer.elapsed<microseconds>(true));
-		// ------------------------------------------------------------------
-		m_cull_lights_args_ssbo.clear();
-		m_collect_nonempty_clusters_shader->setUniform("u_num_clusters"sv, m_cluster_count);
-		m_collect_nonempty_clusters_shader->invoke(size_t(std::ceil(float(m_cluster_count) / 1024.f)));
+	m_cluster_index_time.add(_gl_timer.elapsed<microseconds>(true));
+	// ------------------------------------------------------------------
 
-		m_cluster_index_time.add(_gl_timer.elapsed<microseconds>(true));
-		// ------------------------------------------------------------------
+	// Assign lights to clusters (cull lights)
+	m_cluster_lights_range_ssbo.clear();
+	m_all_lights_index_ssbo.clear();
+	m_cull_lights_shader->setUniform("u_cam_pos"sv, m_camera.position());
+	m_cull_lights_shader->setUniform("u_light_max_distance"sv, std::min(100.f, m_camera.farPlane()));
+	m_cull_lights_shader->setUniform("u_view_matrix"sv, m_camera.viewTransform());
+	m_cull_lights_shader->setUniform("u_num_clusters"sv, m_cluster_count);
+	m_cull_lights_shader->setUniform("u_max_cluster_avg_lights"sv, uint32_t(CLUSTER_AVERAGE_LIGHTS));
+	m_cull_lights_shader->invoke(m_cull_lights_args_ssbo);  // reads uvec3 num_groups
 
-		// Assign lights to clusters (cull lights)
-		m_cluster_lights_range_ssbo.clear();
-		m_all_lights_index_ssbo.clear();
-		m_cull_lights_shader->setUniform("u_cam_pos"sv, m_camera.position());
-		m_cull_lights_shader->setUniform("u_light_max_distance"sv, std::min(100.f, m_camera.farPlane()));
-		m_cull_lights_shader->setUniform("u_view_matrix"sv, m_camera.viewTransform());
-		m_cull_lights_shader->setUniform("u_num_clusters"sv, m_cluster_count);
-		m_cull_lights_shader->setUniform("u_max_cluster_avg_lights"sv, uint32_t(CLUSTER_AVERAGE_LIGHTS));
-		m_cull_lights_shader->invoke(m_cull_lights_args_ssbo);  // reads uvec3 num_groups
-	}
 	m_light_cull_time.add(_gl_timer.elapsed<microseconds>(true));
 	// ------------------------------------------------------------------
 
