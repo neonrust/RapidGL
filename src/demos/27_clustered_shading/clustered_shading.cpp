@@ -1559,7 +1559,7 @@ void ClusteredShading::renderShadowMaps()
 		//    this info is available in SSBO ALL_LIGHTS_INDEX (which f course is over on the GPU side...)
 		//    Presumably, this implies the whole shadow map allocation needs to be moved to a compute shader?
 
-		const auto light_hash = _shadow_atlas.light_hash(light);
+		const auto light_hash = _shadow_atlas.hash_light(light);
 
 		if(_shadow_atlas.should_render(atlas_light, now, light_hash))
 		{

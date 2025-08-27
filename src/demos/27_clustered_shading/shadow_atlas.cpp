@@ -274,7 +274,7 @@ size_t ShadowAtlas::eval_lights(LightManager &lights, const glm::vec3 &view_pos,
 	return num_changes;
 }
 
-size_t ShadowAtlas::light_hash(const GPULight &L) const
+size_t ShadowAtlas::hash_light(const GPULight &L) const
 {
 	static std::hash<float> fH;
 	static std::hash<glm::vec3> vH;
