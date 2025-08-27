@@ -10,8 +10,6 @@
 
 #include <cstddef>
 
-//  take a "light parameters" struct instead?
-//   - returning the same type struct is a bit weird.
 
 namespace _private
 {
@@ -36,12 +34,17 @@ concept LightParamsType = std::is_same_v<PointLightParams, T>
 	;
 } // _private
 
+
+// TODO: not entirely happy with this API ...
+//   the tricky part is that we need both index-based and ID-based access.
+
 class LightManager
 {
 public:
 	using LightList = std::vector<GPULight>;
 	// TODO: using LightList = std::vector<std::pair<LightID, GPULight>>;
 	using const_iterator = LightList::const_iterator;
+	using iterator = LightList::iterator;
 
 public:
 	LightManager(/* entt registry */);
@@ -51,13 +54,13 @@ public:
 	// create light entity, return to augmented instance (e.g. with uuid set)
 	//  add() or create() ?
 
-	PointLight add(const PointLightParams &p);
+	PointLight    add(const PointLightParams &p);
 	DirectionalLight add(const DirectionalLightParams &d);
-	SpotLight add(const SpotLightParams &s);
-	AreaLight add(const AreaLightParams &a);
-	TubeLight add(const TubeLightParams &t);
-	SphereLight add(const SphereLightParams &s);
-	DiscLight add(const DiscLightParams &d);
+	SpotLight     add(const SpotLightParams &s);
+	AreaLight     add(const AreaLightParams &a);
+	TubeLight     add(const TubeLightParams &t);
+	SphereLight   add(const SphereLightParams &s);
+	DiscLight     add(const DiscLightParams &d);
 
 	void clear();
 
@@ -65,7 +68,7 @@ public:
 	std::optional<LT> get(LightID uuid);
 
 	std::optional<GPULight> get_by_id(LightID light_id) const;
-	std::optional<std::reference_wrapper<GPULight> > get_by_id(LightID light_id);
+	std::optional<std::reference_wrapper<GPULight>> get_by_id(LightID light_id);
 
 	std::optional<std::tuple<LightID, GPULight>> get_by_index(LightIndex light_index) const;
 
@@ -83,15 +86,12 @@ public:
 
 	inline size_t size() const { return _lights.size(); }
 
-	inline const_iterator begin() const { return _lights.begin(); }
-	inline const_iterator end()   const { return _lights.end();   }
+	inline const_iterator cbegin() const { return _lights.cbegin(); }
+	inline const_iterator cend()   const { return _lights.cend();   }
+	inline       iterator  begin()       { return _lights.begin(); }
+	inline       iterator  end()         { return _lights.end();   }
 
-	inline LightID light_id(LightIndex light_index) const {
-		auto found = _index_to_id.find(light_index);
-		assert(found != _index_to_id.end());
-		return found->second;
-	}
-
+	LightID light_id(LightIndex light_index) const;
 	inline const GPULight &at(size_t light_index) const { return _lights.at(light_index); }
 
 	inline uint_fast16_t shadow_index(LightID light_id) const {

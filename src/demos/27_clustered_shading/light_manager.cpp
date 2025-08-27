@@ -287,3 +287,12 @@ void LightManager::add(const GPULight &L, LightID uuid)
 	else if(IS_DISC_LIGHT(L))
 		++_num_disc_lights;
 }
+
+LightID LightManager::light_id(LightIndex light_index) const
+{
+	auto found = _index_to_id.find(light_index);
+	assert(found != _index_to_id.end());
+	if(found == _index_to_id.end())
+		return NO_LIGHT_ID;
+	return found->second;
+}
