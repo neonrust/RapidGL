@@ -108,6 +108,9 @@ vec3 hash33(vec2 p, float time);
 float interleavedGradientNoise(vec2 pixel, int frame);
 
 vec3 falseColor(float value);
+bool drawDebugReticle(ivec2 pos);
+
+
 
 float g_noise_offset = 0;
 vec2 screen_pos;
@@ -144,19 +147,8 @@ void main()
 
 	// draw "reticle" at the center of the screen, with some effort for "anti-aliasing" :)
 	// this should not be in the final version!  ;)
-	ivec2 center = ivec2(int(screen_size.x/2), int(screen_size.y/2));
-	ivec2 diff = center - ivec2(screen_pos);
-	if(abs(diff.x) <= 8 && abs(diff.y) <= 8)
-	{
-		if(abs(diff.x) == 8 || abs(diff.y) == 8)
-		{
-			imageStore(u_output_color, ivec2(pixel_id), vec4(0.8, 0.8, 0.8, 1));
-		}
-		else
-			imageStore(u_output_color, ivec2(pixel_id), vec4(0.1, 0.8, 0.6, 1));
+	if(drawDebugReticle(ivec2(600, 100)))
 		return;
-	}
-
 
 	//vec2 screen_norm = (screen_pos*2 - vec2(screen_size)) / vec2(screen_size); // [ -1, 1 ]
 	screen_uv = screen_pos/screen_size;
@@ -888,6 +880,20 @@ vec3 falseColor(float value)
     if (value < 7*w)
         return mix(c6, c7, (value - 6*w) * N);
 	return mix(c7, c8, (value - 7*w) * N);
+}
+
+bool drawDebugReticle(ivec2 pos)
+{
+	ivec2 diff = pos - ivec2(screen_pos);
+	if(abs(diff.x) <= 8 && abs(diff.y) <= 8)
+	{
+		if(abs(diff.x) == 8 || abs(diff.y) == 8)
+			imageStore(u_output_color, ivec2(pixel_id), vec4(0.8, 0.8, 0.8, 1));
+		else
+			imageStore(u_output_color, ivec2(pixel_id), vec4(0.1, 0.8, 0.6, 1));
+		return true;
+	}
+	return false;
 }
 
 // Computes the sphere that 'closes off' the cone.
