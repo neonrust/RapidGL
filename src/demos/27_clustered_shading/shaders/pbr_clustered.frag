@@ -52,13 +52,13 @@ vec3 falseColor(float value);
 uint computeClusterIndex(uvec3 cluster_coord);
 uvec3 computeClusterCoord(vec2 screen_pos, float view_z);
 
-vec3 pointLightVisibility(uint index);
-vec3 dirLightVisibility(uint index);
-vec3 spotLightVisibility(uint index);
-vec3 areaLightVisibility(uint index);
-vec3 tubeLightVisibility(uint index);
-vec3 sphereLightVisibility(uint index);
-vec3 discLightVisibility(uint index);
+vec3 pointLightVisibility(uint light_index, vec3 world_pos);
+vec3 dirLightVisibility(uint light_index);
+vec3 spotLightVisibility(uint light_index);
+vec3 areaLightVisibility(uint light_index);
+vec3 tubeLightVisibility(uint light_index);
+vec3 sphereLightVisibility(uint light_index);
+vec3 discLightVisibility(uint light_index);
 
 
 void main()
@@ -91,13 +91,11 @@ void main()
         vec3 visibility = vec3(1);
 		vec3 contribution = vec3(0);
 
-		uint light_type = light.type_flags & LIGHT_TYPE_MASK;
-
-       	switch(light_type)
+       	switch(GET_LIGHT_TYPE(light))
        	{
 			case LIGHT_TYPE_POINT:
 			{
-		        visibility = pointLightVisibility(light_index);
+		        visibility = pointLightVisibility(light_index, in_world_pos);
 		        if(visibility.x + visibility.y + visibility.z > 0)
 		        	contribution = calcPointLight(light, in_world_pos, material);
 			}
@@ -313,9 +311,9 @@ float fadeByDistance(float distance, float hard_limit);
 
 void detectCubeFaceSlot(vec3 light_to_frag, LightShadowParams params, out mat4 view_proj, out vec4 rect);
 
-vec3 pointLightVisibility(uint index)
+vec3 pointLightVisibility(uint light_index, vec3 world_pos)
 {
-	GPULight light = ssbo_lights[index];
+	GPULight light = ssbo_lights[light_index];
 
 	float light_edge_distance = length(light.position - u_cam_pos) - light.affect_radius;
 	// fade the whole light by distance
@@ -334,16 +332,17 @@ vec3 pointLightVisibility(uint index)
 	uint params_idx = GET_SHADOW_IDX(light);
 	if(params_idx == LIGHT_NO_SHADOW)
 		return vec3(1);  // no shadow map allocated
+
 	LightShadowParams params = ssbo_shadow_params[params_idx];
 	// TODO: fade out shadow based on light importance (e.g. the last 0.1)
 	//   however, there's no way to know if/when the shadow will be deallocated...
 
-	vec3 light_to_frag = in_world_pos - light.position;
+	vec3 light_to_frag = world_pos - light.position;
 
 	mat4 proj;
 	vec4 rect;
 	detectCubeFaceSlot(light_to_frag, params, proj, rect);
-	// ignore edge pixels
+	// ignore 1 pixel around the edges
 	rect.x += 1;
 	rect.y += 1;
 	rect.z -= 2;
@@ -353,7 +352,7 @@ vec3 pointLightVisibility(uint index)
 	vec4 rect_uv = rect * vec4(texel_size, texel_size);
 
 	// to light space
-	vec4 light_space = proj * vec4(in_world_pos, 1);
+	vec4 light_space = proj * vec4(world_pos, 1);
 	light_space.xyz /= light_space.w; // NDC
 	vec2 face_uv = light_space.xy * 0.5 + 0.5; // [0, 1]
 
@@ -361,24 +360,28 @@ vec3 pointLightVisibility(uint index)
 	float normalized_depth = light_distance / light.affect_radius;
 
 	vec2 atlas_uv = rect_uv.xy + face_uv * (rect_uv.zw + texel_size);
-	vec2 encoded_normal = textureLod(u_shadow_atlas_normals, atlas_uv, 0).xy;
-	vec3 depth_normal = unpackNormal(encoded_normal);
-	vec3 light_dir = normalize(-light_to_frag);
-	float angle = dot(depth_normal, light_dir);
 
+	// calculate shadow depdth bias by various factors
 	float bias = 0;
 
 	// bias by depth
-	bias += u_shadow_bias_distance_scale * normalized_depth;
+	bias += normalized_depth * u_shadow_bias_distance_scale;
 
 	// bias based on surface normals
 	// bias increases when the angle between normal and light_dir is steep.
-	angle = pow(angle, u_shadow_bias_slope_power);
-	angle = clamp(angle, 0.0, 0.99);
-	bias += (0.001 / angle) * u_shadow_bias_slope_scale;
+	if(u_shadow_bias_slope_scale > 0)
+	{
+		vec2 encoded_normal = textureLod(u_shadow_atlas_normals, atlas_uv, 0).xy;
+		vec3 depth_normal = unpackNormal(encoded_normal);
+		vec3 light_dir = normalize(-light_to_frag);
+		float angle = dot(depth_normal, light_dir);
+		angle = pow(angle, u_shadow_bias_slope_power);
+		angle = clamp(angle, 0.0, 0.99);
+		bias += (0.001 / angle) * u_shadow_bias_slope_scale;
+	}
 
-	bias = u_shadow_bias_constant + bias;
-	bias = clamp(bias, 0.0, 0.05) * u_shadow_bias_scale;
+	bias += u_shadow_bias_constant;
+	bias = clamp(bias, -0.05, 0.05) * u_shadow_bias_scale;
 
 	normalized_depth -= bias;
 
@@ -387,32 +390,32 @@ vec3 pointLightVisibility(uint index)
 	return vec3(light_fade * shadow_fade * sampleShadow(normalized_depth, atlas_uv, uv_min, uv_max, texel_size));
 }
 
-vec3 dirLightVisibility(uint index)
+vec3 dirLightVisibility(uint light_index)
 {
 	return vec3(1); // TODO
 }
 
-vec3 spotLightVisibility(uint index)
+vec3 spotLightVisibility(uint light_index)
 {
 	return vec3(1); // TODO
 }
 
-vec3 areaLightVisibility(uint index)
+vec3 areaLightVisibility(uint light_index)
 {
 	return vec3(1); // TODO
 }
 
-vec3 tubeLightVisibility(uint index)
+vec3 tubeLightVisibility(uint light_index)
 {
 	return vec3(1); // TODO
 }
 
-vec3 sphereLightVisibility(uint index)
+vec3 sphereLightVisibility(uint light_index)
 {
 	return vec3(1); // TODO
 }
 
-vec3 discLightVisibility(uint index)
+vec3 discLightVisibility(uint light_index)
 {
 	return vec3(1); // TODO
 }
