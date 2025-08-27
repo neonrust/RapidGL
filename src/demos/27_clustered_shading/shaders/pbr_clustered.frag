@@ -21,6 +21,10 @@ uniform float u_shadow_bias_distance_scale;
 uniform float u_shadow_bias_slope_power;
 uniform float u_shadow_bias_scale;
 
+// TODO distance-based fg
+// uniform float u_fog_thickness;
+// uniform vec3 u_fog_color;
+
 const vec3 debug_colors[8] = vec3[]
 (
    vec3(0, 0, 0), vec3(0, 0, 1), vec3(0, 1, 0), vec3(0, 1, 1),
