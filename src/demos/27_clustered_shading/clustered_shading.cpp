@@ -1541,6 +1541,10 @@ void ClusteredShading::renderShadowMaps()
 	//   actually, every time it's rendered!
 	_shadow_atlas.update_shadow_params(_light_mgr);
 
+	// TODO: lights that do not affect any shading cluster can be skipped (as well)
+	//    this info is available in SSBO ALL_LIGHTS_INDEX (which f course is on the GPU side)
+	// see https://chatgpt.com/s/t_68ae3beefb648191b3c4b3e0b4916e47  (esp. point 3)
+
 	[[maybe_unused]] auto num_rendered = 0;
 
 	for(auto &[light_id, atlas_light]: _shadow_atlas.allocated_lights())
@@ -1548,16 +1552,13 @@ void ClusteredShading::renderShadowMaps()
 		const auto light_ = _light_mgr.get_by_id(light_id);
 		const auto &light = light_.value().get();
 
-		// skip lights whose bounding sphere is not in the camera's frustum
 		const bounds::Sphere light_sphere{ light.position, light.affect_radius };
 		if(not intersect::check(m_camera.frustum(), light_sphere))
 		{
-			atlas_light.set_dirty(); // to force a render if/when it comes into view again
+			// light's sphere is not in the camera's frustum, skipt the light
+			atlas_light.set_dirty();   // force a render if/when it comes into view again   necessary?
 			continue;
 		}
-		// TODO: also, lights that do not affect any shading cluster can be skipped as well
-		//    this info is available in SSBO ALL_LIGHTS_INDEX (which f course is over on the GPU side...)
-		//    Presumably, this implies the whole shadow map allocation needs to be moved to a compute shader?
 
 		const auto light_hash = _shadow_atlas.hash_light(light);
 
