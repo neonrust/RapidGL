@@ -150,6 +150,8 @@ private:
 		float value;
 		LightID light_id;
 		size_t num_slots;
+
+		inline bool operator > (const ValueLight &that) const { return value > that.value; }
 	};
 
 	Counters prioritize_lights(LightManager &lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward, std::vector<ValueLight> &prioritized);

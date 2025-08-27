@@ -551,9 +551,8 @@ ShadowAtlas::Counters ShadowAtlas::prioritize_lights(LightManager &lights, const
 		});
 	}
 
-	std::ranges::sort(prioritized, [](const auto &A, const auto &B) {
-		return A.value > B.value;
-	});
+	std::ranges::sort(prioritized, std::greater<>{});
+
 	if(_allocated_sun.uuid != NO_LIGHT_ID)
 		assert(IS_DIR_LIGHT(lights.get_by_id(prioritized[0].light_id).value().get()));
 
