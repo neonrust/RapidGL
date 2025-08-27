@@ -296,3 +296,12 @@ LightID LightManager::light_id(LightIndex light_index) const
 		return NO_LIGHT_ID;
 	return found->second;
 }
+
+LightIndex LightManager::light_index(LightID light_id) const
+{
+	auto found = _id_to_index.find(light_id);
+	assert(found != _id_to_index.end());
+	if(found == _id_to_index.end())
+		return NO_LIGHT_INDEX;
+	return found->second;
+}

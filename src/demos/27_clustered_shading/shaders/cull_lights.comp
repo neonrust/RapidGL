@@ -18,6 +18,11 @@ layout(std430, binding = SSBO_BIND_CLUSTER_LIGHT_RANGE) writeonly buffer Cluster
 	IndexRange cluster_lights[];
 };
 
+layout(std430, binding = SSBO_BIND_UNIQUE_LIGHTS_BITFIELD) buffer UniqueLightsBitfield
+{
+	uint unique_lights_ssbo[];
+};
+
 SSBO_ALL_LIGHTS_rw;
 
 
@@ -146,7 +151,13 @@ void main()
 		uint offset = atomicAdd(all_lights_start_index, count);
 
 		for(uint idx = 0; idx < count; ++idx)
-			all_lights_index[offset + idx] = s_light_list[idx];
+		{
+			uint light_index = s_light_list[idx];
+			all_lights_index[offset + idx] = light_index;
+
+			//atomicOr(unique_lights_ssbo[light_index >> 5], light_index & 31);
+			unique_lights_ssbo[light_index >> 5] |= 1u << (light_index & 31u);
+		}
 
 		cluster_lights[s_cluster_index].start_index = offset;
 		cluster_lights[s_cluster_index].count = s_light_count; // potentially greater than 'CLUSTER_MAX_LIGHTS'

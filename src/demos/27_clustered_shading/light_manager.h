@@ -92,6 +92,7 @@ public:
 	inline       iterator  end()         { return _lights.end();   }
 
 	LightID light_id(LightIndex light_index) const;
+	LightIndex light_index(LightID light_id) const;
 	inline const GPULight &at(size_t light_index) const { return _lights.at(light_index); }
 
 	inline uint_fast16_t shadow_index(LightID light_id) const {

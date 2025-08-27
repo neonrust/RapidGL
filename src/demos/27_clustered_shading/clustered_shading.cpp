@@ -64,6 +64,7 @@ ClusteredShading::ClusteredShading() :
 	m_cull_lights_args_ssbo("cull-lights"sv),
 	m_cluster_lights_range_ssbo("cluster-lights"sv),
 	m_all_lights_index_ssbo("all-lights-index"sv),
+	m_unique_lights_bitfield_ssbo("unique-lights-bitfield"sv),
 	m_shadow_map_params_ssbo("shadow-map-params"sv),
 	m_exposure            (0.4f),
 	m_gamma               (2.2f),
@@ -83,7 +84,10 @@ ClusteredShading::ClusteredShading() :
 	m_cluster_discovery_ssbo.setBindIndex(SSBO_BIND_CLUSTER_DISCOVERY);
 	m_cluster_lights_range_ssbo.setBindIndex(SSBO_BIND_CLUSTER_LIGHT_RANGE);
 	m_all_lights_index_ssbo.setBindIndex(SSBO_BIND_ALL_LIGHTS_INDEX);
+	m_unique_lights_bitfield_ssbo.setBindIndex(SSBO_BIND_UNIQUE_LIGHTS_BITFIELD);
 	m_cull_lights_args_ssbo.setBindIndex(SSBO_BIND_CULL_LIGHTS_ARGS);
+
+	_light_visible_set.reserve(256);
 }
 
 ClusteredShading::~ClusteredShading()
@@ -785,6 +789,7 @@ void ClusteredShading::prepareClusterBuffers()
 	m_cluster_discovery_ssbo.resize(1 + m_cluster_count*2);  // num_active, nonempty[N], active[N]
 	m_cluster_lights_range_ssbo.resize(m_cluster_count);
 	m_all_lights_index_ssbo.resize(1 + m_cluster_count * CLUSTER_AVERAGE_LIGHTS); // all_lights_start_index, all_lights_index[]
+	m_unique_lights_bitfield_ssbo.resize(32); // 32x32 = 1024 lights
 	m_cull_lights_args_ssbo.resize(1);
 
 	/// Generate AABBs for clusters
@@ -1318,9 +1323,34 @@ void ClusteredShading::GenSkyboxGeometry()
     glVertexArrayVertexBuffer(m_skybox_vao, 0 /*bindingindex*/, m_skybox_vbo, 0 /*offset*/, sizeof(glm::vec3) /*stride*/);
 }
 
+void ClusteredShading::downloadVisibleLightSet()
+{
+	static std::vector<uint> unique_lights_bits;
+	m_unique_lights_bitfield_ssbo.download(unique_lights_bits);
+
+	_light_visible_set.clear();
+
+	// "decode" the bitfield into actual light indices
+	for(auto bucket = 0u; bucket < unique_lights_bits.size(); ++bucket)
+	{
+		auto bits = unique_lights_bits[bucket];
+		while(bits)
+		{
+			auto bit_index = uint_fast32_t(std::countr_zero(bits));
+			auto light_index = (bucket << 5u) + bit_index;
+			// -> lightIndex is active
+			_light_visible_set.insert(light_index);
+			bits &= bits - 1u; // clear lowest set bit
+		}
+	}
+}
+
+
 void ClusteredShading::render()
 {
 	const auto now = steady_clock::now();
+
+	downloadVisibleLightSet();
 
 	m_camera.setFov(m_camera_fov);
 
@@ -1390,6 +1420,7 @@ void ClusteredShading::render()
 	// Assign lights to clusters (cull lights)
 	m_cluster_lights_range_ssbo.clear();
 	m_all_lights_index_ssbo.clear();
+	m_unique_lights_bitfield_ssbo.clear();
 	m_cull_lights_shader->setUniform("u_cam_pos"sv, m_camera.position());
 	m_cull_lights_shader->setUniform("u_light_max_distance"sv, std::min(100.f, m_camera.farPlane()));
 	m_cull_lights_shader->setUniform("u_view_matrix"sv, m_camera.viewTransform());
@@ -1523,33 +1554,26 @@ void ClusteredShading::renderShadowMaps()
 		// TODO: probably should be a separate setting
 		_shadow_atlas.set_max_distance(std::min(100.f, m_camera.farPlane())/2.f);
 
-		[[maybe_unused]] auto num_changes = _shadow_atlas.eval_lights(_light_mgr, m_camera.position(), m_camera.forwardVector());
-		// if(num_changes)
-		// 	std::print("     changed shadow maps: {}\n", num_changes);
+		_shadow_atlas.eval_lights(_light_mgr, m_camera.position(), m_camera.forwardVector());
 	}
 
 	// light projections needs to be updated more often than the allocation
-	//   actually, every time it's rendered!
+	//   needs to updated every time it's rendered, but for simplicity,
+	//   we'll genrate params for all the allocated lights in one go
 	_shadow_atlas.update_shadow_params(_light_mgr);
 
-	// TODO: lights that do not affect any shading cluster can be skipped (as well)
-	//    this info is available in SSBO ALL_LIGHTS_INDEX (which f course is on the GPU side)
-	// see https://chatgpt.com/s/t_68ae3beefb648191b3c4b3e0b4916e47  (esp. point 3)
-
-	[[maybe_unused]] auto num_rendered = 0;
+	_light_shadow_maps_rendered = 0;
+	_shadow_atlas_slots_rendered = 0;
 
 	for(auto &[light_id, atlas_light]: _shadow_atlas.allocated_lights())
 	{
 		const auto light_ = _light_mgr.get_by_id(light_id);
 		const auto &light = light_.value().get();
 
-		const bounds::Sphere light_sphere{ light.position, light.affect_radius };
-		if(not intersect::check(m_camera.frustum(), light_sphere))
-		{
-			// light's sphere is not in the camera's frustum, skipt the light
-			atlas_light.set_dirty();   // force a render if/when it comes into view again   necessary?
+		// if this light did not contribute to the frame, no need to render its shadow map
+		const auto light_index = _light_mgr.light_index(light_id);
+		if(not _light_visible_set.contains(light_index))
 			continue;
-		}
 
 		const auto light_hash = _shadow_atlas.hash_light(light);
 
@@ -1571,20 +1595,24 @@ void ClusteredShading::renderShadowMaps()
 			for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
 			{
 				const auto &slot_rect = atlas_light.slots[idx].rect;
-				// std::print("{}   rect: {:4},{:4} {}x{}    ({})\n", idx, slot_rect.x, slot_rect.y, slot_rect.z, slot_rect.w, atlas_light.slots[idx].node_index);
 
-				_shadow_atlas.bindRenderTarget(slot_rect);
-				renderSceneShadow(light.position, far_z, params_index, idx);
+				// TODO: if dirty or hash changed  or dynamic object _within this face's frustum_, render it
+
+				if(atlas_light.is_dirty() or light_hash != atlas_light.hash or false)//_scene_culler.pvs(light_id, idx).has(SceneObjectType::Dynamic))
+				{
+					_shadow_atlas.bindRenderTarget(slot_rect);
+					renderSceneShadow(light.position, far_z, params_index, idx);
+					++_shadow_atlas_slots_rendered;
+				}
 			}
 
 			atlas_light.on_rendered(now, light_hash);
 
-			++num_rendered;
+			++_light_shadow_maps_rendered;
+
 			// std::print("  slot[0] {} @ {},{}  ({})\n", slot.slots[0].size, slot.slots[0].rect.x, slot.slots[0].rect.y, slot.slots[0].node_index);
 		}
 	}
-	// if(num_rendered)
-	// 	std::print("    rendered shadow maps: {}\n", num_rendered);
 
 	glDisable(GL_SCISSOR_TEST);
 	glDisable(GL_CULL_FACE);
