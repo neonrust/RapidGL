@@ -162,8 +162,11 @@ void ClusteredShading::render_gui()
 			ImGui::SliderFloat("Bias dist. scale", &m_shadow_bias_distance_scale, 0.f,    0.001f,"%.3f");
 			ImGui::SliderFloat("Bias scale",       &m_shadow_bias_scale,         -0.2f,    2.f,   "%.1f");
 
+			static std::string size_line(64, ' ');
+			size_line.clear();
 			for(const auto &[size, count]: _shadow_atlas.allocated_counts())
-				ImGui::Text("  %4d: %ld", size, count);
+				size_line += std::format("  {:4}: {}", size, count);
+			ImGui::Text("  %s", size_line.c_str());
 		}
 
 		if(ImGui::CollapsingHeader("Images", ImGuiTreeNodeFlags_DefaultOpen))
