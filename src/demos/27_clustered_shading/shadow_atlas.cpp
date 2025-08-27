@@ -7,7 +7,6 @@
 
 #include <chrono>
 #include <ranges>
-#include <algorithm>
 #include <string_view>
 #include <print>
 #include <cstdio>
