@@ -1147,8 +1147,6 @@ void ClusteredShading::createLights()
 
 void ClusteredShading::updateLightsSSBOs()
 {
-	// m_lights_ssbo.flush();
-	// m_light_counts_ubo.flush();
 	_light_mgr.flush();
 }
 
