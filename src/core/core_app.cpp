@@ -55,7 +55,7 @@ namespace RGL
         {
 			ImGui::Text("%.1f FPS (%.3f ms/frame)",	ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
 			ImGui::Text("r-time: %ld us (~%ld FPS)", _render_time.average().count(), 1'000'000 / (_render_time.average().count() + 1)); // +1 to just avoid DBZ
-        }
+		}
         ImGui::End();
         /* Overlay end */
     }
