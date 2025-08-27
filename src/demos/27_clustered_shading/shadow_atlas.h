@@ -101,7 +101,7 @@ public:
 
 	// calculate a hash that changes if it affects shadow map
 	size_t light_hash(const GPULight &light) const;
-	bool should_render(const AtlasLight &atlas_light, Time now, size_t hash) const;
+	bool should_render(const AtlasLight &atlas_light, Time now, size_t hash, bool has_dynamic) const;
 
 	void update_shadow_params(LightManager &lights);
 

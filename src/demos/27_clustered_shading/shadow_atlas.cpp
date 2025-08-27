@@ -300,15 +300,13 @@ size_t ShadowAtlas::light_hash(const GPULight &L) const
 	return 0;
 }
 
-bool ShadowAtlas::should_render(const AtlasLight &atlas_light, Time now, size_t light_hash) const
+bool ShadowAtlas::should_render(const AtlasLight &atlas_light, Time now, size_t light_hash, bool has_dynamic) const
 {
 
 	if(atlas_light.is_dirty())
 		return true;
 
-	// TODO: check for dynamic objects inside the light's sphere
-
-	if(light_hash == atlas_light.hash /* and no dynamic objects */)
+	if(light_hash == atlas_light.hash and not has_dynamic)
 		return false;
 
 
