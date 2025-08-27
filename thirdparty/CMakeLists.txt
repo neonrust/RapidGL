@@ -22,7 +22,6 @@ target_include_directories(stb_image PRIVATE ${STB_IMAGE_DIR})
 CPMAddPackage("gh:assimp/assimp@5.4.3")
 CPMAddPackage("gh:glfw/glfw#3.4")
 CPMAddPackage("gh:g-truc/glm#1.0.1")
-CPMAddPackage("gh:ocornut/imgui@1.91.8")
 #CPMAddPackage("gh:gabime/spdlog@1.10.0")
 CPMAddPackage("gh:martinus/unordered_dense@4.4.0")
 CPMAddPackage("gh:martinus/svector@1.0.3")
@@ -49,13 +48,19 @@ if (tinyddsloader_ADDED)
     target_include_directories(tinyddsloader INTERFACE "${tinyddsloader_SOURCE_DIR}")
 endif()
 
-set(imgui_SOURCE_DIR ${imgui_SOURCE_DIR} CACHE INTERNAL "")
-add_library(imgui STATIC ${imgui_SOURCE_DIR}/imgui.cpp
-					     ${imgui_SOURCE_DIR}/imgui_demo.cpp
-					     ${imgui_SOURCE_DIR}/imgui_draw.cpp
-						 ${imgui_SOURCE_DIR}/imgui_tables.cpp
-					     ${imgui_SOURCE_DIR}/imgui_widgets.cpp)
-						 
+CPMAddPackage("gh:ocornut/imgui@1.91.8")
+if(imgui_ADDED)
+  set(imgui_SOURCE_DIR ${imgui_SOURCE_DIR} CACHE INTERNAL "")
+  add_library(imgui
+    STATIC
+    ${imgui_SOURCE_DIR}/imgui.cpp
+    ${imgui_SOURCE_DIR}/imgui_demo.cpp
+    ${imgui_SOURCE_DIR}/imgui_draw.cpp
+    ${imgui_SOURCE_DIR}/imgui_tables.cpp
+    ${imgui_SOURCE_DIR}/imgui_widgets.cpp)
+  target_include_directories(imgui PUBLIC ${imgui_SOURCE_DIR})
+endif()
+
 set_target_properties(glad
                       stb_image 
                       assimp 
