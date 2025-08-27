@@ -505,8 +505,8 @@ ShadowAtlas::Counters ShadowAtlas::prioritize_lights(LightManager &lights, const
 	Counters counters;
 
 	// calculate "value" for each shadow-casting light
-	LightIndex light_index = 0;  // needed to retrieve the LightID
-	for(const auto &light: lights)
+
+	for(const auto &[light_index, light]: std::views::enumerate(lights))
 	{
 		if(IS_SHADOW_CASTER(light))
 		{
@@ -514,9 +514,10 @@ ShadowAtlas::Counters ShadowAtlas::prioritize_lights(LightManager &lights, const
 			// std::print("  [{}] ", light_id);
 			const auto value = light_value(light, view_pos, view_forward);
 
+			const auto light_id = lights.light_id(LightIndex(light_index));
+
 			if(value > 0)
 			{
-				const auto light_id = lights.light_id(light_index);
 
 				if(IS_DIR_LIGHT(light) and value > strongest_dir_value)
 				{
@@ -528,8 +529,6 @@ ShadowAtlas::Counters ShadowAtlas::prioritize_lights(LightManager &lights, const
 			}
 			else
 			{
-				const auto light_id = lights.light_id(light_index);
-
 				// light has no value  (e.g. too far away)
 				if(remove_allocation(light_id))
 				{
@@ -538,8 +537,6 @@ ShadowAtlas::Counters ShadowAtlas::prioritize_lights(LightManager &lights, const
 				}
 			}
 		}
-
-		++light_index;
 	}
 
 	if(strongest_dir_value > -1.f)
