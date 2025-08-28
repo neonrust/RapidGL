@@ -10,6 +10,7 @@
 // #include <glm/gtx/string_cast.hpp>  // glm::to_string
 
 #include <chrono>
+#include <ranges>
 #include <vector>
 #include "constants.h"
 
@@ -58,7 +59,7 @@ void opengl_message_callback([[maybe_unused]] GLenum source,
 using namespace RGL;
 
 ClusteredShading::ClusteredShading() :
-	_shadow_atlas(8192),
+	_shadow_atlas(8192, _light_mgr),
 	m_cluster_aabb_ssbo("cluster-aabb"sv),
 	m_cluster_discovery_ssbo("cluster-discovery"sv),
 	m_cull_lights_args_ssbo("cull-lights"sv),
@@ -66,6 +67,7 @@ ClusteredShading::ClusteredShading() :
 	m_all_lights_index_ssbo("all-lights-index"sv),
 	m_unique_lights_bitfield_ssbo("unique-lights-bitfield"sv),
 	m_shadow_map_params_ssbo("shadow-map-params"sv),
+	m_relevant_lights_index_ssbo("relevant-lights-index"sv),
 	m_exposure            (0.4f),
 	m_gamma               (2.2f),
 	m_background_lod_level(1.2f),
@@ -86,8 +88,11 @@ ClusteredShading::ClusteredShading() :
 	m_all_lights_index_ssbo.setBindIndex(SSBO_BIND_ALL_CLUSTER_LIGHTS);
 	m_unique_lights_bitfield_ssbo.setBindIndex(SSBO_BIND_UNIQUE_LIGHTS_BITFIELD);
 	m_cull_lights_args_ssbo.setBindIndex(SSBO_BIND_CULL_LIGHTS_ARGS);
+	m_relevant_lights_index_ssbo.setBindIndex(SSBO_BIND_RELEVANT_LIGHTS_INDEX);
 
 	_light_visible_set.reserve(256);
+
+	_lightsPvs.reserve(1024);
 }
 
 ClusteredShading::~ClusteredShading()
@@ -898,14 +903,12 @@ void ClusteredShading::update(double delta_time)
 
 		for(LightIndex light_index = 0; light_index <  _light_mgr.size(); ++light_index)
 		{
-			const auto light_ =_light_mgr.get_by_index(light_index);
-			auto [uuid, L] = light_.value();
+			const auto &[light_id, L] =_light_mgr.at(light_index);
 
 			// orbit around the world origin
 			L.position = orbit_mat * glm::vec4(L.position, 1);
-			_light_mgr.set(uuid, L);
+			_light_mgr.set(light_id, L);
 		}
-
 
 		updateLightsSSBOs();
 	}
@@ -1554,21 +1557,20 @@ void ClusteredShading::renderShadowMaps()
 		// TODO: probably should be a separate setting
 		_shadow_atlas.set_max_distance(std::min(100.f, m_camera.farPlane())/2.f);
 
-		_shadow_atlas.eval_lights(_light_mgr, m_camera.position(), m_camera.forwardVector());
+		_shadow_atlas.eval_lights(_lightsPvs, m_camera.position(), m_camera.forwardVector());
 	}
 
 	// light projections needs to be updated more often than the allocation
 	//   needs to updated every time it's rendered, but for simplicity,
 	//   we'll genrate params for all the allocated lights in one go
-	_shadow_atlas.update_shadow_params(_light_mgr);
+	_shadow_atlas.update_shadow_params();
 
 	_light_shadow_maps_rendered = 0;
 	_shadow_atlas_slots_rendered = 0;
 
 	for(auto &[light_id, atlas_light]: _shadow_atlas.allocated_lights())
 	{
-		const auto light_ = _light_mgr.get_by_id(light_id);
-		const auto &light = light_.value().get();
+		const auto &light = _light_mgr.get_by_id(light_id);
 
 		// if this light did not contribute to the frame, no need to render its shadow map
 		const auto light_index = _light_mgr.light_index(light_id);
@@ -1576,7 +1578,6 @@ void ClusteredShading::renderShadowMaps()
 			continue;
 
 		const auto light_hash = _shadow_atlas.hash_light(light);
-
 
 		// TODO: check wether scene objects inside the light's sphere is dynamic (not static)
 		//   this should also be per slot (cube face for point lights)
@@ -1731,6 +1732,25 @@ const std::vector<StaticObject> &ClusteredShading::cullScene(const Camera &view)
 
 	const auto view_pos = view.position();
 	const auto &frustum = view.frustum();
+
+	const auto max_view_distance = view.farPlane();
+
+	// this probably doesn't need to be done every frame
+	//   if no lights or the view moves then only once
+	_lightsPvs.clear();
+	for(const auto &[light_index, L]: std::views::enumerate(_light_mgr))
+	{
+		if(GET_LIGHT_TYPE(L) == LIGHT_TYPE_DIRECTIONAL)
+			_lightsPvs.push_back(LightIndex(light_index));
+		else
+		{
+			const auto distance = glm::distance(L.position, view_pos) - L.affect_radius;
+			if(distance < max_view_distance)
+				_lightsPvs.push_back(LightIndex(light_index));
+		}
+	}
+	// only upload when changed...
+	m_relevant_lights_index_ssbo.set(_lightsPvs);
 
 	// TODO do something like:
 	//    view.near(_scene)  i.e. everything in range of the view

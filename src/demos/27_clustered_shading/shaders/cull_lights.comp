@@ -25,6 +25,7 @@ layout(std430, binding = SSBO_BIND_UNIQUE_LIGHTS_BITFIELD) buffer UniqueLightsBi
 
 SSBO_ALL_CLUSTER_LIGHTS_rw;
 
+SSBO_RELEVANT_LIGHTS_INDEX_ro;
 
 uniform vec3 u_cam_pos;
 uniform mat4 u_view_matrix;
@@ -58,8 +59,9 @@ void main()
     const uint THREADS_COUNT = gl_WorkGroupSize.x;
 
     // Intersect all lights against cluster AABB
-    for (uint light_index = gl_LocalInvocationIndex; light_index < lights.length(); light_index += THREADS_COUNT)
+    for (uint index = gl_LocalInvocationIndex; index < ssbo_relevant_lights_index.length(); index += THREADS_COUNT)
     {
+    	uint light_index = ssbo_relevant_lights_index[index];
     	GPULight light = lights[light_index];
 
      	if(light.intensity < 1e-1)

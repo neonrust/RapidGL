@@ -27,11 +27,11 @@ public:
 	enum class CubeFace : uint32_t { PosX, NegX, PosY, NegY, PosZ, NegZ };
 
 private:
-	RGL::SpatialAllocator<uint32_t> _allocator;
+	using allocator_t = RGL::SpatialAllocator<uint32_t>;
 
 public:
-	using SlotSize = decltype(_allocator)::SizeT;
-	using SlotID = decltype(_allocator)::NodeIndex;
+	using SlotSize = allocator_t::SizeT;
+	using SlotID = allocator_t::NodeIndex;
 
 	//dense_map<LightID, Slot> _lights;
 	struct SlotDef
@@ -79,7 +79,7 @@ public:
 
 	// TODO: specify which channels to use (e.g. depth & normals) ?
 	//    ALso take LightManager argument? ? can it be replaced for any reason?
-	ShadowAtlas(uint32_t size);
+	ShadowAtlas(uint32_t size, LightManager &lights);
 	~ShadowAtlas();
 
 	bool create();
@@ -95,7 +95,7 @@ public:
 	}
 	inline void set_min_change_interval(std::chrono::milliseconds interval) { _min_change_interval = interval; }
 
-	size_t eval_lights(LightManager &lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward);
+	size_t eval_lights(const std::vector<LightIndex> &relevant_lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward);
 
 	[[nodiscard]] const dense_map<LightID, AtlasLight> &allocated_lights() const { return _id_to_allocated; }
 
@@ -103,15 +103,15 @@ public:
 	size_t hash_light(const GPULight &light) const;
 	bool should_render(const AtlasLight &atlas_light, Time now, size_t hash, bool has_dynamic) const;
 
-	void update_shadow_params(LightManager &lights);
+	void update_shadow_params();
 
 	void clear();
 
-	void debug_dump_allocated(const LightManager &lights, bool details=false);
+	void debug_dump_allocated(bool details=false);
 
 	std::vector<std::pair<SlotSize, size_t>> allocated_counts() const;
 
-	inline size_t slot_size_idx(SlotSize size) const { return _allocator.level_from_size(size) - _allocator.min_level(); }
+	inline size_t slot_size_idx(SlotSize size) const { return _allocator.level_from_size(size) - _allocator.min_size_level(); }
 
 private:
 	float light_value(const GPULight &light, const glm::vec3 &view_pos, const glm::vec3 &view_forward) const;
@@ -154,8 +154,8 @@ private:
 		inline bool operator > (const ValueLight &that) const { return value > that.value; }
 	};
 
-	Counters prioritize_lights(LightManager &lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward, std::vector<ValueLight> &prioritized);
-	Counters apply_desired_slots(const small_vec<AtlasLight, 120> &desired_slots, LightManager &lights, Time now);
+	Counters prioritize_lights(const std::vector<LightIndex> &relevant_lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward, std::vector<ValueLight> &prioritized);
+	Counters apply_desired_slots(const small_vec<AtlasLight, 120> &desired_slots, Time now);
 	void generate_slots(std::initializer_list<uint32_t> distribution);
 	bool has_slots_available(const AtlasLight &atlas_light, const std::array<size_t, 6> &num_promised) const;
 	bool remove_allocation(LightID light_id);
@@ -165,6 +165,8 @@ private:
 	void _dump_desired(const small_vec<AtlasLight, 120> &desired_slots);
 
 private:
+	LightManager &_lights;  // one could argue that the association should be the other way around...
+
 	dense_map<SlotSize, std::vector<SlotID>> _slot_sets;
 
 	dense_map<LightID, AtlasLight> _id_to_allocated;
@@ -182,4 +184,6 @@ private:
 
 	RGL::buffer::ShaderStorage<LightShadowParams> _shadow_params_ssbo;
 	small_vec<size_t, 16> _distribution;  // slot sizes of each of the levels (from max to min)
+
+	RGL::SpatialAllocator<uint32_t> _allocator;
 };

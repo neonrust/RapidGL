@@ -215,6 +215,7 @@ private:
 
 	std::vector<StaticObject> _scene;  // TODO: Scene _scene;
 	std::vector<StaticObject> _scenePvs;  // potentially visible set
+	std::vector<LightIndex>   _lightsPvs;  // basically all lights within theoretical range
 
 	RGL::buffer::ShaderStorage<AABB> m_cluster_aabb_ssbo;
 	RGL::buffer::ShaderStorage<uint> m_cluster_discovery_ssbo;
@@ -223,6 +224,7 @@ private:
 	RGL::buffer::ShaderStorage<uint>       m_all_lights_index_ssbo;
 	RGL::buffer::ShaderStorage<uint>       m_unique_lights_bitfield_ssbo;
 	dense_set<uint>                        _light_visible_set;
+	RGL::buffer::ShaderStorage<uint>       m_relevant_lights_index_ssbo;
 	RGL::buffer::MappedStorage<LightShadowParams, MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS + MAX_AREA_LIGHTS> m_shadow_map_params_ssbo;
 	LightManager _light_mgr;
 

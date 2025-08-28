@@ -67,15 +67,16 @@ public:
 	template<_private::LightType LT>
 	std::optional<LT> get(LightID uuid);
 
-	std::optional<GPULight> get_by_id(LightID light_id) const;
-	std::optional<std::reference_wrapper<GPULight>> get_by_id(LightID light_id);
+	const GPULight &get_by_id(LightID light_id) const ;
+		  GPULight &get_by_id(LightID light_id);
 
-	std::optional<std::tuple<LightID, GPULight>> get_by_index(LightIndex light_index) const;
-
+	std::tuple<LightID, const GPULight &> at(LightIndex light_index) const;
+	std::tuple<LightID,       GPULight &> at(LightIndex light_index);
 	template<_private::LightType LT>
-	std::optional<LT> at(LightIndex list_index) const;
-	// TODO: operator[] ?
+	LT at(LightIndex list_index) const;
 
+	inline const GPULight &operator [] (LightIndex light_index) const noexcept { return _lights[light_index]; }
+	inline       GPULight &operator [] (LightIndex light_index)       noexcept { return _lights[light_index]; }
 
 	void set(LightID uuid, const GPULight &L); // sets dirty flag
 
@@ -96,7 +97,7 @@ public:
 	inline const GPULight &at(size_t light_index) const { return _lights.at(light_index); }
 
 	inline uint_fast16_t shadow_index(LightID light_id) const {
-		return GET_SHADOW_IDX(get_by_id(light_id).value());
+		return GET_SHADOW_IDX(get_by_id(light_id));
 	}
 	void set_shadow_index(LightID light_id, uint_fast16_t shadow_index);
 	void clear_shadow_index(LightID light_id);
@@ -174,7 +175,7 @@ size_t LightManager::num_lights() const
 }
 
 template<_private::LightType LT>
-std::optional<LT> LightManager::at(LightIndex light_index) const
+LT LightManager::at(LightIndex light_index) const
 {
 	const auto &light = _lights[light_index];
 	const auto found_id = _index_to_id.find(light_index);
