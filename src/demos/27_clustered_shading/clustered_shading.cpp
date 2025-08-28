@@ -83,7 +83,7 @@ ClusteredShading::ClusteredShading() :
 	m_shadow_map_params_ssbo.setBindIndex(SSBO_BIND_SHADOW_PARAMS);
 	m_cluster_discovery_ssbo.setBindIndex(SSBO_BIND_CLUSTER_DISCOVERY);
 	m_cluster_lights_range_ssbo.setBindIndex(SSBO_BIND_CLUSTER_LIGHT_RANGE);
-	m_all_lights_index_ssbo.setBindIndex(SSBO_BIND_ALL_LIGHTS_INDEX);
+	m_all_lights_index_ssbo.setBindIndex(SSBO_BIND_ALL_CLUSTER_LIGHTS);
 	m_unique_lights_bitfield_ssbo.setBindIndex(SSBO_BIND_UNIQUE_LIGHTS_BITFIELD);
 	m_cull_lights_args_ssbo.setBindIndex(SSBO_BIND_CULL_LIGHTS_ARGS);
 

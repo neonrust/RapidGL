@@ -23,7 +23,7 @@ layout(std430, binding = SSBO_BIND_UNIQUE_LIGHTS_BITFIELD) buffer UniqueLightsBi
 	uint unique_lights_ssbo[];
 };
 
-SSBO_ALL_LIGHTS_rw;
+SSBO_ALL_CLUSTER_LIGHTS_rw;
 
 
 uniform vec3 u_cam_pos;
