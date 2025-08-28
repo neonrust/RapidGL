@@ -15,7 +15,7 @@ layout(binding = 3)          uniform sampler2D u_blue_noise;
 
 layout(std430, binding = SSBO_BIND_LIGHTS) readonly buffer LightsSSBO
 {
-	GPULight lights_ssbo[];
+	GPULight ssbo_lights[];
 };
 
 
@@ -187,9 +187,9 @@ void main()
 
 	// TODO: iterate through lights in this CLUSTER only
 
-	for(uint light_index = 0; light_index < lights_ssbo.length(); ++light_index)
+	for(uint light_index = 0; light_index < ssbo_lights.length(); ++light_index)
 	{
-		GPULight light = lights_ssbo[light_index];
+		GPULight light = ssbo_lights[light_index];
 
 		switch(GET_LIGHT_TYPE(light))
        	{

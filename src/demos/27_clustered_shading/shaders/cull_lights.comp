@@ -20,7 +20,7 @@ layout(std430, binding = SSBO_BIND_CLUSTER_LIGHT_RANGE) writeonly buffer Cluster
 
 layout(std430, binding = SSBO_BIND_UNIQUE_LIGHTS_BITFIELD) buffer UniqueLightsBitfield
 {
-	uint unique_lights_ssbo[];
+	uint ssbo_unique_lights[];
 };
 
 SSBO_ALL_CLUSTER_LIGHTS_rw;
@@ -155,8 +155,8 @@ void main()
 			uint light_index = s_light_list[idx];
 			all_lights_index[offset + idx] = light_index;
 
-			//atomicOr(unique_lights_ssbo[light_index >> 5], light_index & 31);
-			unique_lights_ssbo[light_index >> 5] |= 1u << (light_index & 31u);
+			//atomicOr(ssbo_unique_lights[light_index >> 5], light_index & 31);
+			ssbo_unique_lights[light_index >> 5] |= 1u << (light_index & 31u);
 		}
 
 		cluster_lights[s_cluster_index].start_index = offset;
