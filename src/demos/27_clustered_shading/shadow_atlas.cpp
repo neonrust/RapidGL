@@ -500,6 +500,8 @@ ShadowAtlas::Counters ShadowAtlas::prioritize_lights(const std::vector<LightInde
 
 	Counters counters;
 
+	// TODO: lights in '_id_to_allocated' NOT in 'relevant_lights' needs to be deallocated
+
 	// calculate "value" for each shadow-casting light
 
 	for(const auto &light_index: relevant_lights)
