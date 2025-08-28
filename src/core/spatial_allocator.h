@@ -2,6 +2,7 @@
 
 #include "container_types.h"
 #include <cstdint>
+#include <bit>
 #include <glm/integer.hpp>
 #include <glm/vec3.hpp>
 #include <vector>
@@ -90,8 +91,8 @@ public:
 
 	inline SizeT max_size() const { return _max_size; };
 	inline SizeT min_size() const { return _min_size; };
-	inline uint32_t max_level() const { return level_from_size(_min_size); }
-	inline uint32_t min_level() const { return level_from_size(_max_size); }
+	inline uint32_t max_size_level() const { return level_from_size(_min_size); }
+	inline uint32_t min_size_level() const { return level_from_size(_max_size); }
 
 	size_t num_allocatable_levels() const;
 
@@ -109,7 +110,7 @@ public:
 
 	// used as "bad index" in returns
 	[[nodiscard]] inline NodeIndex end() const { return BadIndex; }
-	[[nodiscard]] inline uint32_t level_from_size(AxisT size) const { assert(__builtin_popcount(size) == 1 and size < _size); return uint32_t(__builtin_ffs(int(_size / size)) - 1); }
+	[[nodiscard]] inline uint32_t level_from_size(AxisT size) const { assert(__builtin_popcount(size) == 1 and size < _size); return std::countr_zero(uint32_t(_size / size)); }
 
 private:
 	[[nodiscard]] uint32_t level(NodeIndex index) const;

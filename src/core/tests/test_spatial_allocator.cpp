@@ -13,6 +13,8 @@ suite<fixed_string("SpatialAllocator")> sa_suite([]{
 		expect(a.num_allocated().empty()) << "nothing allocated";
 		expect(a.max_size() == 1024);
 		expect(a.min_size() == 128);
+		expect(a.max_size_level() == 6);
+		expect(a.min_size_level() == 3);
 	};
 
 	"ctor_rounding"_test = [] {
