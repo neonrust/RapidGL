@@ -49,6 +49,8 @@ public:
 	template<IteratorOf<T> Iter>
 	void set(Iter begin, Iter end, size_t start_index=0);
 
+	bool download(std::vector<T> &destination, size_t offset=0, size_t count=0);
+
 	inline size_t size() const { return _size; }
 
 	void resize(size_t size);
@@ -105,6 +107,18 @@ bool ShaderStorage<T>::set(size_t index, const T &item)
 		upload(&item, elem_size, index * elem_size);
 
 	return index < _size;
+}
+
+template<typename T>
+inline bool ShaderStorage<T>::download(std::vector<T> &destination, size_t offset, size_t count)
+{
+	if(count == 0)
+		count = _size - offset;
+	else if(offset + count > _size)
+		count = _size - offset;
+	destination.resize(count);
+	glGetNamedBufferSubData(id(), sizeof(T)*offset, sizeof(T)*count, destination.data());
+	return true;
 }
 
 template<typename T>
