@@ -485,7 +485,7 @@ float sampleShadow(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max,
 
 float fadeByDistance(float distance, float hard_limit)
 {
-	return 1 - smoothstep(hard_limit*0.9, hard_limit, distance);
+	return 1 - smoothstep(hard_limit*0.7, hard_limit, distance);
 }
 
 void detectCubeFaceSlot(vec3 light_to_frag, LightShadowParams params, out mat4 view_proj, out vec4 rect)
