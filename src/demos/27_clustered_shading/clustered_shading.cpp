@@ -20,8 +20,11 @@ using namespace std::literals;
 #define IMAGE_UNIT_WRITE 0
 
 
+// testing variables
 static float s_spot_outer_angle = 30.f;
 static float s_spot_intensity = 2000.f;
+
+static const auto s_relevant_lights_update_min_interval = 250ms;
 
 
 glm::mat3 make_common_space_from_direction(const glm::vec3 &direction)
@@ -1733,24 +1736,41 @@ const std::vector<StaticObject> &ClusteredShading::cullScene(const Camera &view)
 	const auto view_pos = view.position();
 	const auto &frustum = view.frustum();
 
-	const auto max_view_distance = view.farPlane();
+	const auto max_view_distance = std::min(100.f, view.farPlane());
 
 	// this probably doesn't need to be done every frame
-	//   if no lights or the view moves then only once
-	_lightsPvs.clear();
-	for(const auto &[light_index, L]: std::views::enumerate(_light_mgr))
+	//   if no lights nor the view moves then only once
 	{
-		if(GET_LIGHT_TYPE(L) == LIGHT_TYPE_DIRECTIONAL)
-			_lightsPvs.push_back(LightIndex(light_index));
-		else
+		static auto last_update = T0 - 1h;
+		if(T0 - last_update > s_relevant_lights_update_min_interval)
 		{
-			const auto distance = glm::distance(L.position, view_pos) - L.affect_radius;
-			if(distance < max_view_distance)
-				_lightsPvs.push_back(LightIndex(light_index));
+			last_update = T0;
+
+			_lightsPvs.clear();
+
+			for(const auto &[l_index, L]: std::views::enumerate(_light_mgr))
+			{
+				const auto light_index = LightIndex(l_index);
+
+				if(GET_LIGHT_TYPE(L) == LIGHT_TYPE_DIRECTIONAL)
+					_lightsPvs.push_back(light_index);
+				else
+				{
+					const auto distance = glm::distance(L.position, view_pos) - L.affect_radius;
+					if(distance < max_view_distance)
+						_lightsPvs.push_back(light_index);
+					else if(IS_SHADOW_CASTER(L) /* and was in the light pvs before */)
+					{
+						const auto light_id = _light_mgr.light_id(light_index);
+						_shadow_atlas.remove_allocation(light_id);
+					}
+				}
+			}
+			// only upload when changed...
+			m_relevant_lights_index_ssbo.set(_lightsPvs);
+			std::print("   lights: {}\n", _lightsPvs.size());
 		}
 	}
-	// only upload when changed...
-	m_relevant_lights_index_ssbo.set(_lightsPvs);
 
 	// TODO do something like:
 	//    view.near(_scene)  i.e. everything in range of the view
