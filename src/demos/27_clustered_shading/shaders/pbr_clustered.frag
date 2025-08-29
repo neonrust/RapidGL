@@ -318,7 +318,7 @@ vec3 pointLightVisibility(uint light_index, vec3 world_pos)
 {
 	GPULight light = ssbo_lights[light_index];
 
-	float light_edge_distance = length(light.position - u_cam_pos) - light.affect_radius;
+	float light_edge_distance = distance(light.position, u_cam_pos) - light.affect_radius;
 	// fade the whole light by distance
 	float light_fade = fadeByDistance(light_edge_distance, u_light_max_distance);
 	if(light_fade == 0)
