@@ -1439,7 +1439,7 @@ void ClusteredShading::render()
 
 	_rt.bindRenderTarget(RenderTarget::ColorBuffer);
 
-	renderLighting(m_camera);
+	renderSceneShading(m_camera);
 	m_shading_time.add(_gl_timer.elapsed<microseconds>(true));
 
 	// Render area lights geometry, to '_rt'
