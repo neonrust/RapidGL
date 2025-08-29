@@ -7,7 +7,6 @@ uniform float u_near_z;
 uniform uvec3 u_cluster_resolution;
 uniform uvec2 u_cluster_size_ss;
 uniform float u_log_cluster_res_y;
-uniform uint  u_num_cluster_avg_lights;
 uniform float u_light_max_distance;
 uniform float u_shadow_max_distance;
 

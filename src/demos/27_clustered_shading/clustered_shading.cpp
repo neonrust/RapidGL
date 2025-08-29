@@ -1844,14 +1844,10 @@ void ClusteredShading::renderLighting(const Camera &camera)
 
     m_clustered_pbr_shader->bind();
 
-	// TODO: camera.setUniforms(*m_clustered_pbr_shader);
-	m_clustered_pbr_shader->setUniform("u_cam_pos"sv,                    camera.position());
-	m_clustered_pbr_shader->setUniform("u_view"sv,                       camera.viewTransform());
-	m_clustered_pbr_shader->setUniform("u_near_z"sv,                     camera.nearPlane());
+	camera.setUniforms(*m_clustered_pbr_shader);
 	m_clustered_pbr_shader->setUniform("u_cluster_resolution"sv,         m_cluster_resolution);
 	m_clustered_pbr_shader->setUniform("u_cluster_size_ss"sv,            glm::uvec2(m_cluster_block_size));
 	m_clustered_pbr_shader->setUniform("u_log_cluster_res_y"sv,          m_log_cluster_res_y);
-	m_clustered_pbr_shader->setUniform("u_num_cluster_avg_lights"sv,     uint32_t(CLUSTER_AVERAGE_LIGHTS));
 	m_clustered_pbr_shader->setUniform("u_light_max_distance"sv,         std::min(100.f, m_camera.farPlane()));
 	m_clustered_pbr_shader->setUniform("u_shadow_max_distance"sv,        std::min(100.f, m_camera.farPlane())/1.5f);
 
