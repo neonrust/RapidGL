@@ -171,10 +171,7 @@ size_t ShadowAtlas::eval_lights(const std::vector<LightIndex> &relevant_lights, 
 		{
 			// free the previous slot (if any)
 			if(remove_allocation(prio.light_id))
-			{
 				++counters.dropped;
-				_lights.clear_shadow_index(prio.light_id);
-			}
 		}
 
 		// cut off excess lights
@@ -234,10 +231,7 @@ size_t ShadowAtlas::eval_lights(const std::vector<LightIndex> &relevant_lights, 
 		{
 			// no slots available
 			if(remove_allocation(prio_light.light_id))
-			{
 				++counters.dropped;
-				_lights.clear_shadow_index(prio_light.light_id);
-			}
 		}
 	}
 
@@ -484,10 +478,7 @@ void ShadowAtlas::clear()
 	for(const auto &[light_id, atlas_light]: _id_to_allocated)
 	{
 		if(remove_allocation(light_id))
-		{
 			++counters.dropped;
-			// lights.clear_shadow_idx(light_id);
-		}
 	}
 	_id_to_allocated.clear();
 
@@ -531,10 +522,7 @@ ShadowAtlas::Counters ShadowAtlas::prioritize_lights(const std::vector<LightInde
 			{
 				// light has no value  (e.g. too far away)
 				if(remove_allocation(light_id))
-				{
 					++counters.dropped;
-					_lights.clear_shadow_index(light_id);
-				}
 			}
 		}
 	}
@@ -677,10 +665,7 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const small_vec<AtlasLigh
 				// this should not happen, I think...
 
 				if(remove_allocation(light_id))
-				{
 					++counters.dropped;
-					_lights.clear_shadow_index(light_id);
-				}
 				std::print("  [{}] RAN out of slots of size {}\n", light_id, desired.slots[0].size);
 				assert(false);
 				continue;
