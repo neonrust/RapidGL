@@ -1856,7 +1856,7 @@ void ClusteredShading::renderSceneShadow(const glm::vec3 &pos, float far_z, uint
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);  // writing 2-component normals
 }
 
-void ClusteredShading::renderLighting(const Camera &camera)
+void ClusteredShading::renderSceneShading(const Camera &camera)
 {
 	glDepthMask(GL_FALSE);
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);

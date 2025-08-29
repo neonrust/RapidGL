@@ -130,7 +130,7 @@ private:
 	void renderDepth(const glm::mat4 &view_projection, RGL::RenderTarget::Texture2d &target, const glm::ivec4 &rect={0,0,0,0});
 	void renderShadowMaps();
 	void renderSceneShadow(const glm::vec3 &pos, float far_z, uint_fast16_t shadow_params_index, uint32_t shadow_map_inde);
-	void renderLighting(const RGL::Camera &camera);
+	void renderSceneShading(const RGL::Camera &camera);
 	void renderSkybox();
 	void downloadVisibleLightSet();
 	void draw2d(const RGL::Texture &texture, BlendMode mode=BlendMode::Replace); // TODO: move to CoreApp
