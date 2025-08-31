@@ -224,13 +224,12 @@ public:
 	TextureCube() = default;
 
 	bool Create(size_t width, size_t height, GLenum internalFormat, size_t num_mipmaps=DefaultMipmaps);
+	void Release();
 
 	void BindFace(CubeFace face, uint32_t unit=0);
 
 	// TODO: convert to factory function
 	bool Load(const std::filesystem::path * filepaths, bool is_srgb = false, uint32_t num_mipmaps=DefaultMipmaps);
-
-	void Release() override;
 
 	inline uint32_t texture_face_id(CubeFace face) const { return _faceViews[uint32_t(face)]; }
 
