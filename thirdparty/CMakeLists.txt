@@ -42,7 +42,6 @@ CPMAddPackage(
   GIT_SHALLOW TRUE
   DOWNLOAD_ONLY TRUE
 )
-
 if (tinyddsloader_ADDED)
     add_library(tinyddsloader INTERFACE)
     target_include_directories(tinyddsloader INTERFACE "${tinyddsloader_SOURCE_DIR}")
@@ -61,12 +60,30 @@ if(imgui_ADDED)
   target_include_directories(imgui PUBLIC ${imgui_SOURCE_DIR})
 endif()
 
+CPMAddPackage(
+  NAME implot
+  GITHUB_REPOSITORY epezent/implot
+  GIT_TAG v0.16
+  DOWNLOAD_ONLY TRUE
+)
+if(implot_ADDED)
+  add_library(implot
+    STATIC
+    ${implot_SOURCE_DIR}/implot.cpp
+    ${implot_SOURCE_DIR}/implot_items.cpp)
+  target_include_directories(implot PUBLIC ${implot_SOURCE_DIR})
+
+  # ImPlot needs ImGui, so link that too
+  target_link_libraries(implot PUBLIC imgui)
+endif()
+
 set_target_properties(glad
                       stb_image 
                       assimp 
                       glfw 
                       glm 
                       imgui 
+                      implot
 					  unordered_dense
 					  svector
 					  tinyddsloader
