@@ -176,20 +176,20 @@ public:
 
 	void GenerateMipMaps();
 
-	virtual const ImageData &GetMetadata() const { return m_metadata; };
+	virtual const ImageMeta &GetMetadata() const { return m_metadata; };
 
 	static uint8_t calculateMipMapLevels(size_t width, size_t height=0, size_t depth=0, size_t min_size=0, size_t max_levels=64);
 
 	inline operator bool () const { return _texture_id; }
 
-	virtual void Release();
+	void Release();
 
 protected:
 	bool Create(size_t width, size_t height, size_t depth, GLenum internalFormat, size_t num_mipmaps);
 
 	Texture() : m_type(TextureType::Invalid), _texture_id(0) {}
 
-	ImageData   m_metadata;
+	ImageMeta   m_metadata;
 	TextureType m_type;
 	GLuint      _texture_id;
 };

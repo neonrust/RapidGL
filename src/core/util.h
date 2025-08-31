@@ -12,9 +12,9 @@
 
 namespace RGL
 {
-    struct ImageData
+	struct ImageMeta
     {
-        ImageData()
+		ImageMeta()
             : width(0),
               height(0),
               channels(0)
@@ -26,6 +26,7 @@ namespace RGL
         GLuint channels;
 		GLuint channel_format = GL_RGB;
 		GLuint channel_type = GL_UNSIGNED_INT;
+		bool   has_alpha;
     };
 
     class Util
@@ -62,16 +63,16 @@ namespace RGL
         */
 		using TextureData = std::unique_ptr<void, std::function<void(void *)>>;
 
-		static TextureData LoadTextureData(const std::filesystem::path& filepath,                        ImageData& image_data, int desired_number_of_channels = 0);
-        static TextureData LoadTextureData(unsigned char*               memory_data, uint32_t data_size, ImageData& image_data, int desired_number_of_channels = 0);
-		static TextureData LoadTextureDataHdr(const std::filesystem::path& filepath,                     ImageData& image_data, int desired_number_of_channels = 0);
+		static TextureData LoadTextureData(const std::filesystem::path& filepath,                        ImageMeta& image_data, int desired_number_of_channels = 0);
+		static TextureData LoadTextureData(unsigned char*               memory_data, uint32_t data_size, ImageMeta& image_data, int desired_number_of_channels = 0);
+		static TextureData LoadTextureDataHdr(const std::filesystem::path& filepath,                     ImageMeta& image_data, int desired_number_of_channels = 0);
 
 
 		using ImageOptions = uint32_t;
 		static constexpr ImageOptions ImageOptionsDefault = 0;
 		static constexpr ImageOptions ImageFlipVertical = 0x0001;
 
-		static TextureData jxl_load(const std::filesystem::path &filepath, ImageData &image_data, ImageOptions opts=ImageOptionsDefault);
+		static TextureData jxl_load(const std::filesystem::path &filepath, ImageMeta &image_data, ImageOptions opts=ImageOptionsDefault);
 
 		// static void ReleaseTextureData (const std::filesystem::path &filepath, unsigned char* data);
         static void ReleaseTextureData (float*         data);

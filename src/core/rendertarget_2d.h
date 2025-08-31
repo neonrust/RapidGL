@@ -100,7 +100,7 @@ private:
 	GLuint _depth_rbo_id { 0 };
 
 	uint_fast8_t _mip_levels { 1 };
-	ImageData m_metadata;
+	ImageMeta m_metadata;
 
 	const char *_name { nullptr };
 };

@@ -154,7 +154,7 @@ namespace RGL
 
 	static Util::TextureData mk_tx_data(void *data);
 
-	Util::TextureData Util::LoadTextureData(const fs::path& filepath, ImageData & image_data, int desired_number_of_channels)
+	Util::TextureData Util::LoadTextureData(const fs::path& filepath, ImageMeta & image_data, int desired_number_of_channels)
     {
 		// TODO: always try to load .jxl (instead) ?
 
@@ -179,7 +179,7 @@ namespace RGL
 		return mk_tx_data(data);
     }
 
-	Util::TextureData Util::LoadTextureData(unsigned char* memory_data, uint32_t data_size, ImageData& image_data, int desired_number_of_channels)
+	Util::TextureData Util::LoadTextureData(unsigned char* memory_data, uint32_t data_size, ImageMeta& image_data, int desired_number_of_channels)
     {
 		int channels_in_file = desired_number_of_channels;
 		void* data = stbi_load_from_memory(memory_data, int(data_size), (int *)&image_data.width, (int *)&image_data.height, &channels_in_file, desired_number_of_channels);
@@ -190,25 +190,26 @@ namespace RGL
 		return mk_tx_data(data);
     }
 
-	Util::TextureData Util::LoadTextureDataHdr(const fs::path &filepath, ImageData &image_data, int desired_number_of_channels)
+	Util::TextureData Util::LoadTextureDataHdr(const fs::path &filepath, ImageMeta &image_meta, int desired_number_of_channels)
     {
 		void *data = nullptr;
 
 		if(filepath.extension() == ".jxl")
 		{
-			return jxl_load(filepath, image_data, ImageFlipVertical);
+			return jxl_load(filepath, image_meta, ImageFlipVertical);
 		}
 		else
 		{
 			stbi_set_flip_vertically_on_load(true);
 			int channels_in_file = desired_number_of_channels;
-			data = stbi_loadf(filepath.generic_string().c_str(), (int *)&image_data.width, (int *)&image_data.height, &channels_in_file, desired_number_of_channels);
+			data = stbi_loadf(filepath.generic_string().c_str(), (int *)&image_meta.width, (int *)&image_meta.height, &channels_in_file, desired_number_of_channels);
 			stbi_set_flip_vertically_on_load(false);
 			if (data)
-				image_data.channels = desired_number_of_channels == 0 ? GLuint(channels_in_file) : GLuint(desired_number_of_channels);
+				image_meta.channels = desired_number_of_channels == 0 ? GLuint(channels_in_file) : GLuint(desired_number_of_channels);
 			// data.size = image_data.width * image_data.height * image_data.channels;
-			image_data.channel_format = GL_RGB;
-			image_data.channel_type = GL_FLOAT;
+			image_meta.channel_format = GL_RGB;
+			image_meta.channel_type = GL_FLOAT;
+			image_meta.has_alpha = false;
 		}
 
 		return mk_tx_data(data);
@@ -232,7 +233,7 @@ namespace RGL
         stbi_image_free(data);
     }
 
-	Util::TextureData Util::jxl_load(const fs::path &filepath, ImageData &image_data, ImageOptions options)
+	Util::TextureData Util::jxl_load(const fs::path &filepath, ImageMeta &image_meta, ImageOptions options)
 	{
 		// see https://github.com/libjxl/libjxl/blob/main/examples/decode_oneshot.cc
 
@@ -305,23 +306,24 @@ namespace RGL
 					return {};
 				}
 				// update our initial guesses regarding format
-				image_data.width = info.xsize;
-				image_data.height = info.ysize;
-				image_data.channels = info.num_color_channels + info.num_extra_channels;
+				image_meta.width    = info.xsize;
+				image_meta.height   = info.ysize;
+				image_meta.channels = info.num_color_channels + info.num_extra_channels;
 
-				format.num_channels = image_data.channels;
-				if(image_data.channels == 4)
-					image_data.channel_format = GL_RGBA;
+				format.num_channels = image_meta.channels;
+				image_meta.has_alpha = info.alpha_bits > 0;
+				if(image_meta.channels == 4)
+					image_meta.channel_format = GL_RGBA;
 				else
-					image_data.channel_format = GL_RGB;
+					image_meta.channel_format = GL_RGB;
 				channel_size = info.bits_per_sample >> 3;
 				// TODO: how to discern between FLOAT and UINT types ?  (2 and 4 bytes)
 				//   exponent_bits_per_sample can be 0 in both cases
 				switch(channel_size)
 				{
-				case 1: format.data_type = JXL_TYPE_UINT8;   channel_size = 1; image_data.channel_type = GL_UNSIGNED_INT; break;
-				case 2: format.data_type = JXL_TYPE_FLOAT; channel_size = 4; image_data.channel_type = GL_FLOAT; break;
-				case 4: format.data_type = JXL_TYPE_FLOAT;   channel_size = 4; image_data.channel_type = GL_FLOAT; break;
+				case 1: format.data_type = JXL_TYPE_UINT8; channel_size = 1; image_meta.channel_type = GL_UNSIGNED_INT; break;
+				case 2: format.data_type = JXL_TYPE_FLOAT; channel_size = 4; image_meta.channel_type = GL_FLOAT; break;
+				case 4: format.data_type = JXL_TYPE_FLOAT; channel_size = 4; image_meta.channel_type = GL_FLOAT; break;
 				}
 
 				// std::print(stderr, "[{}] Jxl: {} x {}  channel size: %zu\n", short_name.string(), image_data.width, image_data.height, channel_size);
@@ -358,7 +360,7 @@ namespace RGL
 					return {};
 				}
 				{
-					const auto expected_size = image_data.width * image_data.height * channel_size * format.num_channels;
+					const auto expected_size = image_meta.width * image_meta.height * channel_size * format.num_channels;
 					if(buffer_size != expected_size)
 					{
 						std::print(stderr, "[{}] Jxl: Invalid out buffer size %ld, expected %ld\n", short_name.string(), buffer_size, expected_size);
@@ -402,15 +404,15 @@ namespace RGL
 		if(options & ImageFlipVertical)
 		{
 			// TODO: swap pixel rows
-			size_t row_stride = image_data.width * image_data.channels * channel_size;
+			size_t row_stride = image_meta.width * image_meta.channels * channel_size;
 
 			void *temp_row = ::malloc(row_stride);
 
 			auto *rows = static_cast<uint8_t *>(data);
-			for(auto row = 0u; row < image_data.height >> 1; ++row)
+			for(auto row = 0u; row < image_meta.height >> 1; ++row)
 			{
 				auto *row0_start = &rows[row * row_stride];
-				auto *row1_start = &rows[(image_data.height - row - 1) * row_stride];
+				auto *row1_start = &rows[(image_meta.height - row - 1) * row_stride];
 				std::memcpy(temp_row, row0_start, row_stride);
 				std::memcpy(row0_start, row1_start, row_stride);
 				std::memcpy(row1_start, temp_row, row_stride);
