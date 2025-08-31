@@ -334,6 +334,7 @@ bool ShadowAtlas::remove_allocation(LightID light_id)
 	}
 
 	_id_to_allocated.erase(found);
+	_lights.clear_shadow_index(light_id);
 
 	return true;
 }
