@@ -310,7 +310,8 @@ uint8_t Texture::calculateMipMapLevels(size_t width, size_t height, size_t depth
 
 void Texture::Release()
 {
-	glDeleteTextures(1, &_texture_id);
+	if(_texture_id)
+		glDeleteTextures(1, &_texture_id);
 	_texture_id = 0;
 }
 
