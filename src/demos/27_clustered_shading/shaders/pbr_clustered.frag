@@ -55,13 +55,13 @@ vec3 falseColor(float value);
 uint computeClusterIndex(uvec3 cluster_coord);
 uvec3 computeClusterCoord(vec2 screen_pos, float view_z);
 
-vec3 pointLightVisibility(uint light_index, vec3 world_pos);
-vec3 dirLightVisibility(uint light_index);
-vec3 spotLightVisibility(uint light_index);
-vec3 areaLightVisibility(uint light_index);
-vec3 tubeLightVisibility(uint light_index);
-vec3 sphereLightVisibility(uint light_index);
-vec3 discLightVisibility(uint light_index);
+vec3 pointLightVisibility(GPULight light, vec3 world_pos);
+vec3 dirLightVisibility(GPULight light);
+vec3 spotLightVisibility(GPULight light);
+vec3 areaLightVisibility(GPULight light);
+vec3 tubeLightVisibility(GPULight light);
+vec3 sphereLightVisibility(GPULight light);
+vec3 discLightVisibility(GPULight light);
 
 
 void main()
@@ -98,7 +98,7 @@ void main()
        	{
 			case LIGHT_TYPE_POINT:
 			{
-		        visibility = pointLightVisibility(light_index, in_world_pos);
+		        visibility = pointLightVisibility(light, in_world_pos);
 		        if(visibility.x + visibility.y + visibility.z > 0)
 		        	contribution = calcPointLight(light, in_world_pos, material);
 			}
@@ -106,7 +106,7 @@ void main()
 
 	        case LIGHT_TYPE_DIRECTIONAL:
 			{
-		        visibility = dirLightVisibility(light_index);
+		        visibility = dirLightVisibility(light);
 		        if(visibility.x + visibility.y + visibility.z > 0)
 		        	contribution = calcDirectionalLight(light, in_world_pos, material);
 			}
@@ -114,7 +114,7 @@ void main()
 
 			case LIGHT_TYPE_SPOT:
 			{
-				visibility = spotLightVisibility(light_index);
+				visibility = spotLightVisibility(light);
 			    if(visibility.x + visibility.y + visibility.z > 0)
     				contribution = calcSpotLight(light, in_world_pos, material);
         	}
@@ -122,7 +122,7 @@ void main()
 
           	case LIGHT_TYPE_AREA:
            	{
-	           	visibility = areaLightVisibility(light_index);
+	           	visibility = areaLightVisibility(light);
 		        if(visibility.x + visibility.y + visibility.z > 0)
 		        	contribution = calcAreaLight(light, in_world_pos, material);
             }
@@ -130,7 +130,7 @@ void main()
 
            	case LIGHT_TYPE_TUBE:
             {
-	           	visibility = tubeLightVisibility(light_index);
+	           	visibility = tubeLightVisibility(light);
 		        if(visibility.x + visibility.y + visibility.z > 0)
 		        	contribution = calcTubeLight(light, in_world_pos, material);
             }
@@ -138,7 +138,7 @@ void main()
 
            	case LIGHT_TYPE_SPHERE:
             {
-	           	visibility = sphereLightVisibility(light_index);
+	           	visibility = sphereLightVisibility(light);
 		        if(visibility.x + visibility.y + visibility.z > 0)
 		        	contribution = calcSphereLight(light, in_world_pos, material);
             }
@@ -146,7 +146,7 @@ void main()
 
            	case LIGHT_TYPE_DISC:
             {
-	           	visibility = discLightVisibility(light_index);
+	           	visibility = discLightVisibility(light);
 		        if(visibility.x + visibility.y + visibility.z > 0)
 		        	contribution = calcDiscLight(light, in_world_pos, material);
             }
@@ -314,10 +314,8 @@ float fadeByDistance(float distance, float hard_limit);
 
 void detectCubeFaceSlot(vec3 light_to_frag, LightShadowParams params, out mat4 view_proj, out vec4 rect);
 
-vec3 pointLightVisibility(uint light_index, vec3 world_pos)
+vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 {
-	GPULight light = ssbo_lights[light_index];
-
 	float light_edge_distance = distance(light.position, u_cam_pos) - light.affect_radius;
 	// fade the whole light by distance
 	float light_fade = fadeByDistance(light_edge_distance, u_light_max_distance);
@@ -393,32 +391,32 @@ vec3 pointLightVisibility(uint light_index, vec3 world_pos)
 	return vec3(light_fade * shadow_fade * sampleShadow(normalized_depth, atlas_uv, uv_min, uv_max, texel_size));
 }
 
-vec3 dirLightVisibility(uint light_index)
+vec3 dirLightVisibility(GPULight light)
 {
 	return vec3(1); // TODO
 }
 
-vec3 spotLightVisibility(uint light_index)
+vec3 spotLightVisibility(GPULight light)
 {
 	return vec3(1); // TODO
 }
 
-vec3 areaLightVisibility(uint light_index)
+vec3 areaLightVisibility(GPULight light)
 {
 	return vec3(1); // TODO
 }
 
-vec3 tubeLightVisibility(uint light_index)
+vec3 tubeLightVisibility(GPULight light)
 {
 	return vec3(1); // TODO
 }
 
-vec3 sphereLightVisibility(uint light_index)
+vec3 sphereLightVisibility(GPULight light)
 {
 	return vec3(1); // TODO
 }
 
-vec3 discLightVisibility(uint light_index)
+vec3 discLightVisibility(GPULight light)
 {
 	return vec3(1); // TODO
 }
