@@ -186,7 +186,7 @@ std::vector<std::string> split(const std::string &input, const RE &delimiter)
 
 //---------------------------------------------------------------------------
 
-std::string join(const std::vector<std::string> &list, const std::string &delimiter)
+std::string join(const std::vector<std::string> &list, const std::string_view &delimiter)
 {
 	std::string result;
 	auto iter = list.begin();

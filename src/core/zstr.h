@@ -31,7 +31,8 @@ std::vector<std::string> split(const std::string &input, const RE &delimiter);
 #endif
 
 //! join a list into a string, with specified delimiter inbetween all elements
-std::string join(const std::vector<std::string> &list, const std::string &delimiter = ", ");
+//  TODO add support for any range of any string type
+std::string join(const std::vector<std::string> &list, const std::string_view &delimiter = ", "sv);
 
 //! extract a python-like slice of a string list.
 std::vector<std::string> slice(const std::vector<std::string> &v, int start=INT_MAX, int end=INT_MAX, int skip=1);
