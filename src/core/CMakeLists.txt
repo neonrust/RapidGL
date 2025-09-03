@@ -18,6 +18,7 @@ set(SOURCE_FILES_CORE
 	GLTimer.cpp
 	input.cpp
 	input_bind.cpp
+	ktx_loader.cpp
 	material.cpp
 	plane.cpp
 	postprocess.cpp
@@ -60,6 +61,7 @@ set(HEADER_FILES_CORE
 	GLTimer.h
 	input.h
 	input_bind.h
+	ktx_loader.h
 	material.h
 	mesh_part.h
 	plane.h
@@ -119,6 +121,7 @@ target_link_libraries(${CORE_LIB_NAME}
 	stb_image
 	jxl
 	jxl_threads
+	ktx
 	assimp
 	glfw
 	imgui
