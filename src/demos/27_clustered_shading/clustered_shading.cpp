@@ -224,6 +224,7 @@ void ClusteredShading::init_app()
 		std::print(stderr, "Error: could not load texture %s\n", ltc_lut_amp_path.string());
 
     /// Create shaders.
+	const fs::path core_shaders = "resources/shaders/";
 	const fs::path shaders = "src/demos/27_clustered_shading/shaders/";
 
 	const auto T0 = steady_clock::now();
@@ -321,6 +322,10 @@ void ClusteredShading::init_app()
 	m_2d_7segment_shader->setUniform("u_color"sv, glm::vec4(1));
 	m_2d_7segment_shader->setUniform("u_thickness"sv, float(Window::height())/720.f);
 
+	m_icon_shader = std::make_shared<Shader>(core_shaders/"billboard-icon.vert", core_shaders/"billboard-icon.frag");
+	m_icon_shader->link();
+	assert(*m_icon_shader);
+
 	m_imgui_depth_texture_shader = std::make_shared<Shader>(shaders/"imgui_depth_image.vert", shaders/"imgui_depth_image.frag");
 	m_imgui_depth_texture_shader->link();
 	assert(*m_imgui_depth_texture_shader);
@@ -372,6 +377,10 @@ void ClusteredShading::init_app()
 	m_prefiltered_env_map_rt = std::make_shared<RenderTarget::Cube>();
     m_prefiltered_env_map_rt->set_position(glm::vec3(0.0));
 	m_prefiltered_env_map_rt->create("prefiltered-env", 512, 512);
+
+	// _point_light_icon.LoadLayers({ FileSystem::getResourcesPath() / "icons" / "light-point.png" });
+	_light_icons.Load(FileSystem::getResourcesPath() / "icons" / "lights.array");
+	assert(_light_icons);
 
     PrecomputeIndirectLight(FileSystem::getResourcesPath() / "textures/skyboxes/IBL" / m_hdr_maps_names[m_current_hdr_map_idx]);
     PrecomputeBRDF(m_brdf_lut_rt);
@@ -1521,15 +1530,23 @@ void ClusteredShading::render()
 	m_tmo_pp.setGamma(m_gamma);
 	m_tmo_pp.render(_rt, _final_rt);
 
+	m_tonemap_time.add(_gl_timer.elapsed<microseconds>(true));
+
 
 	// draw the final result to the screen
 	draw2d(_final_rt.color_texture(), BlendMode::Replace);
 
 
+	_gl_timer.start();
+
 	if(m_debug_draw_aabb)
 		debugDrawSceneBounds();
+	if(m_debug_draw_light_markers)
+		debugDrawLightMarkers();
 	if(m_debug_draw_cluster_grid)
 		debugDrawClusterGrid();
+
+	m_debug_draw_time.add(_gl_timer.elapsed<microseconds>(true));
 }
 
 void ClusteredShading::renderShadowMaps()

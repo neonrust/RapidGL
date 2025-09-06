@@ -14,19 +14,15 @@ namespace RGL
 {
 	struct ImageMeta
     {
-		ImageMeta()
-            : width(0),
-              height(0),
-              channels(0)
-        {}
+		ImageMeta() = default;
 
         GLuint width;
-		GLuint height;  // only 2d & 3d textures
-		GLuint depth;   // only 3d textures
+		GLuint height { 1 };  // only 2d & 3d textures
+		GLuint depth { 1 };   // only 3d textures
+		GLuint layers { 0 };  // only for array textures
         GLuint channels;
 		GLuint channel_format = GL_RGB;
 		GLuint channel_type = GL_UNSIGNED_INT;
-		bool   has_alpha;
     };
 
     class Util

@@ -1,13 +1,19 @@
 #include "texture.h"
 
+#include <cstring>
 #include <glm/glm.hpp>
 
 #define TINYDDSLOADER_IMPLEMENTATION
 #include <tinyddsloader.h>
+#include "ktx_loader.h"
 
+#include <ranges>
 #include <print>
 #include <chrono>
 using namespace std::chrono;
+using namespace std::literals;
+
+namespace fs = std::filesystem;
 
 using namespace tinyddsloader;
 
@@ -315,15 +321,56 @@ void Texture::Release()
 	_texture_id = 0;
 }
 
-// --------------------- Texture2D -------------------------
+void Texture::set(const TextureDescriptor &descr)
+{
+	m_metadata = descr.meta;
+	m_type = descr.type;
+	_texture_id = descr.texture_id;
+}
+
+bool Texture3D::Load(const std::filesystem::path& filepath)
+{
+	if(filepath.extension() == ".ktx2")
+	{
+		auto descr = ktx_load<Texture3D>(filepath);
+		if(descr)
+		{
+			set(descr);
+			return true;
+		}
+	}
+	return false;
+}
+
+bool Texture1D::Create(size_t width, GLenum internalFormat, size_t num_mipmaps)
+{
+	return Texture::Create(width, 0, 0, internalFormat, num_mipmaps);
+}
 
 bool Texture2D::Create(size_t width, size_t height, GLenum internalFormat, size_t num_mipmaps)
 {
 	return Texture::Create(width, height, 0, internalFormat, num_mipmaps);
 }
 
+bool Texture3D::Create(size_t width, size_t height, size_t depth, GLenum internalFormat, size_t num_mipmaps)
+{
+	return Texture::Create(width, height, depth, internalFormat, num_mipmaps);
+}
+
+// --------------------- Texture2D -------------------------
+
 bool Texture2D::Load(const std::filesystem::path& filepath, bool is_srgb, uint32_t num_mipmaps)
 {
+	if(filepath.extension() == ".ktx2")
+	{
+		auto descr = ktx_load<Texture2D>(filepath);
+		if(not descr)
+			return false;
+
+		set(descr);
+		return true;
+	}
+
 	auto data = Util::LoadTextureData(filepath, m_metadata);
 
 	if (!data)
@@ -526,6 +573,197 @@ bool Texture2D::LoadDds(const std::filesystem::path& filepath)
 	return true;
 }
 
+// --------------------- Texture Array -------------------------
+
+bool Texture2DArray::Create(size_t width, size_t height, size_t layers, GLenum internalFormat, size_t num_mipmaps)
+{
+	(void)width;
+	(void)height;
+	(void)layers;
+	(void)internalFormat;
+	(void)num_mipmaps;
+	std::print(stderr, "Texture2DArray::Create - Not implenented!\n");
+	return false;
+}
+
+bool Texture2DArray::Load(const fs::path &filepath, bool is_srgb)
+{
+	if(filepath.extension() == ".ktx2"sv)
+	{
+		auto descr = ktx_load<Texture2DArray>(filepath);
+		if(not descr)
+			return false;
+
+		set(descr);
+		return true;
+	}
+	else if(filepath.extension() == ".array"sv)
+	{
+		// read list of file names (absolute of relative to .array-file), one per line
+		std::vector<fs::path> filepaths;
+
+		std::ifstream fp;
+		fp.open(filepath, std::ios::in);
+		if(not fp.is_open())
+		{
+			std::print(stderr, "[{}] failed to open file: {}\n", filepath.string(), std::strerror(errno));
+			return false;
+		}
+
+		const auto base_path = filepath.parent_path();
+		std::string line;
+		while(not fp.eof())
+		{
+			std::getline(fp, line);
+			if(not line.empty())
+			{
+				auto icon_path = fs::path(line);
+				if(not icon_path.is_absolute())
+					icon_path = base_path / icon_path;
+				filepaths.push_back(icon_path);
+			}
+		}
+		fp.close();
+		return LoadLayers(filepaths, is_srgb);
+	}
+
+	return false;
+}
+
+bool Texture2DArray::LoadLayers(const std::vector<fs::path> &paths, bool is_srgb)
+{
+	GLenum format          = 0;
+	GLenum internal_format = 0;
+
+	for(const auto &[layer_index, filepath]: std::views::enumerate(paths))
+	{
+		ImageMeta meta;
+		auto data = Util::LoadTextureData(filepath, meta, 0);
+
+		if(not data)
+		{
+			std::print(stderr, "Texture failed to load: {}\n", filepath.string());
+			return false;
+		}
+
+		const auto num_mipmaps = calculateMipMapLevels(meta.width, meta.height);
+
+		if(_texture_id == 0)
+		{
+			if (meta.channels == 1)
+			{
+				format          = GL_RED;
+				internal_format = GL_R8;
+			}
+			else if (meta.channels == 3)
+			{
+				format          = GL_RGB;
+				internal_format = is_srgb ? GL_SRGB8 : GL_RGB8;
+			}
+			else if (meta.channels == 4)
+			{
+				format          = GL_RGBA;
+				internal_format = is_srgb ? GL_SRGB8_ALPHA8 : GL_RGBA8;
+			}
+
+			glCreateTextures   (GLenum(TextureType::Texture2DArray), 1, &_texture_id);
+			glTextureStorage3D (_texture_id, GLsizei(num_mipmaps) /* levels */, internal_format, GLsizei(meta.width), GLsizei(meta.height), GLsizei(paths.size()));
+
+			m_metadata = meta;
+		}
+		else
+		{
+			assert(meta.width == m_metadata.width);
+			assert(meta.height == m_metadata.height);
+			assert(meta.channels == m_metadata.channels);
+		}
+
+		glTextureSubImage3D(_texture_id, 0 /* level */,
+							0 /* xoffset */, 0 /* yoffset */, GLint(layer_index),
+							GLsizei(meta.width), GLsizei(meta.height), 1,
+							format, GL_UNSIGNED_BYTE, data.get());
+
+		SetFiltering(TextureFiltering::Minify,  TextureFilteringParam::LinearMipLinear);
+		SetFiltering(TextureFiltering::Magnify, TextureFilteringParam::Linear);
+		SetWrapping (TextureWrappingAxis::U,    TextureWrappingParam::ClampToEdge);
+		SetWrapping (TextureWrappingAxis::V,    TextureWrappingParam::ClampToEdge);
+
+		Util::ReleaseTextureData(data);
+	}
+
+	glGenerateTextureMipmap(_texture_id);
+
+	return true;
+}
+
+bool Texture2DArray::LoadDds(const std::filesystem::path &filepath)
+{
+	DDSFile dds;
+	auto ret = dds.Load(filepath.string().c_str());
+
+	if (Result::Success != ret)
+	{
+		std::print("Failed to load.[{}]\n", filepath.string());
+		std::print("Result : {}\n", int(ret));
+
+		std::print(stderr, "Texture failed to load: {}\n", filepath.string());
+		std::print(stderr, "Result: {}\n", int(ret));
+		return false;
+	}
+
+	if (dds.GetTextureDimension() == DDSFile::TextureDimension::Texture2D)
+	{
+		m_type = TextureType::Texture2D;
+	}
+
+	GLFormat format;
+	if (!translateDdsFormat(dds.GetFormat(), &format))
+	{
+		return false;
+	}
+
+	glCreateTextures   (GLenum(m_type), 1, &_texture_id);
+	glTextureParameteri(_texture_id, GL_TEXTURE_BASE_LEVEL, 0);
+	glTextureParameteri(_texture_id, GL_TEXTURE_MAX_LEVEL, GLint(dds.GetMipCount() - 1));
+	glTextureParameteri(_texture_id, GL_TEXTURE_SWIZZLE_R, GLint(format.m_swizzle.m_r));
+	glTextureParameteri(_texture_id, GL_TEXTURE_SWIZZLE_G, GLint(format.m_swizzle.m_g));
+	glTextureParameteri(_texture_id, GL_TEXTURE_SWIZZLE_B, GLint(format.m_swizzle.m_b));
+	glTextureParameteri(_texture_id, GL_TEXTURE_SWIZZLE_A, GLint(format.m_swizzle.m_a));
+
+	m_metadata.width  = dds.GetWidth();
+	m_metadata.height = dds.GetHeight();
+
+	glTextureStorage2D(_texture_id, GLsizei(dds.GetMipCount()), format.m_internal_format, GLsizei(m_metadata.width), GLsizei(m_metadata.height));
+	dds.Flip();
+
+	for (uint32_t level = 0; level < dds.GetMipCount(); level++)
+	{
+		auto imageData = dds.GetImageData(level, 0);
+		switch (GLenum(m_type))
+		{
+		case GL_TEXTURE_2D:
+		{
+			auto w = imageData->m_width;
+			auto h = imageData->m_height;
+
+			if (isDdsCompressed(format.m_format))
+			{
+				glCompressedTextureSubImage2D(_texture_id, GLint(level), 0, 0, GLsizei(w), GLsizei(h), format.m_format, GLsizei(imageData->m_memSlicePitch), imageData->m_mem);
+			}
+			else
+			{
+				glTextureSubImage2D(_texture_id, GLint(level), 0, 0, GLsizei(w), GLsizei(h), format.m_format, format.m_type, imageData->m_mem);
+			}
+			break;
+		}
+		default:
+			return false;
+		}
+	}
+
+	return true;
+}
+
 // --------------------- Texture CubeMap -------------------------
 
 bool TextureCube::Create(size_t width, size_t height, GLenum internalFormat, size_t num_mipmaps)
@@ -561,7 +799,7 @@ void TextureCube::BindFace(CubeFace face, uint32_t unit)
 	glBindTextureUnit(unit, _faceViews[uint32_t(face)]);
 }
 
-bool TextureCube::Load(const std::filesystem::path* filepaths, bool is_srgb, uint32_t num_mipmaps)
+bool TextureCube::Load(const std::array<std::filesystem::path, 6> &filepaths, bool is_srgb, uint32_t num_mipmaps)
 {
 	constexpr int NUM_FACES = 6;
 
@@ -627,16 +865,6 @@ void TextureCube::Release()
 	_faceViews = { 0, 0, 0, 0, 0, 0 };
 
 	Texture::Release();
-}
-
-bool Texture1D::Create(size_t width, GLenum internalFormat, size_t num_mipmaps)
-{
-	return Texture::Create(width, 0, 0, internalFormat, num_mipmaps);
-}
-
-bool Texture3D::Create(size_t width, size_t height, size_t depth, GLenum internalFormat, size_t num_mipmaps)
-{
-	return Texture::Create(width, height, depth, internalFormat, num_mipmaps);
 }
 
 }

@@ -13,6 +13,7 @@ enum class TextureType
 	Invalid        = 0,
 	Texture1D      = GL_TEXTURE_1D,
 	Texture2D      = GL_TEXTURE_2D,
+	Texture2DArray = GL_TEXTURE_2D_ARRAY,
 	Texture3D      = GL_TEXTURE_3D,
 	TextureCube    = GL_TEXTURE_CUBE_MAP
 };
@@ -75,6 +76,20 @@ enum class CubeFace : uint32_t
 	MinutY = 3,
 	PlusZ  = 4,
 	MinutZ = 5,
+};
+
+struct TextureDescriptor
+{
+	ImageMeta meta;
+	GLuint texture_id { 0 };
+	TextureType type { TextureType::Invalid };
+
+	inline operator bool () const
+	{
+		return texture_id > 0 \
+			and type != TextureType::Invalid \
+			and meta.width > 0;
+	}
 };
 
 class TextureSampler final
@@ -184,6 +199,8 @@ public:
 
 	void Release();
 
+	void set(const TextureDescriptor &descr);
+
 protected:
 	bool Create(size_t width, size_t height, size_t depth, GLenum internalFormat, size_t num_mipmaps);
 
@@ -218,6 +235,18 @@ public:
 	bool LoadDds(const std::filesystem::path& filepath);
 };
 
+class Texture2DArray : public Texture
+{
+public:
+	Texture2DArray() = default;
+
+	bool Create(size_t width, size_t height, size_t layers, GLenum internalFormat, size_t num_mipmaps=DefaultMipmaps);
+
+	bool Load(const std::filesystem::path &filepath, bool is_srgb=true);
+	bool LoadLayers(const std::vector<std::filesystem::path> &paths, bool is_srgb=true);
+	bool LoadDds(const std::filesystem::path &filepath);
+};
+
 class TextureCube : public Texture
 {
 public:
@@ -229,7 +258,7 @@ public:
 	void BindFace(CubeFace face, uint32_t unit=0);
 
 	// TODO: convert to factory function
-	bool Load(const std::filesystem::path * filepaths, bool is_srgb = false, uint32_t num_mipmaps=DefaultMipmaps);
+	bool Load(const std::array<std::filesystem::path, 6> &filepaths, bool is_srgb = false, uint32_t num_mipmaps=DefaultMipmaps);
 
 	inline uint32_t texture_face_id(CubeFace face) const { return _faceViews[uint32_t(face)]; }
 
@@ -245,6 +274,7 @@ class Texture3D : public Texture
 public:
 	Texture3D() = default;
 
+	bool Load(const std::filesystem::path &filepath);
 	bool Create(size_t width, size_t height, size_t depth, GLenum internalFormat, size_t num_mipmaps=DefaultMipmaps);
 };
 

@@ -209,7 +209,6 @@ namespace RGL
 			// data.size = image_data.width * image_data.height * image_data.channels;
 			image_meta.channel_format = GL_RGB;
 			image_meta.channel_type = GL_FLOAT;
-			image_meta.has_alpha = false;
 		}
 
 		return mk_tx_data(data);
@@ -311,7 +310,6 @@ namespace RGL
 				image_meta.channels = info.num_color_channels + info.num_extra_channels;
 
 				format.num_channels = image_meta.channels;
-				image_meta.has_alpha = info.alpha_bits > 0;
 				if(image_meta.channels == 4)
 					image_meta.channel_format = GL_RGBA;
 				else

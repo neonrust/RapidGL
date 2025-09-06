@@ -145,6 +145,7 @@ private:
 	void debugDrawSphere(const glm::vec3 &center, float radius, size_t stacks, size_t slices, const glm::vec4 &color={1,1,1,1});
 	void debugDrawSpotLight(const SpotLight &light, const glm::vec4 &color={1,1,1,1});
 	void debugDrawSceneBounds();
+	void debugDrawLightMarkers();
 	void debugDrawClusterGrid();
 
 	RGL::Camera m_camera;
@@ -177,6 +178,7 @@ private:
 	std::shared_ptr<RGL::Shader> m_2d_line_shader;
 	std::shared_ptr<RGL::Shader> m_2d_rect_shader;
 	std::shared_ptr<RGL::Shader> m_2d_7segment_shader;
+	std::shared_ptr<RGL::Shader> m_icon_shader;
 	std::shared_ptr<RGL::Shader> m_imgui_depth_texture_shader;
 	std::shared_ptr<RGL::Shader> m_fsq_shader;
 
@@ -209,6 +211,7 @@ private:
 	bool      m_draw_area_lights_geometry  = true;
 
 	bool      m_debug_draw_aabb            = false;
+	bool      m_debug_draw_light_markers   = false;
 	bool      m_debug_draw_cluster_grid    = false;
 	GLuint    m_debug_draw_vbo             = 0;
 
@@ -278,11 +281,16 @@ private:
 	SampleWindow<std::chrono::microseconds, 30> m_shading_time;
 	SampleWindow<std::chrono::microseconds, 30> m_skybox_time;
 	SampleWindow<std::chrono::microseconds, 30> m_scatter_time;
-	SampleWindow<std::chrono::microseconds, 30> m_pp_blur_time;
+	SampleWindow<std::chrono::microseconds, 30> m_tonemap_time;
+	SampleWindow<std::chrono::microseconds, 30> m_debug_draw_time;
+
+	// SampleWindow<std::chrono::microseconds, 30> m_pp_blur_time;
 	size_t _shadow_atlas_slots_rendered;
 	size_t _light_shadow_maps_rendered;
 
 	RGL::GLTimer _gl_timer;
+
+	RGL::Texture2DArray _light_icons;
 };
 
 namespace hash

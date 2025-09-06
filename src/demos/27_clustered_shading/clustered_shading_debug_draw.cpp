@@ -2,6 +2,7 @@
 
 #include "constants.h"
 #include "window.h"
+#include <ranges>
 
 using namespace std::literals;
 using namespace std::chrono;
@@ -85,29 +86,28 @@ void ClusteredShading::debugDrawSceneBounds()
 
 	static const glm::vec3 shadow_color { .8f, 0.2f, 0.5f };
 	static const glm::vec3 no_shadow_color { 0.4f, 0.4f, 0.4f };
-	LightIndex light_index = 0;
-	for(const auto &L: _light_mgr)
+
+	for(const auto &light_index: _lightsPvs)
 	{
+		const auto &L = _light_mgr[light_index];
+
+		const auto distance = glm::distance(m_camera.position(), L.position);
+		if(distance > 150.f)
+			continue;
+
 		if(IS_POINT_LIGHT(L))
 		{
-			const auto point_ = _light_mgr.to_<PointLight>(L);
-			const auto &point = point_.value();
-			const auto light_id = _light_mgr.light_id(light_index);
+			const auto light_id = _light_mgr.light_id(LightIndex(light_index));
 
 			auto found = shadow_maps.find(light_id);
 			if(found != shadow_maps.end())
 			{
 				auto res = shadow_size_res.find(found->second.slots[0].size)->second;
 				const auto alpha = std::sqrt(float(res)/32.f);
-				debugDrawSphere(point.position, point.affect_radius, res, size_t(float(res)*1.5f), glm::vec4(shadow_color, alpha));
-				//debugDrawCircle(point.position,  15.f, point.color);
-				debugDrawLine(point.position + AXIS_X*0.5f, point.position - AXIS_X*0.5f, glm::vec4(point.color, 1.f));
-				debugDrawLine(point.position + AXIS_Y*0.5f, point.position - AXIS_Y*0.5f, glm::vec4(point.color, 1.f));
-				debugDrawLine(point.position + AXIS_Z*0.5f, point.position - AXIS_Z*0.5f, glm::vec4(point.color, 1.f));
+				debugDrawSphere(L.position, L.affect_radius, res, size_t(float(res)*1.5f), glm::vec4(shadow_color, alpha));
 			}
 			else
-				debugDrawSphere(point.position, point.affect_radius, glm::vec4(no_shadow_color, 0.5f));
-
+				debugDrawSphere(L.position, L.affect_radius, glm::vec4(no_shadow_color, 0.5f));
 		}
 		else if(IS_SPOT_LIGHT(L))
 		{
@@ -116,9 +116,121 @@ void ClusteredShading::debugDrawSceneBounds()
 			// TODO: take shadow map (size) into account
 			debugDrawSpotLight(spot, glm::vec4(spot.color, 1));
 		}
-
-		++light_index;
 	}
+}
+
+void ClusteredShading::debugDrawLightMarkers()
+{
+	enum class Icon : uint32_t
+	{
+		PointLight = 0,
+	};
+
+	struct IconData
+	{
+		glm::vec3 world_pos;
+		glm::vec3 color_tint;
+		Icon      icon;
+		float     distance_sq;
+
+		inline bool operator > (const IconData &that) const { return distance_sq > that.distance_sq; }
+	};
+
+	static GLuint icon_vao { 0 };
+	static GLuint instance_buf { 0 };
+
+	if(not icon_vao) // this stuff needs only be done once; configuring the VAO
+	{
+		glCreateVertexArrays(1, &icon_vao);
+		glCreateBuffers(1, &instance_buf);
+
+		glVertexArrayVertexBuffer(
+			icon_vao,
+			1,                  // binding index
+			instance_buf,       // buffer
+			0,                  // offset
+			sizeof(IconData)    // stride
+			);
+		// attrib 0: in_position
+		glEnableVertexArrayAttrib(icon_vao,   0);
+		glVertexArrayAttribFormat(icon_vao,   0, 3, GL_FLOAT, GL_FALSE, offsetof(IconData, world_pos));
+		glVertexArrayAttribBinding(icon_vao,  0, 1);
+		glVertexArrayBindingDivisor(icon_vao, 0, 1); // instanced
+
+		// attrib 1: in_icon_index
+		glEnableVertexArrayAttrib(icon_vao,   1);
+		glVertexArrayAttribIFormat(icon_vao,  1, 1, GL_UNSIGNED_INT, offsetof(IconData, icon));
+		glVertexArrayAttribBinding(icon_vao,  1, 1);
+		glVertexArrayBindingDivisor(icon_vao, 1, 1);
+
+		// attrib 2: in_color_tint
+		glEnableVertexArrayAttrib(icon_vao,   2);
+		glVertexArrayAttribFormat(icon_vao,   2, 3, GL_FLOAT, GL_FALSE, offsetof(IconData, color_tint));
+		glVertexArrayAttribBinding(icon_vao,  2, 1);
+		glVertexArrayBindingDivisor(icon_vao, 2, 1);
+	}
+
+
+	static std::vector<IconData> icons;
+	icons.reserve(_lightsPvs.size());
+	icons.clear();
+
+	for(const auto &light_index: _lightsPvs)
+	{
+		const auto &L = _light_mgr[light_index];
+
+		const auto distance = glm::distance(m_camera.position(), L.position);
+		if(distance > 150.f)
+			continue;
+
+		const glm::vec4 color_blend(L.color, 1.f);
+
+		if(IS_POINT_LIGHT(L))
+		{
+			// debugDrawLine(L.position + AXIS_X*0.5f, L.position - AXIS_X*0.5f, color_blend);
+			// debugDrawLine(L.position + AXIS_Y*0.5f, L.position - AXIS_Y*0.5f, color_blend);
+			// debugDrawLine(L.position + AXIS_Z*0.5f, L.position - AXIS_Z*0.5f, color_blend);
+
+			//debugDrawIcon(L.position, _point_light_icon, L.affect_radius/20.f, color_blend);
+			const auto to_light = L.position - m_camera.position();
+			float distance_sq = glm::dot(to_light, to_light);
+			icons.push_back({
+				.world_pos   = L.position,
+				.color_tint  = L.color,
+				.icon        = Icon::PointLight,
+				.distance_sq = distance_sq,
+			});
+		}
+		else if(IS_SPOT_LIGHT(L))
+		{
+			const auto spot_ = _light_mgr.to_<SpotLight>(L);
+			const auto &spot = spot_.value();
+
+			// TODO: draw the icon at world origin, I guess?
+		}
+	}
+
+	std::ranges::sort(icons, std::greater{});
+
+
+	m_icon_shader->bind();
+	m_camera.setUniforms(*m_icon_shader);
+
+	_light_icons.Bind(1);
+
+	glDisable(GL_DEPTH_TEST);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	glNamedBufferData(instance_buf,
+					  GLsizeiptr(icons.size() * sizeof(IconData)),
+					  icons.data(),
+					  GL_DYNAMIC_DRAW);
+
+	glBindVertexArray(icon_vao);
+	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, GLsizei(icons.size()));
+
+	glEnable(GL_DEPTH_TEST);
 }
 
 void ClusteredShading::debugDrawLine(const glm::vec3 &p1, const glm::vec3 &p2, const glm::vec4 &color)

@@ -41,19 +41,21 @@ void ClusteredShading::render_gui()
 	ImVec2 window_pos_pivot = ImVec2(1.0f, 0.0f);
 
 	ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
-	ImGui::SetNextWindowSize({ 400, 800 });
+	ImGui::SetNextWindowSize({ 400, 1024 });
 
-	ImGui::Text("   Culling: %4ld µs", m_cull_scene_time.average().count());
-	ImGui::Text("   Shadows: %4ld µs", m_shadow_time.average().count());
-	ImGui::Text("    Z-pass: %4ld µs", m_depth_time.average().count());
-	ImGui::Text("Clstr.find: %4ld µs", m_cluster_find_time.average().count());
-	ImGui::Text("Clstr.coll: %4ld µs", m_cluster_index_time.average().count());
-	ImGui::Text("Light cull: %4ld µs", m_light_cull_time.average().count());
-	ImGui::Text("   Shading: %4ld µs", m_shading_time.average().count());
-	ImGui::Text("    Skybox: %4ld µs", m_skybox_time.average().count());
+	ImGui::Text("    Culling: %4ld µs", m_cull_scene_time.average().count());
+	ImGui::Text("    Shadows: %4ld µs", m_shadow_time.average().count());
+	ImGui::Text("     Z-pass: %4ld µs", m_depth_time.average().count());
+	ImGui::Text(" Clstr.find: %4ld µs", m_cluster_find_time.average().count());
+	ImGui::Text(" Clstr.coll: %4ld µs", m_cluster_index_time.average().count());
+	ImGui::Text(" Light cull: %4ld µs", m_light_cull_time.average().count());
+	ImGui::Text("    Shading: %4ld µs", m_shading_time.average().count());
+	ImGui::Text("     Skybox: %4ld µs", m_skybox_time.average().count());
 	// ImGui::Text("        PP: %3ld µs", m_pp_time.count());
-	ImGui::Text("Scattering: %4ld µs", m_scatter_time.average().count());
-	ImGui::Text("   PP blur: %4ld µs", m_pp_blur_time.average().count());
+	ImGui::Text(" Scattering: %4ld µs", m_scatter_time.average().count());
+	ImGui::Text("Tonemapping: %4ld µs", m_tonemap_time.average().count());
+	ImGui::Text(" Debug draw: %4ld µs", m_debug_draw_time.average().count());
+	// ImGui::Text("   PP blur: %4ld µs", m_pp_blur_time.average().count());
 
 	ImGui::Begin("Settings");
 	{
@@ -83,6 +85,8 @@ void ClusteredShading::render_gui()
 			ImGui::Text("PVS size : %lu", _scenePvs.size());
 
 			ImGui::Checkbox("Draw AABB", &m_debug_draw_aabb);
+			ImGui::Checkbox("Draw Lights", &m_debug_draw_light_markers);
+
 			if(ImGui::SliderFloat("FOV", &m_camera_fov, 25.f, 150.f))
 				calculateShadingClusterGrid();
 		}
