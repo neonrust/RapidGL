@@ -148,7 +148,7 @@ void ClusteredShading::render_gui()
 			ImGui::SliderFloat("Bloom intensity",      &m_bloom_intensity,      0,  2.f, "%.1f");
 			ImGui::SliderFloat("Bloom dirt intensity", &m_bloom_dirt_intensity, 0, 10.f, "%.1f");
 		}
-		if(ImGui::CollapsingHeader("Fog / Scattering", ImGuiTreeNodeFlags_DefaultOpen))
+		if(ImGui::CollapsingHeader("Fog / Scattering"))
 		{
 			{
 				float density = m_fog_density*100.f;
