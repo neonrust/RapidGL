@@ -228,8 +228,18 @@ void ClusteredShading::render_gui()
 			};
 
 
-			static constexpr ImVec2 top_left { 0, 1 };
-			static constexpr ImVec2 bottom_right { 1, 0 };
+			ImVec2 top_left { 0, 0 };
+			ImVec2 bottom_right { 1, 1 };
+
+			auto zoom_uv0 = [](float zoom, const ImVec2 &center) -> ImVec2 {
+				float half_inv_zoom = 0.5f / zoom;
+				return ImVec2(center.x - half_inv_zoom, center.y - half_inv_zoom);
+			};
+
+			auto zoom_uv1 = [](float zoom, const ImVec2 &center) -> ImVec2 {
+				float half_inv_zoom = 0.5f / zoom;
+				return ImVec2(center.x + half_inv_zoom, center.y + half_inv_zoom);
+			};
 
 			const auto vMin = ImGui::GetWindowContentRegionMin();
 			const auto vMax = ImGui::GetWindowContentRegionMax();
@@ -241,9 +251,22 @@ void ClusteredShading::render_gui()
 
 				const ImVec2 img_size { win_width, float(win_width)/aspect };
 
+				static ImVec2 center { 0.5f, 0.5f };
+				static float magnification = 1.f;
+/*
+				if(rt->color_texture() or rt->depth_texture())
+				{
+					ImGui::SliderFloat("Magnification", &magnification, 1.f, 16.f, "%.1f");
+					ImGui::SliderFloat("X-center", &center.x, 0, 1.f, "%.2f");
+					ImGui::SliderFloat("Y-center", &center.y, 0, 1.f, "%.2f");
+				}
+*/
 				if(rt->has_color() and rt->color_texture())
 				{
 					const auto &texture = rt->color_texture();
+
+					top_left = zoom_uv0(magnification, center);
+					bottom_right = zoom_uv1(magnification, center);
 
 					ImGui_ImageEx(texture.texture_id(), img_size, top_left, bottom_right, 0);
 
