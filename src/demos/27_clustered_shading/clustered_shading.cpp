@@ -1783,8 +1783,8 @@ const std::vector<StaticObject> &ClusteredShading::cullScene(const Camera &view)
 					_lightsPvs.push_back(light_index);
 				else
 				{
-					const auto distance = glm::distance(L.position, view_pos) - L.affect_radius;
-					if(distance < max_view_distance)
+					const auto edge_distance = std::max(0.f, glm::distance(L.position, view_pos) - L.affect_radius);
+					if(edge_distance < max_view_distance)
 						_lightsPvs.push_back(light_index);
 					else if(IS_SHADOW_CASTER(L) /* and was in the light pvs before */)
 					{
