@@ -1585,6 +1585,11 @@ void ClusteredShading::renderShadowMaps()
 	//   we'll genrate params for all the allocated lights in one go
 	_shadow_atlas.update_shadow_params();
 
+	bool did_barrier = false;
+	auto barrier = []() {
+		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+	};
+
 	_light_shadow_maps_rendered = 0;
 	_shadow_atlas_slots_rendered = 0;
 
@@ -1622,6 +1627,11 @@ void ClusteredShading::renderShadowMaps()
 				if(atlas_light.is_dirty() or light_hash != atlas_light.hash or false)//_scene_culler.pvs(light_id, idx).has(SceneObjectType::Dynamic))
 				{
 					_shadow_atlas.bindRenderTarget(slot_rect);
+					if(not did_barrier)
+					{
+						barrier();
+						did_barrier = true;
+					}
 					renderSceneShadow(light.position, far_z, params_index, idx);
 					++_shadow_atlas_slots_rendered;
 				}
@@ -1906,6 +1916,9 @@ void ClusteredShading::renderSceneShading(const Camera &camera)
 
 	_shadow_atlas.bindDepthTextureSampler(20);
 	_shadow_atlas.bindTextureSampler(21);   // encoded normals
+
+	// we need updated textures (shadow maps) and SSBO data
+	glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
 
 	const auto view_projection = m_camera.projectionTransform() * m_camera.viewTransform();
 	renderScene(view_projection, *m_clustered_pbr_shader);
