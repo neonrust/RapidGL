@@ -1795,7 +1795,7 @@ const std::vector<StaticObject> &ClusteredShading::cullScene(const Camera &view)
 			}
 			// only upload when changed...
 			m_relevant_lights_index_ssbo.set(_lightsPvs);
-			std::print("   lights: {}\n", _lightsPvs.size());
+			std::print("   relevant lights: {}\n", _lightsPvs.size());
 		}
 	}
 
