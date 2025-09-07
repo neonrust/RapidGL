@@ -624,7 +624,11 @@ bool Texture2DArray::Load(const fs::path &filepath, bool is_srgb)
 			}
 		}
 		fp.close();
-		return LoadLayers(filepaths, is_srgb);
+
+		const auto result = LoadLayers(filepaths, is_srgb);
+		if(result)
+			std::print("Texture[{}] array, {} layers\n", filepath.string(), filepaths.size());
+		return result;
 	}
 
 	return false;
