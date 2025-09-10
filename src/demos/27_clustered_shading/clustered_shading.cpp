@@ -1463,7 +1463,7 @@ void ClusteredShading::render()
 	m_cull_lights_shader->setUniform("u_view_matrix"sv, m_camera.viewTransform());
 	m_cull_lights_shader->setUniform("u_num_clusters"sv, m_cluster_count);
 	m_cull_lights_shader->setUniform("u_max_cluster_avg_lights"sv, uint32_t(CLUSTER_AVERAGE_LIGHTS));
-	m_cull_lights_shader->invoke(m_cull_lights_args_ssbo);  // reads uvec3 num_groups
+	m_cull_lights_shader->invoke(m_cull_lights_args_ssbo);
 
 	m_light_cull_time.add(_gl_timer.elapsed<microseconds>(true));
 	// ------------------------------------------------------------------
