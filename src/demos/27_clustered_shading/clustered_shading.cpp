@@ -24,7 +24,7 @@ using namespace std::literals;
 static float s_spot_outer_angle = 30.f;
 static float s_spot_intensity = 2000.f;
 
-static const auto s_relevant_lights_update_min_interval = 250ms;
+static constexpr auto s_relevant_lights_update_min_interval = 250ms;
 
 
 glm::mat3 make_common_space_from_direction(const glm::vec3 &direction)
