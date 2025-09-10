@@ -67,21 +67,14 @@ void main()
      	if(light.intensity < 1e-1)
       		continue;
 
-		vec3 sphere_center;
+		vec3 sphere_center = light.position;
 		float sphere_radius = light.affect_radius;
 		uint light_type = light.type_flags & LIGHT_TYPE_MASK;
 
      	switch(light_type)
       	{
-			case LIGHT_TYPE_POINT:
-			{
-				sphere_center = light.position;
-			}
-			break;
-
 			case LIGHT_TYPE_SPOT:
 			{
-	         	sphere_center = light.position;
 				// use minimal sphere bounds, if set
 	        	if(light.spot_bounds_radius > 0)
 	   			{
@@ -113,7 +106,6 @@ void main()
 			case LIGHT_TYPE_SPHERE:
 			{
 				// TODO
-	            sphere_center = light.position;
 			}
 			break;
 
@@ -121,7 +113,6 @@ void main()
 			{
 				// TODO
 				// center from average of two diagonal points
-	            sphere_center = light.position;
 	            // approximation of the light radius
 	            // sphere_radius = 50 * light.intensity * light.disc_radius;
 			}
