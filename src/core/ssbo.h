@@ -25,7 +25,7 @@ concept ContiguousRangeOf =
 		std::same_as<std::ranges::range_value_t<R>, T>;
 
 template<typename T>
-class ShaderStorage : public Buffer
+class Storage : public Buffer
 {
 public:
 	using value_type = T;
@@ -36,40 +36,39 @@ public:
 	static constexpr size_t elem_size = type_size();
 
 public:
-	ShaderStorage(std::string_view name, BufferUsage default_usage=DynamicDraw) :
+	Storage(std::string_view name, BufferUsage default_usage=DynamicDraw) :
 		Buffer(name, GL_SHADER_STORAGE_BUFFER, default_usage)
 	{
 	}
 
-	void bindIndirect() const;
+	void bindIndirectDispatch() const;//requires (std::is_same_v<T, glm::uvec3>);
 
 	template<ContiguousRangeOf<T> R>
 	void set(const R &data);
 	bool set(size_t index, const T &item);
-	template<IteratorOf<T> Iter>
+	template<IteratorOf<T> Iter> // TODO: must be contiguous!
 	void set(Iter begin, Iter end, size_t start_index=0);
 
 	bool download(std::vector<T> &destination, size_t offset=0, size_t count=0);
 
 	inline size_t size() const { return _size; }
-
 	void resize(size_t size);
 
-	void copyTo(ShaderStorage<T> &dest, size_t count=0, size_t readStart=0, size_t writeStart=0) const;
+	void copyTo(Storage<T> &dest, size_t count=0, size_t readStart=0, size_t writeStart=0) const;
 
 
 	class View : public std::span<const T, std::dynamic_extent>
 	{
-		friend class ShaderStorage;
+		friend class Storage;
 	public:
 		virtual ~View();
 	private:
-		View(ShaderStorage<T> *buffer, const T *start);
+		View(Storage<T> *buffer, const T *start);
 	private:
-		ShaderStorage<T> *_buffer;
+		Storage<T> *_buffer;
 	};
 
-	std::unique_ptr<const typename ShaderStorage<T>::View> view();
+	std::unique_ptr<const typename Storage<T>::View> view();
 
 protected:
 	void releaseView();
@@ -80,24 +79,26 @@ private:
 };
 
 
-template<typename T> // requires (std::is_same_v<T, uint32_t>)
-void ShaderStorage<T>::bindIndirect() const
+template<typename T>
+void Storage<T>::bindIndirectDispatch() const //requires (std::is_same_v<T, glm::uvec3>)
 {
 	glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, id());
 }
 
 template<typename T>
 template<ContiguousRangeOf<T> R>
-void ShaderStorage<T>::set(const R &data)
+void Storage<T>::set(const R &data)
 {
 	ensureCreated();
+
+	// TODO: double-buffer (similar to LightManager) ?
 
 	upload(data.data(), data.size() * elem_size);
 	_size = data.size();
 }
 
 template<typename T>
-bool ShaderStorage<T>::set(size_t index, const T &item)
+bool Storage<T>::set(size_t index, const T &item)
 {
 	ensureCreated();
 
@@ -110,7 +111,7 @@ bool ShaderStorage<T>::set(size_t index, const T &item)
 }
 
 template<typename T>
-inline bool ShaderStorage<T>::download(std::vector<T> &destination, size_t offset, size_t count)
+inline bool Storage<T>::download(std::vector<T> &destination, size_t offset, size_t count)
 {
 	if(count == 0)
 		count = _size - offset;
@@ -123,7 +124,7 @@ inline bool ShaderStorage<T>::download(std::vector<T> &destination, size_t offse
 
 template<typename T>
 template<IteratorOf<T> Iter>
-void ShaderStorage<T>::set(Iter begin, Iter end, size_t start_index)
+void Storage<T>::set(Iter begin, Iter end, size_t start_index)
 {
 	ensureCreated();
 
@@ -138,7 +139,7 @@ void ShaderStorage<T>::set(Iter begin, Iter end, size_t start_index)
 }
 
 template<typename T>
-void ShaderStorage<T>::resize(size_t size)
+void Storage<T>::resize(size_t size)
 {
 	ensureCreated();
 
@@ -152,7 +153,7 @@ void ShaderStorage<T>::resize(size_t size)
 }
 
 template<typename T>
-void ShaderStorage<T>::copyTo(ShaderStorage<T> &dest, size_t count, size_t readStart, size_t writeStart) const
+void Storage<T>::copyTo(Storage<T> &dest, size_t count, size_t readStart, size_t writeStart) const
 {
 	// TODO: move to base class
 
@@ -168,7 +169,7 @@ void ShaderStorage<T>::copyTo(ShaderStorage<T> &dest, size_t count, size_t readS
 }
 
 template<typename T>
-std::unique_ptr<const typename ShaderStorage<T>::View> ShaderStorage<T>::view()
+std::unique_ptr<const typename Storage<T>::View> Storage<T>::view()
 {
 	assert(id() and _size and not _view_active);
 	if(_view_active)
@@ -195,7 +196,7 @@ concept HasSize = requires {
 }
 
 template<typename T>
-constexpr size_t ShaderStorage<T>::type_size()
+constexpr size_t Storage<T>::type_size()
 {
 	if constexpr (_private::HasSize<T>)
 		return T::_struct_size;
@@ -204,7 +205,7 @@ constexpr size_t ShaderStorage<T>::type_size()
 }
 
 template<typename T>
-void ShaderStorage<T>::releaseView()
+void Storage<T>::releaseView()
 {
 	assert(_view_active);
 	glUnmapNamedBuffer(id());
@@ -212,14 +213,14 @@ void ShaderStorage<T>::releaseView()
 }
 
 template<typename T>
-inline ShaderStorage<T>::View::View(ShaderStorage<T> *buffer, const T *start) :
+inline Storage<T>::View::View(Storage<T> *buffer, const T *start) :
 	std::span<const T, std::dynamic_extent>(start, buffer->size()),
 	_buffer(buffer)
 {
 }
 
 template<typename T>
-ShaderStorage<T>::View::~View()
+Storage<T>::View::~View()
 {
 	_buffer->releaseView();
 }
@@ -228,10 +229,10 @@ ShaderStorage<T>::View::~View()
 // ============================================================================
 
 template<size_t count=1> requires (count <= 32)
-class AtomicCounterBuffer : protected ShaderStorage<uint32_t>
+class AtomicCounters : protected Storage<uint32_t>
 {
 public:
-	AtomicCounterBuffer(std::string_view name, BufferUsage usage=DefaultUsage);
+	AtomicCounters(std::string_view name, BufferUsage usage=DefaultUsage);
 
 	void clear();
 
@@ -243,15 +244,15 @@ protected:
 };
 
 template<size_t count> requires (count <= 32)
-inline AtomicCounterBuffer<count>::AtomicCounterBuffer(std::string_view name, BufferUsage usage) :
-	ShaderStorage<uint32_t>(name, usage)
+inline AtomicCounters<count>::AtomicCounters(std::string_view name, BufferUsage usage) :
+	Storage<uint32_t>(name, usage)
 {
 	// TODO: set_buffer_type ?
 	_buffer_type = GL_ATOMIC_COUNTER_BUFFER;
 }
 
 template<size_t count> requires (count <= 32)
-void AtomicCounterBuffer<count>::clear()
+void AtomicCounters<count>::clear()
 {
 	ensureCreated();
 
@@ -262,14 +263,14 @@ void AtomicCounterBuffer<count>::clear()
 }
 
 template<size_t count> requires (count <= 32)
-void AtomicCounterBuffer<count>::onCreate()
+void AtomicCounters<count>::onCreate()
 {
 	resize(count);
 }
 
 template<size_t count> requires (count <= 32)
 template<size_t index> requires (index < count)
-void AtomicCounterBuffer<count>::set(uint32_t value)
+void AtomicCounters<count>::set(uint32_t value)
 {
 	ensureCreated();
 
@@ -282,17 +283,17 @@ void AtomicCounterBuffer<count>::set(uint32_t value)
 
 
 template<typename T, size_t size> requires (size > 0 && sizeof(T) >= 4)
-class MappedStorage : protected ShaderStorage<T> // T must be @interop struct
+class Mapped : protected Storage<T> // T must be @interop struct
 {
 public:
 	// TODO: add control over GL_MAP_COHERENT_BIT / GL_MAP_FLUSH_EXPLICIT_BIT use?
-	inline MappedStorage(std::string_view name, BufferUsage default_usage=DynamicDraw) :
-		ShaderStorage<T>(name, default_usage)
+	inline Mapped(std::string_view name, BufferUsage default_usage=DynamicDraw) :
+		Storage<T>(name, default_usage)
 	{};
 
-	using ShaderStorage<T>::setBindIndex;
-	using ShaderStorage<T>::clear;
-	using ShaderStorage<T>::elem_size;
+	using Storage<T>::bindAt;
+	using Storage<T>::clear;
+	using Storage<T>::elem_size;
 
 	inline       T *operator -> ()       requires (size == 1) { this->ensureCreated(); return _data; }
 	inline const T *operator -> () const requires (size == 1) { this->ensureCreated(); return _data; }
@@ -319,7 +320,7 @@ private:
 };
 
 template<typename T, size_t N> requires (N > 0 && sizeof(T) >= 4)
-void MappedStorage<T, N>::flush()
+void Mapped<T, N>::flush()
 {
 	if(not this->id())  // calling this while still unmapped makes little sense
 		return;
@@ -328,7 +329,7 @@ void MappedStorage<T, N>::flush()
 }
 
 template<typename T, size_t N> requires (N > 0 && sizeof(T) >= 4)
-void MappedStorage<T, N>::onCreate()
+void Mapped<T, N>::onCreate()
 {
 	static constexpr auto flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT;
 	static constexpr auto map_flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_FLUSH_EXPLICIT_BIT;
@@ -336,5 +337,49 @@ void MappedStorage<T, N>::onCreate()
 	glNamedBufferStorage(this->id(), N*sizeof(T), nullptr, flags);
 	_data = static_cast<T *>(glMapNamedBufferRange(this->id(), 0, N*elem_size, map_flags));
 }
+
+// ============================================================================
+// ============================================================================
+
+template <typename S>
+concept StorageLike = requires { typename S::value_type; }
+	and std::is_base_of_v<Storage<typename S::value_type>, S>;
+
+template<StorageLike S, size_t N> requires (N > 1)
+class Cycle
+{
+public:
+	using value_type = typename S::value_type;
+
+public:
+	Cycle();
+
+	inline void bindActiveAt(GLuint id) { _buffer[_active].bindAt(id); }
+
+	template<ContiguousRangeOf<value_type> R>
+	inline void set(const R &data) { _buffer[_active].set(data); }
+	inline bool set(size_t index, const value_type &item) { _buffer[_active].set(index, item); }
+	template<IteratorOf<value_type> Iter>
+	inline void set(Iter begin, Iter end, size_t start_index=0) { _buffer[_active].set(begin, end, start_index); }
+
+	inline size_t size() const { return _buffer[0]._size; }
+	inline void resize(size_t size) {
+		for(auto idx = 0u; idx < N; ++idx)
+			_buffer[N].resize(size);
+	}
+
+	inline uint32_t active() const { return _active; }
+
+	inline uint32_t cycle()
+	{
+		const auto ready = _active;
+		_active = (_active + 1) % N;
+		return ready;
+	}
+
+private:
+	S _buffer[N];
+	uint32_t _active { 0 };
+};
 
 } // RGL::buffer

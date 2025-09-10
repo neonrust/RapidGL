@@ -28,9 +28,9 @@ public:
 	}
 
 	virtual ~Buffer();
-
-	void setBindIndex(GLuint index);
-	void bind();
+	
+	void bindAt(GLuint index);
+	void bindCurrent();
 
 	inline uint32_t id() const { return _id; }
 	inline BufferUsage usage() const { return _default_usage; }
@@ -38,7 +38,6 @@ public:
 	void clear();
 
 	inline operator bool () const { return _id >= 0; }
-
 
 protected:
 	bool ensureCreated() const;    // returns true if it was created

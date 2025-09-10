@@ -17,7 +17,7 @@
 namespace RGL
 {
 
-using GroupsBuffer = buffer::ShaderStorage<glm::uvec3>;
+using GroupsBuffer = buffer::Storage<glm::uvec3>;
 
 class Shader final
 {

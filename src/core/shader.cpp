@@ -321,7 +321,7 @@ void Shader::invoke(const GroupsBuffer &groups, size_t offset)
 		glMemoryBarrier(GLbitfield(_pre_barrier));
 
 	bind();
-	groups.bindIndirect();
+	groups.bindIndirectDispatch();
 	glDispatchComputeIndirect(GLintptr(offset));
 
 	if(_post_barrier != Barrier::None)

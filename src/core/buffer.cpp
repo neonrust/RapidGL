@@ -17,7 +17,7 @@ Buffer::~Buffer()
 	}
 }
 
-void Buffer::bind()
+void Buffer::bindCurrent()
 {
 	ensureCreated();
 
@@ -32,10 +32,10 @@ void Buffer::clear()
 	glClearNamedBufferData(id(), GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &clear_val);
 }
 
-void Buffer::setBindIndex(GLuint index)
+void Buffer::bindAt(GLuint index)
 {
 	_bind_index = index;
-	if(_id > 0)
+	if(_id)
 		glBindBufferBase(_buffer_type, _bind_index, _id);
 }
 
