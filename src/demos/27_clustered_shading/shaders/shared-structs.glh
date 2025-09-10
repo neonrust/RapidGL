@@ -81,14 +81,14 @@ layout(std430, binding = SSBO_BIND_CLUSTER_DISCOVERY) buffer ClusterDiscoverySSB
 
 
 #define SSBO_ALL_CLUSTER_LIGHTS_ro \
-layout(std430, binding = SSBO_BIND_ALL_CLUSTER_LIGHTS) readonly buffer AllClusterLightsSSBO  \
+layout(std430, binding = SSBO_BIND_CLUSTER_ALL_LIGHTS) readonly buffer AllClusterLightsSSBO  \
 { \
 	uint all_lights_start_index; \
 	uint all_lights_index[]; \
 }
 
 #define SSBO_ALL_CLUSTER_LIGHTS_rw \
-layout(std430, binding = SSBO_BIND_ALL_CLUSTER_LIGHTS) buffer AllClusterLightsSSBO \
+layout(std430, binding = SSBO_BIND_CLUSTER_ALL_LIGHTS) buffer AllClusterLightsSSBO \
 { \
 	uint all_lights_start_index; \
 	uint all_lights_index[]; \

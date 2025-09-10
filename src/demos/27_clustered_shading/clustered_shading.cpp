@@ -67,7 +67,7 @@ ClusteredShading::ClusteredShading() :
 	m_cluster_discovery_ssbo("cluster-discovery"sv),
 	m_cull_lights_args_ssbo("cull-lights"sv),
 	m_cluster_lights_range_ssbo("cluster-lights"sv),
-	m_all_lights_index_ssbo("all-lights-index"sv),
+	m_cluster_all_lights_index_ssbo("all-lights-index"sv),
 	m_unique_lights_bitfield_ssbo("unique-lights-bitfield"sv),
 	m_relevant_lights_index_ssbo("relevant-lights-index"sv),
 	m_shadow_map_params_ssbo("shadow-map-params"sv),
@@ -88,10 +88,10 @@ ClusteredShading::ClusteredShading() :
 	m_shadow_map_params_ssbo.setBindIndex(SSBO_BIND_SHADOW_PARAMS);
 	m_cluster_discovery_ssbo.setBindIndex(SSBO_BIND_CLUSTER_DISCOVERY);
 	m_cluster_lights_range_ssbo.setBindIndex(SSBO_BIND_CLUSTER_LIGHT_RANGE);
-	m_all_lights_index_ssbo.setBindIndex(SSBO_BIND_ALL_CLUSTER_LIGHTS);
 	m_unique_lights_bitfield_ssbo.setBindIndex(SSBO_BIND_UNIQUE_LIGHTS_BITFIELD);
 	m_cull_lights_args_ssbo.setBindIndex(SSBO_BIND_CULL_LIGHTS_ARGS);
 	m_relevant_lights_index_ssbo.setBindIndex(SSBO_BIND_RELEVANT_LIGHTS_INDEX);
+	m_cluster_all_lights_index_ssbo.bindAt(SSBO_BIND_CLUSTER_ALL_LIGHTS);
 
 	_light_visible_set.reserve(256);
 
@@ -805,7 +805,7 @@ void ClusteredShading::prepareClusterBuffers()
 	m_cluster_aabb_ssbo.resize(m_cluster_count);
 	m_cluster_discovery_ssbo.resize(1 + m_cluster_count*2);  // num_active, nonempty[N], active[N]
 	m_cluster_lights_range_ssbo.resize(m_cluster_count);
-	m_all_lights_index_ssbo.resize(1 + m_cluster_count * CLUSTER_AVERAGE_LIGHTS); // all_lights_start_index, all_lights_index[]
+	m_cluster_all_lights_index_ssbo.resize(1 + m_cluster_count * CLUSTER_AVERAGE_LIGHTS); // all_lights_start_index, all_lights_index[]
 	m_unique_lights_bitfield_ssbo.resize(32); // 32x32 = 1024 lights
 	m_cull_lights_args_ssbo.resize(1);
 
@@ -1434,7 +1434,7 @@ void ClusteredShading::render()
 
 	// Assign lights to clusters (cull lights)
 	m_cluster_lights_range_ssbo.clear();
-	m_all_lights_index_ssbo.clear();
+	m_cluster_all_lights_index_ssbo.clear();
 	m_unique_lights_bitfield_ssbo.clear();
 	m_cull_lights_shader->setUniform("u_cam_pos"sv, m_camera.position());
 	m_cull_lights_shader->setUniform("u_light_max_distance"sv, std::min(100.f, m_camera.farPlane()));
