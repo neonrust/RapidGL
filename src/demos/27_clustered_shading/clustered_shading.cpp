@@ -77,8 +77,8 @@ ClusteredShading::ClusteredShading() :
 	m_cluster_discovery_ssbo("cluster-discovery"sv),
 	m_cull_lights_args_ssbo("cull-lights"sv),
 	m_cluster_lights_range_ssbo("cluster-lights"sv),
-	m_cluster_all_lights_index_ssbo("all-lights-index"sv),
-	m_unique_lights_bitfield_ssbo("unique-lights-bitfield"sv),
+	m_cluster_all_lights_index_ssbo("cluster-all-lights"sv),
+	m_affecting_lights_bitfield_ssbo("affecting-lights-bitfield"sv),
 	m_relevant_lights_index_ssbo("relevant-lights-index"sv),
 	m_shadow_map_params_ssbo("shadow-map-params"sv),
 	m_exposure            (0.4f),
@@ -99,7 +99,7 @@ ClusteredShading::ClusteredShading() :
 	m_cluster_discovery_ssbo.bindAt(SSBO_BIND_CLUSTER_DISCOVERY);
 	m_cluster_lights_range_ssbo.bindAt(SSBO_BIND_CLUSTER_LIGHT_RANGE);
 	m_cluster_all_lights_index_ssbo.bindAt(SSBO_BIND_CLUSTER_ALL_LIGHTS);
-	m_unique_lights_bitfield_ssbo.bindAt(SSBO_BIND_UNIQUE_LIGHTS_BITFIELD);
+	m_affecting_lights_bitfield_ssbo.bindAt(SSBO_BIND_AFFECTING_LIGHTS_BITFIELD);
 	m_cull_lights_args_ssbo.bindAt(SSBO_BIND_CULL_LIGHTS_ARGS);
 	m_relevant_lights_index_ssbo.bindAt(SSBO_BIND_RELEVANT_LIGHTS_INDEX);
 
@@ -816,7 +816,7 @@ void ClusteredShading::prepareClusterBuffers()
 	m_cluster_discovery_ssbo.resize(1 + m_cluster_count*2);  // num_active, nonempty[N], active[N]
 	m_cluster_lights_range_ssbo.resize(m_cluster_count);
 	m_cluster_all_lights_index_ssbo.resize(1 + m_cluster_count * CLUSTER_AVERAGE_LIGHTS); // all_lights_start_index, all_lights_index[]
-	m_unique_lights_bitfield_ssbo.resize(32); // 32x32 = 1024 lights
+	m_affecting_lights_bitfield_ssbo.resize(32); // 32x32 = 1024 lights
 	m_cull_lights_args_ssbo.resize(1);
 
 	/// Generate AABBs for clusters
@@ -827,6 +827,8 @@ void ClusteredShading::prepareClusterBuffers()
 	m_generate_clusters_shader->setUniform("u_near_k"sv,             m_near_k);
 	m_generate_clusters_shader->setUniform("u_pixel_size"sv,         1.0f / glm::vec2(Window::width(), Window::height()));
 	m_generate_clusters_shader->invoke(size_t(std::ceil(float(m_cluster_count) / 1024.f)));
+
+	m_affecting_lights_bitfield_ssbo.clear();
 }
 
 void ClusteredShading::input()
@@ -1348,12 +1350,14 @@ void ClusteredShading::GenSkyboxGeometry()
     glVertexArrayVertexBuffer(m_skybox_vao, 0 /*bindingindex*/, m_skybox_vbo, 0 /*offset*/, sizeof(glm::vec3) /*stride*/);
 }
 
-void ClusteredShading::downloadVisibleLightSet()
+void ClusteredShading::downloadAffectingLightSet()
 {
 	static std::vector<uint> unique_lights_bits;
-	m_unique_lights_bitfield_ssbo.download(unique_lights_bits);
+	m_affecting_lights_bitfield_ssbo.download(unique_lights_bits);
 
-	_light_visible_set.clear();
+	_affecting_lights.clear();
+
+	// std::print("  affecting lights:");
 
 	// "decode" the bitfield into actual light indices
 	for(auto bucket = 0u; bucket < unique_lights_bits.size(); ++bucket)
@@ -1361,13 +1365,21 @@ void ClusteredShading::downloadVisibleLightSet()
 		auto bits = unique_lights_bits[bucket];
 		while(bits)
 		{
-			auto bit_index = uint_fast32_t(std::countr_zero(bits));
-			auto light_index = (bucket << 5u) + bit_index;
-			// -> lightIndex is active
-			_light_visible_set.insert(light_index);
+			const auto bit_index = uint_fast32_t(std::countr_zero(bits));
+			const auto light_index = (bucket << 5u) + bit_index;
+
+			_affecting_lights.insert(light_index);
 			bits &= bits - 1u; // clear lowest set bit
+
+			// std::print(" {}", light_index);
+
+#if defined(DEBUG)
+			assert(light_index < _light_mgr.num_lights());
+#endif
 		}
 	}
+
+	// std::puts("");
 }
 
 
@@ -1375,7 +1387,7 @@ void ClusteredShading::render()
 {
 	const auto now = steady_clock::now();
 
-	downloadVisibleLightSet();
+	downloadAffectingLightSet();
 
 	m_camera.setFov(m_camera_fov);
 
@@ -1445,7 +1457,7 @@ void ClusteredShading::render()
 	// Assign lights to clusters (cull lights)
 	m_cluster_lights_range_ssbo.clear();
 	m_cluster_all_lights_index_ssbo.clear();
-	m_unique_lights_bitfield_ssbo.clear();
+	m_affecting_lights_bitfield_ssbo.clear();
 	m_cull_lights_shader->setUniform("u_cam_pos"sv, m_camera.position());
 	m_cull_lights_shader->setUniform("u_light_max_distance"sv, std::min(100.f, m_camera.farPlane()));
 	m_cull_lights_shader->setUniform("u_view_matrix"sv, m_camera.viewTransform());

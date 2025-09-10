@@ -39,7 +39,7 @@ struct GPULight
 };
 
 // @interop
-struct LightShadowParams
+struct ShadowSlotInfo
 {
 	mat4 view_proj[6];  // storing only forward & up saves 192 bytes (480 -> 288)
 	uvec4 atlas_rect[6];
