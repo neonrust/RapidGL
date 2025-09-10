@@ -23,7 +23,7 @@
 //  T = light type (4 bits)
 //  2 = two-sided (1 bit), area & disc lights
 //  C = shadow caster (1 bit)
-//  S = shadw params index (12 bits, 4095 values) - index into SSBO_BIND_SHADOW_PARAMS)
+//  S = shadw slots info (12 bits, 4095 values) - index into SSBO_BIND_SHADOW_SLOTS_INFO)
 //
 #define LIGHT_TYPE_MASK          0x0fu
 #define LIGHT_TYPE_POINT         0x00u

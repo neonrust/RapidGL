@@ -1621,7 +1621,7 @@ void ClusteredShading::renderShadowMaps()
 
 		// if this light did not contribute to the frame, no need to render its shadow map
 		const auto light_index = _light_mgr.light_index(light_id);
-		if(not _light_visible_set.contains(light_index))
+		if(not _affecting_lights.contains(light_index))
 			continue;
 
 		const auto light_hash = _shadow_atlas.hash_light(light);

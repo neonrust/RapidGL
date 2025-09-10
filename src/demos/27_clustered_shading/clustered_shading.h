@@ -132,7 +132,7 @@ private:
 	void renderSceneShadow(const glm::vec3 &pos, float far_z, uint_fast16_t shadow_slot_index, uint32_t shadow_map_inde);
 	void renderSceneShading(const RGL::Camera &camera);
 	void renderSkybox();
-	void downloadVisibleLightSet();
+	void downloadAffectingLightSet();
 	void draw2d(const RGL::Texture &texture, BlendMode mode=BlendMode::Replace); // TODO: move to CoreApp
 	void draw2d(const RGL::Texture &source, RGL::RenderTarget::Texture2d &target, BlendMode blend=BlendMode::Replace); // TODO: move to CoreApp
 	void draw2d(const RGL::Texture &texture, const glm::uvec2 &top_left, const glm::uvec2 &bottom_right); // TODO: move to CoreApp
@@ -225,9 +225,9 @@ private:
 	RGL::buffer::ShaderStorage<glm::uvec3> m_cull_lights_args_ssbo;
 	RGL::buffer::ShaderStorage<IndexRange> m_cluster_lights_range_ssbo;
 	RGL::buffer::ShaderStorage<uint>       m_all_lights_index_ssbo;
-	RGL::buffer::ShaderStorage<uint>       m_unique_lights_bitfield_ssbo;
-	dense_set<uint>                        _light_visible_set;
 	RGL::buffer::ShaderStorage<uint>       m_relevant_lights_index_ssbo;
+	RGL::buffer::Storage<uint>       m_affecting_lights_bitfield_ssbo;
+	dense_set<uint>                  _affecting_lights;
 	RGL::buffer::Mapped<ShadowSlotInfo, MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS + MAX_AREA_LIGHTS> m_shadow_map_params_ssbo;
 	LightManager _light_mgr;
 
