@@ -26,6 +26,16 @@ static float s_spot_intensity = 2000.f;
 
 static constexpr auto s_relevant_lights_update_min_interval = 250ms;
 
+// light/shadow distances as fraction of camera far plane (OR of furthest shading cluster? should be the same though...)
+//  must be in this order
+static constexpr auto s_light_relevant_fraction      = 0.6f;//0.8f;   // input to cluster light culling
+static constexpr auto s_light_affect_fraction        = 0.5f;//0.75f;  // fade shading by distance
+static constexpr auto s_light_shadow_max_fraction    = 0.4f;//0.65f;  // may allocated  sdhadow map
+static constexpr auto s_light_shadow_affect_fraction = 0.3f;//0.5f;   // fade shadow by distance
+
+static_assert(s_light_relevant_fraction > s_light_affect_fraction);
+static_assert(s_light_affect_fraction > s_light_shadow_max_fraction);
+static_assert(s_light_shadow_max_fraction > s_light_shadow_affect_fraction);
 
 glm::mat3 make_common_space_from_direction(const glm::vec3 &direction)
 {
@@ -84,16 +94,16 @@ ClusteredShading::ClusteredShading() :
 	m_fog_density         (0.f), // [ 0, 0.5 ]   nice-ish value: 0.015
 	_ray_march_noise      (1)
 {
-	m_cluster_aabb_ssbo.setBindIndex(SSBO_BIND_CLUSTER_AABB);
-	m_shadow_map_params_ssbo.setBindIndex(SSBO_BIND_SHADOW_PARAMS);
-	m_cluster_discovery_ssbo.setBindIndex(SSBO_BIND_CLUSTER_DISCOVERY);
-	m_cluster_lights_range_ssbo.setBindIndex(SSBO_BIND_CLUSTER_LIGHT_RANGE);
-	m_unique_lights_bitfield_ssbo.setBindIndex(SSBO_BIND_UNIQUE_LIGHTS_BITFIELD);
-	m_cull_lights_args_ssbo.setBindIndex(SSBO_BIND_CULL_LIGHTS_ARGS);
-	m_relevant_lights_index_ssbo.setBindIndex(SSBO_BIND_RELEVANT_LIGHTS_INDEX);
+	m_cluster_aabb_ssbo.bindAt(SSBO_BIND_CLUSTER_AABB);
+	m_shadow_map_params_ssbo.bindAt(SSBO_BIND_SHADOW_PARAMS);
+	m_cluster_discovery_ssbo.bindAt(SSBO_BIND_CLUSTER_DISCOVERY);
+	m_cluster_lights_range_ssbo.bindAt(SSBO_BIND_CLUSTER_LIGHT_RANGE);
 	m_cluster_all_lights_index_ssbo.bindAt(SSBO_BIND_CLUSTER_ALL_LIGHTS);
+	m_unique_lights_bitfield_ssbo.bindAt(SSBO_BIND_UNIQUE_LIGHTS_BITFIELD);
+	m_cull_lights_args_ssbo.bindAt(SSBO_BIND_CULL_LIGHTS_ARGS);
+	m_relevant_lights_index_ssbo.bindAt(SSBO_BIND_RELEVANT_LIGHTS_INDEX);
 
-	_light_visible_set.reserve(256);
+	_affecting_lights.reserve(256);
 
 	_lightsPvs.reserve(1024);
 }
@@ -1575,7 +1585,7 @@ void ClusteredShading::renderShadowMaps()
 	{
 		last_eval_time = now;
 		// TODO: probably should be a separate setting
-		_shadow_atlas.set_max_distance(std::min(100.f, m_camera.farPlane())/2.f);
+		_shadow_atlas.set_max_distance(m_camera.farPlane() * s_light_shadow_max_fraction);
 
 		_shadow_atlas.eval_lights(_lightsPvs, m_camera.position(), m_camera.forwardVector());
 	}
@@ -1763,7 +1773,7 @@ const std::vector<StaticObject> &ClusteredShading::cullScene(const Camera &view)
 	const auto view_pos = view.position();
 	const auto &frustum = view.frustum();
 
-	const auto max_view_distance = std::min(100.f, view.farPlane());
+	const auto max_view_distance = view.farPlane()* s_light_relevant_fraction;
 
 	// this probably doesn't need to be done every frame
 	//   if no lights nor the view moves then only once
@@ -1895,8 +1905,8 @@ void ClusteredShading::renderSceneShading(const Camera &camera)
 	m_clustered_pbr_shader->setUniform("u_cluster_resolution"sv,         m_cluster_resolution);
 	m_clustered_pbr_shader->setUniform("u_cluster_size_ss"sv,            glm::uvec2(m_cluster_block_size));
 	m_clustered_pbr_shader->setUniform("u_log_cluster_res_y"sv,          m_log_cluster_res_y);
-	m_clustered_pbr_shader->setUniform("u_light_max_distance"sv,         std::min(100.f, m_camera.farPlane()));
-	m_clustered_pbr_shader->setUniform("u_shadow_max_distance"sv,        std::min(100.f, m_camera.farPlane())/1.5f);
+	m_clustered_pbr_shader->setUniform("u_light_max_distance"sv,         m_camera.farPlane() * s_light_affect_fraction);
+	m_clustered_pbr_shader->setUniform("u_shadow_max_distance"sv,        m_camera.farPlane() * s_light_shadow_affect_fraction);
 
 	m_clustered_pbr_shader->setUniform("u_shadow_bias_constant"sv,       m_shadow_bias_constant);
 	m_clustered_pbr_shader->setUniform("u_shadow_bias_slope_scale"sv,    m_shadow_bias_slope_scale);
