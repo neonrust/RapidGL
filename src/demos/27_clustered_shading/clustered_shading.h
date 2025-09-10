@@ -129,7 +129,7 @@ private:
 	void renderScene(const glm::mat4 &view_projection, RGL::Shader &shader, MaterialCtrl matCtrl=UseMaterials);
 	void renderDepth(const glm::mat4 &view_projection, RGL::RenderTarget::Texture2d &target, const glm::ivec4 &rect={0,0,0,0});
 	void renderShadowMaps();
-	void renderSceneShadow(const glm::vec3 &pos, float far_z, uint_fast16_t shadow_params_index, uint32_t shadow_map_inde);
+	void renderSceneShadow(const glm::vec3 &pos, float far_z, uint_fast16_t shadow_slot_index, uint32_t shadow_map_inde);
 	void renderSceneShading(const RGL::Camera &camera);
 	void renderSkybox();
 	void downloadVisibleLightSet();
@@ -228,7 +228,7 @@ private:
 	RGL::buffer::ShaderStorage<uint>       m_unique_lights_bitfield_ssbo;
 	dense_set<uint>                        _light_visible_set;
 	RGL::buffer::ShaderStorage<uint>       m_relevant_lights_index_ssbo;
-	RGL::buffer::MappedStorage<LightShadowParams, MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS + MAX_AREA_LIGHTS> m_shadow_map_params_ssbo;
+	RGL::buffer::Mapped<ShadowSlotInfo, MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS + MAX_AREA_LIGHTS> m_shadow_map_params_ssbo;
 	LightManager _light_mgr;
 
     /// Area lights variables

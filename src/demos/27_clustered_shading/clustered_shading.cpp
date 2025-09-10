@@ -95,7 +95,7 @@ ClusteredShading::ClusteredShading() :
 	_ray_march_noise      (1)
 {
 	m_cluster_aabb_ssbo.bindAt(SSBO_BIND_CLUSTER_AABB);
-	m_shadow_map_params_ssbo.bindAt(SSBO_BIND_SHADOW_PARAMS);
+	m_shadow_map_params_ssbo.bindAt(SSBO_BIND_SHADOW_SLOTS_INFO);
 	m_cluster_discovery_ssbo.bindAt(SSBO_BIND_CLUSTER_DISCOVERY);
 	m_cluster_lights_range_ssbo.bindAt(SSBO_BIND_CLUSTER_LIGHT_RANGE);
 	m_cluster_all_lights_index_ssbo.bindAt(SSBO_BIND_CLUSTER_ALL_LIGHTS);
@@ -1634,7 +1634,7 @@ void ClusteredShading::renderShadowMaps()
 		{
 			// render shadow map(s) for this light
 
-			const auto params_index = _light_mgr.shadow_index(light_id);
+			const auto slot_index = _light_mgr.shadow_index(light_id);
 
 			// render only up to the light's radius
 			const auto far_z = light.affect_radius;
@@ -1654,7 +1654,7 @@ void ClusteredShading::renderShadowMaps()
 						barrier();
 						did_barrier = true;
 					}
-					renderSceneShadow(light.position, far_z, params_index, idx);
+					renderSceneShadow(light.position, far_z, slot_index, idx);
 					++_shadow_atlas_slots_rendered;
 				}
 			}
@@ -1879,7 +1879,7 @@ void ClusteredShading::renderDepth(const glm::mat4 &view_projection, RenderTarge
 	renderScene(view_projection, *m_depth_prepass_shader, NoMaterials);
 }
 
-void ClusteredShading::renderSceneShadow(const glm::vec3 &pos, float far_z, uint_fast16_t shadow_params_index, uint32_t shadow_map_index)
+void ClusteredShading::renderSceneShadow(const glm::vec3 &pos, float far_z, uint_fast16_t shadow_slot_index, uint32_t shadow_map_index)
 {
 	// TODO: ideally, only render objects whose AABB intersects with the light's projection (frustum)
 
@@ -1891,7 +1891,7 @@ void ClusteredShading::renderSceneShadow(const glm::vec3 &pos, float far_z, uint
 
 	m_shadow_depth_shader->setUniform("u_cam_pos"sv, pos);
 	m_shadow_depth_shader->setUniform("u_far_z"sv, far_z);
-	m_shadow_depth_shader->setUniform("u_shadow_params_index"sv, uint32_t(shadow_params_index)); // for 'mvp'
+	m_shadow_depth_shader->setUniform("u_shadow_slot_index"sv, uint32_t(shadow_slot_index)); // for 'mvp'
 	m_shadow_depth_shader->setUniform("u_shadow_map_index"sv, shadow_map_index);
 
 	for(const auto &obj: _scenePvs)

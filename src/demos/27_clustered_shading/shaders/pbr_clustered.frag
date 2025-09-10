@@ -43,9 +43,9 @@ layout(std430, binding = SSBO_BIND_CLUSTER_LIGHT_RANGE) readonly buffer ClusterL
 
 SSBO_ALL_CLUSTER_LIGHTS_ro;
 
-layout(std430, binding = SSBO_BIND_SHADOW_PARAMS) readonly buffer ShadowParamsSSBO
+layout(std430, binding = SSBO_BIND_SHADOW_SLOTS_INFO) readonly buffer ShadowParamsSSBO
 {
-	LightShadowParams ssbo_shadow_params[];
+	ShadowSlotInfo ssbo_shadow_slots[];
 };
 
 vec3  fromRedToGreen(float interpolant);
@@ -312,7 +312,7 @@ vec3 unpackNormal(vec2 f)
 float sampleShadow(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max, vec2 texel_size);
 float fadeByDistance(float distance, float hard_limit);
 
-void detectCubeFaceSlot(vec3 light_to_frag, LightShadowParams params, out mat4 view_proj, out vec4 rect);
+void detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 view_proj, out vec4 rect);
 
 vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 {
@@ -329,20 +329,19 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 	float shadow_fade = fadeByDistance(light_edge_distance, u_shadow_max_distance);
 	if(shadow_fade == 0)
 		return vec3(0);
+	uint shadow_idx = GET_SHADOW_IDX(light);
+	if(shadow_idx == LIGHT_NO_SHADOW)
 
-	uint params_idx = GET_SHADOW_IDX(light);
-	if(params_idx == LIGHT_NO_SHADOW)
-		return vec3(1);  // no shadow map allocated
 
-	LightShadowParams params = ssbo_shadow_params[params_idx];
 	// TODO: fade out shadow based on light importance (e.g. the last 0.1)
 	//   however, there's no way to know if/when the shadow will be deallocated...
+	ShadowSlotInfo slot_info = ssbo_shadow_slots[shadow_idx];
 
 	vec3 light_to_frag = world_pos - light.position;
 
 	mat4 proj;
 	vec4 rect;
-	detectCubeFaceSlot(light_to_frag, params, proj, rect);
+	detectCubeFaceSlot(light_to_frag, slot_info, proj, rect);
 	// ignore 1 pixel around the edges
 	rect.x += 1;
 	rect.y += 1;
@@ -486,7 +485,7 @@ float fadeByDistance(float distance, float hard_limit)
 	return 1 - smoothstep(hard_limit*0.8, hard_limit, distance);
 }
 
-void detectCubeFaceSlot(vec3 light_to_frag, LightShadowParams params, out mat4 view_proj, out vec4 rect)
+void detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 view_proj, out vec4 rect)
 {
 	// figure out which of the 6 cube faces is relevant
 
@@ -508,19 +507,19 @@ void detectCubeFaceSlot(vec3 light_to_frag, LightShadowParams params, out mat4 v
 
 	// select projection and atlas rect for this face
 	//   surprisingly, this ugliness is quite a bit faster than just view_proj[face]
-	mat4 vp_0 = params.view_proj[0];
-	mat4 vp_1 = params.view_proj[1];
-	mat4 vp_2 = params.view_proj[2];
-	mat4 vp_3 = params.view_proj[3];
-	mat4 vp_4 = params.view_proj[4];
-	mat4 vp_5 = params.view_proj[5];
+	mat4 vp_0 = slot_info.view_proj[0];
+	mat4 vp_1 = slot_info.view_proj[1];
+	mat4 vp_2 = slot_info.view_proj[2];
+	mat4 vp_3 = slot_info.view_proj[3];
+	mat4 vp_4 = slot_info.view_proj[4];
+	mat4 vp_5 = slot_info.view_proj[5];
 
-	vec4 rect_0 = params.atlas_rect[0];
-	vec4 rect_1 = params.atlas_rect[1];
-	vec4 rect_2 = params.atlas_rect[2];
-	vec4 rect_3 = params.atlas_rect[3];
-	vec4 rect_4 = params.atlas_rect[4];
-	vec4 rect_5 = params.atlas_rect[5];
+	vec4 rect_0 = slot_info.atlas_rect[0];
+	vec4 rect_1 = slot_info.atlas_rect[1];
+	vec4 rect_2 = slot_info.atlas_rect[2];
+	vec4 rect_3 = slot_info.atlas_rect[3];
+	vec4 rect_4 = slot_info.atlas_rect[4];
+	vec4 rect_5 = slot_info.atlas_rect[5];
 
 	if (major_axis == 0)
 	{
