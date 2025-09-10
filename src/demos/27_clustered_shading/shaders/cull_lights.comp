@@ -157,8 +157,7 @@ void main()
 			uint light_index = s_light_list[idx];
 			all_lights_index[offset + idx] = light_index;
 
-			//atomicOr(ssbo_unique_lights[light_index >> 5], light_index & 31);
-			ssbo_unique_lights[light_index >> 5] |= 1u << (light_index & 31u);
+			atomicOr(ssbo_unique_lights[light_index >> 5], 1u << (light_index & 31u));
 		}
 
 		cluster_lights[s_cluster_index].start_index = offset;
