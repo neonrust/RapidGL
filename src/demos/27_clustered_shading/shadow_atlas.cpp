@@ -463,10 +463,8 @@ void ShadowAtlas::update_shadow_params()
 		}
 
 		_lights.set_shadow_index(light_id, shadow_params.size());
-		shadow_params.push_back(LightShadowParams {
-			.view_proj = projs,
-			.atlas_rect = rects,
-		});
+
+		shadow_params.emplace_back(projs, rects);
 	}
 
 	_shadow_params_ssbo.set(shadow_params);
