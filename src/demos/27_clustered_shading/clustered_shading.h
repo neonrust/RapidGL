@@ -200,9 +200,9 @@ private:
 	float m_debug_clusters_blend_factor  = 0.7f;
 	float m_shadow_bias_constant         = 0.f;
 	float m_shadow_bias_slope_scale      = 0.f;
-	float m_shadow_bias_slope_power      = 0.f;
+	float m_shadow_bias_slope_power      = 2.f;
 	float m_shadow_bias_distance_scale   = 0.f;
-	float m_shadow_bias_scale            = 1;
+	float m_shadow_bias_scale            = -0.2f;
 
 
 	bool      m_animate_lights             = false;
