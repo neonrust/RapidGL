@@ -183,7 +183,7 @@ private:
 	std::chrono::milliseconds _min_change_interval;
 	small_vec<std::pair<uint32_t, std::chrono::milliseconds>, 8> _render_intervals;
 
-	RGL::buffer::ShaderStorage<LightShadowParams> _shadow_params_ssbo;
+	RGL::buffer::Storage<ShadowSlotInfo> _shadow_params_ssbo;
 	small_vec<size_t, 16> _distribution;  // slot sizes of each of the levels (from max to min)
 
 	RGL::SpatialAllocator<uint32_t> _allocator;
