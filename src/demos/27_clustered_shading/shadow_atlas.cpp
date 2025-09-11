@@ -245,15 +245,15 @@ size_t ShadowAtlas::eval_lights(const std::vector<LightIndex> &relevant_lights, 
 	{
 		std::print("ShadowAtlas: {}:", prioritized.size());
 		if(counters.allocated)
-			std::print(" \x1b[1m★\x1b[m{}", counters.allocated);
+			std::print(" \x1b[33;1m★\x1b[m{}", counters.allocated);
 		if(counters.retained)
 			std::print(" \x1b[1m=\x1b[m{}", counters.retained);
 		if(counters.dropped)
-			std::print(" \x1b[1m❌\x1b[m{}", counters.dropped);
+			std::print(" \x1b[31;1m❌\x1b[m{}", counters.dropped);
 		if(counters.promoted)
-			std::print(" \x1b[1m➚\x1b[m{}", counters.promoted);
+			std::print(" \x1b[32;m➚\x1b[m{}", counters.promoted);
 		if(counters.demoted)
-			std::print(" \x1b[1m➘\x1b[m{}", counters.demoted);
+			std::print(" \x1b[34;1m➘\x1b[m{}", counters.demoted);
 		if(counters.change_pending)
 			std::print(" \x1b[1m?\x1b[m{}", counters.change_pending);
 		std::print(", in {} ->", duration_cast<microseconds>(steady_clock::now() - T0));
