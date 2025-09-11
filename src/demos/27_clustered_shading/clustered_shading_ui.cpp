@@ -170,7 +170,10 @@ void ClusteredShading::render_gui()
 			size_line.clear();
 			for(const auto &[size, count]: _shadow_atlas.allocated_counts())
 				size_line += std::format("  {:4}: {}", size, count);
-			ImGui::Text("  %s", size_line.c_str());
+			if(size_line.empty())
+				ImGui::Text("  -- no shadow maps");
+			else
+				ImGui::Text("  %s", size_line.c_str());
 
 			ImGui::Text("Lights rendered: %lu  slots: %lu", _light_shadow_maps_rendered, _shadow_atlas_slots_rendered);
 		}
