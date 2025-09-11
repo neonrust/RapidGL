@@ -316,7 +316,7 @@ void detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 v
 
 vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 {
-	float light_edge_distance = distance(light.position, u_cam_pos) - light.affect_radius;
+	float light_edge_distance = max(0, distance(light.position, u_cam_pos) - light.affect_radius);
 	// fade the whole light by distance
 	float light_fade = fadeByDistance(light_edge_distance, u_light_max_distance);
 	if(light_fade == 0)
@@ -325,16 +325,16 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 	if(! IS_SHADOW_CASTER(light))
 		return vec3(light_fade);
 
-	// fade the shadow by distance
-	float shadow_fade = fadeByDistance(light_edge_distance, u_shadow_max_distance);
-	if(shadow_fade == 0)
-		return vec3(0);
 	uint shadow_idx = GET_SHADOW_IDX(light);
 	if(shadow_idx == LIGHT_NO_SHADOW)
+		return vec3(light_fade);  // no shadow map in use
 
+	// fade the shadow sample by distance (utilize cluster z-coord?)
+	float fragment_distance = distance(world_pos, u_cam_pos);
+	float shadow_fade = fadeByDistance(fragment_distance, u_shadow_max_distance);
+	if(shadow_fade == 0)
+		return vec3(light_fade);
 
-	// TODO: fade out shadow based on light importance (e.g. the last 0.1)
-	//   however, there's no way to know if/when the shadow will be deallocated...
 	ShadowSlotInfo slot_info = ssbo_shadow_slots[shadow_idx];
 
 	vec3 light_to_frag = world_pos - light.position;
@@ -387,7 +387,12 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 
 	vec2 uv_min = vec2(rect_uv.x, rect_uv.y);
 	vec2 uv_max = vec2(rect_uv.x + rect_uv.z - texel_size.x, rect_uv.y + rect_uv.w - texel_size.y);
-	return vec3(light_fade * shadow_fade * sampleShadow(normalized_depth, atlas_uv, uv_min, uv_max, texel_size));
+	float shadow_sample = sampleShadow(normalized_depth, atlas_uv, uv_min, uv_max, texel_size);
+
+	float v_faded = 1 - (1 - shadow_sample) * shadow_fade;
+	float visible = light_fade * v_faded;
+
+	return vec3(visible);
 }
 
 vec3 dirLightVisibility(GPULight light)
@@ -453,6 +458,9 @@ float sampleShadow(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max,
 	// NOTE: UV is capped to stay withing the single shadow map slot (cube face)
 	//   but strictly, the sampling should in those cases instead sample from the
 	//   "spatial naighbour" slot. That is, however, quite complicated... :|
+
+	// TODO: possible to increase the sample raidus depending on 'current_depth'
+	//   i.e. to achieve more blurred shadow for more distant shadows
 
 	// sample a 3x3 box around the sample
 #define SAMPLE(uv_offset, weight) \
