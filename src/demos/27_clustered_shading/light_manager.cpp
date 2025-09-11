@@ -10,6 +10,17 @@ using namespace std::literals;
 
 using namespace RGL;
 
+// textual names for each light type, see light_constants.h
+static const std::string_view s_light_type_names[] {
+	"point"sv,
+	"directional"sv,
+	"spot"sv,
+	"area"sv,
+	"tube"sv,
+	"sphere"sv,
+	"disc"sv,
+};
+
 
 LightManager::LightManager(/* entt registry */) :
 	_lights_ssbo("lights"sv)
@@ -31,6 +42,13 @@ void LightManager::reserve(size_t count)
 	_dirty.reserve(count);
 	_dirty_list.reserve(count);
 	_lights.reserve(count);
+}
+
+std::string_view LightManager::type_name(const GPULight &L) const
+{
+	const auto light_type = GET_LIGHT_TYPE(L);
+	assert(light_type < std::size(s_light_type_names));
+	return s_light_type_names[GET_LIGHT_TYPE(L)];
 }
 
 static LightID _light_id { 0 };

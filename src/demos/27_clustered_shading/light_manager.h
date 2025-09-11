@@ -53,6 +53,8 @@ public:
 	// create light entity, return to augmented instance (e.g. with uuid set)
 	//  add() or create() ?
 
+	std::string_view type_name(const GPULight &L) const;
+
 	PointLight    add(const PointLightParams &p);
 	DirectionalLight add(const DirectionalLightParams &d);
 	SpotLight     add(const SpotLightParams &s);
@@ -246,7 +248,10 @@ std::optional<LT> LightManager::to_(const GPULight &L) const
 	{
 		assert(IS_POINT_LIGHT(L));
 		if(not IS_POINT_LIGHT(L))
+		{
+			std::print(stderr, "Expected point light, got {}\n", type_name(L));
 			return std::nullopt;
+		}
 
 		l.position      = L.position;
 		l.affect_radius = L.affect_radius;
@@ -255,7 +260,10 @@ std::optional<LT> LightManager::to_(const GPULight &L) const
 	{
 		assert(IS_DIR_LIGHT(L));
 		if(not IS_DIR_LIGHT(L))
+		{
+			std::print(stderr, "Expected directional light, got {}\n", type_name(L));
 			return std::nullopt;
+		}
 
 		l.direction = L.direction;
 	}
@@ -263,7 +271,10 @@ std::optional<LT> LightManager::to_(const GPULight &L) const
 	{
 		assert(IS_SPOT_LIGHT(L));
 		if(not IS_SPOT_LIGHT(L))
+		{
+			std::print(stderr, "Expected spot light, got {}\n", type_name(L));
 			return std::nullopt;
+		}
 
 		l.position      = L.position;
 		l.direction     = L.direction;
@@ -275,7 +286,10 @@ std::optional<LT> LightManager::to_(const GPULight &L) const
 	{
 		assert(IS_AREA_LIGHT(L));
 		if(not IS_AREA_LIGHT(L))
+		{
+			std::print(stderr, "Expected area light, got {}\n", type_name(L));
 			return std::nullopt;
+		}
 
 		l.points[0] = L.shape_points[0];
 		l.points[1] = L.shape_points[1];
@@ -287,7 +301,10 @@ std::optional<LT> LightManager::to_(const GPULight &L) const
 	{
 		assert(IS_TUBE_LIGHT(L));
 		if(not IS_TUBE_LIGHT(L))
+		{
+			std::print(stderr, "Expected tube light, got {}\n", type_name(L));
 			return std::nullopt;
+		}
 
 		l.end_points[0] = L.shape_points[0];
 		l.end_points[1] = L.shape_points[1];
@@ -297,7 +314,10 @@ std::optional<LT> LightManager::to_(const GPULight &L) const
 	{
 		assert(IS_SPHERE_LIGHT(L));
 		if(not IS_SPHERE_LIGHT(L))
+		{
+			std::print(stderr, "Expected sphere light, got {}\n", type_name(L));
 			return std::nullopt;
+		}
 
 		l.sphere_radius = L.shape_points[0].x;
 	}
@@ -305,7 +325,10 @@ std::optional<LT> LightManager::to_(const GPULight &L) const
 	{
 		assert(IS_DISC_LIGHT(L));
 		if(not IS_DISC_LIGHT(L))
+		{
+			std::print(stderr, "Expected disc light, got {}\n", type_name(L));
 			return std::nullopt;
+		}
 
 		l.position    = L.position;
 		l.direction   = L.direction;

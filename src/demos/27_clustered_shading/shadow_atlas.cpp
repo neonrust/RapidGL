@@ -43,18 +43,6 @@ struct hash<glm::vec3>
 	-AXIS_Y, -AXIS_Y,
 };
 
-// textual names for each light type, see light_constants.h
-[[maybe_unused]] static const std::string_view _light_type_names[] {
-	"point"sv,
-	"directional"sv,
-	"spot"sv,
-	"area"sv,
-	"tube"sv,
-	"sphere"sv,
-	"disc"sv,
-};
-#define LIGHT_TYPE_NAME(light)   (_light_type_names[(light.type_flags & LIGHT_TYPE_MASK)])
-
 #define LIGHT_NUM_SLOTS(light)   (IS_POINT_LIGHT(light)? 6u: (IS_DIR_LIGHT(light)? 3: 1u))
 
 
