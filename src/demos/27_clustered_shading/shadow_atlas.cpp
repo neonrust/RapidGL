@@ -834,11 +834,11 @@ float ShadowAtlas::light_value(const GPULight &light, const glm::vec3 &view_pos,
 	if(IS_DIR_LIGHT(light))  // i.e. the sun, which is always relevant
 		return 1.f;
 
-	const auto distance = glm::distance(light.position, view_pos);
-	if(distance >= _max_distance) // too far away
+	const auto edge_distance = std::max(0.f, glm::distance(light.position, view_pos) - light.affect_radius);
+	if(edge_distance >= _max_distance) // too far away
 		return 0.f;
 
-	const auto normalized_dist = distance / _max_distance;
+	const auto normalized_dist = edge_distance / _max_distance;
 	// nrmalize the radius using a "large" radius
 	const auto normalized_radius = std::min(light.affect_radius / _large_light_radius, 1.f);
 
@@ -848,7 +848,7 @@ float ShadowAtlas::light_value(const GPULight &light, const glm::vec3 &view_pos,
 	const auto type_weight = 1.f; // e.g. 0.8f for point, 1.f for spot, etc.
 
 	float facing_weight = 1.f;
-	if(distance > light.affect_radius)
+	if(edge_distance > 0)  // i.e. outside  light affect radius
 	{
 		static const auto cutoff = std::cos(glm::radians(45.f));
 		static const auto min_dot = 0.f;
