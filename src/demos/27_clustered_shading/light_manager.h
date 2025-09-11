@@ -332,6 +332,7 @@ GPULight LightManager::to_gpu_light(const LT &l)
 	else if constexpr (std::same_as<LT, DirectionalLight> or std::same_as<LT, DirectionalLightParams>)
 	{
 		L.type_flags    = LIGHT_TYPE_DIRECTIONAL;
+		L.direction     = l.direction;
 	}
 	else if constexpr (std::same_as<LT, SpotLight> or std::same_as<LT, SpotLightParams>)
 	{
@@ -351,7 +352,7 @@ GPULight LightManager::to_gpu_light(const LT &l)
 	}
 	else if constexpr (std::same_as<LT, TubeLight> or std::same_as<LT, TubeLightParams>)
 	{
-		L.type_flags        = LIGHT_TYPE_SPHERE;
+		L.type_flags        = LIGHT_TYPE_TUBE;
 		L.shape_points[0]   = l.end_points[0];
 		L.shape_points[1]   = l.end_points[1];
 		L.shape_points[2].x = l.thickness;
