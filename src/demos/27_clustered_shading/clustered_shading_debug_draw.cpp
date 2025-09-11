@@ -91,10 +91,6 @@ void ClusteredShading::debugDrawSceneBounds()
 	{
 		const auto &L = _light_mgr[light_index];
 
-		const auto distance = glm::distance(m_camera.position(), L.position);
-		if(distance > 150.f)
-			continue;
-
 		if(IS_POINT_LIGHT(L))
 		{
 			const auto light_id = _light_mgr.light_id(LightIndex(light_index));
@@ -178,10 +174,6 @@ void ClusteredShading::debugDrawLightMarkers()
 	for(const auto &light_index: _lightsPvs)
 	{
 		const auto &L = _light_mgr[light_index];
-
-		const auto distance = glm::distance(m_camera.position(), L.position);
-		if(distance > 150.f)
-			continue;
 
 		const glm::vec4 color_blend(L.color, 1.f);
 
