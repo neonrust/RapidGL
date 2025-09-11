@@ -598,7 +598,7 @@ void ClusteredShading::debugDrawClusterGrid()
 	light_ranges.reserve(nonempty_clusters.size());
 	light_ranges.clear();
 
-	auto all_lights = m_all_lights_index_ssbo.view();
+	auto all_lights = m_cluster_all_lights_index_ssbo.view();
 	const auto &all_light_index = *all_lights;
 	constexpr auto index_offset = 1u; // skip all_lights_start_index
 
