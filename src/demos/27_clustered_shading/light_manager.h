@@ -68,19 +68,20 @@ public:
 	std::optional<LT> get(LightID uuid);
 
 	const GPULight &get_by_id(LightID light_id) const ;
-		  GPULight &get_by_id(LightID light_id);
+		  // GPULight &get_by_id(LightID light_id);
 
 	std::tuple<LightID, const GPULight &> at(LightIndex light_index) const;
-	std::tuple<LightID,       GPULight &> at(LightIndex light_index);
+	// std::tuple<LightID,       GPULight &> at(LightIndex light_index);
 	template<_private::LightType LT>
 	LT at(LightIndex list_index) const;
 
 	inline const GPULight &operator [] (LightIndex light_index) const noexcept { return _lights[light_index]; }
-	inline       GPULight &operator [] (LightIndex light_index)       noexcept { return _lights[light_index]; }
+	// inline       GPULight &operator [] (LightIndex light_index)       noexcept { return _lights[light_index]; }
 
 	void set(LightID uuid, const GPULight &L); // sets dirty flag
 
 	void set(const PointLight &p); // needs to have uuid set; sets dirty flag
+	// TODO: set() for other light types
 
 	// update dirty lights in the SSBO
 	void flush();
@@ -89,8 +90,10 @@ public:
 
 	inline const_iterator cbegin() const { return _lights.cbegin(); }
 	inline const_iterator cend()   const { return _lights.cend();   }
-	inline       iterator  begin()       { return _lights.begin(); }
-	inline       iterator  end()         { return _lights.end();   }
+	inline const_iterator  begin() const { return cbegin(); }
+	inline const_iterator  end()   const { return cend();   }
+	// inline       iterator  begin()       { return _lights.begin(); }
+	// inline       iterator  end()         { return _lights.end();   }
 
 	LightID light_id(LightIndex light_index) const;
 	LightIndex light_index(LightID light_id) const;
@@ -110,6 +113,7 @@ public:
 
 private:
 	void add(const GPULight &L, LightID uuid);
+	void compute_spot_bounds(GPULight &L);
 
 	template<_private::LightType LT>
 	LT to_(const GPULight &L, LightID uuid) const;
@@ -126,7 +130,7 @@ private:
 	// essentially a CPU-side mirror of the SSBO  (otherwise we'd use a mapping container)
 	LightList _lights;
 
-	RGL::buffer::ShaderStorage<GPULight> _lights_ssbo;
+	RGL::buffer::Storage<GPULight> _lights_ssbo;
 
 	size_t _num_point_lights  { 0 };
 	size_t _num_dir_lights    { 0 };

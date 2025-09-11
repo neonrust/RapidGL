@@ -14,7 +14,7 @@ using namespace RGL;
 LightManager::LightManager(/* entt registry */) :
 	_lights_ssbo("lights"sv)
 {
-	_lights_ssbo.setBindIndex(SSBO_BIND_LIGHTS);
+	_lights_ssbo.bindAt(SSBO_BIND_LIGHTS);
 
 	_dirty.reserve(1024);
 	_dirty_list.reserve(1024);
@@ -138,17 +138,19 @@ const GPULight &LightManager::get_by_id(LightID light_id) const
 	return _lights[found->second];
 }
 
-GPULight &LightManager::get_by_id(LightID light_id)
-{
-	auto found = _id_to_index.find(light_id);
-	if(found == _id_to_index.end())
-		throw std::out_of_range("id not found");
+// GPULight &LightManager::get_by_id(LightID light_id)
+// {
+// 	auto found = _id_to_index.find(light_id);
+// 	if(found == _id_to_index.end())
+// 		throw std::out_of_range("id not found");
 
-	return _lights[found->second];
-}
+// 	return _lights[found->second];
+// }
 
 std::tuple<LightID, const GPULight &> LightManager::at(LightIndex light_index) const
 {
+	assert(light_index < _lights.size());
+
 	const auto &L = _lights[light_index];
 	const auto found_id = _index_to_id.find(light_index);
 	assert(found_id != _index_to_id.end());
@@ -160,18 +162,18 @@ std::tuple<LightID, const GPULight &> LightManager::at(LightIndex light_index) c
 	return std::tie(light_id, L);
 }
 
-std::tuple<LightID, GPULight &> LightManager::at(LightIndex light_index)
-{
-	auto &L = _lights[light_index];
-	const auto found_id = _index_to_id.find(light_index);
-	assert(found_id != _index_to_id.end());
-	if(found_id == _index_to_id.end())
-		throw std::out_of_range("index not found");
+// std::tuple<LightID, GPULight &> LightManager::at(LightIndex light_index)
+// {
+// 	auto &L = _lights[light_index];
+// 	const auto found_id = _index_to_id.find(light_index);
+// 	assert(found_id != _index_to_id.end());
+// 	if(found_id == _index_to_id.end())
+// 		throw std::out_of_range("index not found");
 
-	const auto light_id = found_id->second;
+// 	const auto light_id = found_id->second;
 
-	return std::tie(light_id, L);
-}
+// 	return std::tie(light_id, L);
+// }
 
 void LightManager::set(LightID uuid, const GPULight &L)
 {
@@ -180,7 +182,15 @@ void LightManager::set(LightID uuid, const GPULight &L)
 
 	const auto light_index = found->second;
 
-	_lights[light_index] = L;
+	if(IS_SPOT_LIGHT(L))
+	{
+		auto Lspot = L;
+		compute_spot_bounds(Lspot);
+		_lights[light_index] = Lspot;
+	}
+	else
+		_lights[light_index] = L;
+
 	if(const auto &[_, ok] = _dirty.insert(light_index); ok)
 		_dirty_list.push_back(light_index);
 }
@@ -196,6 +206,8 @@ void LightManager::set(const PointLight &p)
 	const auto L = to_gpu_light(p);
 
 	// TODO: cmpare 'p' and 'L' if they actually differ?
+
+	assert(IS_POINT_LIGHT(_lights[light_index]));
 
 	_lights[light_index] = L;
 	if(const auto &[_, ok] =_dirty.insert(light_index); ok)
@@ -279,7 +291,15 @@ void LightManager::add(const GPULight &L, LightID uuid)
 {
 	const auto next_index = LightIndex(_lights.size());
 
-	_lights.push_back(L);
+	if(IS_SPOT_LIGHT(L))
+	{
+		auto Lspot = L;
+		compute_spot_bounds(Lspot);
+		_lights.push_back(Lspot);
+	}
+	else
+		_lights.push_back(L);
+
 	_id_to_index[uuid] = next_index;
 	_index_to_id[next_index] = uuid;
 	// TODO: support contiguous ranges
@@ -299,6 +319,14 @@ void LightManager::add(const GPULight &L, LightID uuid)
 		++_num_sphere_lights;
 	else if(IS_DISC_LIGHT(L))
 		++_num_disc_lights;
+}
+
+void LightManager::compute_spot_bounds(GPULight &L)
+{
+	assert(IS_SPOT_LIGHT(L));
+
+	const float tan_theta = std::tan(2*L.outer_angle);
+	L.spot_bounds_radius = L.affect_radius * (1 + tan_theta*tan_theta*0.5f);
 }
 
 LightID LightManager::light_id(LightIndex light_index) const
