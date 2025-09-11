@@ -166,15 +166,11 @@ void ClusteredShading::init_app()
 	{
 		const auto models_path = FileSystem::getResourcesPath() / "models";
 
-		// auto sponza_model = std::make_shared<StaticModel>();
-		// sponza_model->Load(models_path / "sponza2/Sponza2.gltf");
-
 		const auto origin = glm::mat4(1);
 
-		// auto world_trans  = glm::mat4(1);
-		// 	 world_trans  = glm::scale(world_trans, glm::vec3(sponza_model->GetUnitScaleFactor() * 30.0f));
-		// // m_sponza_static_object = StaticObject(sponza_model, world_trans);
-		// _scene.emplace_back(sponza_model, world_trans);
+		// auto sponza_model = std::make_shared<StaticModel>();
+		// sponza_model->Load(models_path / "sponza2/Sponza2.gltf");
+		// _scene.emplace_back(sponza_model, glm::scale(origin, glm::vec3(sponza_model->GetUnitScaleFactor() * 30.0f)));
 
 		auto testroom_model = std::make_shared<StaticModel>();
 		testroom_model->Load(models_path / "testroom" / "white-room.gltf");
@@ -365,7 +361,7 @@ void ClusteredShading::init_app()
 	_final_rt.create("final", Window::width(), Window::height(), RenderTarget::Color::Default, RenderTarget::Depth::None);
 	_final_rt.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipNearest); // not necessary?
 
-    // IBL precomputations.
+	// IBL precomputations.
     GenSkyboxGeometry();
 
 	m_env_cubemap_rt = std::make_shared<RenderTarget::Cube>();
@@ -388,7 +384,6 @@ void ClusteredShading::init_app()
     m_prefiltered_env_map_rt->set_position(glm::vec3(0.0));
 	m_prefiltered_env_map_rt->create("prefiltered-env", 512, 512);
 
-	// _point_light_icon.LoadLayers({ FileSystem::getResourcesPath() / "icons" / "light-point.png" });
 	_light_icons.Load(FileSystem::getResourcesPath() / "icons" / "lights.array");
 	assert(_light_icons);
 
@@ -721,10 +716,7 @@ void ClusteredShading::calculateShadingClusterGrid()
 
 	// TODO: these should be properties related to the camera  (a component!)
 
-	/// Init clustered shading variables.
-
-
-	static constexpr uint32_t screen_division = 16;    // around 20 is a fair value
+	static constexpr uint32_t screen_division = 16;    // more than 20 might be overkill
 	static constexpr float    depth_scale     = 1.f;   // default 1
 	// if the cluster resolution is even on X & Y axis, it's possible to partiaion into 4 quadrants (if even divisable)
 	//   each cluster on the Z-axis is of course also possible to partition by.
@@ -755,9 +747,9 @@ void ClusteredShading::calculateShadingClusterGrid()
 	m_cluster_resolution.z = uint32_t(glm::floor(log_depth * m_log_cluster_res_y));
 
 
-	// TODO: the depth slices closest to the camera will be quite small
-	//   might want to use a fixed spacing the first X units (a few meters in world space)
-	// Maybe use the one Doom 2016 uses, see https://www.aortiz.me/2018/12/21/CG.html#building-a-cluster-grid
+	// TODO:
+	// Maybe use the grid depth calculation used by Doom 2016
+	//   see https://www.aortiz.me/2018/12/21/CG.html#building-a-cluster-grid
 	// auto doom_slice_z = [near_z=m_camera.nearPlane(), far_z=m_camera.farPlane(), num_slices=m_cluster_grid_dim.z](size_t slice_n) -> float {
 	// 	return -near_z * std::pow(far_z / near_z, float(slice_n)/float(num_slices));
 	// };
@@ -790,9 +782,9 @@ void ClusteredShading::calculateShadingClusterGrid()
 		const float depthF0 = -cluster_depth(m_cluster_resolution.z - 1);
 		const float depthF1 = -cluster_depth(m_cluster_resolution.z);  // this should be camera's far plane (approximately)
 
-		std::print("    cluster[0]: {:.3f}\n", depthN1 - depthN0);
-		std::print("  cluster[N/2]: {:.2f}\n", depthM1 - depthM0);
-		std::print("    cluster[N]: {:.1f}\n", depthF1 - depthF0);
+		std::print("    cluster[0].depth: {:.3f}\n", depthN1 - depthN0);
+		std::print("  cluster[N/2].depth: {:.2f}\n", depthM1 - depthM0);
+		std::print("    cluster[N].depth: {:.1f}   ({:.1f} - {:.1f}) \n", depthF1 - depthF0, depthF0, depthF1);
 
 		// {
 		// 	const float depthN0 = -doom_slice_z(0); // this should be camera's near plane
@@ -952,229 +944,24 @@ void ClusteredShading::createLights()
 
 		const auto rand_intensity = float(Util::RandomDouble(1, 100))*2;
 
-		auto l = _light_mgr.add(PointLightParams{
-			.color = rand_color,
-			.intensity = rand_intensity,
-			.affect_radius = std::pow(rand_intensity, 0.6f), // maybe this could be scaled down as the total light count goes up?
-			.fog = 1.f,
-			.shadow_caster = true,
-			.position = rand_pos,
-		});
+		if(true or idx == 2 or idx == 0)
+		{
+			auto l = _light_mgr.add(PointLightParams{
+				.color = rand_color,
+				.intensity = rand_intensity,
+				.affect_radius = std::pow(rand_intensity, 0.6f), // maybe this could be scaled down as the total light count goes up?
+				.fog = 1.f,
+				.shadow_caster = true,
+				.position = rand_pos,
+			});
 
-
-		std::print("light[{:2}] @ {:5.1f}; {:3.1f}; {:5.1f}  {:3},{:3},{:3}  {:4.0f}\n",
-				   l.id(),
-				   rand_pos.x, rand_pos.y, rand_pos.z,
-				   uint(rand_color.r*255), uint(rand_color.g*255), uint(rand_color.b*255),
-				   rand_intensity);
+			std::print("light[{:2}] @ {:5.1f}; {:3.1f}; {:5.1f}  {:3},{:3},{:3}  {:4.0f}\n",
+					   l.id(),
+					   rand_pos.x, rand_pos.y, rand_pos.z,
+					   uint(rand_color.r*255), uint(rand_color.g*255), uint(rand_color.b*255),
+					   rand_intensity);
+		}
 	}
-
-#if 0
-	m_spot_lights.push_back({
-		.point = {
-			.base = {
-				// .color = { 10f, 0.1f, 0.5f },
-				.color = { 1.f, 1.f, 1.f },
-				.intensity = 3000
-			},
-			.position = { -16, 3, -8 },
-			.affect_radius = 35
-		},
-		.direction = { 0, 0, 1 },
-		.inner_angle = 0.f,
-		.outer_angle = glm::radians(30.f),
-		.bounds_radius = 0,
-	});
-	m_spot_lights.push_back({
-		.point = {
-			.base = {
-				.color = { 1.f, 0.1f, 0.1f },
-				.intensity = 3000
-			},
-			.position = { -12, 3, -8 },
-			.affect_radius = 35
-		},
-		.direction = { 0, 0, 1 },
-		.inner_angle = 0.f,
-		.outer_angle = glm::radians(30.f),
-		.bounds_radius = 0,
-	});
-	m_spot_lights.push_back({
-		.point = {
-			.base = {
-				.color = { 1.f, 0.6f, 0.1f },
-				.intensity = 3000
-			},
-			.position = { -8, 3, -8 },
-			.affect_radius = 35
-		},
-		.direction = { 0, 0, 1 },
-		.inner_angle = 0.f,
-		.outer_angle = glm::radians(30.f),
-		.bounds_radius = 0,
-	});
-	m_spot_lights.push_back({
-		.point = {
-			.base = {
-				.color = { 1.f, 1.f, 0.f },
-				.intensity = 3000
-			},
-			.position = { -4, 3, -8 },
-			.affect_radius = 35
-		},
-		.direction = { 0, 0, 1 },
-		.inner_angle = 0.f,
-		.outer_angle = glm::radians(30.f),
-		.bounds_radius = 0,
-	});
-
-	m_spot_lights.push_back({
-		.point = {
-			.base = {
-				.color = { 1.f, 1.f, 1.0f },
-				.intensity = 3000
-			},
-			.position = { 0, 3, -8 },
-			.affect_radius = 35
-		},
-		.direction = { 0, 0, 1 },
-		.inner_angle = 0.f,
-		.outer_angle = glm::radians(30.f),
-		.bounds_radius = 0,
-	});
-
-	m_spot_lights.push_back({
-		.point = {
-			.base = {
-				.color = { 0.5f, 1.f, 0.f },
-				.intensity = 3000
-			},
-			.position = { 4, 3, -8 },
-			.affect_radius = 35
-		},
-		.direction = { 0, 0, 1 },
-		.inner_angle = 0.f,
-		.outer_angle = glm::radians(30.f),
-		.bounds_radius = 0,
-	});
-	m_spot_lights.push_back({
-		.point = {
-			.base = {
-				.color = { 0.3f, 1.f, 0.6f },
-				.intensity = 3000
-			},
-			.position = { 8, 3, -8 },
-			.affect_radius = 35
-		},
-		.direction = { 0, 0, 1 },
-		.inner_angle = 0.f,
-		.outer_angle = glm::radians(30.f),
-		.bounds_radius = 0,
-	});
-	m_spot_lights.push_back({
-		.point = {
-			.base = {
-				.color = { 0.1f, 1.f, 0.3f },
-				.intensity = 3000
-			},
-			.position = { 12, 3, -8 },
-			.affect_radius = 35
-		},
-		.direction = { 0, 0, 1 },
-		.inner_angle = 0.f,
-		.outer_angle = glm::radians(30.f),
-		.bounds_radius = 0,
-	});
-	m_spot_lights.push_back({
-		.point = {
-			.base = {
-				.color = { 0.1f, 0.8f, 1.f },
-				.intensity = 3000
-			},
-			.position = { 16, 3, -8 },
-			.affect_radius = 35
-		},
-		.direction = { 0, 0, 1 },
-		.inner_angle = 0.f,
-		.outer_angle = glm::radians(30.f),
-		.bounds_radius = 0,
-	});
-#endif
-
-	// pre-compute the 'bounds_radius'; the radius (and offset from 'position')
-	//   of a minimal bounding sphere
-/*
-	for(auto &spot: m_spot_lights)
-	{
-		const float tan_theta = std::tan(2*spot.outer_angle);
-		spot.bounds_radius = spot.point.radius * (1 + tan_theta*tan_theta*0.5f);
-	}
-*/
-	// m_light_counts_ubo.flush();
-
-
-	/*
-	auto computeAreaLightPoints = [](glm::vec3 position, glm::vec2 size, glm::vec4 points[4])
-	{
-		const auto p = glm::vec4(position, 1);
-		points[0] = p + glm::vec4(0,  size.y, -size.x, 0);
-		points[1] = p + glm::vec4(0, -size.y, -size.x, 0);
-		points[2] = p + glm::vec4(0,  size.y,  size.x, 0);
-		points[3] = p + glm::vec4(0, -size.y,  size.x, 0);
-	};
-
-	 auto getPointOnRectPerimeter = [](float width, float height, float x0) -> glm::vec2
-	 {
-		 auto x = x0 * (2.f * width + 2.f * height);
-
-		  if (x < width)
-			  return glm::vec2(x, 0);
-
-		 x -= width;
-		 if (x < height)
-			 return glm::vec2(width, x);
-
-		  x -= height;
-		  if (x < width)
-			  return glm::vec2(x, height);
-		  else
-			  return glm::vec2(0, x - width);
-	  };
-
-	 m_area_lights.clear();
-	 m_area_lights.resize(m_area_lights_count);
-
-	  float step             = 1.f / float(m_area_lights_count >> 1);
-	  float x0               = 0.0f;
-	  float rect_width       = 19.0f;
-	  float rect_height      = 7.0f;
-	  float area_light_pos_y = 0.3f;
-
-	 for (uint32_t i = 0; i < m_area_lights.size(); ++i)
-	 {
-		 if (i == m_area_lights_count / 2)
-		 {
-			 area_light_pos_y = 3.8f;
-			 x0               = 0.0f;
-		 }
-
-		  auto& ar = m_area_lights[i];
-
-		 ar.base.color     = hsv2rgb(
-			 float(Util::RandomDouble(1, 360)),
-			 float(Util::RandomDouble(0.1, 1.0)),
-			 float(Util::RandomDouble(0.1, 1))
-		 );
- ar.base.intensity = m_area_lights_intensity;
- ar.two_sided      = m_area_lights_two_sided;
-
-		 glm::vec2 p_on_rect = getPointOnRectPerimeter(rect_width, rect_height, x0 + float(Util::RandomDouble(0, step / 2.f)));
-		 glm::vec3 center    = glm::vec3(p_on_rect.x, area_light_pos_y, p_on_rect.y) + glm::vec3(-10.0f, m_area_lights_size.y * 0.5f, -3.5f);
-		 computeAreaLightPoints(center, m_area_lights_size, ar.points);
-
-		  x0 += step;
-	  }
-  */
 }
 
 void ClusteredShading::updateLightsSSBOs()
@@ -1433,7 +1220,7 @@ void ClusteredShading::render()
 	last_discovery_T = now;
 
 
-		   // find clusters with fragments in them (the only ones we need to process in the light culling step)
+	// find clusters with fragments in them (the only ones we need to process in the light culling step)
 	m_find_nonempty_clusters_shader->setUniform("u_near_z"sv,             m_camera.nearPlane());
 	m_find_nonempty_clusters_shader->setUniform("u_far_z"sv,              m_camera.farPlane());
 	m_find_nonempty_clusters_shader->setUniform("u_log_cluster_res_y"sv,  m_log_cluster_res_y);
@@ -1573,7 +1360,7 @@ void ClusteredShading::render()
 
 void ClusteredShading::renderShadowMaps()
 {
-	glCullFace(GL_FRONT);  // render only back faces   TODO face culling is whack! (see init_app())
+	glCullFace(GL_FRONT);  // render only back faces   TODO face culling fscks up rendering! (see init_app())
 	glEnable(GL_CULL_FACE);
 	glEnable(GL_SCISSOR_TEST);
 
@@ -1606,6 +1393,7 @@ void ClusteredShading::renderShadowMaps()
 	//   needs to updated every time it's rendered, but for simplicity,
 	//   we'll genrate params for all the allocated lights in one go
 	_shadow_atlas.update_shadow_params();
+
 
 	bool did_barrier = false;
 	auto barrier = []() {
@@ -1646,7 +1434,7 @@ void ClusteredShading::renderShadowMaps()
 
 				// TODO: if dirty or hash changed  or dynamic object _within this face's frustum_, render it
 
-				if(atlas_light.is_dirty() or light_hash != atlas_light.hash or false)//_scene_culler.pvs(light_id, idx).has(SceneObjectType::Dynamic))
+				if(atlas_light.is_dirty() or light_hash != atlas_light.hash)//_scene_culler.pvs(light_id, idx).has(SceneObjectType::Dynamic))
 				{
 					_shadow_atlas.bindRenderTarget(slot_rect);
 					if(not did_barrier)
@@ -1722,6 +1510,8 @@ void ClusteredShading::draw2d(const Texture &texture, BlendMode blend)
 
 void ClusteredShading::draw2d(const Texture &source, RenderTarget::Texture2d &target, BlendMode blend)
 {
+	// TODO: this setting blend mode should be a separate function
+
 	if(blend == BlendMode::Replace)
 		glDisable(GL_BLEND);
 	else
@@ -1817,7 +1607,7 @@ const std::vector<StaticObject> &ClusteredShading::cullScene(const Camera &view)
 			}
 			// only upload when changed...
 			m_relevant_lights_index_ssbo.set(_lightsPvs);
-			std::print("   relevant lights: {}\n", _lightsPvs.size());
+			// std::print("   relevant lights: {}\n", _lightsPvs.size());
 		}
 	}
 
