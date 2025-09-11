@@ -95,7 +95,11 @@ void Camera::setUniforms(Shader &shader) const
 void Camera::update(double dt)
 {
 	// Camera Movement
-	const auto movement_amount = float(m_move_speed * dt);
+	auto movement_amount = float(m_move_speed * dt);
+
+	if(Input::isKeyDown(KeyCode::LeftShift))
+		movement_amount *= 2;
+
 
 	if (Input::isKeyDown(m_forward_key))
 		// move(m_position, glm::conjugate(m_orientation) * glm::vec3(0, 0, -1), movement_amount);
