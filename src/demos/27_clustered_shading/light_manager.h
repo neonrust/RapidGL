@@ -107,11 +107,11 @@ public:
 	std::optional<LT> to_(const GPULight &L) const;
 
 private:
-	void add(const GPULight &L, LightID uuid);
+	void add(const GPULight &L, LightID light_id);
 	void compute_spot_bounds(GPULight &L);
 
 	template<_private::LightType LT>
-	LT to_(const GPULight &L, LightID uuid) const;
+	LT to_(const GPULight &L, LightID light_id) const;
 
 	template<typename LT> requires _private::LightType<LT> || _private::LightParamsType<LT>
 	static GPULight to_gpu_light(const LT &l);
@@ -172,19 +172,19 @@ inline void LightManager::set(const LT &l)
 }
 
 template<_private::LightType LT>
-LT LightManager::to_(const GPULight &L, LightID uuid) const
+LT LightManager::to_(const GPULight &L, LightID light_id) const
 {
-	const auto found = _id_to_index.find(uuid);
+	const auto found = _id_to_index.find(light_id);
 	assert(found != _id_to_index.end());
 
 	const auto list_index = found->second;
 
-	auto l = to_<LT>(L);
+	auto l = to_<LT>(L).value();
 
-	l.value().uuid = uuid;
-	l.value().list_index = list_index;
+	l.uuid = light_id;
+	l.list_index = list_index;
 
-	return l.value();
+	return l;
 }
 
 template<typename LT>  requires (std::same_as<LT, GPULight> || _private::LightType<LT>)
@@ -221,9 +221,9 @@ LT LightManager::at(LightIndex light_index) const
 }
 
 template<_private::LightType LT>
-std::optional<LT> LightManager::get(LightID uuid)
+std::optional<LT> LightManager::get(LightID light_id)
 {
-	const auto found = _id_to_index.find(uuid);
+	const auto found = _id_to_index.find(light_id);
 	assert(found != _id_to_index.end());
 
 	const auto index = found->second;
@@ -231,7 +231,7 @@ std::optional<LT> LightManager::get(LightID uuid)
 
 	const auto &L = _lights[index];
 
-	return to_<LT>(L, uuid);
+	return to_<LT>(L, light_id);
 }
 
 template<_private::LightType LT>

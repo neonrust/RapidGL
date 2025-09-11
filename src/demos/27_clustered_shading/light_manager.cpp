@@ -266,7 +266,7 @@ void LightManager::clear_shadow_index(LightID light_id)
 	}
 }
 
-void LightManager::add(const GPULight &L, LightID uuid)
+void LightManager::add(const GPULight &L, LightID light_id)
 {
 	const auto next_index = LightIndex(_lights.size());
 
@@ -279,8 +279,8 @@ void LightManager::add(const GPULight &L, LightID uuid)
 	else
 		_lights.push_back(L);
 
-	_id_to_index[uuid] = next_index;
-	_index_to_id[next_index] = uuid;
+	_id_to_index[light_id] = next_index;
+	_index_to_id[next_index] = light_id;
 	// TODO: support contiguous ranges
 	_dirty.insert(next_index);
 
