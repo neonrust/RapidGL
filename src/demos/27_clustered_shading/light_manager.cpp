@@ -173,24 +173,7 @@ void LightManager::set(LightID uuid, const GPULight &L)
 		_dirty_list.push_back(light_index);
 }
 
-void LightManager::set(const PointLight &p)
-{
-	assert(p.id() != NO_LIGHT_ID);
-	auto found = _id_to_index.find(p.id());
-	assert(found != _id_to_index.end());
 
-	const auto light_index = found->second;
-
-	const auto L = to_gpu_light(p);
-
-	// TODO: cmpare 'p' and 'L' if they actually differ?
-
-	assert(IS_POINT_LIGHT(_lights[light_index]));
-
-	_lights[light_index] = L;
-	if(const auto &[_, ok] =_dirty.insert(light_index); ok)
-		_dirty_list.push_back(light_index);
-}
 
 void LightManager::flush()
 {

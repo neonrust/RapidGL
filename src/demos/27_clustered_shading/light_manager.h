@@ -76,7 +76,8 @@ public:
 
 	void set(LightID uuid, const GPULight &L); // sets dirty flag
 
-	void set(const PointLight &p); // needs to have uuid set; sets dirty flag
+	template<_private::LightType LT>
+	void set(const LT &l); // needs to have uuid set; sets dirty flag
 	// TODO: set() for other light types
 
 	// update dirty lights in the SSBO
@@ -132,6 +133,41 @@ private:
 	size_t _num_sphere_lights { 0 };
 	size_t _num_disc_lights   { 0 };
 };
+
+template<_private::LightType LT>
+inline void LightManager::set(const LT &l)
+{
+	assert(l.id() != NO_LIGHT_ID);
+	auto found = _id_to_index.find(l.id());
+	assert(found != _id_to_index.end());
+
+	const auto L = to_gpu_light(l);
+
+	const auto light_index = found->second;
+
+#if defined(DEBUG)
+	if constexpr (std::same_as<LT, PointLight>)
+		assert(IS_POINT_LIGHT(_lights[light_index]));
+	else if constexpr (std::same_as<LT, DirectionalLight>)
+		assert(IS_DIR_LIGHT(_lights[light_index]));
+	else if constexpr (std::same_as<LT, SpotLight>)
+		assert(IS_SPOT_LIGHT(_lights[light_index]));
+	else if constexpr (std::same_as<LT, AreaLight>)
+		assert(IS_AREA_LIGHT(_lights[light_index]));
+	else if constexpr (std::same_as<LT, TubeLight>)
+		assert(IS_TUBE_LIGHT(_lights[light_index]));
+	else if constexpr (std::same_as<LT, SphereLight>)
+		assert(IS_SPHERE_LIGHT(_lights[light_index]));
+	else if constexpr (std::same_as<LT, DiscLight>)
+		assert(IS_DISC_LIGHT(_lights[light_index]));
+#endif
+
+	_lights[light_index] = L;
+
+	// TODO: compare 'L' and '_lights[light_index]' if they actually differ?
+	if(const auto &[_, ok] =_dirty.insert(light_index); ok)
+		_dirty_list.push_back(light_index);
+}
 
 template<_private::LightType LT>
 LT LightManager::to_(const GPULight &L, LightID uuid) const
