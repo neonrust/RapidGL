@@ -44,7 +44,6 @@ public:
 	using LightList = std::vector<GPULight>;
 	// TODO: using LightList = std::vector<std::pair<LightID, GPULight>>;
 	using const_iterator = LightList::const_iterator;
-	using iterator = LightList::iterator;
 
 public:
 	LightManager(/* entt registry */);
@@ -68,15 +67,12 @@ public:
 	std::optional<LT> get(LightID uuid);
 
 	const GPULight &get_by_id(LightID light_id) const ;
-		  // GPULight &get_by_id(LightID light_id);
 
 	std::tuple<LightID, const GPULight &> at(LightIndex light_index) const;
-	// std::tuple<LightID,       GPULight &> at(LightIndex light_index);
 	template<_private::LightType LT>
 	LT at(LightIndex list_index) const;
 
 	inline const GPULight &operator [] (LightIndex light_index) const noexcept { return _lights[light_index]; }
-	// inline       GPULight &operator [] (LightIndex light_index)       noexcept { return _lights[light_index]; }
 
 	void set(LightID uuid, const GPULight &L); // sets dirty flag
 
@@ -92,16 +88,12 @@ public:
 	inline const_iterator cend()   const { return _lights.cend();   }
 	inline const_iterator  begin() const { return cbegin(); }
 	inline const_iterator  end()   const { return cend();   }
-	// inline       iterator  begin()       { return _lights.begin(); }
-	// inline       iterator  end()         { return _lights.end();   }
 
 	LightID light_id(LightIndex light_index) const;
 	LightIndex light_index(LightID light_id) const;
 	inline const GPULight &at(size_t light_index) const { return _lights.at(light_index); }
 
-	inline uint_fast16_t shadow_index(LightID light_id) const {
-		return GET_SHADOW_IDX(get_by_id(light_id));
-	}
+	inline uint_fast16_t shadow_index(LightID light_id) const { return GET_SHADOW_IDX(get_by_id(light_id)); }
 	void set_shadow_index(LightID light_id, uint_fast16_t shadow_index);
 	void clear_shadow_index(LightID light_id);
 

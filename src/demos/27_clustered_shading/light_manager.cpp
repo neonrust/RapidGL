@@ -138,15 +138,6 @@ const GPULight &LightManager::get_by_id(LightID light_id) const
 	return _lights[found->second];
 }
 
-// GPULight &LightManager::get_by_id(LightID light_id)
-// {
-// 	auto found = _id_to_index.find(light_id);
-// 	if(found == _id_to_index.end())
-// 		throw std::out_of_range("id not found");
-
-// 	return _lights[found->second];
-// }
-
 std::tuple<LightID, const GPULight &> LightManager::at(LightIndex light_index) const
 {
 	assert(light_index < _lights.size());
@@ -161,19 +152,6 @@ std::tuple<LightID, const GPULight &> LightManager::at(LightIndex light_index) c
 
 	return std::tie(light_id, L);
 }
-
-// std::tuple<LightID, GPULight &> LightManager::at(LightIndex light_index)
-// {
-// 	auto &L = _lights[light_index];
-// 	const auto found_id = _index_to_id.find(light_index);
-// 	assert(found_id != _index_to_id.end());
-// 	if(found_id == _index_to_id.end())
-// 		throw std::out_of_range("index not found");
-
-// 	const auto light_id = found_id->second;
-
-// 	return std::tie(light_id, L);
-// }
 
 void LightManager::set(LightID uuid, const GPULight &L)
 {
