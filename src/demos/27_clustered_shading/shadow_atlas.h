@@ -90,10 +90,10 @@ public:
 	inline void set_max_distance(float max_distance)
 	{
 		assert(max_distance > 0);
-		_max_distance = max_distance;
+		_max_distance = std::max(max_distance, 10.f);
 		_large_light_radius = _max_distance;
 	}
-	inline void set_min_change_interval(std::chrono::milliseconds interval) { _min_change_interval = interval; }
+	inline void set_min_change_interval(std::chrono::milliseconds interval) { _min_change_interval = std::max(interval, std::chrono::milliseconds(100)); }
 
 	size_t eval_lights(const std::vector<LightIndex> &relevant_lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward);
 
