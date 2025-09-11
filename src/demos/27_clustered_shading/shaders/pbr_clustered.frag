@@ -470,20 +470,34 @@ float sampleShadow(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max,
 	sample_depth = textureLod(u_shadow_atlas, uv, 0).r; \
  	shadow += current_depth > sample_depth ? 0.0 : (weight);
 
-  	const float weights[3] = { 0.25, 0.125, 0.0625 };
-
+#if 0
+  	// 3x3 gauss box
+  	const float weights9[3] = { 0.25, 0.125, 0.0625 };  // total = 1
 	// top row
-	SAMPLE(vec2(-1, -1), weights[2]);
-	SAMPLE(vec2( 0, -1), weights[1]);
-	SAMPLE(vec2( 1, -1), weights[2]);
+	SAMPLE(vec2(-1, -1), weights9[2]);
+	SAMPLE(vec2( 0, -1), weights9[1]);
+	SAMPLE(vec2( 1, -1), weights9[2]);
 	// middle row
-	SAMPLE(vec2(-1,  0), weights[1]);
-	SAMPLE(vec2( 0,  0), weights[0]);
-	SAMPLE(vec2( 1,  0), weights[1]);
+	SAMPLE(vec2(-1,  0), weights9[1]);
+	SAMPLE(vec2( 0,  0), weights9[0]);
+	SAMPLE(vec2( 1,  0), weights9[1]);
 	// bottom row
-	SAMPLE(vec2(-1,  1), weights[2]);
-	SAMPLE(vec2( 0,  1), weights[1]);
-	SAMPLE(vec2( 1,  1), weights[2]);
+	SAMPLE(vec2(-1,  1), weights9[2]);
+	SAMPLE(vec2( 0,  1), weights9[1]);
+	SAMPLE(vec2( 1,  1), weights9[2]);
+#else
+
+	// cheaper sampling: only center and four corners of the 3x3 box
+	const float weights5[2] = { 0.4, 0.15 };  // total = 1
+	// top corners
+	SAMPLE(vec2(-1, -1), weights5[1]);
+	SAMPLE(vec2( 1, -1), weights5[1]);
+	// center
+	SAMPLE(vec2( 0,  0), weights5[0]);
+	// bottom corners
+	SAMPLE(vec2(-1,  1), weights5[1]);
+	SAMPLE(vec2( 1,  1), weights5[1]);
+#endif
 
 	return shadow;
 }
