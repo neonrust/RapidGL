@@ -89,7 +89,7 @@ ShadowAtlas::ShadowAtlas(uint32_t size, LightManager &lights) :
 		size = 1 << (sizeof(size)*8 -  size_t(__builtin_clz(size)));  // round up to next Po2
 	assert(size >= 1024 and size <= 16384);
 
-	_shadow_params_ssbo.setBindIndex(SSBO_BIND_SHADOW_PARAMS);
+	_shadow_params_ssbo.bindAt(SSBO_BIND_SHADOW_SLOTS_INFO);
 
 	_distribution.reserve(4);
 	generate_slots({ 24 + 1, 64 + 1, 256 + 1 });  // +1 for directional/sun light
