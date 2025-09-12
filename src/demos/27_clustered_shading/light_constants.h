@@ -18,11 +18,12 @@
 
 // 'type_flags' bits:
 // 31                                     0
-//  .... .... .... SSSS SSSS SSSS C..2 TTTT
+//  .... .... .... SSSS SSSS SSSS CV.2 TTTT
 //  . = unused
 //  T = light type (4 bits)
 //  2 = two-sided (1 bit), area & disc lights
 //  C = shadow caster (1 bit)
+//  V = volunetric fog (1 bit)
 //  S = shadw slots info (12 bits, 4095 values) - index into SSBO_BIND_SHADOW_SLOTS_INFO)
 //
 #define LIGHT_TYPE_MASK          0x0fu
@@ -46,9 +47,11 @@
 #define LIGHT_TWO_SIDED          0x10u   // area & disc lights
 
 // max 256 shadw-casting lights?
-#define LIGHT_SHADOW_CASTER      0x000800u
-#define LIGHT_SHADOW_MASK        0xfff000u
-#define LIGHT_SHADOW_SHIFT       14u
+#define LIGHT_SHADOW_CASTER      0x00000080u
+#define LIGHT_SHADOW_MASK        0x000fff00u
+#define LIGHT_SHADOW_SHIFT       8u
+#define LIGHT_VOLUMETRIC         0x00000040u
+
 #define LIGHT_NO_SHADOW          0xfffu
 
 #define GET_SHADOW_IDX(light)      (((light).type_flags & LIGHT_SHADOW_MASK) >> LIGHT_SHADOW_SHIFT)
@@ -61,3 +64,4 @@ void SET_SHADOW_IDX(auto &light, auto idx)
 #define CLR_SHADOW_IDX(light)      SET_SHADOW_IDX(light, 0xffu)
 
 #define IS_SHADOW_CASTER(light)    (((light).type_flags & LIGHT_SHADOW_CASTER) > 0)
+#define IS_VOLUMETRIC(light)       (((light).type_flags & LIGHT_VOLUMETRIC) > 0)

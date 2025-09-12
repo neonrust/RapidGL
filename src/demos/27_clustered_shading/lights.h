@@ -75,8 +75,8 @@ struct DirectionalLight
 	COMMON;         \
 	POINT;          \
 	glm::vec3 direction   { 0, 0, -1 }; \
-	float inner_angle     { 0 };        \
 	float outer_angle     { glm::radians(15.f) }; \
+	float inner_angle     { 0 };        \
 	float bounds_radius  // also the distance from 'position' along 'direction'
 
 struct SpotLightParams
