@@ -1008,37 +1008,37 @@ void ClusteredShading::IrradianceConvolution(const std::shared_ptr<RenderTarget:
 	glViewport(0, 0, GLsizei(Window::width()), GLsizei(Window::height()));
 }
 
-void ClusteredShading::PrefilterCubemap(const std::shared_ptr<RenderTarget::Cube>& cubemap_rt)
+void ClusteredShading::PrefilterEnvCubemap(const std::shared_ptr<RenderTarget::Cube>& cubemap_rt)
 {
     m_prefilter_env_map_shader->bind();
 	m_prefilter_env_map_shader->setUniform("u_projection"sv, cubemap_rt->projection());
 
     m_env_cubemap_rt->bindTexture(1);
 
-	auto max_mip_levels = uint8_t(glm::log2(float(cubemap_rt->width())));
-    for (uint8_t mip = 0; mip < max_mip_levels; ++mip)
+	const auto max_mip_levels = uint8_t(glm::log2(float(cubemap_rt->width())));
+
+	for(auto mip = 0u; mip < max_mip_levels; ++mip)
     {
-        // resize the framebuffer according to mip-level size.
-		auto mip_width  = uint32_t(cubemap_rt->width()) >> mip; // * std::pow(0.5, mip));
-		auto mip_height = uint32_t(cubemap_rt->height()) >> mip;// * std::pow(0.5, mip));
+		const auto mip_width  = std::max(1u, uint32_t(cubemap_rt->width())  >> mip);
+		const auto mip_height = std::max(1u, uint32_t(cubemap_rt->height()) >> mip);
 
 		cubemap_rt->resizeDepth(mip_width, mip_height);
-		// TODO: want to set viewpoort once
+		// TODO: ideally, set viewpoort only once (per mip level):
 		// glViewport(0, 0, GLsizei(mip_width), GLsizei(mip_height));
 
-        float roughness = float(mip) / float(max_mip_levels - 1);
+		const auto roughness = float(mip) / std::max(1.f, float(max_mip_levels - 1));
 		m_prefilter_env_map_shader->setUniform("u_roughness"sv, roughness);
 
-		for (uint8_t face = 0; face < 6; ++face)
+		for(auto face = 0u; face < 6; ++face)
         {
 			m_prefilter_env_map_shader->setUniform("u_view"sv, cubemap_rt->view_transform(face));
-			cubemap_rt->bindRenderTarget(face);  // , { 0, 0, w, h } TODO?
-			glViewport(0, 0, GLsizei(mip_width), GLsizei(mip_height)); // view port is set in bindRenderTarget(face) ...
+			cubemap_rt->bindRenderTargetMip(face, mip);
 
 			glBindVertexArray(m_skybox_vao);
 			glDrawArrays(GL_TRIANGLES, 0, 36);
         }
-    }
+
+	}
 	bindScreenRenderTarget();
 }
 
@@ -1052,8 +1052,8 @@ void ClusteredShading::PrecomputeIndirectLight(const std::filesystem::path& hdri
 	m_env_cubemap_rt->color_texture().SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipLinear);
 	m_env_cubemap_rt->color_texture().GenerateMipMaps();
 
-    IrradianceConvolution(m_irradiance_cubemap_rt);
-    PrefilterCubemap(m_prefiltered_env_map_rt);
+	IrradianceConvolution(m_irradiance_cubemap_rt);
+	PrefilterEnvCubemap(m_prefiltered_env_map_rt);
 }
 
 void ClusteredShading::PrecomputeBRDF(const std::shared_ptr<RenderTarget::Texture2d>& rt)

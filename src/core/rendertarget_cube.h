@@ -42,7 +42,8 @@ struct Cube
 	// useful when rendering into mip levels and depth is not a texture
 	void resizeDepth(size_t width, size_t height);
 
-	void bindRenderTarget(size_t face, BufferMask clear_buffers=ColorBuffer | DepthBuffer);
+	inline void bindRenderTarget(uint32_t face, BufferMask clear_buffers=ColorBuffer | DepthBuffer) { bindRenderTargetMip(face, 0, clear_buffers); }
+	void bindRenderTargetMip(uint32_t face, uint32_t mip_level, BufferMask clear_buffers=ColorBuffer | DepthBuffer);
 
 	void release();
 

@@ -167,24 +167,28 @@ void Cube::bindDepthTexture(GLuint unit)
 	_depth_texture.Bind(unit);
 }
 
-void Cube::bindRenderTarget(size_t face, BufferMask clear_mask)
+void Cube::bindRenderTargetMip(uint32_t face, uint32_t mip_level, BufferMask clear_buffers)
 {
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _fbo_id);
 
 	if(_has_color and _color_texture)
-		glNamedFramebufferTextureLayer(_fbo_id, GL_COLOR_ATTACHMENT0, _color_texture.texture_id(), 0, GLint(face));
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+							   GL_TEXTURE_CUBE_MAP_POSITIVE_X + face,
+							   _color_texture.texture_id(), GLint(mip_level));
 
 	if(_has_depth and _depth_texture)
-		glNamedFramebufferTextureLayer(_fbo_id, GL_DEPTH_ATTACHMENT, _depth_texture.texture_id(), 0, GLint(face));
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+							   GL_TEXTURE_CUBE_MAP_POSITIVE_X + face,
+							   _depth_texture.texture_id(), GLint(mip_level));
 
-	glViewport(0, 0, _width, _height);
+	glViewport(0, 0, std::max(1, _width >> mip_level), std::max(1, _height >> mip_level));
 
 	if(not _has_color)
-		clear_mask &= ~ColorBuffer;
+		clear_buffers &= ~ColorBuffer;
 	if(not _has_depth)
-		clear_mask &= ~DepthBuffer;
-	assert(clear_mask != 0);
-	glClear(clear_mask);
+		clear_buffers &= ~DepthBuffer;
+	assert(clear_buffers != 0);
+	glClear(clear_buffers);
 }
 
 void Cube::release()
