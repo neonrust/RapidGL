@@ -933,14 +933,15 @@ void ClusteredShading::update(double delta_time)
 void ClusteredShading::createLights()
 {
 	// point lights
-	for(auto idx = 0u; idx < 8; ++idx)
+	for(auto idx = 0u; idx < 32; ++idx)
 	{
 		const auto rand_color= hsv2rgb(
 			float(Util::RandomDouble(1, 360)),       // hue
 			float(Util::RandomDouble(0.1f, 0.7f)),   // saturation
 			1.f                                      // value (brightness)
 		);
-		const auto rand_pos = Util::RandomVec3({ -18, 0.5f, -18 }, { 18, 3.5f, 18 });
+		const auto rand_pos = Util::RandomVec3({ -18, 0.5f, -18 }, { 178, 3.5f, 18 });
+		// const auto rand_pos = glm::vec3(0, 0, 10.f + float(idx)*20);
 
 		const auto rand_intensity = float(Util::RandomDouble(1, 100))*2;
 
