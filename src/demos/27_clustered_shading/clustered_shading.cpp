@@ -920,10 +920,10 @@ void ClusteredShading::update(double delta_time)
 		for(LightIndex light_index = 0; light_index <  _light_mgr.size(); ++light_index)
 		{
 			const auto &[light_id, L] =_light_mgr.at(light_index);
-
+			auto Lmut = L;
 			// orbit around the world origin
-			L.position = orbit_mat * glm::vec4(L.position, 1);
-			_light_mgr.set(light_id, L);
+			Lmut.position = orbit_mat * glm::vec4(L.position, 1);
+			_light_mgr.set(light_id, Lmut);
 		}
 
 		updateLightsSSBOs();
