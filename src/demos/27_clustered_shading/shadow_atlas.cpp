@@ -70,14 +70,14 @@ ShadowAtlas::ShadowAtlas(uint32_t size, LightManager &lights) :
 	Texture2d(),
 	_lights(lights),
 	_min_change_interval(1s),
-	_shadow_params_ssbo("shadow-params"),
+	_shadow_slots_info_ssbo("shadow-params"),
 	_allocator(size, size >> 6, size >> 3)
 {
 	if(__builtin_popcount(size) != 1)
 		size = 1 << (sizeof(size)*8 -  size_t(__builtin_clz(size)));  // round up to next Po2
 	assert(size >= 1024 and size <= 16384);
 
-	_shadow_params_ssbo.bindAt(SSBO_BIND_SHADOW_SLOTS_INFO);
+	_shadow_slots_info_ssbo.bindAt(SSBO_BIND_SHADOW_SLOTS_INFO);
 
 	_distribution.reserve(4);
 	generate_slots({ 24 + 1, 64 + 1, 256 + 1 });  // +1 for directional/sun light
@@ -433,7 +433,7 @@ static glm::mat4 light_view_projection(const GPULight &light, size_t idx=0);
 
 void ShadowAtlas::update_shadow_params()
 {
-	static std::vector<decltype(_shadow_params_ssbo)::value_type> shadow_params;
+	static std::vector<decltype(_shadow_slots_info_ssbo)::value_type> shadow_params;
 	shadow_params.reserve(_id_to_allocated.size());
 	shadow_params.clear();
 
@@ -455,7 +455,7 @@ void ShadowAtlas::update_shadow_params()
 		shadow_params.emplace_back(projs, rects);
 	}
 
-	_shadow_params_ssbo.set(shadow_params);
+	_shadow_slots_info_ssbo.set(shadow_params);
 	_lights.flush();
 }
 
