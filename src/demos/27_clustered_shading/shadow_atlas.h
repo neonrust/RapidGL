@@ -13,9 +13,6 @@
 
 class LightManager;
 
-namespace RGL {
-class Camera;
-}
 struct GPULight;
 
 using Time = std::chrono::steady_clock::time_point;
