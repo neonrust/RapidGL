@@ -1404,6 +1404,10 @@ void ClusteredShading::renderShadowMaps()
 	_light_shadow_maps_rendered = 0;
 	_shadow_atlas_slots_rendered = 0;
 
+	// TODO: limit the number of shadow maps to render
+	//    if too many, render the ones closest to the camera first
+	//    the remaining will still by "dirty" so they will be rendered eventually.
+
 	for(auto &[light_id, atlas_light]: _shadow_atlas.allocated_lights())
 	{
 		const auto &light = _light_mgr.get_by_id(light_id);
