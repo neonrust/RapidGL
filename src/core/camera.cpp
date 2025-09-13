@@ -98,7 +98,9 @@ void Camera::update(double dt)
 	auto movement_amount = float(m_move_speed * dt);
 
 	if(Input::isKeyDown(KeyCode::LeftShift))
-		movement_amount *= 2;
+		movement_amount *= 0.25f;
+	else if(Input::isKeyDown(KeyCode::LeftControl))
+		movement_amount *= 4;
 
 
 	if (Input::isKeyDown(m_forward_key))
