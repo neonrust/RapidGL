@@ -31,9 +31,9 @@ struct GPULight
 	float intensity;
 
 	float outer_angle;
-	float fog_intensity;  // might be separate SSBO ? e.g. together w/ other fog/scattering stuff
-	vec3 color;
 	float inner_angle;
+	vec3 color;
+	float fog_intensity;  // might be separate SSBO ? e.g. together w/ other fog/scattering stuff
 
 	vec4 shape_points[4];  // area: 4 points, tube: 2 end points + radius, sphere: radius, disc: radius
 };
