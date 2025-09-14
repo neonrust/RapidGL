@@ -240,11 +240,19 @@ class Texture2DArray : public Texture
 public:
 	Texture2DArray() = default;
 
+	void BindLayer(uint32_t layer, uint32_t unit=0);
+
 	bool Create(size_t width, size_t height, size_t layers, GLenum internalFormat, size_t num_mipmaps=DefaultMipmaps);
+	void Release();
 
 	bool Load(const std::filesystem::path &filepath, bool is_srgb=true);
 	bool LoadLayers(const std::vector<std::filesystem::path> &paths, bool is_srgb=true);
 	bool LoadDds(const std::filesystem::path &filepath);
+
+private:
+	void createLayerViews(GLenum internalFormat);
+
+	std::vector<GLuint> _layerViews;
 };
 
 class TextureCube : public Texture

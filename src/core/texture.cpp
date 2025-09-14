@@ -575,6 +575,12 @@ bool Texture2D::LoadDds(const std::filesystem::path& filepath)
 
 // --------------------- Texture Array -------------------------
 
+void Texture2DArray::BindLayer(uint32_t layer, uint32_t unit)
+{
+	assert(layer < _layerViews.size());
+	glBindTextureUnit(unit, _layerViews[layer]);
+}
+
 bool Texture2DArray::Create(size_t width, size_t height, size_t layers, GLenum internalFormat, size_t num_mipmaps)
 {
 	(void)width;
@@ -583,6 +589,9 @@ bool Texture2DArray::Create(size_t width, size_t height, size_t layers, GLenum i
 	(void)internalFormat;
 	(void)num_mipmaps;
 	std::print(stderr, "Texture2DArray::Create - Not implenented!\n");
+
+	createLayerViews(internalFormat);
+
 	return false;
 }
 
@@ -595,6 +604,9 @@ bool Texture2DArray::Load(const fs::path &filepath, bool is_srgb)
 			return false;
 
 		set(descr);
+		GLenum internalFormat = 0;
+		glGetTextureLevelParameteriv(_texture_id, 0, GL_TEXTURE_INTERNAL_FORMAT, reinterpret_cast<GLint *>(&internalFormat));
+		createLayerViews(internalFormat);
 		return true;
 	}
 	else if(filepath.extension() == ".array"sv)
@@ -697,6 +709,8 @@ bool Texture2DArray::LoadLayers(const std::vector<fs::path> &paths, bool is_srgb
 
 	glGenerateTextureMipmap(_texture_id);
 
+	createLayerViews(internal_format);
+
 	return true;
 }
 
@@ -765,7 +779,44 @@ bool Texture2DArray::LoadDds(const std::filesystem::path &filepath)
 		}
 	}
 
+	createLayerViews(format.m_internal_format);
+
 	return true;
+}
+
+void Texture2DArray::createLayerViews(GLenum internalFormat)
+{
+
+	GLuint num_layers { 0 };
+	glGetTextureLevelParameteriv(_texture_id, 0, GL_TEXTURE_DEPTH, reinterpret_cast<GLint *>(&num_layers));
+
+	_layerViews.resize(num_layers);
+
+	for(auto layer = 0u; layer < num_layers; ++layer)
+	{
+		GLuint viewId;
+		glGenTextures(1, &viewId);
+
+		GLuint num_levels = 0;
+		glGetTextureParameteriv(_texture_id, GL_TEXTURE_IMMUTABLE_LEVELS, reinterpret_cast<GLint *>(&num_levels));
+
+		glTextureView(viewId,
+					  GL_TEXTURE_2D,     // target of the *view*
+					  _texture_id,       // source texture
+					  internalFormat,
+					  0,
+					  num_levels,        // mip range
+					  layer,             // layer range: one slice
+					  1);
+
+		_layerViews[layer] = viewId;
+	}
+
+	// default filtering, the regular SetFiltering() and friends should set these as well
+	glTextureParameteri(_texture_id, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTextureParameteri(_texture_id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTextureParameteri(_texture_id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTextureParameteri(_texture_id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 }
 
 // --------------------- Texture CubeMap -------------------------
@@ -783,7 +834,6 @@ bool TextureCube::Create(size_t width, size_t height, GLenum internalFormat, siz
 
 	glTextureStorage2D(_texture_id, GLsizei(num_mipmaps), internalFormat, GLsizei(width), GLsizei(height));
 
-
 	// create texture views for each face (useful for debugging, maybe nothing else?)
 	createFaceViews(internalFormat);
 
@@ -794,8 +844,11 @@ void TextureCube::createFaceViews(GLenum internalFormat)
 {
 	glGenTextures(6, _faceViews.data());
 
+	GLuint num_levels = 0;
+	glGetTextureParameteriv(_texture_id, GL_TEXTURE_IMMUTABLE_LEVELS, reinterpret_cast<GLint *>(&num_levels));
+
 	for(auto face = 0u; face < 6; ++face)
-		glTextureView(_faceViews[face], GL_TEXTURE_2D, _texture_id, internalFormat, 0, 1,  GLuint(face), 1);
+		glTextureView(_faceViews[face], GL_TEXTURE_2D, _texture_id, internalFormat, 0, num_levels,  GLuint(face), 1);
 }
 
 void TextureCube::BindFace(CubeFace face, uint32_t unit)
