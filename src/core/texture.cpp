@@ -809,7 +809,7 @@ bool TextureCube::Load(const std::array<std::filesystem::path, 6> &filepaths, bo
 
 	Util::TextureData images_data[NUM_FACES];
 
-	for (int idx = 0; idx < NUM_FACES; ++idx)
+	for(auto idx = 0u; idx < NUM_FACES; ++idx)
 	{
 		images_data[idx] = Util::LoadTextureData(filepaths[idx], m_metadata);
 
