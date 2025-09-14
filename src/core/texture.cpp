@@ -595,6 +595,12 @@ bool Texture2DArray::Create(size_t width, size_t height, size_t layers, GLenum i
 	return false;
 }
 
+void Texture2DArray::Release()
+{
+	glDeleteTextures(6, _layerViews.data());
+	_layerViews = { 0, 0, 0, 0, 0, 0 };
+}
+
 bool Texture2DArray::Load(const fs::path &filepath, bool is_srgb)
 {
 	if(filepath.extension() == ".ktx2"sv)
