@@ -20,6 +20,8 @@ uniform float u_shadow_bias_distance_scale;
 uniform float u_shadow_bias_slope_power;
 uniform float u_shadow_bias_scale;
 
+const float s_min_visibility = 0.01;
+
 // TODO distance-based fg
 // uniform float u_fog_thickness;
 // uniform vec3 u_fog_color;
@@ -99,7 +101,7 @@ void main()
 			case LIGHT_TYPE_POINT:
 			{
 		        visibility = pointLightVisibility(light, in_world_pos);
-		        if(visibility.x + visibility.y + visibility.z > 0)
+		        if(visibility.x + visibility.y + visibility.z > s_min_visibility)
 		        	contribution = calcPointLight(light, in_world_pos, material);
 			}
 			break;
@@ -107,7 +109,7 @@ void main()
 	        case LIGHT_TYPE_DIRECTIONAL:
 			{
 		        visibility = dirLightVisibility(light);
-		        if(visibility.x + visibility.y + visibility.z > 0)
+		        if(visibility.x + visibility.y + visibility.z > s_min_visibility)
 		        	contribution = calcDirectionalLight(light, in_world_pos, material);
 			}
 			break;
@@ -115,7 +117,7 @@ void main()
 			case LIGHT_TYPE_SPOT:
 			{
 				visibility = spotLightVisibility(light);
-			    if(visibility.x + visibility.y + visibility.z > 0)
+			    if(visibility.x + visibility.y + visibility.z > s_min_visibility)
     				contribution = calcSpotLight(light, in_world_pos, material);
         	}
          	break;
@@ -123,7 +125,7 @@ void main()
           	case LIGHT_TYPE_AREA:
            	{
 	           	visibility = areaLightVisibility(light);
-		        if(visibility.x + visibility.y + visibility.z > 0)
+		        if(visibility.x + visibility.y + visibility.z > s_min_visibility)
 		        	contribution = calcAreaLight(light, in_world_pos, material);
             }
             break;
@@ -131,7 +133,7 @@ void main()
            	case LIGHT_TYPE_TUBE:
             {
 	           	visibility = tubeLightVisibility(light);
-		        if(visibility.x + visibility.y + visibility.z > 0)
+		        if(visibility.x + visibility.y + visibility.z > s_min_visibility)
 		        	contribution = calcTubeLight(light, in_world_pos, material);
             }
             break;
@@ -139,7 +141,7 @@ void main()
            	case LIGHT_TYPE_SPHERE:
             {
 	           	visibility = sphereLightVisibility(light);
-		        if(visibility.x + visibility.y + visibility.z > 0)
+		        if(visibility.x + visibility.y + visibility.z > s_min_visibility)
 		        	contribution = calcSphereLight(light, in_world_pos, material);
             }
             break;
@@ -147,7 +149,7 @@ void main()
            	case LIGHT_TYPE_DISC:
             {
 	           	visibility = discLightVisibility(light);
-		        if(visibility.x + visibility.y + visibility.z > 0)
+		        if(visibility.x + visibility.y + visibility.z > s_min_visibility)
 		        	contribution = calcDiscLight(light, in_world_pos, material);
             }
             break;
