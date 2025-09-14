@@ -183,6 +183,7 @@ public:
 	inline TextureType texture_type() const { return m_type; }
 
 	virtual void Bind(uint32_t unit=0) const;
+	virtual void BindImage(uint32_t unit=0, ImageAccess access=ImageAccess::Read, uint32_t mip_level=0) const;
 
 	virtual void SetFiltering(TextureFiltering type, TextureFilteringParam filtering);
 	virtual void SetMinLod(float min);

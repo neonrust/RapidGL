@@ -328,6 +328,11 @@ void Texture::set(const TextureDescriptor &descr)
 	_texture_id = descr.texture_id;
 }
 
+void Texture::BindImage(uint32_t unit, ImageAccess access, uint32_t mip_level) const
+{
+	glBindImageTexture(unit, _texture_id, GLint(mip_level), GL_FALSE, 0, GLenum(access), m_metadata.channel_format);
+}
+
 bool Texture3D::Load(const std::filesystem::path& filepath)
 {
 	if(filepath.extension() == ".ktx2")
