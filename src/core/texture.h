@@ -78,6 +78,13 @@ enum class CubeFace : uint32_t
 	MinutZ = 5,
 };
 
+enum class ImageAccess
+{
+	Read,
+	Write,
+	ReadWrite,
+};
+
 struct TextureDescriptor
 {
 	ImageMeta meta;

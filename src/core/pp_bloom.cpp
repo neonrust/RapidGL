@@ -56,7 +56,7 @@ void Bloom::render(const RenderTarget::Texture2d &in, RenderTarget::Texture2d &o
 	in.bindTextureSampler();
 
 	// render at half resolution
-	const auto mip_cap = 1;
+	const auto mip_cap = 1u;
 	auto mip_size = glm::uvec2(
 		in.width() / (1 << mip_cap),
 		in.height() / (1 << mip_cap)
@@ -68,7 +68,7 @@ void Bloom::render(const RenderTarget::Texture2d &in, RenderTarget::Texture2d &o
 	// 	std::printf("PP mip_levels: %d\n", in.mip_levels());
 
 	// TODO: couldn't these loops be made entirely in the compute shader, i.e. binding all mips at once
-	for (auto idx = 0; idx < in.mip_levels() - mip_cap; ++idx)
+	for (auto idx = 0u; idx < in.mip_levels() - mip_cap; ++idx)
 	{
 		// if(not printed)
 		// 	std::fprintf(stderr, "PP dn size[%d]: %d x %d\n", idx, mip_size.x, mip_size.y);
@@ -78,7 +78,7 @@ void Bloom::render(const RenderTarget::Texture2d &in, RenderTarget::Texture2d &o
 		_downscale_shader.setUniform("u_use_threshold"sv, idx == 0);
 
 		// m_tmo_ps->renderTarget().bindImage(IMAGE_UNIT_WRITE, RenderTarget::Write, idx + mip_cap);
-		out.bindImage(IMAGE_UNIT_WRITE, RenderTarget::Access::Write, idx + mip_cap);
+		out.bindImage(IMAGE_UNIT_WRITE, ImageAccess::Write, idx + mip_cap);
 
 		glDispatchCompute(GLuint(glm::ceil(float(mip_size.x) / 8.f)),
 						  GLuint(glm::ceil(float(mip_size.y) / 8.f)),
@@ -107,7 +107,7 @@ void Bloom::render(const RenderTarget::Texture2d &in, RenderTarget::Texture2d &o
 		_upscale_shader.setUniform("u_texel_size"sv, 1.0f / glm::vec2(mip_size));
 		_upscale_shader.setUniform("u_mip_level"sv,  int(idx));
 
-		out.bindImage(IMAGE_UNIT_WRITE, RenderTarget::Access::ReadWrite, idx - mip_cap);
+		out.bindImage(IMAGE_UNIT_WRITE, ImageAccess::ReadWrite, idx - mip_cap);
 
 		_upscale_shader.invoke(GLuint(glm::ceil(float(mip_size.x) / 8.f)),
 						  GLuint(glm::ceil(float(mip_size.y) / 8.f)));

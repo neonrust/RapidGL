@@ -57,12 +57,12 @@ struct Texture2d
 	void bindRenderTarget(glm::ivec4 rect, BufferMask clear_mask=ColorBuffer | DepthBuffer);
 
 	//! bind color for read/write from compute shaders
-	void bindImage(GLuint image_unit=0, RenderTarget::Access access=Access::Read, GLint mip_level=0);
-	void bindImageRead(GLuint image_unit=0, GLint mip_level=0) const;
+	void bindImage(GLuint image_unit=0, ImageAccess access=ImageAccess::Read, uint32_t mip_level=0) const;
+	void bindImageRead(GLuint image_unit=0, uint32_t mip_level=0) const;
 
 	//! bind depth for read/write from compute shaders (only if depth is a texture)
-	void bindDepthImage(GLuint image_unit, RenderTarget::Access access=Access::Read, GLint mip_level=0);
-	void bindDepthImageRead(GLuint image_unit, GLint mip_level) const;
+	void bindDepthImage(GLuint image_unit, ImageAccess access=ImageAccess::Read, uint32_t mip_level=0) const;
+	void bindDepthImageRead(GLuint image_unit, uint32_t mip_level) const;
 
 	// copy this texture to another texture
 	void copyTo(Texture2d &dest, BufferMask mask=ColorBuffer | DepthBuffer, TextureFilteringParam filter=TextureFilteringParam::Linear) const;

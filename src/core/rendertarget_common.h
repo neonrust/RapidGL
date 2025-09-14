@@ -38,14 +38,6 @@ static constexpr BufferMask NoBuffer = 0;
 static constexpr BufferMask ColorBuffer = GL_COLOR_BUFFER_BIT;
 static constexpr BufferMask DepthBuffer = GL_DEPTH_BUFFER_BIT;
 
-enum class Access : GLenum
-{
-	Read      = GL_READ_ONLY,
-	Write     = GL_WRITE_ONLY,
-	ReadWrite = GL_READ_WRITE
-};
-
-
 bool check_fbo(GLuint fbo_id);
 #if !defined(NDEBUG)
 void dump_config(const char *fbo_name, GLuint fbo);

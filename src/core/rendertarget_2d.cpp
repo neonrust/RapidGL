@@ -190,28 +190,28 @@ void Texture2d::bindRenderTarget(glm::ivec4 rect, BufferMask clear_mask)
 	}
 }
 
-void Texture2d::bindImage(GLuint image_unit, RenderTarget::Access access, GLint mip_level)
+void Texture2d::bindImage(GLuint image_unit, ImageAccess access, uint32_t mip_level) const
 {
 	assert(_color_texture);
-	glBindImageTexture(image_unit, _color_texture.texture_id(), mip_level, GL_FALSE, 0, GLenum(access), _color_format);
+	// TODO _color_texture.BindImage(image_unit, access, mip_level);
+	glBindImageTexture(image_unit, _color_texture.texture_id(), GLint(mip_level), GL_FALSE, 0, GLenum(access), _color_format);
 }
 
-void Texture2d::bindImageRead(GLuint image_unit, GLint mip_level) const
+void Texture2d::bindImageRead(GLuint image_unit, uint32_t mip_level) const
 {
-	assert(_color_texture);
-	glBindImageTexture(image_unit, _color_texture.texture_id(), mip_level, GL_FALSE, 0, GL_READ_ONLY, _color_format);
+	bindImage(image_unit, ImageAccess::Read, mip_level);
 }
 
-void Texture2d::bindDepthImage(GLuint image_unit, RenderTarget::Access access, GLint mip_level)
-{
-	assert(_depth_texture);
-	glBindImageTexture(image_unit, _depth_texture.texture_id(), mip_level, GL_FALSE, 0, GLenum(access), _color_format);
-}
-
-void Texture2d::bindDepthImageRead(GLuint image_unit, GLint mip_level) const
+void Texture2d::bindDepthImage(GLuint image_unit, ImageAccess access, uint32_t mip_level) const
 {
 	assert(_depth_texture);
-	glBindImageTexture(image_unit, _depth_texture.texture_id(), mip_level, GL_FALSE, 0, GL_READ_ONLY, _color_format);
+	// TODO _depth_texture.BindImage(image_unit, access, mip_level);
+	glBindImageTexture(image_unit, _depth_texture.texture_id(), GLint(mip_level), GL_FALSE, 0, GLenum(access), _depth_format);
+}
+
+void Texture2d::bindDepthImageRead(GLuint image_unit, uint32_t mip_level) const
+{
+	bindDepthImage(image_unit, ImageAccess::Read, mip_level);
 }
 
 void Texture2d::copyTo(Texture2d &dest, BufferMask mask, TextureFilteringParam filter) const

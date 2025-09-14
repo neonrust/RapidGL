@@ -72,7 +72,7 @@ void MipmapBlur::render(const RenderTarget::Texture2d &in, RenderTarget::Texture
 	assert(false);
 
 	in.bindTextureSampler();
-	out.bindImage(1, RenderTarget::Access::Write);
+	out.bindImage(1, ImageAccess::Write);
 
 	_downscale_blur.invoke(size_t(std::ceil(float(in.width())/float(group_size))),
 						   size_t(std::ceil(float(in.height())/float(group_size))));

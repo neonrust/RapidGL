@@ -98,13 +98,13 @@ void Blur::render(const RenderTarget::Texture2d &in, RenderTarget::Texture2d &ou
 
 	// horizontal
 	in.bindImageRead(0);
-	_temp.bindImage(1, RenderTarget::Access::Write);
+	_temp.bindImage(1, ImageAccess::Write);
 
 	_blur_horizontal.invoke((in.width() + group_size - 1) / group_size, in.height());
 
 	// vertical
 	_temp.bindImageRead(0);
-	out.bindImage(1, RenderTarget::Access::Write);
+	out.bindImage(1, ImageAccess::Write);
 
 	_blur_vertical.invoke(in.width(), (in.height() + group_size - 1) / group_size, 1);
 }

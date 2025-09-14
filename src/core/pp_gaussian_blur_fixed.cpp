@@ -72,13 +72,13 @@ void _blur_fixed_render(const RenderTarget::Texture2d &in, RenderTarget::Texture
 
 	// horizontal
 	in.bindImageRead(0);
-	temp.bindImage(1, RenderTarget::Access::Write);
+	temp.bindImage(1, ImageAccess::Write);
 
 	horizontal.invoke((in.width() + group_size - 1) / group_size, in.height());
 
 	// vertical
 	temp.bindImageRead(0);
-	out.bindImage(1, RenderTarget::Access::Write);
+	out.bindImage(1, ImageAccess::Write);
 
 	vertical.invoke(in.width(), (in.height() + group_size - 1) / group_size);
 }
