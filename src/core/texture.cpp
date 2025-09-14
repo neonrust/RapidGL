@@ -590,7 +590,7 @@ bool Texture2DArray::Create(size_t width, size_t height, size_t layers, GLenum i
 	(void)num_mipmaps;
 	std::print(stderr, "Texture2DArray::Create - Not implenented!\n");
 
-	createLayerViews(internalFormat);
+	// createLayerViews(internalFormat);
 
 	return false;
 }
