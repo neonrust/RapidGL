@@ -39,6 +39,29 @@ public:
 		static constexpr Bits Texture = GL_TEXTURE_UPDATE_BARRIER_BIT;
 		static constexpr Bits Image   = GL_SHADER_IMAGE_ACCESS_BARRIER_BIT;
 	};
+	enum class UniformType : GLenum
+	{
+		Float          = GL_FLOAT,
+		Integer        = GL_INT,
+		Vec2           = GL_FLOAT_VEC2,
+		Vec3           = GL_FLOAT_VEC3,
+		Vec4           = GL_FLOAT_VEC4,
+		Matrix3        = GL_FLOAT_MAT3,
+		Matrix4        = GL_FLOAT_MAT4,
+		Sampler1D      = GL_SAMPLER_1D,
+		Sampler2D      = GL_SAMPLER_2D,
+		Sampler3D      = GL_SAMPLER_3D,
+		SamplerCube    = GL_SAMPLER_CUBE,
+		Sampler2DArray = GL_SAMPLER_2D_ARRAY,
+		Image2D        = GL_IMAGE_2D,
+		Image3D        = GL_IMAGE_3D,
+	};
+	struct UniformInfo
+	{
+		std::string name;
+		GLuint location;
+		UniformType type;
+	};
 
 	void enableLiveReload();
 
@@ -82,6 +105,8 @@ public:
 	inline void invoke(glm::uvec2 groups) { invoke(groups.x, groups.y); }
 	inline void invoke(glm::uvec3 groups) { invoke(groups.x, groups.y, groups.z); }
 	void invoke(const GroupsBuffer &groups, size_t offset=0);
+
+	std::vector<UniformInfo> listUniforms() const;
 
 	void setUniform(const std::string_view & name, float value);
 	void setUniform(const std::string_view & name, int value);

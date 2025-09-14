@@ -329,6 +329,39 @@ void Shader::invoke(const GroupsBuffer &groups, size_t offset)
 }
 
 GLint Shader::uniformLocation(const std::string_view & name)
+std::vector<Shader::UniformInfo> Shader::listUniforms() const
+{
+	GLint num_uniforms = 0;
+	glGetProgramiv(m_program_id, GL_ACTIVE_UNIFORMS, &num_uniforms);
+
+	std::vector<Shader::UniformInfo> uniforms;
+	uniforms.reserve(size_t(num_uniforms));
+
+	for(auto idx = 0u; idx < size_t(num_uniforms); ++idx)
+	{
+		char nameBuf[256];
+		GLsizei nameLen = 0;
+		GLint size = 0;
+		GLenum type = 0;
+
+		glGetActiveUniform(m_program_id,
+						   idx,
+						   sizeof(nameBuf),
+						   &nameLen,
+						   &size,
+						   &type,
+						   nameBuf);
+
+		std::string name(nameBuf, size_t(nameLen));
+
+		GLint location = uniformLocation(name);
+
+		uniforms.emplace_back(name, location, type);
+	}
+
+	return uniforms;
+}
+
 {
 	GLint location = -1;
 
