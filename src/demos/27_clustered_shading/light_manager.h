@@ -1,6 +1,7 @@
 #pragma once
 
 
+#include "bounds.h"
 #include "container_types.h"
 #include "light_constants.h"
 #include "lights.h"
@@ -105,6 +106,8 @@ public:
 
 	template<_private::LightType LT>
 	std::optional<LT> to_(const GPULight &L) const;
+
+	bounds::Sphere light_bounds(const GPULight &L) const;
 
 private:
 	void add(const GPULight &L, LightID light_id);

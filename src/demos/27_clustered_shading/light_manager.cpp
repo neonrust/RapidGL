@@ -266,6 +266,23 @@ void LightManager::clear_shadow_index(LightID light_id)
 	}
 }
 
+bounds::Sphere LightManager::light_bounds(const GPULight &L) const
+{
+	assert(not IS_DIR_LIGHT(L));
+	if(IS_DIR_LIGHT(L))
+		return {};
+
+	auto bounds_center = L.position;
+	auto bounds_radius = L.affect_radius;
+	if(IS_SPOT_LIGHT(L))
+	{
+		bounds_center = L.position + L.direction * L.spot_bounds_radius;
+		bounds_radius = L.spot_bounds_radius;
+	}
+
+	return bounds::Sphere(bounds_center, bounds_radius);
+}
+
 void LightManager::add(const GPULight &L, LightID light_id)
 {
 	const auto next_index = LightIndex(_lights.size());
