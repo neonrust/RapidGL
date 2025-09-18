@@ -37,6 +37,8 @@ namespace RGL
         */
 		static std::tuple<std::string, bool> LoadFile(const std::filesystem::path & filename);
 
+		static std::streamsize GetFileSize(std::ifstream &strm);
+
         /**
         * @brief   Loads a file in a binary mode.
         * @param   std::filesystem::path Relative path, with file name

@@ -25,12 +25,11 @@ namespace RGL
 			return { {}, false };
 
         std::string filetext;
-        std::string line;
 
 		fs::path filepath = FileSystem::rootPath() / filename;
         std::ifstream inFile(filepath);
 
-        if (!inFile)
+		if(not inFile)
         {
 			std::print(stderr, "Could not open file {}\n", filepath.string());
             inFile.close();
@@ -38,15 +37,27 @@ namespace RGL
 			return { {}, false };
 		}
 
-        while (getline(inFile, line))
-        {
+		const auto file_size = GetFileSize(inFile);
+		filetext.reserve(std::string::size_type(file_size + 1024u)); // add a small margin  ;)
+
+		std::string line;
+		line.reserve(256);
+
+		while(std::getline(inFile, line))
             filetext.append(line + "\n");
-        }
 
         inFile.close();
 
 		return { filetext, true };
     }
+
+	std::streamsize Util::GetFileSize(std::ifstream &strm)
+	{
+		strm.seekg(0, std::ios::end);
+		const auto size = strm.tellg();
+		strm.seekg(0, std::ios::beg);
+		return size;
+	}
 
 	std::vector<uint8_t> Util::LoadFileBinary(const fs::path& filename)
     {
@@ -61,16 +72,13 @@ namespace RGL
             return {};
         }
 
-        // Determine the file size.
-        file.seekg(0, std::ios_base::end);
-		auto file_size = file.tellg();
-        file.seekg(0, std::ios_base::beg);
+		const auto file_size = GetFileSize(file);
 
-        // Allocate storage.
-		std::vector<uint8_t> data(size_t(file_size) / sizeof(unsigned char));
+		std::vector<uint8_t> data;
+		data.resize(size_t(file_size) / sizeof(unsigned char));
 
-        // Read the file contents into the allocated storage.
-        file.read((char*)&data[0], file_size);
+		// Read the entire file contents
+		file.read(reinterpret_cast<char *>(data.data()), file_size);
 
         return data;
     }
@@ -84,8 +92,6 @@ namespace RGL
 		std::string line, new_source;
 		new_source.reserve(shader_source.size());
 		size_t line_num = 0;
-
-		bool files_included = false;
 
 		while (std::getline(ss, line))
         {
@@ -112,9 +118,11 @@ namespace RGL
 				if (preproc_instruction.starts_with(phrase_include))
 				{
 					// extract filename, cutting off quotes (or brackets)
-					auto include_file_name = preproc_instruction.substr(phrase_include.size() + 1, preproc_instruction.size() - phrase_include .size() - 2);
+					auto include_file_name = fs::path(preproc_instruction.substr(phrase_include.size() + 1, preproc_instruction.size() - phrase_include .size() - 2));
 					// always relative the current file
-					const auto &[include_data, ok] = LoadFile(dir / include_file_name);
+					if(include_file_name.is_relative())
+						include_file_name = dir / include_file_name;
+					auto [include_data, ok] = LoadFile(include_file_name);
 					if(not ok)
 					{
 						std::print(stderr, "({}): Preprocessor instruction failed: {}\n", line_num, preproc_instruction);
@@ -122,15 +130,18 @@ namespace RGL
 					}
 					if(not include_data.empty())
 					{
+						// TODO: this recursion should probably modify the same string object
+						//   now, potentially _many_ strings will be allocated, depending on how deep the includes recursion goes
+						const auto &[include_data_p, ok] = PreprocessShaderSource(include_data, include_file_name.parent_path());
+						if(not ok)
+							return { {}, false }; // error message already output
 						new_source.append("#line 1\n");
-						new_source.append(include_data);
+						new_source.append(include_data_p);
 						new_source.append("\n"sv);
 
 						new_source.append("#line ");
 						new_source.append(std::to_string(line_num + 1));
 						new_source.append("\n");
-
-						files_included = true;
 					}
 				}
 				else
@@ -144,10 +155,6 @@ namespace RGL
 				new_source.append("\n"sv);
 			}
 		}
-
-		// we included files, need to re-run this preprocess
-		if (files_included)
-			return PreprocessShaderSource(new_source, dir);
 
 		return { new_source, true };
     }
