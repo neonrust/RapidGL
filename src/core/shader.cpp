@@ -195,7 +195,7 @@ bool Shader::loadShader(GLuint shaderObject, ShaderType type, const std::filesys
 		{
 			std::print(stderr, "{} Compilation failed!\n", filepath.string());
 			if(not log.empty())
-				logLineErrors(filepath, log);
+				logLineErrors(filepath, log, 10);
 		}
 		return false;
 	}
