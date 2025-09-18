@@ -73,6 +73,10 @@ GLuint ktx_load(const std::filesystem::path &filepath, ImageMeta &meta, size_t  
 	}
 
 	GLuint tex_id { 0 }; // GLUpload will generate
+	// TODO: should create the texture ourselves to be able to use glTextureView() (cube & array textures)
+	// glCreateTextures(GL_TEXTURE_2D_ARRAY, 1, &tex);
+	// glTextureStorage3D(tex, mipLevels, internalFormat, width, height, depth);
+
 	GLenum target { 0 };
 	GLenum glerror { 0 };
 	rc = ktxTexture_GLUpload(reinterpret_cast<ktxTexture *>(ktx_tex), &tex_id, &target, &glerror);
