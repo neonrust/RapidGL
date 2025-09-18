@@ -75,6 +75,15 @@ T as(const std::string &str)
   return value;
 }
 
+template<typename S>
+S::size_type find_nth(const S &s, typename S::value_type ch, typename S::size_type n)
+{
+	typename S::size_type pos { 0 };
+	while(n-- > 0 and pos != S::npos)
+		pos = s.find(ch, pos + 1);
+	return pos;
+}
+
 //! "0001001011" -> number (max 32 bits)
 unsigned int bitstringValue(const std::string &s);
 
