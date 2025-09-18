@@ -175,4 +175,11 @@ private:
 
 };
 
+inline bool operator < (const Shader::UniformInfo &A, const Shader::UniformInfo &B)
+{
+	if(A.type == B.type)
+		return A.name < B.name;
+	return A.type < B.type;
+}
+
 } // RGL
