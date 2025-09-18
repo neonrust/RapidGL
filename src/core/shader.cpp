@@ -393,6 +393,19 @@ std::vector<Shader::UniformInfo> Shader::listUniforms() const
 	return uniforms;
 }
 
+std::optional<Shader::UniformInfo> Shader::uniformInfo(std::string_view name) const
+{
+	const auto location = uniformLocation(name);
+	if(location ==  -1)
+		return std::nullopt;
+
+	GLint size = 0;
+	GLenum type = 0;
+	glGetActiveUniform(m_program_id, GLuint(location), 0, nullptr, &size, &type, nullptr);
+
+	return UniformInfo{ std::string(name), GLuint(location), UniformType(type) };
+}
+
 GLint Shader::uniformLocation(const std::string_view & name) const
 {
 	GLint location = -1;
