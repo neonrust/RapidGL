@@ -38,7 +38,7 @@ namespace RGL
 		}
 
 		const auto file_size = GetFileSize(inFile);
-		filetext.reserve(std::string::size_type(file_size + 1024u)); // add a small margin  ;)
+		filetext.reserve(std::string::size_type(file_size + (file_size >> 6))); // add a small margin  ;)
 
 		std::string line;
 		line.reserve(256);
