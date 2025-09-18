@@ -328,7 +328,6 @@ void Shader::invoke(const GroupsBuffer &groups, size_t offset)
 		glMemoryBarrier(GLbitfield(_post_barrier));
 }
 
-GLint Shader::uniformLocation(const std::string_view & name)
 std::vector<Shader::UniformInfo> Shader::listUniforms() const
 {
 	GLint num_uniforms = 0;
@@ -362,6 +361,7 @@ std::vector<Shader::UniformInfo> Shader::listUniforms() const
 	return uniforms;
 }
 
+GLint Shader::uniformLocation(const std::string_view & name) const
 {
 	GLint location = -1;
 
@@ -379,7 +379,7 @@ std::vector<Shader::UniformInfo> Shader::listUniforms() const
 	return location;
 }
 
-GLint Shader::attributeLocation(const std::string_view &name)
+GLint Shader::attributeLocation(const std::string_view &name) const
 {
 	return glGetAttribLocation(m_program_id, name.data());
 }

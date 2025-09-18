@@ -139,8 +139,8 @@ public:
 
 	inline const std::vector<ShaderType> &shaderTypes() const { return _shaderTypes; }
 
-	GLint uniformLocation(const std::string_view &name);
-	GLint attributeLocation(const std::string_view &name);
+	GLint uniformLocation(const std::string_view &name) const;
+	GLint attributeLocation(const std::string_view &name) const;
 
 private:
 	void addAllSubroutines();
@@ -156,7 +156,7 @@ private:
 	string_map<GLuint> m_subroutine_indices;
 	dense_map<GLenum, GLuint> m_active_subroutine_uniform_locations;
 
-	string_map<GLint> m_uniforms_locations;
+	mutable string_map<GLint> m_uniforms_locations;
 
 	struct ShaderItem
 	{
