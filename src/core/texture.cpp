@@ -210,9 +210,9 @@ bool Texture::Create(size_t width, size_t height, size_t depth, GLenum internalF
 	m_metadata.width = GLuint(width);
 	m_metadata.height = GLuint(height);
 	m_metadata.depth = GLuint(depth);
-	m_metadata.channels = 0;
-	m_metadata.channel_type = 0;
-	m_metadata.channel_format = 0;
+	m_metadata.channels = 0;      // 1 - 4
+	m_metadata.channel_type = 0;  // GL_UNSIGNED_INT or GL_FLOAT or GL_HALF_FLOAT
+	m_metadata.channel_format = internalFormat;
 
 	return true;
 }
