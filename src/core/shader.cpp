@@ -3,7 +3,6 @@
 #include "filesystem.h"
 #include "shader.h"
 #include "util.h"
-#include "zstr.h"
 
 #include <print>
 #include <chrono>
