@@ -374,14 +374,7 @@ std::vector<Shader::UniformInfo> Shader::listUniforms() const
 		GLsizei nameLen = 0;
 		GLint size = 0;
 		GLenum type = 0;
-
-		glGetActiveUniform(m_program_id,
-						   idx,
-						   sizeof(nameBuf),
-						   &nameLen,
-						   &size,
-						   &type,
-						   nameBuf);
+		glGetActiveUniform(m_program_id, idx, sizeof(nameBuf), &nameLen, &size, &type, nameBuf);
 
 		std::string name(nameBuf, size_t(nameLen));
 
