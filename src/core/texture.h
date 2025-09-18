@@ -80,9 +80,9 @@ enum class CubeFace : uint32_t
 
 enum class ImageAccess
 {
-	Read,
-	Write,
-	ReadWrite,
+	Read      = GL_READ_ONLY,
+	Write     = GL_WRITE_ONLY,
+	ReadWrite = GL_READ_WRITE,
 };
 
 struct TextureDescriptor
