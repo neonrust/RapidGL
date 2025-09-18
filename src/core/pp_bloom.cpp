@@ -74,7 +74,7 @@ void Bloom::render(const RenderTarget::Texture2d &in, RenderTarget::Texture2d &o
 		// 	std::fprintf(stderr, "PP dn size[%d]: %d x %d\n", idx, mip_size.x, mip_size.y);
 
 		_downscale_shader.setUniform("u_texel_size"sv,    1.0f / glm::vec2(mip_size));
-		_downscale_shader.setUniform("u_mip_level"sv,     idx);
+		_downscale_shader.setUniform("u_mip_level"sv,     int(idx));
 		_downscale_shader.setUniform("u_use_threshold"sv, idx == 0);
 
 		// m_tmo_ps->renderTarget().bindImage(IMAGE_UNIT_WRITE, RenderTarget::Write, idx + mip_cap);
