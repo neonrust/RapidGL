@@ -387,7 +387,7 @@ std::vector<Shader::UniformInfo> Shader::listUniforms() const
 
 		GLint location = uniformLocation(name);
 
-		uniforms.emplace_back(name, location, type);
+		uniforms.emplace_back(name, location, UniformType(type));
 	}
 
 	return uniforms;
