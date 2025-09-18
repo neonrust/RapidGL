@@ -109,6 +109,10 @@ public:
 	void invoke(const GroupsBuffer &groups, size_t offset=0);
 
 	std::vector<UniformInfo> listUniforms() const;
+	std::string_view uniform_type_name(UniformType type) const;
+#if defined(DEBUG)
+	void _dump_uniforms() const;
+#endif
 
 	void setUniform(const std::string_view & name, float value);
 	void setUniform(const std::string_view & name, int value);

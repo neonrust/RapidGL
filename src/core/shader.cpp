@@ -3,9 +3,11 @@
 #include "filesystem.h"
 #include "shader.h"
 #include "util.h"
+#include "zstr.h"
 
 #include <print>
 #include <chrono>
+#include <ranges>
 
 using namespace std::literals;
 using namespace std::chrono;
@@ -342,6 +344,22 @@ void Shader::invoke(const GroupsBuffer &groups, size_t offset)
 		glMemoryBarrier(GLbitfield(_post_barrier));
 }
 
+#if defined(DEBUG)
+void Shader::_dump_uniforms() const
+{
+	auto uniforms = listUniforms();
+	if(not uniforms.empty())
+	{
+		std::sort(uniforms.begin(), uniforms.end(), [](const auto &A, const auto &B) {
+			return A < B;
+		});
+
+		for(const auto &[index, uniform]: std::views::enumerate(uniforms))
+			std::print("  #{}: {} {}\n", index, uniform_type_name(uniform.type), uniform.name);
+	}
+}
+#endif
+
 std::vector<Shader::UniformInfo> Shader::listUniforms() const
 {
 	GLint num_uniforms = 0;
@@ -596,6 +614,29 @@ std::tuple<bool, std::string> Shader::getStatusLog(GLuint object, GLenum statusT
 	}
 
 	return { true, {} };
+}
+
+std::string_view Shader::uniform_type_name(UniformType type) const
+{
+	switch(type)
+	{
+		case UniformType::Float          : return "float"sv;
+		case UniformType::UnsignedInteger: return "uint"sv;
+		case UniformType::Integer        : return "int"sv;
+		case UniformType::Vec2           : return "vec2"sv;
+		case UniformType::Vec3           : return "vec3"sv;
+		case UniformType::Vec4           : return "vec4"sv;
+		case UniformType::Matrix3        : return "mat3"sv;
+		case UniformType::Matrix4        : return "mat4"sv;
+		case UniformType::Sampler1D      : return "sampler1D"sv;
+		case UniformType::Sampler2D      : return "sampler2D"sv;
+		case UniformType::Sampler3D      : return "sampler3D"sv;
+		case UniformType::SamplerCube    : return "samplerCube"sv;
+		case UniformType::Sampler2DArray : return "sampler2DArray"sv;
+		case UniformType::Image2D        : return "image2D"sv;
+		case UniformType::Image3D        : return "image3D"sv;
+	}
+		return "unknown"sv;
 }
 
 } // RGL
