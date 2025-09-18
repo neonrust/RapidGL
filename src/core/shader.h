@@ -147,7 +147,7 @@ private:
 	
 	bool addShader(const std::filesystem::path & filepath, ShaderType type, const string_set &conditionals);
 	bool loadShader(GLuint shaderObject, ShaderType type, const std::filesystem::path &filepath, const string_set &conditionals);
-	void logLineErrors(const std::filesystem::path &filepath, const std::string &log) const;
+	void logLineErrors(const std::filesystem::path &filepath, const std::string &log, size_t max_errors=std::numeric_limits<size_t>::max()) const;
 	void add_name(const std::filesystem::path &filepath, ShaderType type);
 	std::tuple<bool, std::string> getStatusLog(GLuint object, GLenum statusType) const;
 

@@ -256,28 +256,42 @@ bool Shader::link()
 	return m_is_linked;
 }
 
-void Shader::logLineErrors(const std::filesystem::path & filepath, const std::string &log) const
+void Shader::logLineErrors(const std::filesystem::path & filepath, const std::string &log, size_t max_errors) const
 {
 	std::istringstream strm(log);
 	std::string line;
+	auto num_errors = 0u;
+	bool capped = false;
 	while(std::getline(strm, line))
 	{
-		if(line.size() < 10 or not line.starts_with("0("))
-		{
-			std::print(stderr, "{}\n", line);
-			continue;
-		}
+		if(num_errors > max_errors)
+			capped = true;
+		++num_errors;
 
-		const auto end_bracket = line.find(')', 2);
-		if(end_bracket == std::string::npos)
+		if(not capped)
 		{
-			std::print(stderr, "{}\n", line);
-			continue;
-		}
+			auto start_bracket = line.find_first_of("0(");
+			if(line.size() < 10 or start_bracket == std::string::npos)
+			{
+				std::print(stderr, "{}\n", line);
+				continue;
+			}
 
-		line = line.replace(0, 1, filepath);
-		std::print(stderr, "{}\n", line);
+			const auto end_bracket = line.find(')', 2);
+			if(end_bracket == std::string::npos)
+			{
+				std::print(stderr, "{}\n", line);
+				continue;
+			}
+
+			line = line.replace(0, 1, filepath);
+			std::print(stderr, "{}\n", line);
+		}
 	}
+
+	if(capped)
+		std::print("(+{} errors)\n", num_errors - max_errors);
+
 }
 
 void Shader::setTransformFeedbackVaryings(const std::vector<const char*>& output_names, GLenum buffer_mode) const
