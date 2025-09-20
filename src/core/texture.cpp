@@ -193,7 +193,7 @@ bool Texture::Create(size_t width, size_t height, size_t depth, GLenum internalF
 		num_mipmaps = calculateMipMapLevels(width, height, depth);
 
 #if defined(DEBUG)
-	const auto format_name = gl_lookup::enum_name(internalFormat);
+	const auto format_name = gl_lookup::enum_name(internalFormat).substr(3);
 	std::print("Creating {}", width);
 	if(height > 1)
 	{
