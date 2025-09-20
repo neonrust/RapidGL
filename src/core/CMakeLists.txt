@@ -163,26 +163,25 @@ endif()
 
 # Read the file contents
 set(GLAD_HEADER "${glad_SOURCE_DIR}/glad/glad.h")
-message(DEBUG ${GLAD_HEADER})
 
-set(GLAD_LOOKUP_SCRIPT ${CMAKE_SOURCE_DIR}/scripts/glad_lookup_to_cpp)
-set(GLAD_LOOKUP_INPUT  ${GLAD_HEADER})
-set(GLAD_LOOKUP_OUTPUT ${CMAKE_CURRENT_LIST_DIR}/generated/glad_lookup.cpp)
+set(GL_LOOKUP_SCRIPT ${CMAKE_SOURCE_DIR}/scripts/gl_lookup_to_cpp)
+set(GL_LOOKUP_INPUT  ${GLAD_HEADER})
+set(GL_LOOKUP_OUTPUT ${CMAKE_CURRENT_LIST_DIR}/generated/gl_lookup.cpp)
 
 # Make sure output directory exists
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/generated)
 
 add_custom_command(
-	OUTPUT ${GLAD_LOOKUP_OUTPUT}
+	OUTPUT ${GL_LOOKUP_OUTPUT}
 	COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=$ENV{PYTHONPATH}
-	        ${Python3_EXECUTABLE} ${GLAD_LOOKUP_SCRIPT} < ${GLAD_LOOKUP_INPUT} > ${GLAD_LOOKUP_OUTPUT}
-			DEPENDS ${GLAD_LOOKUP_SCRIPT} ${GAD_LOOKUP_INPUT} ${GLAD_HEADER}
-	COMMENT "Generating C++ lookup from glad.h"
+	        ${Python3_EXECUTABLE} ${GL_LOOKUP_SCRIPT} < ${GL_LOOKUP_INPUT} > ${GL_LOOKUP_OUTPUT}
+			DEPENDS ${GL_LOOKUP_SCRIPT} ${GAD_LOOKUP_INPUT} ${GLAD_HEADER}
+	COMMENT "Generating C++ lookup from glad.h -> ${GL_LOOKUP_OUTPUT}"
 	VERBATIM
 )
 
-add_custom_target(generate_glad_lookup DEPENDS ${GLAD_LOOKUP_OUTPUT})
+add_custom_target(generate_GL_LOOKUP DEPENDS ${GL_LOOKUP_OUTPUT})
 # Make sure the build depends on this output
-add_dependencies(${CORE_LIB_NAME} generate_glad_lookup)
+add_dependencies(${CORE_LIB_NAME} generate_GL_LOOKUP)
 
-target_sources(${CORE_LIB_NAME} PRIVATE ${GLAD_LOOKUP_OUTPUT})
+target_sources(${CORE_LIB_NAME} PRIVATE ${GL_LOOKUP_OUTPUT})

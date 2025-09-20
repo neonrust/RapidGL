@@ -1,0 +1,62 @@
+#! /usr/bin/env python3
+
+import sys
+import re
+from functools import partial
+
+def_ptn = re.compile(r'^\s*#define\s+(?P<enum>GL_[A-Za-z0-9_]+)\s+(?P<value>0x[0-9A-Fa-f]+|\d+)')
+
+def make_lookup(in_fp):
+	lookup = {}
+
+	for line in in_fp:
+		m = def_ptn.search(line)
+		if m:
+			value = m.group('value')
+			try:
+				value = int(value)
+			except:
+				value = int(value, 16)
+			if value in lookup:
+				continue
+			enum = m.group('enum')
+			# cut common (irrelevant) suffixes
+			if enum.endswith('_EXT') or enum.endswith('_ARB') or enum.endswith('_KHR') or enum.endswith('_ATI'):
+			    enum = enum[:-4]
+			lookup[value] = enum
+
+	return lookup
+
+def write_cpp(lookup, out_fp):
+	out = partial(print, file=out_fp)
+
+	out('#include "container_types.h"')
+	out('#include <string>  // IWYU pragma: keep')  # annoying
+	out('#include <cstdint>')
+	out('namespace gl_lookup')
+	out('{')
+	out('using namespace std::literals;')
+	out('static const dense_map<uint64_t, std::string_view> s_lookup = {')
+
+	for value, enum in lookup.items():
+		out(f'\t{{ {value}ull, "{enum}"sv }},')
+
+	out('};')
+
+	out('std::string_view enum_name(uint64_t value)')
+	out('{')
+	out('\tauto found = s_lookup.find(value);')
+	out('\tif(found == s_lookup.end())')
+	out('\t{')
+	out('\t\tstatic const std::string_view not_found("<not found>");')
+	out('\t\treturn not_found;')
+	out('\t}')
+	out('\treturn found->second;')
+	out('}')
+	out('} // gl_lookup')
+
+
+
+if __name__ == '__main__':
+	lookup = make_lookup(sys.stdin)
+	write_cpp(lookup, sys.stdout)
