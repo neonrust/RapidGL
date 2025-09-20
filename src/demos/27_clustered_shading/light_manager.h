@@ -396,6 +396,9 @@ GPULight LightManager::to_gpu_light(const LT &l)
 		L.shape_points[0].x = l.disc_radius;
 	}
 
+	if(l.fog > 0)
+		L.type_flags |= LIGHT_VOLUMETRIC;
+
 	CLR_SHADOW_IDX(L);
 
 	return L;
