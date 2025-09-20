@@ -14,6 +14,7 @@
 #include "buffer_binds.h"
 #include "glm/ext/matrix_clip_space.hpp"
 #include "glm/ext/matrix_transform.hpp"
+#include "glm/gtc/epsilon.hpp"
 #include "constants.h"
 
 using namespace std::literals;
@@ -834,11 +835,12 @@ float ShadowAtlas::light_value(const GPULight &light, const glm::vec3 &view_pos,
 	const auto base_weight = importance * importance; // inverse square falloff
 
 	const auto type_weight = 1.f; // e.g. 0.8f for point, 1.f for spot, etc.
-
 	float facing_weight = 1.f;
 	if(edge_distance > 0)  // i.e. outside  light affect radius
 	{
-		static const auto cutoff = std::cos(glm::radians(45.f));
+		// outside the light's radius decrease based on facing angle
+
+		static const auto cutoff = std::cos(glm::radians(45.f)); // start decrease at 45 degrees
 		static const auto min_dot = 0.f;
 
 		const auto facing = glm::dot(glm::normalize(light.position - view_pos), view_forward);
@@ -984,9 +986,12 @@ static glm::mat4 light_view_projection(const GPULight &light, size_t idx)
 		const auto &view_forward   = s_cube_face_forward[idx];
 		const auto &view_up        = s_cube_face_up[idx];
 
+		assert(glm::epsilonEqual(glm::length(view_forward), 1.f, 0.01f));
 		const auto light_view      = glm::lookAt(light.position, light.position + view_forward, view_up);
 		const auto face_projection = glm::perspective(glm::half_pi<float>(), square, 0.05f, light.affect_radius);
 		const auto light_vp        = face_projection * light_view;
+
+		// std::print("  VP {} ->\n{: .3f}\n", face_names[idx], light_view);
 
 		return light_vp;
 	}
