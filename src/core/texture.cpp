@@ -1,4 +1,5 @@
 #include "texture.h"
+#include "gl_lookup.h"
 
 #include <cstring>
 #include <glm/glm.hpp>
@@ -190,6 +191,18 @@ bool Texture::Create(size_t width, size_t height, size_t depth, GLenum internalF
 
 	if(not num_mipmaps)
 		num_mipmaps = calculateMipMapLevels(width, height, depth);
+
+#if defined(DEBUG)
+	const auto format_name = gl_lookup::enum_name(internalFormat);
+	std::print("Creating {}", width);
+	if(height > 1)
+	{
+		std::print("x{}", height);
+		if(depth > 1)
+			std::print("x{}", depth);
+	}
+	std::print(" texture, {}\n", format_name);
+#endif
 
 	if(height <= 1)
 	{
