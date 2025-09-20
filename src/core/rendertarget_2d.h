@@ -19,9 +19,10 @@ struct Texture2d
 {
 	void create(const char *name, size_t width, size_t height, Color::Config color_cfg=Color::Default, Depth::Config depth_cfg=Depth::Default);
 
-	// TODO: explicitly add the components?
-	//    addColor( format )
-	//    addDepth( format )
+	// TODO: add attachments more generally?
+	//    attach(<channels>, <type>)
+	//    e.g. attach(3, Float | Texture)
+	//         attach(1, Depth)
 	//  could return *this to enable chaining
 
 	~Texture2d() { release(); }
