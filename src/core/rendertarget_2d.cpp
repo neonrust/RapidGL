@@ -44,7 +44,7 @@ void Texture2d::create(const char *name, size_t width, size_t height, Color::Con
 		else if(color_cfg & Color::Float)
 			_color_format = GL_RGBA32F;
 		else
-			_color_format = GL_RGBA;
+			_color_format = GL_RGBA8;
 	}
 	if(_has_depth)
 		_depth_format = GL_DEPTH_COMPONENT32F; // only float supported
