@@ -1,5 +1,6 @@
 #include "clustered_shading.h"
 #include "filesystem.h"
+#include "gl_lookup.h"
 #include "input.h"
 #include "postprocess.h"
 #include "util.h"
@@ -65,7 +66,9 @@ void opengl_message_callback([[maybe_unused]] GLenum source,
 							 [[maybe_unused]] const void *userParam)
 {
 	if(type == GL_DEBUG_TYPE_ERROR)
-		std::print(stderr, "GL ERROR: type = {:#x}, severity = {:#x} \"{}\"\n", type, severity, message );
+		std::print(stderr, "GL ERROR: severity {}: {}\n",
+				   gl_lookup::enum_name(severity).substr(18),  // GL_DEBUG_SEVERITY_
+				   message);
 }
 
 
