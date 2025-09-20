@@ -126,6 +126,76 @@ void Texture2d::release()
 		_depth_texture.Release();
 }
 
+void Texture2d::resize(size_t width, size_t height)
+{
+	if(_has_color)
+	{
+		if(color_texture())
+		{
+			GLuint prev_tx { 0 };
+			glGetIntegerv(GL_TEXTURE_BINDING_2D, reinterpret_cast<GLint *>(&prev_tx));
+			GLint minFilter;
+			GLint magFilter;
+			glGetTextureParameteriv(color_texture().texture_id(), GL_TEXTURE_MIN_FILTER, &minFilter);
+			glGetTextureParameteriv(color_texture().texture_id(), GL_TEXTURE_MAG_FILTER, &magFilter);
+
+			glBindTexture(GL_TEXTURE_2D, color_texture().texture_id());
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, GLsizei(width), GLsizei(height), 0, _color_format, GL_FLOAT, nullptr);
+
+			color_texture().SetFiltering(TextureFiltering::Minify, TextureFilteringParam(minFilter));
+			color_texture().SetFiltering(TextureFiltering::Magnify, TextureFilteringParam(magFilter));
+
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, color_texture().texture_id(), 0);
+
+			glBindTexture(GL_TEXTURE_2D, prev_tx);
+		}
+		else
+		{
+			// TODO: resize color render buffer
+			GLuint prev_rbo { 0 };
+			glGetIntegerv(GL_RENDERBUFFER_BINDING, reinterpret_cast<GLint *>(&prev_rbo));
+
+			glBindRenderbuffer(GL_RENDERBUFFER, _color_rbo_id);
+			glRenderbufferStorage(GL_RENDERBUFFER, _color_format, GLsizei(width), GLsizei(height));
+
+			glBindRenderbuffer(GL_RENDERBUFFER, prev_rbo);
+		}
+	}
+
+	if(_has_depth)
+	{
+		if(depth_texture())
+		{
+			GLuint prev_tx { 0 };
+			glGetIntegerv(GL_TEXTURE_BINDING_2D, reinterpret_cast<GLint *>(&prev_tx));
+			GLint minFilter;
+			GLint magFilter;
+			glGetTextureParameteriv(depth_texture().texture_id(), GL_TEXTURE_MIN_FILTER, &minFilter);
+			glGetTextureParameteriv(depth_texture().texture_id(), GL_TEXTURE_MAG_FILTER, &magFilter);
+
+			glBindTexture(GL_TEXTURE_2D, depth_texture().texture_id());
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, GLsizei(width), GLsizei(height), 0, _depth_format, GL_FLOAT, nullptr);
+
+			depth_texture().SetFiltering(TextureFiltering::Minify, TextureFilteringParam(minFilter));
+			depth_texture().SetFiltering(TextureFiltering::Magnify, TextureFilteringParam(magFilter));
+
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depth_texture().texture_id(), 0);
+
+			glBindTexture(GL_TEXTURE_2D, prev_tx);
+		}
+		else
+		{
+			GLuint prev_rbo { 0 };
+			glGetIntegerv(GL_RENDERBUFFER_BINDING, reinterpret_cast<GLint *>(&prev_rbo));
+
+			glBindRenderbuffer(GL_RENDERBUFFER, _depth_rbo_id);
+			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT32F, GLsizei(width), GLsizei(height));
+
+			glBindRenderbuffer(GL_RENDERBUFFER, prev_rbo);
+		}
+	}
+}
+
 Texture &Texture2d::color_texture()
 {
 	assert(_color_texture);
