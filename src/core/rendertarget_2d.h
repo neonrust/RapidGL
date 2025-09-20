@@ -79,12 +79,12 @@ struct Texture2d
 	operator bool () const;
 
 	// color texture parameters
-	void SetFiltering(TextureFiltering type, TextureFilteringParam filtering);  // color
+	void SetFiltering(TextureFiltering type, TextureFilteringParam filtering);     // color
 	void SetWrapping(TextureWrappingAxis axis, TextureWrappingParam wrapping);     // color
 
 	// depth texture parameters
-	void SetDepthFiltering(TextureFiltering type, TextureFilteringParam filtering);  // color
-	void SetDepthWrapping(TextureWrappingAxis axis, TextureWrappingParam wrapping);     // color
+	void SetDepthFiltering(TextureFiltering type, TextureFilteringParam filtering);
+	void SetDepthWrapping(TextureWrappingAxis axis, TextureWrappingParam wrapping);
 
 private:
 	void attach(GLenum attachment, GLenum internal_format, GLuint texture_id, GLuint &rbo_id);
