@@ -87,7 +87,7 @@ void Texture2d::create(const char *name, size_t width, size_t height, Color::Con
 	glNamedFramebufferReadBuffer(_fbo_id, GL_NONE);
 
 	check_fbo(_fbo_id);
-#if !defined(NDEBUG)
+#if defined(DEBUG)
 	dump_config(_name, _fbo_id);
 #endif
 }
