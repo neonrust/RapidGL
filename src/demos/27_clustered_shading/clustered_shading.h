@@ -120,7 +120,7 @@ private:
 	void bindScreenRenderTarget();
 	void HdrEquirectangularToCubemap(const std::shared_ptr<RGL::RenderTarget::Cube> & cubemap_rt, const std::shared_ptr<RGL::Texture2D> & m_equirectangular_map);
 	void IrradianceConvolution      (const std::shared_ptr<RGL::RenderTarget::Cube> & cubemap_rt);
-	void PrefilterCubemap           (const std::shared_ptr<RGL::RenderTarget::Cube>& cubemap_rt);
+	void PrefilterEnvCubemap        (const std::shared_ptr<RGL::RenderTarget::Cube>& cubemap_rt);
     void PrecomputeIndirectLight    (const std::filesystem::path & hdri_map_filepath);
 	void PrecomputeBRDF             (const std::shared_ptr<RGL::RenderTarget::Texture2d>& rt);
     void GenSkyboxGeometry();
