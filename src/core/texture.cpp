@@ -192,18 +192,6 @@ bool Texture::Create(size_t width, size_t height, size_t depth, GLenum internalF
 	if(not num_mipmaps)
 		num_mipmaps = calculateMipMapLevels(width, height, depth);
 
-#if defined(DEBUG)
-	const auto format_name = gl_lookup::enum_name(internalFormat).substr(3);
-	std::print("Creating {}", width);
-	if(height > 1)
-	{
-		std::print("x{}", height);
-		if(depth > 1)
-			std::print("x{}", depth);
-	}
-	std::print(" texture, {}\n", format_name);
-#endif
-
 	if(height <= 1)
 	{
 		glCreateTextures(GLenum(TextureType::Texture1D), 1, &_texture_id);
@@ -226,6 +214,18 @@ bool Texture::Create(size_t width, size_t height, size_t depth, GLenum internalF
 	m_metadata.channels = 0;      // 1 - 4
 	m_metadata.channel_type = 0;  // GL_UNSIGNED_INT or GL_FLOAT or GL_HALF_FLOAT
 	m_metadata.channel_format = internalFormat;
+
+#if defined(DEBUG)
+	const auto format_name = gl_lookup::enum_name(internalFormat).substr(3);
+	std::print("Texture: created {}", width);
+	if(height > 1)
+	{
+		std::print("x{}", height);
+		if(depth > 1)
+			std::print("x{}", depth);
+	}
+	std::print("; {}\n", format_name);
+#endif
 
 	return true;
 }
