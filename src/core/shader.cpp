@@ -302,10 +302,8 @@ void Shader::setTransformFeedbackVaryings(const std::vector<const char*>& output
 
 void Shader::bind() const
 {
-	if (m_program_id != 0 && m_is_linked)
-	{
+	if(*this)
 		glUseProgram(m_program_id);
-	}
 }
 
 void Shader::setPreBarrier(Barrier::Bits barrier_bits)
