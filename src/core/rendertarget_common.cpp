@@ -77,7 +77,7 @@ void dump_config(const char *fbo_name, GLuint fbo)
 			if (attachment >= GL_COLOR_ATTACHMENT0 and attachment <= GL_COLOR_ATTACHMENT31)
 				label = " Color." + std::to_string(attachment - GL_COLOR_ATTACHMENT0);
 			else
-				label = gl_lookup::enum_name(attachment);
+				label = gl_lookup::enum_name(attachment).substr(3); // GL_
 		}
 
 		std::print("  {}:", label);
@@ -102,7 +102,7 @@ void dump_config(const char *fbo_name, GLuint fbo)
 			glGetTextureLevelParameteriv(obj, 0, GL_TEXTURE_WIDTH, &w);
 			glGetTextureLevelParameteriv(obj, 0, GL_TEXTURE_HEIGHT, &h);
 		}
-		std::print("  {} x {} {} ({:#04x})\n", w, h, gl_lookup::enum_name(uint32_t(fmt)), fmt);
+		std::print("  {} x {} {} ({:#04x})\n", w, h, gl_lookup::enum_name(uint32_t(fmt)).substr(3), fmt);
 	};
 
 	std::print("FBO \"{}\" ({})\n", fbo_name, fbo);
