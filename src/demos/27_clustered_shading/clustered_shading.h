@@ -180,6 +180,7 @@ private:
 	std::shared_ptr<RGL::Shader> m_2d_7segment_shader;
 	std::shared_ptr<RGL::Shader> m_icon_shader;
 	std::shared_ptr<RGL::Shader> m_imgui_depth_texture_shader;
+	std::shared_ptr<RGL::Shader> m_imgui_3d_texture_shader;
 	std::shared_ptr<RGL::Shader> m_fsq_shader;
 
 	// GLuint m_depth_tex2D_id;

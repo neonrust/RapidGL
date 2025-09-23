@@ -335,9 +335,13 @@ void ClusteredShading::init_app()
 	m_icon_shader->link();
 	assert(*m_icon_shader);
 
-	m_imgui_depth_texture_shader = std::make_shared<Shader>(shaders/"imgui_depth_image.vert", shaders/"imgui_depth_image.frag");
+	m_imgui_depth_texture_shader = std::make_shared<Shader>(core_shaders/"imgui_depth_image.vert", core_shaders/"imgui_depth_image.frag");
 	m_imgui_depth_texture_shader->link();
 	assert(*m_imgui_depth_texture_shader);
+
+	m_imgui_3d_texture_shader = std::make_shared<Shader>(core_shaders/"imgui_3d_texture.vert", core_shaders/"imgui_3d_texture.frag");
+	m_imgui_3d_texture_shader->link();
+	assert(*m_imgui_3d_texture_shader);
 
 	m_fsq_shader = std::make_shared<Shader>(shaders/"FSQ.vert", shaders/"FSQ.frag");
 	m_fsq_shader->link();

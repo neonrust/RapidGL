@@ -1,14 +1,21 @@
 #include "clustered_shading.h"
 
+#include "gl_lookup.h"
 #include "gui/gui.h"   // IWYU pragma: keep
+
+// #include "implot.h"
 
 #include "filesystem.h"
 #include "constants.h"
 
+using namespace std::literals;
+
 using namespace RGL;
 
 
-void ImGui_ImageEx(ImTextureID texture_id, ImVec2 size, ImVec2 uv0, ImVec2 uv1, GLuint shader_id);
+void ImGui_ImageEx(ImTextureID texture_id, ImVec2 size, ImVec2 uv1, ImVec2 uv0, GLuint shader_id);
+
+void visualize_3d_texture(const Texture3D &t3, RenderTarget::Texture2d &out, int major_axis, float level);
 
 
 inline ImVec2 operator + (const ImVec2 &A, const ImVec2 &B)
@@ -57,6 +64,16 @@ void ClusteredShading::render_gui()
 	ImGui::Text(" Debug draw: %4ld µs", m_debug_draw_time.average().count());
 	// ImGui::Text("   PP blur: %4ld µs", m_pp_blur_time.average().count());
 
+	// if (ImPlot::BeginPlot("plots"))
+	// {
+	// 	const float x[] = { 0, 1, 2, 3 };
+	// 	const float v[] = { 3.5f, 1.f, 2.f, 4.4f };
+	// 	ImPlot::SetupAxesLimits(0, 100, 0, 100);
+	// 	ImPlot::PlotShaded("Shadows", x, v, 4);
+
+	// 	ImPlot::EndPlot();
+	// }
+
 	ImGui::Begin("Settings");
 	{
 		ImGui::Text("T: %6.2f", _running_time.count());
@@ -91,7 +108,7 @@ void ClusteredShading::render_gui()
 				calculateShadingClusterGrid();
 		}
 
-		if (ImGui::CollapsingHeader("Lights", ImGuiTreeNodeFlags_DefaultOpen))
+		if (ImGui::CollapsingHeader("Lights"))//, ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.5f);
 
@@ -148,17 +165,12 @@ void ClusteredShading::render_gui()
 			ImGui::SliderFloat("Bloom intensity",      &m_bloom_intensity,      0,  2.f, "%.1f");
 			ImGui::SliderFloat("Bloom dirt intensity", &m_bloom_dirt_intensity, 0, 10.f, "%.1f");
 		}
-		if(ImGui::CollapsingHeader("Fog / Scattering"))
+		if(ImGui::CollapsingHeader("Fog / Scattering", ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			{
-				float density = m_fog_density*100.f;
-				if(ImGui::SliderFloat("Fog density", &density, 0.f, 1.f))
-					m_fog_density = density/100.f;
-			}
-			ImGui::Text("Ray march noise (N): %d", _ray_march_noise);
+			ImGui::SliderFloat("Fog density", &m_fog_density, 0.f, 1.f);
 		}
 
-		if(ImGui::CollapsingHeader("Shadows", ImGuiTreeNodeFlags_DefaultOpen))
+		if(ImGui::CollapsingHeader("Shadows"))//, ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			ImGui::SliderFloat("Bias constant",    &m_shadow_bias_constant,       -0.03f,   0.02f, "%.3f");
 			ImGui::SliderFloat("Bias slope scale", &m_shadow_bias_slope_scale,     0.f,    5.f,   "%.1f");
@@ -194,42 +206,31 @@ void ClusteredShading::render_gui()
 				"pp_full_rt",
 				"final_rt",
 				"shadow_atlas",
+
+				// 3d
+				"scattering froxels [3d]",
 			};
-			static int current_image = 9;
+			static int current_image = 6;
 			ImGui::Combo("Render target", &current_image, rt_names, std::size(rt_names));
 
 			RenderTarget::Texture2d *rt = nullptr;
 			RenderTarget::Cube *rtc = nullptr;
+			const Texture3D *t3 = nullptr;
 			switch(current_image)
 			{
-			case 1: rtc = m_env_cubemap_rt.get(); break;
-			case 2: rtc = m_irradiance_cubemap_rt.get(); break;
-			case 3: rtc = m_prefiltered_env_map_rt.get(); break;
-			case 4: rt = &m_depth_pass_rt; break;
-			case 5: rt = &_rt; break;
-			case 6: rt = &_pp_low_rt; break;
-			case 7: rt = &_pp_full_rt; break;
-			case 8: rt = &_final_rt; break;
-			case 9: rt = &_shadow_atlas; break;
+			case  1: rtc = m_env_cubemap_rt.get(); break;
+			case  2: rtc = m_irradiance_cubemap_rt.get(); break;
+			case  3: rtc = m_prefiltered_env_map_rt.get(); break;
+			case  4: rt = &m_depth_pass_rt; break;
+			case  5: rt = &_rt; break;
+			case  6: rt = &_pp_low_rt; break;
+			case  7: rt = &_pp_full_rt; break;
+			case  8: rt = &_final_rt; break;
+			case  9: rt = &_shadow_atlas; break;
+			case 10: t3 = &m_volumetrics_pp.froxel_texture(); break;
 			}
 			// const bool is_cube = current_image >= 1 and current_image <= 3;
 			// const bool is_depth = current_image == 4;
-
-			auto format_str = [](auto f) {
-				if(not f)
-					return "none";
-				switch(f)
-				{
-				case GL_RGB: return "RGB";
-				case GL_RGBA: return "RGBA";
-				case GL_R16F: return "R16F";
-				case GL_RG16F: return "RG16F";
-				case GL_RGBA32F: return "RGBA32F";
-				case GL_DEPTH_COMPONENT32F: return "32F";
-				}
-				return "?";
-			};
-
 
 			ImVec2 top_left { 0, 0 };
 			ImVec2 bottom_right { 1, 1 };
@@ -247,6 +248,31 @@ void ClusteredShading::render_gui()
 			const auto vMin = ImGui::GetWindowContentRegionMin();
 			const auto vMax = ImGui::GetWindowContentRegionMax();
 			const auto win_width = std::min(vMax.x - vMin.x, 512.f);
+			static std::string meta_info;
+			meta_info.clear();
+
+			if(t3)
+			{
+				const auto &meta = t3->GetMetadata();
+				const float aspect = float(meta.width) / float(meta.height);
+
+				const ImVec2 img_size { win_width, float(win_width)/aspect };
+
+				static RenderTarget::Texture2d tex3d_rt;
+				if(not tex3d_rt)
+					tex3d_rt.create("tex3d-preview", 512, 512, RenderTarget::Color::Texture, RenderTarget::Depth::None);
+
+				static int major_axis { 2 };
+				ImGui::Combo("Major axis", &major_axis, "X\0Y\0Z\0");
+				static float level { 0 };
+				ImGui::SliderFloat("Major axis value", &level, 0, 1, "%.2f");
+
+				visualize_3d_texture(*t3, tex3d_rt, major_axis, level);
+
+				rt = &tex3d_rt;
+				const auto color_f = meta.channel_format;
+				meta_info = std::format("Color: {} x {} x {}  {}", meta.width, meta.height, meta.depth, gl_lookup::enum_name(color_f).substr(3));
+			}
 
 			if(rt)
 			{
@@ -273,8 +299,13 @@ void ClusteredShading::render_gui()
 
 					ImGui_ImageEx(texture.texture_id(), img_size, top_left, bottom_right, 0);
 
-					const auto color_f = rt->color_format();
-					ImGui::Text("Color: %u x %u  %s", rt->width(), rt->height(), format_str(color_f));
+					if(not meta_info.empty())
+						ImGui::Text("%s", meta_info.c_str());
+					else
+					{
+						const auto color_f = rt->color_format();
+						ImGui::Text("Color: %u x %u  %s", rt->width(), rt->height(), gl_lookup::enum_name(color_f).substr(3).data());
+					}
 				}
 
 				if(rt->has_depth() and rt->depth_texture())
@@ -285,7 +316,7 @@ void ClusteredShading::render_gui()
 					ImGui_ImageEx(texture.texture_id(), img_size, top_left, bottom_right, m_imgui_depth_texture_shader->program_id());
 
 					const auto depth_f = rt->depth_format();
-					ImGui::Text("Depth: %u x %u  %s", rt->width(), rt->height(), format_str(depth_f));
+					ImGui::Text("Depth: %u x %u  %s", rt->width(), rt->height(), gl_lookup::enum_name(depth_f).substr(3).data());
 				}
 			}
 
@@ -368,4 +399,36 @@ void ImGui_ImageEx(ImTextureID texture_id, ImVec2 size, ImVec2 uv0, ImVec2 uv1, 
 
 		   // reset all ImGui state
 	dl->AddCallback(ImDrawCallback_ResetRenderState, nullptr);
+}
+
+void visualize_3d_texture(const Texture3D &t3, RenderTarget::Texture2d &out, int major_axis, float level)
+{
+	// TODO: visualize the 3d texture, somehow.
+	//   render to 'out'
+
+	GLint prev_fbo { 0 };
+	glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo);
+
+	out.bindRenderTarget();
+
+	static GLuint _empty { 0 };
+	if(not _empty)
+		glCreateVertexArrays(1, &_empty);
+
+	const auto shader_path = FileSystem::getResourcesPath() / "shaders";
+	static Shader shader(shader_path / "imgui_3d_texture.vert", shader_path / "imgui_3d_texture.frag");
+	if(not shader)
+		shader.link();
+
+	t3.Bind(0);
+
+	// shader.setUniform("u_projection"sv, glm::mat4(1));
+	shader.setUniform("u_axis", major_axis);
+	shader.setUniform("u_level", level);
+
+	shader.bind();
+	glBindVertexArray(_empty);
+	glDrawArrays(GL_TRIANGLES, 0, 3);
+
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, GLuint(prev_fbo));
 }
