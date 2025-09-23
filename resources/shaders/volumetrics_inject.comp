@@ -1,0 +1,462 @@
+#version 460 core
+
+#include "../../src/demos/27_clustered_shading/shaders/shared-structs.glh"
+
+#define GROUP_SIZE 8
+
+layout(local_size_x = GROUP_SIZE, local_size_y = GROUP_SIZE, local_size_z = 1) in;
+
+const float PI = 3.14159265359;
+
+const float EPSILON = 1e-4;
+
+const float TRANSMITTANCE_THRESHOLD = 0.01;
+const float MAX_SCATTER_DISTANCE = 80;
+const float MIN_VISIBILTY = EPSILON;
+const int BLUE_NOISE_SIZE = 128;
+
+layout(binding = 3)          uniform           sampler2D u_blue_noise;
+layout(rgba32f, binding = 5) uniform writeonly image3D   u_output_scatter;
+layout(binding = 6)          uniform           sampler3D u_previous_scatter;
+layout(binding = 20)         uniform           sampler2D u_shadow_atlas;
+
+layout(std430, binding = SSBO_BIND_LIGHTS) readonly buffer LightsSSBO
+{
+	GPULight ssbo_lights[];
+};
+
+layout(std430, binding = SSBO_BIND_SHADOW_SLOTS_INFO) readonly buffer ShadowSlotInfoSSBO
+{
+	ShadowSlotInfo ssbo_shadow_slots[];
+};
+
+layout(std430, binding = SSBO_BIND_VOLUMETRIC_LIGHTS_INDEX) readonly buffer VolumetricLightsIndexSSBO
+{
+	uint ssbo_volumetric_lights[];
+};
+
+
+uniform float u_froxel_zexp;
+uniform float u_fog_density; // TODO: noise texture?
+uniform float u_fog_anisotropy;
+uniform float u_light_max_distance;
+uniform float u_shadow_max_distance;
+uniform float u_volumetric_max_distance;
+uniform bool u_froxel_blend_previous;
+uniform float u_froxel_blend_fraction; // e.g. 0.2
+uniform float u_effect_scale;
+
+uniform vec3  u_cam_pos;
+uniform float u_near_z;
+uniform float u_far_z;
+uniform mat4  u_projection;
+uniform mat4  u_view;
+uniform mat4  u_inv_projection;
+uniform mat4  u_inv_view;
+uniform mat4  u_inv_view_projection;
+uniform mat4  u_prev_view_projection;
+
+vec3 pointLightVisibility(GPULight light, vec3 world_pos);
+float getSquareFalloffAttenuation(float distance_sq, float light_radius);
+float getSpotAngleAttenuation(vec3 to_light, vec3 spot_axis, float outer_angle, float inner_angle);
+
+float fadeByDistance(float distance, float hard_limit);
+
+
+float z_slice_thickness(int z)
+{
+    return exp(-float(FROXEL_GRID_D - z - 1) / float(FROXEL_GRID_D));
+}
+
+float linear_01_to_exp_01_depth(float z)
+{
+    float z_buffer_params_y = u_far_z / u_near_z;
+    float z_buffer_params_x = 1 - z_buffer_params_y;
+
+    return (1 / z - z_buffer_params_y) / z_buffer_params_x;
+}
+
+vec3 uvToNDC(vec3 uv, float depth_exp)
+{
+    vec3 ndc;
+
+    ndc.x = 2 * uv.x - 1;
+    ndc.y = 2 * uv.y - 1;
+    ndc.z = 2 * linear_01_to_exp_01_depth(uv.z) - 1;
+
+    return ndc;
+}
+
+vec3 ndcToWorldPos(vec3 ndc, mat4 inv_vp)
+{
+    vec4 p = inv_vp * vec4(ndc, 1);
+
+    p.x /= p.w;
+    p.y /= p.w;
+    p.z /= p.w;
+
+    return p.xyz;
+}
+
+vec3 froxelUV(ivec3 froxel, float noise)
+{
+    // Exponential View-Z
+    float view_z = u_near_z * pow(u_far_z / u_near_z, (float(froxel.z) + 0.5 + noise) / float(FROXEL_GRID_D));
+
+    return vec3((float(froxel.x) + 0.5) / float(FROXEL_GRID_W),
+                (float(froxel.y) + 0.5) / float(FROXEL_GRID_H),
+                view_z / u_far_z);
+}
+
+vec3 froxelUV(ivec3 froxel)
+{
+	return froxelUV(froxel, 0);
+}
+
+vec3 froxelWorldPos(ivec3 froxel, float depth_exp, mat4 inv_view_proj, float noise)
+{
+    vec3 uv = froxelUV(froxel, noise);
+    vec3 ndc = uvToNDC(uv, depth_exp);
+    return ndcToWorldPos(ndc, inv_view_proj);
+}
+
+vec3 froxelWorldPos(ivec3 froxel, float depth_exp, mat4 inv_view_proj)
+{
+	return froxelWorldPos(froxel, depth_exp, inv_view_proj, 0);
+}
+vec3 worldToUV(vec3 world_pos, mat4 view_proj);
+
+float sampleBlueNoise(ivec3 coord)
+{
+    ivec2 noise_coord = (coord.xy + ivec2(0, 1) * coord.z * BLUE_NOISE_SIZE) % BLUE_NOISE_SIZE;
+    return texelFetch(u_blue_noise, noise_coord, 0).r;
+}
+
+float phase_function(vec3 Wo, vec3 Wi, float g)
+{
+    float cos_theta = dot(Wo, Wi);
+    float denom     = 1 + g * g + 2 * g * cos_theta;
+    return (1 / (4 * PI)) * (1 - g * g) / max(pow(denom, 1.5f), EPSILON);
+}
+
+const float s_min_visibility = 1e-3;
+const float s_min_contribution = 1e-4;
+
+void main()
+{
+	ivec3 froxel = ivec3(gl_GlobalInvocationID.xyz);
+	if(froxel.x >= FROXEL_GRID_W ||froxel.y >= FROXEL_GRID_H || froxel.z >= FROXEL_GRID_D)
+		return;
+
+	float noise = sampleBlueNoise(froxel) - 0.5f; // * 0.999f
+
+	vec3 world_pos = froxelWorldPos(froxel, u_froxel_zexp, u_inv_view_projection, noise);
+	vec3 cam_to_pos = normalize(u_cam_pos - world_pos);
+
+	float thickness  = z_slice_thickness(froxel.z);
+
+	vec3 total_scattered = vec3(0);
+
+	for(uint index = 0; index < ssbo_volumetric_lights.length(); ++index)
+	{
+		uint light_index = ssbo_volumetric_lights[index];
+		GPULight light = ssbo_lights[light_index];
+
+		vec3 light_to_froxel;
+		float distance_sq;
+		bool affecting_froxel = true;
+		float distance_fade = 1;
+		if(! IS_DIR_LIGHT(light))
+		{
+			light_to_froxel = world_pos - light.position;
+			distance_sq = dot(light_to_froxel, light_to_froxel);
+			if(distance_sq > light.affect_radius*light.affect_radius)
+				affecting_froxel = false; // still need to mix with value from previous frame
+
+			// TODO: perform frustum culling?
+
+			float light_edge_distance = max(0, distance(light.position, u_cam_pos) - light.affect_radius);
+			// fade the volumetrics by distance
+			distance_fade = fadeByDistance(light_edge_distance, u_light_max_distance);
+			if(distance_fade < s_min_contribution)
+				continue;
+		}
+
+		vec3 scatter_contrib = vec3(0);
+
+		if(affecting_froxel)
+		{
+		    vec3 visibility = pointLightVisibility(light, world_pos);
+
+			if(visibility.x + visibility.y + visibility.z > s_min_visibility)
+			{
+				vec3 light_direction;
+				if(IS_DIR_LIGHT(light))
+					light_direction = light.direction;
+				else
+					light_direction = normalize(light.position - world_pos);
+
+				float contribution = phase_function(cam_to_pos, -light_direction, u_fog_anisotropy);
+
+				// positional lights are affected by their... uhm, position
+				if(IS_POINT_LIGHT(light) || IS_SPOT_LIGHT(light))
+					contribution *= getSquareFalloffAttenuation(distance_sq, light.affect_radius*light.affect_radius);
+				if(IS_SPOT_LIGHT(light))
+					contribution *= getSpotAngleAttenuation(normalize(light_to_froxel), light.direction, light.outer_angle, light.inner_angle);
+				contribution *= light.fog_intensity;
+
+				if(contribution > s_min_contribution)
+				{
+		        	scatter_contrib = light.color
+											* light.intensity
+											* contribution
+											* distance_fade;
+				}
+			}
+		}
+
+        if(u_froxel_blend_previous)
+        {
+        	// same as above, but without noise
+	        vec3 world_pos = froxelWorldPos(froxel, u_froxel_zexp, u_inv_view_projection);
+
+	        // find the UV in the previous froxel grid
+	        vec3 prev_uv = worldToUV(world_pos, u_prev_view_projection);
+
+	        // skip if previous UV is outside the froxel grid
+	        if(all(greaterThanEqual(prev_uv, vec3(0))) && all(lessThanEqual(prev_uv, vec3(1))))
+	        {
+	            // Fetch history sample
+	            vec3 prev_scatter = textureLod(u_previous_scatter, prev_uv, 0).rgb;
+
+	            scatter_contrib = mix(prev_scatter, scatter_contrib, u_froxel_blend_fraction);
+	        }
+        }
+
+        total_scattered += scatter_contrib;
+	}
+
+	float density = u_fog_density; // TODO: noise texture?
+	imageStore(u_output_scatter, froxel, vec4(total_scattered * density * u_effect_scale, density));
+
+	// top pixel/froxel row empty?
+	froxel.y = FROXEL_GRID_H - 2;
+	imageStore(u_output_scatter, froxel, vec4(0, 10, 0, 1));
+}
+
+const float SOFT_DISTANCE_LIMIT = 0.8; // fraction of hard limit
+
+float fadeByDistance(float distance, float hard_limit)
+{
+	return 1 - smoothstep(hard_limit*SOFT_DISTANCE_LIMIT, hard_limit, distance);
+}
+
+float exp_to_linear_depth(float z, float n, float f)
+{
+    float z_buffer_params_y = u_far_z / u_near_z;
+    float z_buffer_params_x = 1.0f - z_buffer_params_y;
+
+    return 1 / (z_buffer_params_x * z + z_buffer_params_y);
+}
+
+vec3 ndcToUV(vec3 ndc, float depth_power)
+{
+    vec3 uv;
+
+    uv.x = ndc.x * 0.5f + 0.5f;
+    uv.y = ndc.y * 0.5f + 0.5f;
+    uv.z = exp_to_linear_depth(ndc.z * 0.5f + 0.5f, u_near_z, u_far_z);
+
+    // Exponential View-Z
+    vec2 params = vec2(float(FROXEL_GRID_D) / log2(u_far_z / u_near_z), -(float(FROXEL_GRID_D) * log2(u_near_z) / log2(u_far_z / u_near_z)));
+
+    float view_z = uv.z * u_far_z;
+    uv.z = (max(log2(view_z) * params.x + params.y, 0)) / FROXEL_GRID_D;
+
+    return uv;
+}
+
+vec3 worldToNDC(vec3 world_pos, mat4 view_proj)
+{
+    vec4 p = view_proj * vec4(world_pos, 1.0f);
+
+    if (p.w > 0.0f)
+    {
+        p.x /= p.w;
+        p.y /= p.w;
+        p.z /= p.w;
+    }
+
+    return p.xyz;
+}
+
+
+vec3 worldToUV(vec3 world_pos, mat4 view_proj)
+{
+    vec3 ndc = worldToNDC(world_pos, view_proj);
+    return ndcToUV(ndc, u_froxel_zexp);
+}
+
+// from pbr_scatter_contrib.glh (slightly modified)
+float getSquareFalloffAttenuation(float distance_sq, float light_radius_squared)
+{
+    // float distance_square = dot(pos_to_light, pos_to_light);
+    float factor          = distance_sq / light_radius_squared;
+    float smooth_factor   = max(1.0 - factor * factor, 0.0);
+
+    return (smooth_factor * smooth_factor) / max(distance_sq, 1e-5);
+}
+
+float getSpotAngleAttenuation(vec3 to_light, vec3 spot_dir, float outer_angle, float inner_angle)
+{
+    // the scale and offset computations can be done CPU-side
+    float cos_outer   = cos(outer_angle);
+    // NOTE: in the real-world, the inner angle will most likely be nearly zero
+    float spot_scale  = 1.0 / max(cos(inner_angle) - cos_outer, 1e-5);
+    float spot_offset = -cos_outer * spot_scale;
+
+    float cd          = dot(spot_dir, to_light);
+    float attenuation = clamp(cd * spot_scale + spot_offset, 0.0, 1.0);
+
+    return attenuation * attenuation;
+}
+
+void detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 view_proj, out vec4 rect)
+{
+	// figure out which of the 6 cube faces is relevant
+
+	// X-axis as initial assumption
+	int major_axis = 0;
+	float max_axis = abs(light_to_frag.x);
+	vec3 abs_dir = abs(light_to_frag);
+
+	if (abs_dir.y > max_axis)
+	{
+	    major_axis = 1;
+	    max_axis = abs_dir.y;
+	}
+	if (abs_dir.z > max_axis)
+	{
+	    major_axis = 2;
+	    max_axis = abs_dir.z;
+	}
+
+	// select projection and atlas rect for this face
+	//   surprisingly, this ugliness is quite a bit faster than just view_proj[face]
+	mat4 vp_0 = slot_info.view_proj[0];
+	mat4 vp_1 = slot_info.view_proj[1];
+	mat4 vp_2 = slot_info.view_proj[2];
+	mat4 vp_3 = slot_info.view_proj[3];
+	mat4 vp_4 = slot_info.view_proj[4];
+	mat4 vp_5 = slot_info.view_proj[5];
+
+	vec4 rect_0 = slot_info.atlas_rect[0];
+	vec4 rect_1 = slot_info.atlas_rect[1];
+	vec4 rect_2 = slot_info.atlas_rect[2];
+	vec4 rect_3 = slot_info.atlas_rect[3];
+	vec4 rect_4 = slot_info.atlas_rect[4];
+	vec4 rect_5 = slot_info.atlas_rect[5];
+
+	if (major_axis == 0)
+	{
+	    if(light_to_frag.x > 0) // +X
+		{
+			view_proj = vp_0;
+			rect = rect_0;
+		}
+		else  // -X
+		{
+			view_proj = vp_1;
+			rect = rect_1;
+		}
+	}
+	else if (major_axis == 1)
+	{
+		if(light_to_frag.y > 0) // +Y
+		{
+			view_proj = vp_2;
+			rect = rect_2;
+		}
+		else  // -Y
+		{
+			view_proj = vp_3;
+			rect = rect_3;
+		}
+	}
+	else
+	{
+	    if(light_to_frag.z > 0) // +Z
+		{
+			view_proj = vp_4;
+			rect = rect_4;
+		}
+		else  // -Z
+		{
+			view_proj = vp_5;
+			rect = rect_5;
+		}
+	}
+}
+
+float sampleShadow(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max, vec2 texel_size)
+{
+	float sample_depth = textureLod(u_shadow_atlas, atlas_uv, 0).r;
+ 	return current_depth > sample_depth ? 0 : 1;
+}
+
+vec3 pointLightVisibility(GPULight light, vec3 world_pos)
+{
+	float light_edge_distance = max(0, distance(light.position, u_cam_pos) - light.affect_radius);
+	// fade the whole light by distance
+	float light_fade = fadeByDistance(light_edge_distance, u_light_max_distance);
+	if(light_fade == 0)
+		return vec3(0);
+
+	if(! IS_SHADOW_CASTER(light))
+		return vec3(light_fade);
+
+	uint shadow_idx = GET_SHADOW_IDX(light);
+	if(shadow_idx == LIGHT_NO_SHADOW)
+		return vec3(light_fade);  // no shadow map in use
+
+	// fade the shadow sample by distance (utilize cluster z-coord?)
+	float fragment_distance = distance(world_pos, u_cam_pos);
+	float shadow_fade = fadeByDistance(fragment_distance, u_shadow_max_distance);
+	if(shadow_fade == 0)
+		return vec3(light_fade);
+
+	ShadowSlotInfo slot_info = ssbo_shadow_slots[shadow_idx];
+
+	vec3 light_to_frag = world_pos - light.position;
+
+	mat4 proj;
+	vec4 rect;
+	detectCubeFaceSlot(light_to_frag, slot_info, proj, rect);
+	// ignore 1 pixel around the edges
+	rect.x += 1;
+	rect.y += 1;
+	rect.z -= 2;
+	rect.w -= 2;
+
+	vec2 texel_size = 1.0 / vec2(textureSize(u_shadow_atlas, 0));
+	vec4 rect_uv = rect * vec4(texel_size, texel_size);
+
+	// to light space
+	vec4 light_space = proj * vec4(world_pos, 1);
+	light_space.xyz /= light_space.w; // NDC
+	vec2 face_uv = light_space.xy * 0.5 + 0.5; // [0, 1]
+
+	float light_distance = length(light_to_frag);
+	float normalized_depth = light_distance / light.affect_radius;
+
+	vec2 atlas_uv = rect_uv.xy + face_uv * (rect_uv.zw + texel_size);
+
+	vec2 uv_min = vec2(rect_uv.x, rect_uv.y);
+	vec2 uv_max = vec2(rect_uv.x + rect_uv.z - texel_size.x, rect_uv.y + rect_uv.w - texel_size.y);
+	float shadow_sample = sampleShadow(normalized_depth, atlas_uv, uv_min, uv_max, texel_size);
+
+	float v_faded = 1 - (1 - shadow_sample) * shadow_fade;
+	float visible = light_fade * v_faded;
+
+	return vec3(visible);
+}

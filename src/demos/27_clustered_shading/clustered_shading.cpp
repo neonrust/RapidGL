@@ -29,10 +29,11 @@ static constexpr auto s_relevant_lights_update_min_interval = 250ms;
 
 // light/shadow distances as fraction of camera far plane (OR of furthest shading cluster? should be the same though...)
 //  must be in this order
-static constexpr auto s_light_relevant_fraction      = 0.6f;//0.8f;   // input to cluster light culling
-static constexpr auto s_light_affect_fraction        = 0.5f;//0.75f;  // fade shading by distance
-static constexpr auto s_light_shadow_max_fraction    = 0.4f;//0.65f;  // may allocated  sdhadow map
-static constexpr auto s_light_shadow_affect_fraction = 0.3f;//0.5f;   // fade shadow by distance
+static constexpr auto s_light_relevant_fraction      = 0.6f;  // input to cluster light culling
+static constexpr auto s_light_affect_fraction        = 0.5f;  // fade shading by distance
+static constexpr auto s_light_volumetric_fraction    = 0.4f;  // fade volumetric/scattering by distance
+static constexpr auto s_light_shadow_max_fraction    = 0.4f;  // may allocated  sdhadow map
+static constexpr auto s_light_shadow_affect_fraction = 0.3f;  // fade shadow by distance
 
 static_assert(s_light_relevant_fraction > s_light_affect_fraction);
 static_assert(s_light_affect_fraction > s_light_shadow_max_fraction);
@@ -82,7 +83,8 @@ ClusteredShading::ClusteredShading() :
 	m_cluster_lights_range_ssbo("cluster-lights"sv),
 	m_cluster_all_lights_index_ssbo("cluster-all-lights"sv),
 	m_affecting_lights_bitfield_ssbo("affecting-lights-bitfield"sv),
-	m_relevant_lights_index_ssbo("relevant-lights-index"sv),
+	_relevant_lights_index_ssbo("relevant-lights-index"sv),
+	_volumetric_lights_index_ssbo("volumetric-lights"sv),
 	m_shadow_map_params_ssbo("shadow-map-params"sv),
 	m_exposure            (0.4f),
 	m_gamma               (2.2f),
@@ -94,8 +96,7 @@ ClusteredShading::ClusteredShading() :
 	m_bloom_intensity     (0.5f),
 	m_bloom_dirt_intensity(0),
 	m_bloom_enabled       (true),
-	m_fog_density         (0.f), // [ 0, 0.5 ]   nice-ish value: 0.015
-	_ray_march_noise      (1)
+	m_fog_density         (0.9f) // [ 0, 0.5 ]   nice-ish value: 0.015
 {
 	m_cluster_aabb_ssbo.bindAt(SSBO_BIND_CLUSTER_AABB);
 	m_shadow_map_params_ssbo.bindAt(SSBO_BIND_SHADOW_SLOTS_INFO);
@@ -104,7 +105,8 @@ ClusteredShading::ClusteredShading() :
 	m_cluster_all_lights_index_ssbo.bindAt(SSBO_BIND_CLUSTER_ALL_LIGHTS);
 	m_affecting_lights_bitfield_ssbo.bindAt(SSBO_BIND_AFFECTING_LIGHTS_BITFIELD);
 	m_cull_lights_args_ssbo.bindAt(SSBO_BIND_CULL_LIGHTS_ARGS);
-	m_relevant_lights_index_ssbo.bindAt(SSBO_BIND_RELEVANT_LIGHTS_INDEX);
+	_relevant_lights_index_ssbo.bindAt(SSBO_BIND_RELEVANT_LIGHTS_INDEX);
+	_volumetric_lights_index_ssbo.bindAt(SSBO_BIND_VOLUMETRIC_LIGHTS_INDEX);
 
 	_affecting_lights.reserve(256);
 
@@ -300,8 +302,8 @@ void ClusteredShading::init_app()
 	m_bloom_pp.create();
 	assert(m_bloom_pp);
 
-	// m_scattering_pp.create();
-	// assert(m_scattering_pp);
+	m_volumetrics_pp.create();
+	assert(m_volumetrics_pp);
 
 	m_blur3_pp.create(Window::width(), Window::height());
 	assert(m_blur3_pp);
@@ -357,8 +359,7 @@ void ClusteredShading::init_app()
 	_rt.create("rt", Window::width(), Window::height());
 	_rt.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipNearest); // not necessary?
 
-	static constexpr size_t low_scale = 4;
-	_pp_low_rt.create("pp-low", Window::width()/low_scale, Window::height()/low_scale, RenderTarget::Color::Default, RenderTarget::Depth::None);
+	_pp_low_rt.create("pp-low", FROXEL_GRID_W, FROXEL_GRID_H, RenderTarget::Color::Default, RenderTarget::Depth::None);
 	_pp_low_rt.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipNearest); // not necessary?
 
 	_pp_full_rt.create("pp-full", Window::width(), Window::height(), RenderTarget::Color::Default, RenderTarget::Depth::None);
@@ -725,12 +726,6 @@ void ClusteredShading::calculateShadingClusterGrid()
 
 	static constexpr uint32_t screen_division = 16;    // more than 20 might be overkill
 	static constexpr float    depth_scale     = 1.f;   // default 1
-	// if the cluster resolution is even on X & Y axis, it's possible to partiaion into 4 quadrants (if even divisable)
-	//   each cluster on the Z-axis is of course also possible to partition by.
-	//   not sure how this could be taken advantage of in the light culling stpe.
-	// Remember: for light scattering, the clusters needs to have lights assigned to them
-	//   whether they're non-enpty or not.
-	// ALT: define the grid centered on the screen, that way it can always be partitioned
 
 
 
@@ -853,12 +848,6 @@ void ClusteredShading::input()
 		m_camera_fov = std::min(m_camera_fov + 0.5f, 140.f);
 	else if(Input::isKeyDown(KeyCode::Minus))
 		m_camera_fov = std::max(m_camera_fov - 0.5f, 3.f);
-
-	if(Input::wasKeyPressed(KeyCode::N))
-	{
-		_ray_march_noise = (_ray_march_noise + 1) % 3;
-		std::print("ray_march_noise: {}\n", _ray_march_noise);
-	}
 
     /* Toggle between wireframe and solid rendering */
 	// if (Input::getKeyUp(KeyCode::F2))
@@ -1282,44 +1271,55 @@ void ClusteredShading::render()
 
 	if(m_fog_density > 0)
 	{
-		m_scattering_pp.setCameraUniforms(m_camera);
-		m_scattering_pp.shader().setUniform("u_time"sv,               _running_time.count());
-		// TODO: use a multiple of the shading cluster resolution, and we can thus re-use the light culling information
-		//   e.g. 8-10 more in XY-axes and maybe 2-3x more on Z-axis
-		//   also means that the light culling must process *all* clusters, not only non-empty ones
-		m_scattering_pp.shader().setUniform("u_cluster_resolution"sv, m_cluster_resolution);
-		m_scattering_pp.shader().setUniform("u_cluster_size_ss"sv,    glm::uvec2(m_cluster_block_size));
-		m_scattering_pp.shader().setUniform("u_fog_color"sv,          glm::vec3(1, 1, 1));
-		m_scattering_pp.shader().setUniform("u_fog_density"sv,        m_fog_density);
-		m_scattering_pp.shader().setUniform("u_ray_march_noise",      _ray_march_noise);
+		m_volumetrics_pp.setCameraUniforms(m_camera);
+//		m_volumetrics_pp.shader().setUniform("u_time"sv,               _running_time.count());
+		// m_volumetrics_pp.shader().setUniform("u_cluster_resolution"sv, m_cluster_resolution);
+		// m_volumetrics_pp.shader().setUniform("u_cluster_size_ss"sv,    glm::uvec2(m_cluster_block_size));
+		// m_volumetrics_pp.shader().setUniform("u_ray_march_noise",      _ray_march_noise);
+
+		const auto view_projection = m_camera.projectionTransform() * m_camera.viewTransform();
+		const auto inv_view_projection = glm::inverse(view_projection);
+		m_volumetrics_pp.shader().setUniform("u_inv_view_projection"sv, inv_view_projection);
+		static glm::mat4 prev_view_projection = glm::mat4(1);
+		m_volumetrics_pp.shader().setUniform("u_prev_view_projection"sv, prev_view_projection);
+		prev_view_projection = view_projection;
+
+		m_volumetrics_pp.setAnisotropy(0.7f);
+		m_volumetrics_pp.setDensity(1 - m_fog_density);  // TODO: noise texture?
+
+		m_volumetrics_pp.shader().setUniform("u_volumetric_max_distance"sv, m_camera.farPlane() * s_light_volumetric_fraction);
+		m_volumetrics_pp.shader().setUniform("u_light_max_distance"sv,  m_camera.farPlane() * s_light_affect_fraction);
+		m_volumetrics_pp.shader().setUniform("u_shadow_max_distance"sv, m_camera.farPlane() * s_light_shadow_affect_fraction);
+
+
+		_shadow_atlas.bindDepthTextureSampler(20);
+		m_volumetrics_pp.inject();  // TODO: light index list (ssbo)?
 
 		m_depth_pass_rt.bindDepthTextureSampler(2);
-
 		_pp_low_rt.clear();
-		m_scattering_pp.render(_rt, _pp_low_rt);  // '_rt' actually isn't used but the API expects an argument
+		m_volumetrics_pp.render(_rt, _pp_low_rt);  // '_rt' actually isn't used but the API expects an argument
 
 
 		// _pp_low_rt.copyTo(_pp_full_rt);  // copy and upscale
 		// NOTE: draw b/c copy(blit) doesn't work!?!?
 		//   no biggie though, it's often faster in practice
 		draw2d(_pp_low_rt.color_texture(), _pp_full_rt);
+
+#if 1
+		// TODO: change to MipmapBlur
+		// m_blur3_pp.render(_pp_full_rt, _pp_full_rt);
+		// m_blur3_pp.render(_pp_full_rt, _pp_full_rt);
+		// m_blur3_pp.render(_pp_full_rt, _pp_full_rt);
+
+		// add the scattering effect on to the final image
+		draw2d(_pp_full_rt.color_texture(), _rt, BlendMode::Add);   // why does this (kind of) do "replace" instead?
+		// m_pp_blur_time.add(_gl_timer.elapsed<microseconds>());
+#endif
+
+		m_scatter_time.add(_gl_timer.elapsed<microseconds>(true));
 	}
 	else
 		_pp_full_rt.clear();
-
-	m_scatter_time.add(_gl_timer.elapsed<microseconds>(true));
-
-#if 0
-	// TODO: change to MipmapBlur
-	// m_blur3_pp.render(_pp_full_rt, _pp_full_rt);
-	// m_blur3_pp.render(_pp_full_rt, _pp_full_rt);
-	// m_blur3_pp.render(_pp_full_rt, _pp_full_rt);
-
-	// add the scattering effect on to the final image
-	draw2d(_pp_full_rt.color_texture(), _rt, BlendMode::Add);   // why does this (kind of) do "replace" instead?
-#endif
-	m_pp_blur_time.add(_gl_timer.elapsed<microseconds>());
-
 
 
 	// TODO: compute average luminance of rendered image
@@ -1582,12 +1582,15 @@ const std::vector<StaticObject> &ClusteredShading::cullScene(const Camera &view)
 	_scenePvs.clear();
 	_scenePvs.reserve(256); // a guesstimate how many objects are visible (maybe a % of total count?)
 
-	// perform frustum culling of all objects in the scene (or a partition there of)
+	// perform frustum culling of all objects in the scene (or a partition thereof)
 
 	const auto view_pos = view.position();
 	const auto &frustum = view.frustum();
 
 	const auto max_view_distance = view.farPlane()* s_light_relevant_fraction;
+
+	static std::vector<LightIndex> volumetric_lights;
+	volumetric_lights.reserve(256);
 
 	// this probably doesn't need to be done every frame
 	//   if no lights nor the view moves then only once
@@ -1598,13 +1601,18 @@ const std::vector<StaticObject> &ClusteredShading::cullScene(const Camera &view)
 			last_update = T0;
 
 			_lightsPvs.clear();
+			volumetric_lights.clear();
 
 			for(const auto &[l_index, L]: std::views::enumerate(_light_mgr))
 			{
 				const auto light_index = LightIndex(l_index);
 
 				if(GET_LIGHT_TYPE(L) == LIGHT_TYPE_DIRECTIONAL)
+				{
 					_lightsPvs.push_back(light_index);
+					if(IS_VOLUMETRIC(L))
+						volumetric_lights.push_back(light_index);
+				}
 				else
 				{
 					const auto edge_distance = std::max(0.f, glm::distance(L.position, view_pos) - L.affect_radius);
@@ -1615,11 +1623,18 @@ const std::vector<StaticObject> &ClusteredShading::cullScene(const Camera &view)
 						const auto light_id = _light_mgr.light_id(light_index);
 						_shadow_atlas.remove_allocation(light_id);
 					}
+
+					if(IS_VOLUMETRIC(L))
+					{
+						if(intersect::check(m_camera.frustum(), _light_mgr.light_bounds(L)))
+							volumetric_lights.push_back(light_index);
+					}
 				}
 			}
 			// only upload when changed...
-			m_relevant_lights_index_ssbo.set(_lightsPvs);
+			_relevant_lights_index_ssbo.set(_lightsPvs);
 			// std::print("   relevant lights: {}\n", _lightsPvs.size());
+			_volumetric_lights_index_ssbo.set(volumetric_lights);
 		}
 	}
 

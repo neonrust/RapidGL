@@ -24,3 +24,19 @@ add_custom_target(Scripts
 	SOURCES
 	${SCRIPT_FILES}
 )
+
+set(SHADER_PATH resources/shaders)
+set(SHADER_FILES
+	${SHADER_PATH}/billboard-icon.vert
+	${SHADER_PATH}/billboard-icon.frag
+	${SHADER_PATH}/imgui_3d_texture.frag
+	${SHADER_PATH}/imgui_3d_texture.vert
+	${SHADER_PATH}/imgui_depth_image.frag
+	${SHADER_PATH}/imgui_depth_image.vert
+	${SHADER_PATH}/volumetrics_inject.comp
+	${SHADER_PATH}/volumetrics_march.comp
+)
+add_custom_target(CoreShaders
+	SOURCES
+	${SHADER_FILES}
+)

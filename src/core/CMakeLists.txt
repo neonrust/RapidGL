@@ -26,7 +26,7 @@ set(SOURCE_FILES_CORE
 	pp_bloom.cpp
 	pp_gaussian_blur.cpp
 	pp_gaussian_blur_fixed.cpp
-	pp_light_scattering.cpp
+	pp_volumetrics.cpp
 	pp_mipmap_blur.cpp
 	pp_tonemapping.cpp
 	rendertarget_2d.cpp
@@ -70,7 +70,7 @@ set(HEADER_FILES_CORE
 	pp_bloom.h
 	pp_gaussian_blur.h
 	pp_gaussian_blur_fixed.h
-	pp_light_scattering.h
+	pp_volumetrics.h
 	pp_mipmap_blur.h
 	pp_tonemapping.h
 	rendertarget_2d.h

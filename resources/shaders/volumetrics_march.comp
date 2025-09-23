@@ -1,0 +1,143 @@
+#version 460 core
+
+#include "../../src/demos/27_clustered_shading/shaders/shared-structs.glh"
+
+#define GROUP_SIZE_X 8
+#define GROUP_SIZE_Y 8
+#define GROUP_SIZE_Z 1
+
+#define MARCH_STEPS 128
+#define M_PI 3.14159265359
+
+layout(local_size_x = GROUP_SIZE_X, local_size_y = GROUP_SIZE_Y, local_size_z = GROUP_SIZE_Z) in;
+
+uniform float u_near_z;
+uniform float u_far_z;
+uniform mat4  u_projection;
+
+layout(binding = 5)          uniform           sampler3D u_input_scatter;
+layout(binding = 2)          uniform           sampler2D u_input_depth;
+layout(binding = 1, rgba32f) uniform writeonly image2D   u_output_volumetrics;
+
+const float s_min_thickness = 0.001;
+
+vec2 froxel_depth_edges(int z);
+float froxel_distance(int z);
+float depthbuffer_to_view_z(float depth, mat4 proj);
+vec4 texture_tricubic(sampler3D tex, vec3 coord);
+
+void main()
+{
+    ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
+
+    vec2 depth_uv = vec2(pixel) / vec2(textureSize(u_input_depth, 0));
+    float depth = texture(u_input_depth, depth_uv).r;
+    float fragment_depth = depthbuffer_to_view_z(depth, u_projection);
+
+    // if(isnan(fragment_depth) || fragment_depth == 0)
+    // {
+    // 	imageStore(u_output_volumetrics, pixel, vec4(10, 0, 10, 1));
+    //  	return;
+    // }
+
+   	vec3 radiance = vec3(0);
+	float transmittance = 1;
+
+	for(int z = 0; z < FROXEL_GRID_D; z++)
+	{
+		ivec3 froxel = ivec3(pixel, z);
+
+		vec2 depth_edges = froxel_depth_edges(z);
+		float near_edge = depth_edges.x;
+		float far_edge  = depth_edges.y;//min(depth_edges.y, -fragment_depth);
+
+		float thickness = far_edge - near_edge;
+		if(thickness < s_min_thickness)
+			break;
+
+		vec4 scattered_density = texelFetch(u_input_scatter, froxel, 0);
+		//vec4 scattered_density = texture_tricubic(u_input_scatter, froxel);/
+		vec3 scattered = scattered_density.rgb;
+		float density = scattered_density.a;
+
+		float exp_absorption = exp(-density * thickness);
+
+		radiance += transmittance * scattered * thickness;
+		transmittance *= exp_absorption;
+
+		// if(depth_edges.y > fragment_depth)  // we hit "a wall"
+		// 	break;
+	}
+
+    imageStore(u_output_volumetrics, pixel, vec4(radiance, 1));
+}
+
+float froxel_distance(int z)
+{
+    return u_near_z * pow(u_far_z / u_near_z, (float(z) + 0.5f) / float(FROXEL_GRID_D));
+}
+
+vec2 froxel_depth_edges(int z)
+{
+    return vec2(
+    	froxel_distance(z),
+     	froxel_distance(z + 1)
+    );
+}
+
+float depthbuffer_to_view_z(float depth, mat4 proj)
+{
+    // Depth buffer -> NDC
+    float z_ndc = depth * 2 - 1;
+
+    // Inverse of proj[2][2] and proj[3][2] does the trick
+    float A = proj[2][2];
+    float B = proj[3][2];
+
+    // Solve clip-space projection relation: z_view = B / (z_ndc - A)
+    return B / (z_ndc - A);
+}
+
+// https://gist.github.com/Fewes/59d2c831672040452aa77da6eaab2234
+vec4 textureTricubic(sampler3D tex, vec3 coord)
+{
+	// Shift the coordinate from [0,1] to [-0.5, texture_size-0.5]
+    vec3 texture_size = vec3(textureSize(tex, 0));
+	vec3 coord_grid = coord * texture_size - 0.5;
+	vec3 index = floor(coord_grid);
+	vec3 fraction = coord_grid - index;
+	vec3 one_frac = 1.0 - fraction;
+
+	vec3 w0 = 1.0/6.0 * one_frac*one_frac*one_frac;
+	vec3 w1 = 2.0/3.0 - 0.5 * fraction*fraction*(2.0-fraction);
+	vec3 w2 = 2.0/3.0 - 0.5 * one_frac*one_frac*(2.0-one_frac);
+	vec3 w3 = 1.0/6.0 * fraction*fraction*fraction;
+
+	vec3 g0 = w0 + w1;
+	vec3 g1 = w2 + w3;
+	vec3 mult = 1.0 / texture_size;
+	vec3 h0 = mult * ((w1 / g0) - 0.5 + index); //h0 = w1/g0 - 1, move from [-0.5, texture_size-0.5] to [0,1]
+	vec3 h1 = mult * ((w3 / g1) + 1.5 + index); //h1 = w3/g1 + 1, move from [-0.5, texture_size-0.5] to [0,1]
+
+	// Fetch the eight linear interpolations
+	// Weighting and fetching is interleaved for performance and stability reasons
+	vec4 tex000 = texture(tex, h0, 0.0f);
+	vec4 tex100 = texture(tex, vec3(h1.x, h0.y, h0.z), 0.0f);
+	tex000 = mix(tex100, tex000, g0.x); // Weigh along the x-direction
+
+	vec4 tex010 = texture(tex, vec3(h0.x, h1.y, h0.z), 0.0f);
+	vec4 tex110 = texture(tex, vec3(h1.x, h1.y, h0.z), 0.0f);
+	tex010 = mix(tex110, tex010, g0.x); // Weigh along the x-direction
+	tex000 = mix(tex010, tex000, g0.y); // Weigh along the y-direction
+
+	vec4 tex001 = texture(tex, vec3(h0.x, h0.y, h1.z), 0.0f);
+	vec4 tex101 = texture(tex, vec3(h1.x, h0.y, h1.z), 0.0f);
+	tex001 = mix(tex101, tex001, g0.x); // Weigh along the x-direction
+
+	vec4 tex011 = texture(tex, vec3(h0.x, h1.y, h1.z), 0.0f);
+	vec4 tex111 = texture(tex, vec3(h1), 0.0f);
+	tex011 = mix(tex111, tex011, g0.x); // Weigh along the x-direction
+	tex001 = mix(tex011, tex001, g0.y); // Weigh along the y-direction
+
+	return mix(tex001, tex000, g0.z); // Weigh along the z-direction
+}

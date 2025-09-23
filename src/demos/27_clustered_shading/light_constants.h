@@ -65,3 +65,7 @@ void SET_SHADOW_IDX(auto &light, auto idx)
 
 #define IS_SHADOW_CASTER(light)    (((light).type_flags & LIGHT_SHADOW_CASTER) > 0)
 #define IS_VOLUMETRIC(light)       (((light).type_flags & LIGHT_VOLUMETRIC) > 0)
+
+#define FROXEL_GRID_W      160
+#define FROXEL_GRID_H      90
+#define FROXEL_GRID_D      128

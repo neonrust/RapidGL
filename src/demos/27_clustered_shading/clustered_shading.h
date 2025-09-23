@@ -1,4 +1,5 @@
 #pragma once
+
 #include "core_app.h"
 
 #include "camera.h"
@@ -13,7 +14,7 @@
 #include "GLTimer.h"
 #include "pp_bloom.h"
 #include "pp_gaussian_blur_fixed.h"
-#include "pp_light_scattering.h"
+#include "pp_volumetrics.h"
 #include "pp_tonemapping.h"
 #include "shadow_atlas.h"
 #include "light_manager.h"
@@ -221,14 +222,15 @@ private:
 	std::vector<StaticObject> _scenePvs;  // potentially visible set
 	std::vector<LightIndex>   _lightsPvs;  // basically all lights within theoretical range
 
-	RGL::buffer::Storage<AABB> m_cluster_aabb_ssbo;
-	RGL::buffer::Storage<uint> m_cluster_discovery_ssbo;
+	RGL::buffer::Storage<AABB>       m_cluster_aabb_ssbo;
+	RGL::buffer::Storage<uint>       m_cluster_discovery_ssbo;
 	RGL::buffer::Storage<glm::uvec3> m_cull_lights_args_ssbo;
 	RGL::buffer::Storage<IndexRange> m_cluster_lights_range_ssbo;
 	RGL::buffer::Storage<uint>       m_cluster_all_lights_index_ssbo;
 	RGL::buffer::Storage<uint>       m_affecting_lights_bitfield_ssbo;
 	dense_set<uint>                  _affecting_lights;
-	RGL::buffer::Storage<uint>       m_relevant_lights_index_ssbo;
+	RGL::buffer::Storage<uint>       _relevant_lights_index_ssbo;
+	RGL::buffer::Storage<uint>       _volumetric_lights_index_ssbo;
 	RGL::buffer::Mapped<ShadowSlotInfo, MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS + MAX_AREA_LIGHTS> m_shadow_map_params_ssbo;
 	LightManager _light_mgr;
 
@@ -243,7 +245,7 @@ private:
 	RGL::PP::Tonemapping m_tmo_pp;
 	float m_exposure;
 	float m_gamma;
-	RGL::PP::LightScattering m_scattering_pp;
+	RGL::PP::Volumetrics m_volumetrics_pp;
 	RGL::RenderTarget::Texture2d _final_rt;
 
     float m_background_lod_level;
@@ -271,7 +273,6 @@ private:
     bool  m_bloom_enabled;
 
 	float m_fog_density;
-	int _ray_march_noise { 0 };  // 0 - 2
 
 	SampleWindow<std::chrono::microseconds, 30> m_cull_scene_time;
 	SampleWindow<std::chrono::microseconds, 30> m_depth_time;
