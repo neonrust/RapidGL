@@ -21,6 +21,9 @@ namespace RGL
     {
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
+		auto &io = ImGui::GetIO();
+		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
         ImGui_ImplGlfw_InitForOpenGL(window, true);
         ImGui_ImplOpenGL3_Init("#version 460");
