@@ -31,7 +31,8 @@ struct Texture2d
 
 	// inline GLuint framebuffer_id() const { return _fbo_id; }
 	inline GLuint width() const { return m_metadata.width; }
-	inline GLuint height() const { return m_metadata.height; }
+	inline GLuint height() const { return m_metadata.height; }  // for 2d & 3d
+	inline GLuint depth() const { return m_metadata.depth; }    // for 3d
 	inline glm::uvec2 size() const { return { m_metadata.width, m_metadata.height }; }
 	void resize(size_t width, size_t height);
 

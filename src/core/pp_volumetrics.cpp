@@ -79,9 +79,11 @@ void Volumetrics::inject()
 	// TODO: injection is quite slow, probably b/c it naively loops through all lights for all froxel "columns"
 	//   it's probably worth it to do a light culling pre-pass
 	//   maybe with a coarser grid, maybe just 2d (screen-space projection of the lights)
-
-
-	_inject_shader.invoke(s_froxels / s_local_size);
+	//   or build a BVH for the lights?
+	//   see https://worldoffries.wordpress.com/2015/02/19/simple-alternative-to-clustered-shading-for-thousands-of-lights/
+	_inject_shader.invoke(size_t(std::ceil(float(s_froxels.x) / float(s_local_size.x))),
+						  size_t(std::ceil(float(s_froxels.y) / float(s_local_size.y))),
+						  size_t(std::ceil(float(s_froxels.z) / float(s_local_size.z))));
 }
 
 void Volumetrics::render(const RenderTarget::Texture2d &, RenderTarget::Texture2d &out)
@@ -91,7 +93,9 @@ void Volumetrics::render(const RenderTarget::Texture2d &, RenderTarget::Texture2
 
 	out.bindImage(1, ImageAccess::Write);
 
-	_march_shader.invoke(out.width() / s_local_size.x, out.height() / s_local_size.y);
+	_march_shader.invoke(size_t(std::ceil(float(out.width())  / float(s_local_size.x))),
+						 size_t(std::ceil(float(out.height()) / float(s_local_size.y))),
+						 size_t(std::ceil(float(out.depth())  / float(s_local_size.z))));
 }
 
 } // RGL
