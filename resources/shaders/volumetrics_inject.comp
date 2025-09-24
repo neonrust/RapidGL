@@ -42,8 +42,8 @@ uniform float u_fog_anisotropy;
 uniform float u_light_max_distance;
 uniform float u_shadow_max_distance;
 uniform float u_volumetric_max_distance;
-uniform bool u_froxel_blend_previous;
-uniform float u_froxel_blend_fraction; // e.g. 0.2
+uniform bool  u_froxel_blend_previous;
+uniform float u_froxel_blend_weight; // e.g. 0.2
 uniform float u_effect_scale;
 
 uniform vec3  u_cam_pos;
@@ -203,12 +203,12 @@ void main()
 					contribution *= getSquareFalloffAttenuation(distance_sq, light.affect_radius*light.affect_radius);
 				if(IS_SPOT_LIGHT(light))
 					contribution *= getSpotAngleAttenuation(normalize(light_to_froxel), light.direction, light.outer_angle, light.inner_angle);
-				contribution *= light.fog_intensity;
 
 				if(contribution > s_min_contribution)
 				{
 		        	scatter_contrib = light.color
 											* light.intensity
+											* light.fog_intensity
 											* contribution
 											* distance_fade;
 				}
@@ -229,7 +229,7 @@ void main()
 	            // Fetch history sample
 	            vec3 prev_scatter = textureLod(u_previous_scatter, prev_uv, 0).rgb;
 
-	            scatter_contrib = mix(prev_scatter, scatter_contrib, u_froxel_blend_fraction);
+	            scatter_contrib = mix(prev_scatter, scatter_contrib, u_froxel_blend_weight);
 	        }
         }
 

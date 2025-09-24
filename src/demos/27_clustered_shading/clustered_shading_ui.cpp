@@ -167,7 +167,8 @@ void ClusteredShading::render_gui()
 		}
 		if(ImGui::CollapsingHeader("Fog / Scattering", ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			ImGui::SliderFloat("Fog density", &m_fog_density, 0.f, 1.f);
+			ImGui::SliderFloat("Fog density", &_fog_density, 0.f, 1.f);
+			ImGui::SliderFloat("Fog temporal blend", &_fog_blend_weight, 0.f, 1.f);
 		}
 
 		if(ImGui::CollapsingHeader("Shadows"))//, ImGuiTreeNodeFlags_DefaultOpen))

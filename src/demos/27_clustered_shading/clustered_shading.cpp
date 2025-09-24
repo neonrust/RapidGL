@@ -96,7 +96,8 @@ ClusteredShading::ClusteredShading() :
 	m_bloom_intensity     (0.5f),
 	m_bloom_dirt_intensity(0),
 	m_bloom_enabled       (true),
-	m_fog_density         (0.9f) // [ 0, 0.5 ]   nice-ish value: 0.015
+	_fog_density         (0.9f), // [ 0, 0.5 ]   nice-ish value: 0.015
+	_fog_blend_weight(0.3f)      // [ 0, 1 ]
 {
 	m_cluster_aabb_ssbo.bindAt(SSBO_BIND_CLUSTER_AABB);
 	m_shadow_map_params_ssbo.bindAt(SSBO_BIND_SHADOW_SLOTS_INFO);
@@ -1269,7 +1270,7 @@ void ClusteredShading::render()
 
 	m_skybox_time.add(_gl_timer.elapsed<microseconds>(true));
 
-	if(m_fog_density > 0)
+	if(_fog_density > 0)
 	{
 		m_volumetrics_pp.setCameraUniforms(m_camera);
 //		m_volumetrics_pp.shader().setUniform("u_time"sv,               _running_time.count());
@@ -1285,7 +1286,14 @@ void ClusteredShading::render()
 		prev_view_projection = view_projection;
 
 		m_volumetrics_pp.setAnisotropy(0.7f);
-		m_volumetrics_pp.setDensity(1 - m_fog_density);  // TODO: noise texture?
+		m_volumetrics_pp.setDensity(1 - _fog_density);  // TODO: noise texture?
+		if(_fog_blend_weight > 0)
+		{
+			m_volumetrics_pp.setTemporalBlending(true);
+			m_volumetrics_pp.setTemporalBlendWeight(_fog_blend_weight);
+		}
+		else
+			m_volumetrics_pp.setTemporalBlending(false);
 
 		m_volumetrics_pp.shader().setUniform("u_volumetric_max_distance"sv, m_camera.farPlane() * s_light_volumetric_fraction);
 		m_volumetrics_pp.shader().setUniform("u_light_max_distance"sv,  m_camera.farPlane() * s_light_affect_fraction);

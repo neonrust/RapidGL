@@ -272,7 +272,8 @@ private:
     float m_bloom_dirt_intensity;
     bool  m_bloom_enabled;
 
-	float m_fog_density;
+	float _fog_density;
+	float _fog_blend_weight;
 
 	SampleWindow<std::chrono::microseconds, 30> m_cull_scene_time;
 	SampleWindow<std::chrono::microseconds, 30> m_depth_time;
