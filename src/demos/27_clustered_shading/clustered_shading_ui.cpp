@@ -210,6 +210,7 @@ void ClusteredShading::render_gui()
 
 				// 3d
 				"scattering froxels [3d]",
+				"scattering froxels alt [3d]",
 			};
 			static int current_image = 6;
 			ImGui::Combo("Render target", &current_image, rt_names, std::size(rt_names));
@@ -229,6 +230,7 @@ void ClusteredShading::render_gui()
 			case  8: rt = &_final_rt; break;
 			case  9: rt = &_shadow_atlas; break;
 			case 10: t3 = &m_volumetrics_pp.froxel_texture(); break;
+			case 11: t3 = &m_volumetrics_pp.froxel_texture(false); break;
 			}
 			// const bool is_cube = current_image >= 1 and current_image <= 3;
 			// const bool is_depth = current_image == 4;
