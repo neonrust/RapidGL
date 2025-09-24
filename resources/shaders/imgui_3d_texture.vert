@@ -28,7 +28,7 @@ void main()
 		out_texcoord = vec3(u_level, uv.x, uv.y);
 	else if(u_axis == 1)
 		out_texcoord = vec3(uv.x, u_level, uv.y);
-	else if(u_axis == 1)
+	else if(u_axis == 2)
 		out_texcoord = vec3(uv.x, uv.y, u_level);
 
 	gl_Position = vec4(verts[gl_VertexID], 0, 1);
