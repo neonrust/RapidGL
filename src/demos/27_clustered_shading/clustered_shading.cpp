@@ -1278,13 +1278,6 @@ void ClusteredShading::render()
 		// m_volumetrics_pp.shader().setUniform("u_cluster_size_ss"sv,    glm::uvec2(m_cluster_block_size));
 		// m_volumetrics_pp.shader().setUniform("u_ray_march_noise",      _ray_march_noise);
 
-		const auto view_projection = m_camera.projectionTransform() * m_camera.viewTransform();
-		const auto inv_view_projection = glm::inverse(view_projection);
-		m_volumetrics_pp.shader().setUniform("u_inv_view_projection"sv, inv_view_projection);
-		static glm::mat4 prev_view_projection = glm::mat4(1);
-		m_volumetrics_pp.shader().setUniform("u_prev_view_projection"sv, prev_view_projection);
-		prev_view_projection = view_projection;
-
 		m_volumetrics_pp.setAnisotropy(0.7f);
 		m_volumetrics_pp.setDensity(1 - _fog_density);  // TODO: noise texture?
 		if(_fog_blend_weight > 0)
@@ -1301,7 +1294,7 @@ void ClusteredShading::render()
 
 
 		_shadow_atlas.bindDepthTextureSampler(20);
-		m_volumetrics_pp.inject();  // TODO: light index list (ssbo)?
+		m_volumetrics_pp.inject(m_camera);
 
 		m_depth_pass_rt.bindDepthTextureSampler(2);
 		_pp_low_rt.clear();

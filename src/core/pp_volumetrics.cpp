@@ -59,7 +59,7 @@ void Volumetrics::setCameraUniforms(const Camera &camera)
 
 
 
-void Volumetrics::inject()
+void Volumetrics::inject(const Camera &camera) // TODO: View
 {
 	++_frame;
 
@@ -75,6 +75,16 @@ void Volumetrics::inject()
 	_inject_shader.setUniform("u_fog_density"sv, _density);
 	_inject_shader.setUniform("u_froxel_blend_previous"sv, _blend);
 	_inject_shader.setUniform("u_froxel_blend_weight"sv, _blend_weight);
+
+	const auto view_projection = camera.projectionTransform() * camera.viewTransform();
+	const auto inv_view_projection = glm::inverse(view_projection);
+	_inject_shader.setUniform("u_inv_view_projection"sv, inv_view_projection);
+
+	static glm::mat4 prev_view_projection = glm::mat4(1);
+	// use current for the first frame (there's no "previous" yet)
+	_inject_shader.setUniform("u_prev_view_projection"sv, _frame == 1? view_projection: prev_view_projection);
+	// now there is :)
+	prev_view_projection = view_projection;
 
 	// TODO: injection is quite slow, probably b/c it naively loops through all lights for all froxel "columns"
 	//   it's probably worth it to do a light culling pre-pass

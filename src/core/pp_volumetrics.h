@@ -33,7 +33,7 @@ public:
 	// multiplier for the volumetrics effect
 	inline void setDensity(float density) { _density = density; }
 
-	void inject(/* light index list? */);
+	void inject(const Camera &camera);
 	void render(const RenderTarget::Texture2d &, RenderTarget::Texture2d &out) override;
 
 	inline const Texture3D &froxel_texture(uint32_t index=0) const { return _transmittance[index? 1 - (_frame & 1): _frame & 1]; }
