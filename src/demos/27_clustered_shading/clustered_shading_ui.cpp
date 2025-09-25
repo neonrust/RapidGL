@@ -235,8 +235,8 @@ void ClusteredShading::render_gui()
 			// const bool is_cube = current_image >= 1 and current_image <= 3;
 			// const bool is_depth = current_image == 4;
 
-			ImVec2 top_left { 0, 0 };
-			ImVec2 bottom_right { 1, 1 };
+			ImVec2 top_left { 0, 1 };
+			ImVec2 bottom_right { 1, 0 };
 
 			auto zoom_uv0 = [](float zoom, const ImVec2 &center) -> ImVec2 {
 				float half_inv_zoom = 0.5f / zoom;
@@ -299,6 +299,9 @@ void ClusteredShading::render_gui()
 
 					top_left = zoom_uv0(magnification, center);
 					bottom_right = zoom_uv1(magnification, center);
+
+					top_left.y = 1 - top_left.y;
+					bottom_right.y = 1 - bottom_right.y;
 
 					ImGui_ImageEx(texture.texture_id(), img_size, top_left, bottom_right, 0);
 
