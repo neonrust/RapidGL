@@ -167,10 +167,11 @@ void ClusteredShading::render_gui()
 			ImGui::SliderFloat("Bloom intensity",      &m_bloom_intensity,      0,  2.f, "%.1f");
 			ImGui::SliderFloat("Bloom dirt intensity", &m_bloom_dirt_intensity, 0, 10.f, "%.1f");
 		}
-		if(ImGui::CollapsingHeader("Fog / Scattering", ImGuiTreeNodeFlags_DefaultOpen))
+		if(ImGui::CollapsingHeader("Fog / Volumetrics", ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			ImGui::SliderFloat("Fog density", &_fog_density, 0.f, 1.f);
-			ImGui::SliderFloat("Fog temporal blend", &_fog_blend_weight, 0.f, 1.f);
+			ImGui::SliderFloat("Strength", &_fog_strength, 0.1f, 4.f);
+			ImGui::SliderFloat("Density", &_fog_density, 0.f, 1.f);
+			ImGui::SliderFloat("Temporal blend", &_fog_blend_weight, 0.f, 0.99f);  // lerp: <current> - <previous>
 		}
 
 		if(ImGui::CollapsingHeader("Shadows"))//, ImGuiTreeNodeFlags_DefaultOpen))
