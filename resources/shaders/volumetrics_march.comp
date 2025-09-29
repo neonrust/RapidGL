@@ -56,7 +56,9 @@ void main()
 		float thickness = far_edge - near_edge;
 
 		vec4 scattered_density = texelFetch(u_input_scatter, froxel, 0);
-		//vec4 scattered_density = texture_tricubic(u_input_scatter, froxel);/
+		// vec3 uv = vec3(froxel) / textureSize(u_input_scatter, 0);
+		// vec4 scattered_density = texture_pcf(u_input_scatter, uv, 0);
+		// vec4 scattered_density = texture_tricubic(u_input_scatter, froxel);
 		vec3 scattered = scattered_density.rgb;
 		float density = scattered_density.a;
 
