@@ -1270,10 +1270,6 @@ void ClusteredShading::render()
 	if(_fog_density > 0)
 	{
 		m_volumetrics_pp.setCameraUniforms(m_camera);
-//		m_volumetrics_pp.shader().setUniform("u_time"sv,               _running_time.count());
-		// m_volumetrics_pp.shader().setUniform("u_cluster_resolution"sv, m_cluster_resolution);
-		// m_volumetrics_pp.shader().setUniform("u_cluster_size_ss"sv,    glm::uvec2(m_cluster_block_size));
-		// m_volumetrics_pp.shader().setUniform("u_ray_march_noise",      _ray_march_noise);
 
 		m_volumetrics_pp.setStrength(_fog_strength);
 		m_volumetrics_pp.setAnisotropy(0.7f);
