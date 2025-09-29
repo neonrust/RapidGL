@@ -942,23 +942,20 @@ void ClusteredShading::createLights()
 
 		const auto rand_intensity = float(Util::RandomDouble(1, 100))*2;
 
-		if(true or idx == 2 or idx == 0)
-		{
-			auto l = _light_mgr.add(PointLightParams{
-				.color = rand_color,
-				.intensity = rand_intensity,
-				.affect_radius = std::pow(rand_intensity, 0.6f), // maybe this could be scaled down as the total light count goes up?
-				.fog = 1.f,
-				.shadow_caster = true,
-				.position = rand_pos,
-			});
+		auto l = _light_mgr.add(PointLightParams{
+			.color = rand_color,
+			.intensity = rand_intensity,
+			.affect_radius = std::pow(rand_intensity, 0.6f), // maybe this could be scaled down as the total light count goes up?
+			.fog = 1.f,
+			.shadow_caster = true,
+			.position = rand_pos,
+		});
 
-			std::print("light[{:2}] @ {:5.1f}; {:3.1f}; {:5.1f}  {:3},{:3},{:3}  {:4.0f}\n",
-					   l.id(),
-					   rand_pos.x, rand_pos.y, rand_pos.z,
-					   uint(rand_color.r*255), uint(rand_color.g*255), uint(rand_color.b*255),
-					   rand_intensity);
-		}
+		std::print("light[{:2}] @ {:5.1f}; {:3.1f}; {:5.1f}  {:3},{:3},{:3}  {:4.0f}\n",
+				   l.id(),
+				   rand_pos.x, rand_pos.y, rand_pos.z,
+				   uint(rand_color.r*255), uint(rand_color.g*255), uint(rand_color.b*255),
+				   rand_intensity);
 	}
 }
 
