@@ -1296,6 +1296,8 @@ void ClusteredShading::render()
 		_shadow_atlas.bindDepthTextureSampler(20);
 		m_volumetrics_pp.inject(m_camera);
 
+		m_volumetrics_inject_time.add(_gl_timer.elapsed<microseconds>(true));
+
 		m_depth_pass_rt.bindDepthTextureSampler(2);
 		_pp_low_rt.clear();
 		m_volumetrics_pp.render(_rt, _pp_low_rt);  // '_rt' actually isn't used but the API expects an argument
@@ -1317,7 +1319,7 @@ void ClusteredShading::render()
 		// m_pp_blur_time.add(_gl_timer.elapsed<microseconds>());
 #endif
 
-		m_scatter_time.add(_gl_timer.elapsed<microseconds>(true));
+		m_volumetrics_march_time.add(_gl_timer.elapsed<microseconds>(true));
 	}
 	else
 		_pp_full_rt.clear();

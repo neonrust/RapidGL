@@ -283,7 +283,8 @@ private:
 	SampleWindow<std::chrono::microseconds, 30> m_shadow_time;
 	SampleWindow<std::chrono::microseconds, 30> m_shading_time;
 	SampleWindow<std::chrono::microseconds, 30> m_skybox_time;
-	SampleWindow<std::chrono::microseconds, 30> m_scatter_time;
+	SampleWindow<std::chrono::microseconds, 30> m_volumetrics_inject_time;
+	SampleWindow<std::chrono::microseconds, 30> m_volumetrics_march_time;
 	SampleWindow<std::chrono::microseconds, 30> m_tonemap_time;
 	SampleWindow<std::chrono::microseconds, 30> m_debug_draw_time;
 

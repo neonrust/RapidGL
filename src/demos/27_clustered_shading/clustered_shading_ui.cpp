@@ -59,7 +59,9 @@ void ClusteredShading::render_gui()
 	ImGui::Text("    Shading: %4ld µs", m_shading_time.average().count());
 	ImGui::Text("     Skybox: %4ld µs", m_skybox_time.average().count());
 	// ImGui::Text("        PP: %3ld µs", m_pp_time.count());
-	ImGui::Text(" Scattering: %4ld µs", m_scatter_time.average().count());
+	ImGui::Text("Volumetrics: %4ld µs", m_volumetrics_inject_time.average().count() + m_volumetrics_march_time.average().count());
+	ImGui::Text("   - inject: %4ld µs", m_volumetrics_inject_time.average().count());
+	ImGui::Text("   -  march: %4ld µs", m_volumetrics_march_time.average().count());
 	ImGui::Text("Tonemapping: %4ld µs", m_tonemap_time.average().count());
 	ImGui::Text(" Debug draw: %4ld µs", m_debug_draw_time.average().count());
 	// ImGui::Text("   PP blur: %4ld µs", m_pp_blur_time.average().count());
