@@ -126,7 +126,8 @@ bool StaticModel::Load(const std::filesystem::path& filepath)
 	/* Load model */
 	Assimp::Importer importer;
 	// TODO: importer.SetIOHandler(compressionLayer);
-	const aiScene* scene = importer.ReadFile(filepath.generic_string(), aiProcess_Triangulate              |
+	const aiScene* scene = importer.ReadFile(filepath.generic_string(),
+												 aiProcess_Triangulate              |
 												 aiProcess_GenSmoothNormals         |
 												 aiProcess_GenUVCoords              |
 												 aiProcess_CalcTangentSpace         |
@@ -151,7 +152,7 @@ bool StaticModel::ParseScene(const aiScene* scene, const std::filesystem::path& 
 {
 	const auto T0 = steady_clock::now();
 
-	auto filename = filepath.filename();
+	const auto filename = filepath.filename();
 
 	m_mesh_parts.resize(scene->mNumMeshes);
 	m_materials.resize(scene->mNumMaterials);
@@ -181,8 +182,6 @@ bool StaticModel::ParseScene(const aiScene* scene, const std::filesystem::path& 
 	vertex_data.indices.reserve(indices_count);
 
 	/* Load mesh parts one by one. */
-	// auto min = glm::vec3(std::numeric_limits<glm::vec3::value_type>::max());
-	// auto max = -min;
 	_aabb.clear();
 
 	for (uint32_t idx = 0; idx < m_mesh_parts.size(); ++idx)
@@ -225,7 +224,7 @@ bool StaticModel::ParseScene(const aiScene* scene, const std::filesystem::path& 
 
 void StaticModel::LoadMeshPart(const aiMesh* mesh, VertexData& vertex_data)
 {
-	const glm::vec3 zero_vec3(0.0f, 0.0f, 0.0f);
+	const glm::vec3 zero_vec3 = glm::zero<glm::vec3>();
 
 	for (uint32_t idx = 0; idx < mesh->mNumVertices; ++idx)
 	{
