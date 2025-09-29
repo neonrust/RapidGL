@@ -1277,7 +1277,7 @@ void ClusteredShading::render()
 		if(_fog_blend_weight > 0)
 		{
 			m_volumetrics_pp.setTemporalBlending(true);
-			m_volumetrics_pp.setTemporalBlendWeight(_fog_blend_weight);
+			m_volumetrics_pp.setTemporalBlendWeight(_fog_blend_weight);  // lerp: <current> - <previous>
 		}
 		else
 			m_volumetrics_pp.setTemporalBlending(false);
