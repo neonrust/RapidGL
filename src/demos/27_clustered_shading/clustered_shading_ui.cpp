@@ -15,7 +15,7 @@ using namespace RGL;
 
 void ImGui_ImageEx(ImTextureID texture_id, ImVec2 size, ImVec2 uv1, ImVec2 uv0, GLuint shader_id);
 
-void visualize_3d_texture(const Texture3D &t3, RenderTarget::Texture2d &out, int major_axis, float level);
+void visualize_3d_texture(const Texture3D &t3, RenderTarget::Texture2d &out, Shader &shader);
 
 
 inline ImVec2 operator + (const ImVec2 &A, const ImVec2 &B)
@@ -272,7 +272,20 @@ void ClusteredShading::render_gui()
 				static float level { 0 };
 				ImGui::SliderFloat("Major axis value", &level, 0, 1, "%.2f");
 
-				visualize_3d_texture(*t3, tex3d_rt, major_axis, level);
+				static float brightness { 4 };
+				ImGui::SliderFloat("Brightness", &brightness, 0, 10, "%.2f");
+
+				const auto shader_path = FileSystem::getResourcesPath() / "shaders";
+				static Shader shader(shader_path / "imgui_3d_texture.vert", shader_path / "imgui_3d_texture.frag");
+				if(not shader)
+					shader.link();
+
+				// shader.setUniform("u_projection"sv, glm::mat4(1));
+				shader.setUniform("u_axis", major_axis);
+				shader.setUniform("u_level", level);
+				shader.setUniform("u_brightness"sv, brightness);
+
+				visualize_3d_texture(*t3, tex3d_rt, shader);
 
 				rt = &tex3d_rt;
 				const auto color_f = meta.channel_format;
@@ -409,7 +422,7 @@ void ImGui_ImageEx(ImTextureID texture_id, ImVec2 size, ImVec2 uv0, ImVec2 uv1, 
 	dl->AddCallback(ImDrawCallback_ResetRenderState, nullptr);
 }
 
-void visualize_3d_texture(const Texture3D &t3, RenderTarget::Texture2d &out, int major_axis, float level)
+void visualize_3d_texture(const Texture3D &t3, RenderTarget::Texture2d &out, Shader &shader)
 {
 	// TODO: visualize the 3d texture, somehow.
 	//   render to 'out'
@@ -423,16 +436,7 @@ void visualize_3d_texture(const Texture3D &t3, RenderTarget::Texture2d &out, int
 	if(not _empty)
 		glCreateVertexArrays(1, &_empty);
 
-	const auto shader_path = FileSystem::getResourcesPath() / "shaders";
-	static Shader shader(shader_path / "imgui_3d_texture.vert", shader_path / "imgui_3d_texture.frag");
-	if(not shader)
-		shader.link();
-
 	t3.Bind(0);
-
-	// shader.setUniform("u_projection"sv, glm::mat4(1));
-	shader.setUniform("u_axis", major_axis);
-	shader.setUniform("u_level", level);
 
 	shader.bind();
 	glBindVertexArray(_empty);
