@@ -85,7 +85,7 @@ ClusteredShading::ClusteredShading() :
 	m_affecting_lights_bitfield_ssbo("affecting-lights-bitfield"sv),
 	_relevant_lights_index_ssbo("relevant-lights-index"sv),
 	_volumetric_lights_index_ssbo("volumetric-lights"sv),
-	m_shadow_map_params_ssbo("shadow-map-params"sv),
+	m_shadow_map_slots_ssbo("shadow-map-slots"sv),
 	m_exposure            (0.4f),
 	m_gamma               (2.2f),
 	m_background_lod_level(1.2f),
@@ -101,7 +101,7 @@ ClusteredShading::ClusteredShading() :
 	_fog_blend_weight     (0.8f)     // [ 0, 1 ]
 {
 	m_cluster_aabb_ssbo.bindAt(SSBO_BIND_CLUSTER_AABB);
-	m_shadow_map_params_ssbo.bindAt(SSBO_BIND_SHADOW_SLOTS_INFO);
+	m_shadow_map_slots_ssbo.bindAt(SSBO_BIND_SHADOW_SLOTS_INFO);
 	m_cluster_discovery_ssbo.bindAt(SSBO_BIND_CLUSTER_DISCOVERY);
 	m_cluster_lights_range_ssbo.bindAt(SSBO_BIND_CLUSTER_LIGHT_RANGE);
 	m_cluster_all_lights_index_ssbo.bindAt(SSBO_BIND_CLUSTER_ALL_LIGHTS);
