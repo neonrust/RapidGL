@@ -409,7 +409,13 @@ GLint Shader::uniformLocation(const std::string_view & name) const
 		m_uniforms_locations[name] = location; // also remember failures (calls will be ignored)
 	}
 	else
+	{
 		location = found->second;
+#if defined(DEBUG)
+// TODO: verify type
+#endif
+	}
+
 
 	return location;
 }
