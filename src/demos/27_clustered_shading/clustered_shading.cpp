@@ -1403,7 +1403,7 @@ void ClusteredShading::renderShadowMaps()
 
 	// light projections needs to be updated more often than the allocation
 	//   needs to updated every time it's rendered, but for simplicity,
-	//   we'll genrate params for all the allocated lights in one go
+	//   we'll update for all the allocated lights in one go
 	_shadow_atlas.update_shadow_params();
 
 
