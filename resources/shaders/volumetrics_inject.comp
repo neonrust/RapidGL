@@ -44,7 +44,6 @@ uniform float u_shadow_max_distance;
 uniform float u_volumetric_max_distance;
 uniform bool  u_froxel_blend_previous;
 uniform float u_froxel_blend_weight; // e.g. 0.2
-uniform float u_effect_scale;
 
 uniform vec3  u_cam_pos;
 uniform float u_near_z;
@@ -236,7 +235,7 @@ void main()
 	}
 
 	float density = u_fog_density; // TODO: noise texture?
-	imageStore(u_output_scatter, froxel, vec4(total_scattered * density * u_effect_scale, density));
+	imageStore(u_output_scatter, froxel, vec4(total_scattered * density, density));
 }
 
 const float SOFT_DISTANCE_LIMIT = 0.8; // fraction of hard limit

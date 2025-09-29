@@ -11,6 +11,7 @@
 
 layout(local_size_x = GROUP_SIZE_X, local_size_y = GROUP_SIZE_Y, local_size_z = GROUP_SIZE_Z) in;
 
+uniform float u_effect_scale;
 uniform float u_near_z;
 uniform float u_far_z;
 uniform mat4  u_projection;
@@ -68,6 +69,8 @@ void main()
 		// if(depth_edges.y > fragment_depth)  // we hit "a wall"
 		// 	break;
 	}
+
+	radiance *= u_effect_scale;
 
     imageStore(u_output_volumetrics, pixel, vec4(radiance, 1));
 }

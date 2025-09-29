@@ -23,8 +23,6 @@ bool Volumetrics::create()
 	_inject_shader.link();
 	_inject_shader.setPostBarrier(Shader::Barrier::Image);
 	assert(_inject_shader);
-	// set default values
-	_inject_shader.setUniform("u_effect_scale"sv, 2.f);
 
 	new (&_march_shader) Shader(shaderPath / "volumetrics_march.comp");
 	_march_shader.link();
@@ -53,22 +51,22 @@ Volumetrics::operator bool() const
 
 void Volumetrics::setCameraUniforms(const Camera &camera)
 {
-	camera.setUniforms(_inject_shader);
 	camera.setUniforms(_march_shader);
 }
-
-
 
 void Volumetrics::inject(const Camera &camera) // TODO: View
 {
 	++_frame;
 
+	camera.setUniforms(_inject_shader);
+
 	_blue_noise.BindLayer(_frame % _blue_noise.num_layers(), 3);
 
 	// TODO: better API?
 	//   _inject_shader.bindImage("u_output_transmittance"sv, _transmittance[_frame & 1], ImageAccess::Write);
-	_transmittance[_frame & 1].BindImage(5, ImageAccess::Write);
-	_transmittance[1 - (_frame & 1)].Bind(6);
+	const auto active_idx = _frame & 1;
+	_transmittance[active_idx].BindImage(5, ImageAccess::Write);
+	_transmittance[1 - active_idx].Bind(6);
 
 	_inject_shader.setUniform("u_fog_anisotropy"sv, _anisotropy);
 	_inject_shader.setUniform("u_froxel_zexp"sv,    1.f);
@@ -103,9 +101,13 @@ void Volumetrics::render(const RenderTarget::Texture2d &, RenderTarget::Texture2
 
 	out.bindImage(1, ImageAccess::Write);
 
+	_march_shader.setUniform("u_effect_scale"sv, _strength);
+
 	_march_shader.invoke(size_t(std::ceil(float(out.width())  / float(s_local_size.x))),
 						 size_t(std::ceil(float(out.height()) / float(s_local_size.y))),
 						 size_t(std::ceil(float(out.depth())  / float(s_local_size.z))));
+
+	// TODO: blur 'out'
 }
 
 } // RGL
