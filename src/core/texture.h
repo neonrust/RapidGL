@@ -2,6 +2,8 @@
 #include "util.h"
 
 #include <glad/glad.h>
+#include <glm/vec4.hpp>
+
 #include <string_view>
 #include <filesystem>
 
@@ -207,6 +209,8 @@ public:
 
 	void Release();
 
+	void clear(const glm::vec4 &color = glm::vec4(0));
+
 	void set(const TextureDescriptor &descr);
 
 protected:
@@ -294,6 +298,8 @@ public:
 
 	bool Load(const std::filesystem::path &filepath);
 	bool Create(size_t width, size_t height, size_t depth, GLenum internalFormat, size_t num_mipmaps=DefaultMipmaps);
+
+	void copyTo(Texture3D &dest);
 };
 
 

@@ -3,6 +3,7 @@
 
 #include <cstring>
 #include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #define TINYDDSLOADER_IMPLEMENTATION
 #include <tinyddsloader.h>
@@ -334,6 +335,11 @@ void Texture::Release()
 	_texture_id = 0;
 }
 
+void Texture::clear(const glm::vec4 &color)
+{
+	glClearTexImage(_texture_id, 0, GL_RGBA, GL_FLOAT, glm::value_ptr(color));
+}
+
 void Texture::set(const TextureDescriptor &descr)
 {
 	m_metadata = descr.meta;
@@ -373,6 +379,25 @@ bool Texture2D::Create(size_t width, size_t height, GLenum internalFormat, size_
 bool Texture3D::Create(size_t width, size_t height, size_t depth, GLenum internalFormat, size_t num_mipmaps)
 {
 	return Texture::Create(width, height, depth, internalFormat, num_mipmaps);
+}
+
+void Texture3D::copyTo(Texture3D &dest)
+{
+	const auto &dest_meta = dest.GetMetadata();
+
+	const auto width = GLsizei(std::min(m_metadata.width, dest_meta.width));
+	const auto height= GLsizei(std::min(m_metadata.height, dest_meta.height));
+	const auto depth = GLsizei(std::min(m_metadata.depth, dest_meta.depth));
+
+	glCopyImageSubData(_texture_id, GL_TEXTURE_3D,
+					   0, // mip
+					   0, 0, 0, // source X, Y, Z
+					   dest.texture_id(), GL_TEXTURE_3D,
+					   0, // mip
+					   0, 0, 0, // dest X, Y, Z
+					   width,
+					   height,
+					   depth);
 }
 
 // --------------------- Texture2D -------------------------
