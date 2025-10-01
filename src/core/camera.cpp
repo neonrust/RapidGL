@@ -80,8 +80,9 @@ const Frustum &Camera::frustum() const
 
 void Camera::setUniforms(Shader &shader) const
 {
-	// TODO: cache locations per shader?
+	// TODO: cache locations per shader?  (the shader itself already does caching)
 	// TODO: use UBO ?
+	// TODO: arguably this could be: shader.setUniforms(camera)
 
 	shader.setUniform("u_cam_pos"sv,         position());
 	shader.setUniform("u_projection"sv,      projectionTransform()); // not used ?
@@ -90,6 +91,7 @@ void Camera::setUniforms(Shader &shader) const
 	shader.setUniform("u_inv_view"sv,        glm::inverse(viewTransform()));
 	shader.setUniform("u_near_z"sv,          nearPlane());
 	shader.setUniform("u_far_z"sv,           farPlane());
+	shader.setUniform("u_viewport_size"sv,   viewportSize());
 }
 
 void Camera::update(double dt)

@@ -82,6 +82,8 @@ public:
 	// TODO: this shouldn't be here (better in a controller-type thing)
 	void update(double dt);
 
+	inline glm::uvec2 viewportSize() const { return { m_width, m_height }; }
+
 private:
 	glm::mat4 m_view;
 	glm::mat4 m_projection;
