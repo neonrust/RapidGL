@@ -32,21 +32,7 @@ bottom right:  index << 2 + 4
 namespace RGL
 {
 
-namespace _private
-{
-
-// round the specified number up to the next power of 2 (i.e. if not already a power of 2)
 template<typename T>
-T round_up_pow2(T n)
-{
-	if(n == 0)
-		return 1;
-	if(__builtin_popcount(n) == 1) // already pow2
-		return n;
-	return T(1) << (sizeof(T)*8 -  __builtin_clz(n));
-}
-
-} // _private
 concept IntT = std::unsigned_integral<T>;
 
 template<IntT AxisT=uint32_t>
@@ -111,7 +97,7 @@ public:
 
 	// used as "bad index" in returns
 	[[nodiscard]] inline NodeIndex end() const { return BadIndex; }
-	[[nodiscard]] inline uint32_t level_from_size(AxisT size) const { assert(__builtin_popcount(size) == 1 and size < _size); return std::countr_zero(uint32_t(_size / size)); }
+	[[nodiscard]] inline uint32_t level_from_size(AxisT size) const { assert(std::has_single_bit(size) and size < _size); return std::countr_zero(uint32_t(_size / size)); }
 
 private:
 	[[nodiscard]] uint32_t level(NodeIndex index) const;
@@ -137,17 +123,19 @@ private:
 
 template<IntT AxisT>
 inline SpatialAllocator<AxisT>::SpatialAllocator(AxisT size, AxisT min_block_size, AxisT max_block_size) :
-	_size(_private::round_up_pow2(size)),
-	_max_size(max_block_size > 0? _private::round_up_pow2(max_block_size): _size >> default_max_size_shift),
-	_min_size(min_block_size > 0? _private::round_up_pow2(min_block_size): _size >> default_min_size_shift)
+	_size(std::bit_ceil(size)),
+	_max_size(max_block_size? std::bit_ceil(max_block_size): _size >> default_max_size_shift),
+	_min_size(min_block_size? std::bit_ceil(min_block_size): _size >> default_min_size_shift)
 {
-	assert(__builtin_popcount(_size) == 1);
-	assert(__builtin_popcount(_min_size) == 1);
-	assert(__builtin_popcount(_max_size) == 1);
-	assert(_min_size < _size);
+	assert(_max_size <= _size);
+	assert(_min_size <= _size);
+	assert(_min_size <= _max_size);
+	// _size > _max_size > _min_size
+	_max_size = std::min(_size, _max_size);
+	_min_size = std::min(_max_size, _min_size);
 
-	auto num_levels = level_from_size(_min_size);
-	auto num_nodes = level_start_index(num_levels + 1); // == the number of nodes before that level
+	const auto num_levels = level_from_size(_min_size);
+	const auto num_nodes = level_start_index(num_levels + 1); // == the number of nodes before that level
 	assert(num_nodes < 65536); // more nodes seems a bit excessive don't you think?
 	_nodes.resize(num_nodes);
 
@@ -166,7 +154,7 @@ void SpatialAllocator<AxisT>::reset()
 template<IntT AxisT>
 size_t SpatialAllocator<AxisT>::num_allocatable_levels() const
 {
-	return 32 - __builtin_clz(max_size() / min_size());
+	return 1 + std::countr_zero(max_size() / min_size());
 }
 
 template<IntT AxisT>
@@ -178,8 +166,8 @@ SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::allocate(AxisT size)
 template<IntT AxisT>
 SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::allocate(AxisT size, AxisT min_size)
 {
-	size = _private::round_up_pow2(size);
-	min_size = _private::round_up_pow2(min_size);
+	size = std::bit_ceil(size);
+	min_size = std::bit_ceil(min_size);
 	assert(min_size <= size);
 
 	if(size < _min_size or size > _max_size)
@@ -226,8 +214,7 @@ SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::allocate(AxisT size,
 template<IntT AxisT>
 uint32_t SpatialAllocator<AxisT>::level_from_index(NodeIndex index)
 {
-	const auto leading_zeroes = static_cast<uint32_t>(__builtin_clz(index * 3 + 1));
-	return (sizeof(index)*8 - leading_zeroes - 1)/2;
+	return (uint32_t(std::countr_zero(index*3u + 1u)) + 1u) >> 1u;
 }
 
 template<IntT AxisT>
