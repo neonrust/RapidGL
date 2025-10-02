@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include "container_types.h"
+
 #include <functional>
 #include <stb_image.h>
 #include <glad/glad.h>
@@ -37,6 +39,9 @@ namespace RGL
         */
 		static std::tuple<std::string, bool> LoadFile(const std::filesystem::path & filename);
 
+		// same as LoadFile, but if 'filename' is relative, it attempts open in given search paths, in order.
+		static std::tuple<std::string, bool> LoadFileInPaths(const std::filesystem::path &filename, const small_vec<std::filesystem::path, 16> &search_paths);
+
 		static std::streamsize GetFileSize(std::ifstream &strm);
 
         /**
@@ -48,6 +53,7 @@ namespace RGL
         */
         static std::vector<uint8_t> LoadFileBinary(const std::filesystem::path& filename);
 		
+		static void AddShaderSearchPath(const std::filesystem::path &path);
 		static std::tuple<std::string, bool> PreprocessShaderSource(const std::string & shader_code, const std::filesystem::path& dir="shaders");
         /**
         * @brief   Loads a file that contains an image data.
