@@ -8,33 +8,35 @@ using namespace boost::ut;
 suite<fixed_string("SpatialAllocator")> sa_suite([]{
 
 	"ctor"_test = [] {
-		SpatialAllocator a(8192);
+		SpatialAllocator a(8192u);
 		expect(a.size() == 8192);
 		expect(a.num_allocated().empty()) << "nothing allocated";
 		expect(a.max_size() == 1024);
 		expect(a.min_size() == 128);
 		expect(a.max_size_level() == 6);
 		expect(a.min_size_level() == 3);
+		expect(a.num_allocatable_levels() == 4);
+		expect(a.level_from_size(256) == 5) << a.level_from_size(256);
 	};
 
 	"ctor_rounding"_test = [] {
-		SpatialAllocator a(300);
+		SpatialAllocator a(300u);
 		expect(a.size() == 512) << std::to_string(a.size());
 		expect(a.max_size() == 512 >> 3) << std::to_string(a.max_size());
 		expect(a.min_size() == 512 >> 6) << std::to_string(a.min_size());
 	};
 
 	"num_allocatable"_test = [] {
-		SpatialAllocator a1(1024, 64, 256);
+		SpatialAllocator a1(1024u, 64u, 256u);
 		expect(a1.num_allocatable_levels() == 3) << "64, 128, 256";
-		SpatialAllocator a2(8192, 64, 1024);
+		SpatialAllocator a2(8192u, 64u, 1024u);
 		expect(a2.num_allocatable_levels() == 5) << "64, 128, 256, 512, 1024";
-		SpatialAllocator a3(8192, 1024, 1024);
+		SpatialAllocator a3(8192u, 1024u, 1024u);
 		expect(a3.num_allocatable_levels() == 1) << "1024";
 	};
 
 	"allocate_1"_test = [] {
-		SpatialAllocator a(1024, 64, 256);
+		SpatialAllocator a(1024u, 64u, 256u);
 		expect(a.num_allocated(256) == 0);
 		auto node = a.allocate(256);
 		expect(node != a.end()) << std::format("allocated not > {}", node);
@@ -44,13 +46,13 @@ suite<fixed_string("SpatialAllocator")> sa_suite([]{
 	};
 
 	"allocate_bad_size"_test = [] {
-		SpatialAllocator a(1024, 64, 256);
+		SpatialAllocator a(1024u, 64u, 256u);
 		expect(a.allocate(512) == a.end());
 		expect(a.allocate(32) == a.end());
 	};
 
 	"allocate_full"_test = [] {
-		SpatialAllocator a(1024, 64, 256);
+		SpatialAllocator a(1024u, 64u, 256u);
 		for(auto idx = 0u; idx < 16; ++idx)
 			expect(a.allocate(256) != a.end());
 		expect(a.num_allocated().size() == 1);
@@ -61,7 +63,7 @@ suite<fixed_string("SpatialAllocator")> sa_suite([]{
 	};
 
 	"allocate_demote"_test = [] {
-		SpatialAllocator a(1024, 64, 256);
+		SpatialAllocator a(1024u, 64u, 256u);
 		for(auto idx = 0u; idx < 15; ++idx)
 			expect(a.allocate(256) != a.end());
 		expect(a.allocate(128) != a.end());
@@ -74,7 +76,7 @@ suite<fixed_string("SpatialAllocator")> sa_suite([]{
 	};
 
 	"allocate_after_free_many"_test = [] {
-		SpatialAllocator a(1024, 64, 256);
+		SpatialAllocator a(1024u, 64u, 256u);
 		for(auto idx = 0u; idx < 15; ++idx)
 			expect(a.allocate(256) != a.end());
 		std::vector<decltype(a)::NodeIndex> small;
@@ -92,7 +94,7 @@ suite<fixed_string("SpatialAllocator")> sa_suite([]{
 	};
 
 	"rects"_test = [] {
-		SpatialAllocator a(8192);
+		SpatialAllocator a(8192u);
 		auto check_rect = [&a](auto node, const decltype(a)::Rect &re) {
 			auto r = a.rect(uint32_t(node));
 			expect(r.x == re.x) << std::format("rect[{}].x: {} != {}", node, r.x, re.x);
@@ -125,7 +127,7 @@ suite<fixed_string("SpatialAllocator")> sa_suite([]{
 	   // };
 
 	"size"_test = [] {
-		SpatialAllocator a(8192);
+		SpatialAllocator a(8192u);
 		expect(a.size(0) == 8192);
 		expect(a.size(1) == 4096);
 		expect(a.size(2) == 4096);

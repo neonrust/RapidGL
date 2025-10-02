@@ -47,8 +47,9 @@ T round_up_pow2(T n)
 }
 
 } // _private
+concept IntT = std::unsigned_integral<T>;
 
-template<typename AxisT=uint32_t>
+template<IntT AxisT=uint32_t>
 class SpatialAllocator
 {
 public:
@@ -134,7 +135,7 @@ private:
 	AllocatedSlots _allocated;
 };
 
-template<typename AxisT>
+template<IntT AxisT>
 inline SpatialAllocator<AxisT>::SpatialAllocator(AxisT size, AxisT min_block_size, AxisT max_block_size) :
 	_size(_private::round_up_pow2(size)),
 	_max_size(max_block_size > 0? _private::round_up_pow2(max_block_size): _size >> default_max_size_shift),
@@ -155,26 +156,26 @@ inline SpatialAllocator<AxisT>::SpatialAllocator(AxisT size, AxisT min_block_siz
 	std::print("SpatialAllocator[{}..{}]: {} levels; {} nodes\n", _min_size, _max_size, num_allocatable_levels(), num_nodes);
 }
 
-template<typename AxisT>
+template<IntT AxisT>
 void SpatialAllocator<AxisT>::reset()
 {
 	std::memset(_nodes.data(), 0, _nodes.size() * sizeof(Node));
 	_allocated.clear();
 }
 
-template<typename AxisT>
+template<IntT AxisT>
 size_t SpatialAllocator<AxisT>::num_allocatable_levels() const
 {
 	return 32 - __builtin_clz(max_size() / min_size());
 }
 
-template<typename AxisT>
+template<IntT AxisT>
 SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::allocate(AxisT size)
 {
 	return allocate(size, size);
 }
 
-template<typename AxisT>
+template<IntT AxisT>
 SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::allocate(AxisT size, AxisT min_size)
 {
 	size = _private::round_up_pow2(size);
@@ -222,14 +223,14 @@ SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::allocate(AxisT size,
 
 // static auto s_indent = 0;
 
-template<typename AxisT>
+template<IntT AxisT>
 uint32_t SpatialAllocator<AxisT>::level_from_index(NodeIndex index)
 {
 	const auto leading_zeroes = static_cast<uint32_t>(__builtin_clz(index * 3 + 1));
 	return (sizeof(index)*8 - leading_zeroes - 1)/2;
 }
 
-template<typename AxisT>
+template<IntT AxisT>
 SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::find_available(uint32_t target_level, uint32_t current_level, NodeIndex index)
 {
 	// if(index == 0)
@@ -281,7 +282,7 @@ SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::find_available(uint3
 	return BadIndex;
 }
 
-template<typename AxisT>
+template<IntT AxisT>
 bool SpatialAllocator<AxisT>::free(NodeIndex index)
 {
 	if(index >= _nodes.size())
@@ -308,7 +309,7 @@ bool SpatialAllocator<AxisT>::free(NodeIndex index)
 	return true;
 }
 
-template<typename AxisT>
+template<IntT AxisT>
 size_t SpatialAllocator<AxisT>::num_allocated(AxisT size) const
 {
 	if(auto found = _allocated.find(size); found != _allocated.end())
@@ -316,7 +317,7 @@ size_t SpatialAllocator<AxisT>::num_allocated(AxisT size) const
 	return 0;
 }
 
-template<typename AxisT>
+template<IntT AxisT>
 SpatialAllocator<AxisT>::Rect SpatialAllocator<AxisT>::rect(NodeIndex index)
 {
 	if(index == 0)
@@ -343,13 +344,13 @@ SpatialAllocator<AxisT>::Rect SpatialAllocator<AxisT>::rect(NodeIndex index)
 	return rect;
 }
 
-template<typename AxisT>
+template<IntT AxisT>
 uint32_t SpatialAllocator<AxisT>::level(NodeIndex index) const
 {
 	return static_cast<uint32_t>(std::floor(static_cast<uint32_t>(std::log2(1 + 3 * index)) >> 1));
 }
 
-template<typename AxisT>
+template<IntT AxisT>
 typename SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::parent_index(NodeIndex child)
 {
 	if(child == 0 or child >= _nodes.size())
@@ -360,7 +361,7 @@ typename SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::parent_inde
 	return (child - 1) >> 2;
 }
 
-template<typename AxisT>
+template<IntT AxisT>
 typename SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::child_index(NodeIndex parent, NodeChild child)
 {
 	if(size_at_level(level_from_index(parent)) <= _min_size)
@@ -371,7 +372,7 @@ typename SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::child_index
 	return NodeIndex((uint32_t(parent) << 2) + uint32_t(child));
 }
 
-template<typename AxisT>
+template<IntT AxisT>
 typename SpatialAllocator<AxisT>::NodeChild SpatialAllocator<AxisT>::node_child(NodeIndex index)
 {
 	if(index == 0 or index >= _nodes.size())
@@ -379,7 +380,7 @@ typename SpatialAllocator<AxisT>::NodeChild SpatialAllocator<AxisT>::node_child(
 	return NodeChild((uint32_t(index - 1) & 3) + 1);
 }
 /*
-template<typename AxisT>
+template<IntT AxisT>
 SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::index_of_descendant(NodeIndex index, uint32_t skip_levels) {
 	assert(skip_levels > 0);
 	const auto current_level = level_from_index(index);
