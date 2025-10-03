@@ -40,7 +40,7 @@ namespace RGL
 		static std::tuple<std::string, bool> LoadFile(const std::filesystem::path & filename);
 
 		// same as LoadFile, but if 'filename' is relative, it attempts open in given search paths, in order.
-		static std::tuple<std::string, bool> LoadFileInPaths(const std::filesystem::path &filename, const small_vec<std::filesystem::path, 16> &search_paths);
+		static std::tuple<std::string, std::filesystem::path> LoadFileInPaths(const std::filesystem::path &filename, const small_vec<std::filesystem::path, 16> &search_paths);
 
 		static std::streamsize GetFileSize(std::ifstream &strm);
 

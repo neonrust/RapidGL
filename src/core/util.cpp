@@ -54,20 +54,23 @@ std::tuple<std::string, bool> Util::LoadFile(const fs::path & filename)
 	return { filetext, true };
 }
 
-std::tuple<std::string, bool> Util::LoadFileInPaths(const fs::path &filename, const small_vec<fs::path, 16> &search_paths)
+std::tuple<std::string, std::filesystem::path> Util::LoadFileInPaths(const fs::path &filename, const small_vec<fs::path, 16> &search_paths)
 {
 	// if absolute, just load it as-is
 	if(not filename.is_relative())
-		return LoadFile(filename);
+	{
+		const auto &[data, ok] = LoadFile(filename);
+		return { data, filename };
+	}
 
 	for(const auto &search_path: search_paths)
 	{
-		const auto with_path = search_path / filename;
+		auto with_path = search_path / filename;
 		const auto &[include_data, ok] = LoadFile(with_path);
 		if(ok)
-			return { include_data, ok };
+			return { include_data, with_path };
 	}
-	return { {}, false };
+	return { {}, {} };
 }
 
 std::streamsize Util::GetFileSize(std::ifstream &strm)
@@ -115,7 +118,8 @@ std::tuple<std::string, bool> Util::PreprocessShaderSource(const std::string& sh
 	std::istringstream ss(shader_source);
 
 	auto search_paths = s_shader_include_paths;
-	search_paths.insert(search_paths.begin(), dir);
+	if(not dir.empty())
+		search_paths.insert(search_paths.begin(), dir);
 
 	std::string line, new_source;
 	new_source.reserve(shader_source.size());
@@ -147,18 +151,24 @@ std::tuple<std::string, bool> Util::PreprocessShaderSource(const std::string& sh
 			{
 				// extract filename, cutting off quotes (or brackets)
 				auto include_file = fs::path(preproc_instruction.substr(phrase_include.size() + 1, preproc_instruction.size() - phrase_include .size() - 2));
-				const auto &[include_data, ok] = LoadFileInPaths(include_file, search_paths);
+				// std::print("[{}] #include \x1b[34;1m{}\x1b[m ... ", line_num, include_file.string());
+				std::fflush(stdout);
+				const auto &[include_data, found_path] = LoadFileInPaths(include_file, search_paths);
 				// if not absolute always relative to the current file
-				if(not ok)
+				if(found_path.empty())
 				{
-					std::print(stderr, "({}): Include failed: {}\n", line_num, preproc_instruction);
+					std::print(stderr, "[{}] \x1b[31;1minclude failed\x1b[m: {}\n", line_num, preproc_instruction);
 					return { {}, false };
 				}
+				// std::print(" -> \x1b[34;1m{}\x1b[m\n", found_path.string());
 				if(not include_data.empty())
 				{
 					// TODO: this recursion should probably modify the same string object
 					//   now, potentially _many_ strings will be allocated, depending on how deep the includes recursion goes
-					const auto &[include_data_p, ok] = PreprocessShaderSource(include_data, include_file.parent_path());
+					auto parent_path = found_path.parent_path();
+					if(parent_path.empty())
+						parent_path = dir;
+					const auto &[include_data_p, ok] = PreprocessShaderSource(include_data, parent_path);
 					if(not ok)
 						return { {}, false }; // error message already output
 					new_source.append("#line 1\n");
