@@ -3,12 +3,12 @@
 
 layout(std430, binding = SSBO_BIND_CLUSTER_AABB) readonly buffer ClusterAABBSSBO
 {
-	AABB cluster_aabb[];
+	AABB ssbo_cluster_aabb[];
 };
 
 layout(std430, binding = SSBO_BIND_LIGHTS) readonly buffer LightsSSBO
 {
-	GPULight lights[];
+	GPULight ssbo_lights[];
 };
 
 SSBO_CLUSTER_DISCOVERY_ro;
@@ -50,7 +50,7 @@ void main()
 		// offset index into second half of "nonempty_clusters" (first half is flagged clusters)
 		uint active_offset = u_num_clusters;
 		s_cluster_index = nonempty_clusters[gl_WorkGroupID.x + active_offset];
-		s_cluster_aabb = cluster_aabb[s_cluster_index];
+		s_cluster_aabb = ssbo_cluster_aabb[s_cluster_index];
 
 		s_light_count = 0;
     }
@@ -62,7 +62,7 @@ void main()
     for (uint index = gl_LocalInvocationIndex; index < ssbo_relevant_lights_index.length(); index += THREADS_COUNT)
     {
     	uint light_index = ssbo_relevant_lights_index[index];
-    	GPULight light = lights[light_index];
+    	GPULight light = ssbo_lights[light_index];
 
      	if(light.intensity < 1e-1)
       		continue;
