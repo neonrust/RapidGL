@@ -1,6 +1,8 @@
 #include "bounds.h"
 #include <glm/geometric.hpp>
+#include <glm/gtc/constants.hpp>
 #include <glm/mat4x4.hpp>
+#include <numbers>
 
 namespace bounds
 {
@@ -134,15 +136,16 @@ void Sphere::expand(const glm::vec3 &point)
         return;
     }
 
-	const glm::vec3 offset = point - _center;
+	const auto offset = point - _center;
+	const float sqDistance = offset.x*offset.x + offset.y*offset.y + offset.z*offset.z;
 
-    const float sqDistance = offset.x*offset.x + offset.y*offset.y + offset.z*offset.z;
-
-    // check if the point already is enclosed
 	if(sqDistance <= _squaredRadius)
-        return;
+		return;  // point already contained
 
     // adjust center & radius by half the distance to center
+	// TODO: hm, shouldn't this be half the distance from 'point' to surface of sphere?
+	//   if a point is added just outside the sphere, the center will move almost _radius/2,
+	//   when in fact, it should only move a miniscule amount.
     _center += offset/2.f;
     _radius += std::sqrt(sqDistance)/2.f;
 	_squaredRadius = _radius*_radius;
@@ -150,8 +153,11 @@ void Sphere::expand(const glm::vec3 &point)
 
 float Sphere::volume() const
 {
+	if(empty())
+		return 0;
+
 	// V = (4 * pi * R^3)/3
-	return (4.f * float(M_PI) * _squaredRadius * _radius) / 3.f;
+	return (4.f * float(std::numbers::pi_v<float>) * _squaredRadius * _radius) / 3.f;
 }
 
 void Sphere::setCenter(const glm::vec3 &center)
@@ -163,6 +169,13 @@ void Sphere::setRadius(float radius)
 {
     _radius = radius;
 	_squaredRadius = radius * radius;
+}
+
+void bounds::Sphere::clear()
+{
+	_center = glm::zero<glm::vec3>();
+	_radius = -1.f;
+	_squaredRadius = -1.f;
 }
 
 }

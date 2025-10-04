@@ -61,8 +61,8 @@ public:
 	Sphere(const glm::vec3 &center, float radius);
 
 	void expand(const glm::vec3 &vertex);
-    bool empty() const;
     float volume() const;
+	inline bool empty() const { return _radius < 0; }
     void clear();
 	void setCenter(const glm::vec3 &center);
 	void setRadius(float radius);
@@ -71,23 +71,16 @@ public:
 	inline float radius() const { return empty()? 0: _radius; };
 	inline float squaredRadius() const { return _squaredRadius; };
 
+	inline operator bool () const { return not empty(); }
+
 protected:
 	glm::vec3 _center;
     float _radius;
 	float _squaredRadius;
 };
 
-inline bool Sphere::empty() const
-{
-	return _radius < 0;
-}
 
-inline void Sphere::clear()
-{
-	_center = glm::vec3(0);
-	_radius = -1.f;
-	_squaredRadius = 0;
-}
+void Sphere::clear();
 
 } // bounds
 
