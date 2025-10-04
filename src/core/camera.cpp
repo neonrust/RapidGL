@@ -92,7 +92,7 @@ void Camera::setUniforms(Shader &shader) const
 	shader.setUniform("u_near_z"sv,          nearPlane());
 	shader.setUniform("u_far_z"sv,           farPlane());
 	shader.setUniform("u_viewport_size"sv,   viewportSize());
-	shader.setUniform("u_fov_y"sv,           m_fovy);
+	shader.setUniform("u_fov_y"sv,           glm::radians(m_fovy));
 }
 
 void Camera::update(double dt)
