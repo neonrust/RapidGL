@@ -275,7 +275,7 @@ void Camera::setFov(float fov)
 		return;
 	}
 
-	if(auto changed = fov != m_fovy; changed)
+	if(fov != m_fovy)
 		setPerspective(fov, m_width, m_height, m_near, m_far);
 }
 
