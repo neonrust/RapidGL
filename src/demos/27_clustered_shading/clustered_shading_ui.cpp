@@ -59,9 +59,10 @@ void ClusteredShading::render_gui()
 	ImGui::Text("    Shading: %4ld µs", m_shading_time.average().count());
 	ImGui::Text("     Skybox: %4ld µs", m_skybox_time.average().count());
 	// ImGui::Text("        PP: %3ld µs", m_pp_time.count());
-	ImGui::Text("Volumetrics: %4ld µs", m_volumetrics_inject_time.average().count() + m_volumetrics_march_time.average().count());
-	ImGui::Text("   - inject: %4ld µs", m_volumetrics_inject_time.average().count());
-	ImGui::Text("   -  march: %4ld µs", m_volumetrics_march_time.average().count());
+	ImGui::Text("Volumetrics: %4ld µs", m_volumetrics_cull_time.average().count() + m_volumetrics_inject_time.average().count() + m_volumetrics_march_time.average().count());
+	ImGui::Text(" -   cull: %3ld µs", m_volumetrics_cull_time.average().count());
+	ImGui::Text(" - inject: %3ld µs", m_volumetrics_inject_time.average().count());
+	ImGui::Text(" -  march: %3ld µs", m_volumetrics_march_time.average().count());
 	ImGui::Text("Tonemapping: %4ld µs", m_tonemap_time.average().count());
 	ImGui::Text(" Debug draw: %4ld µs", m_debug_draw_time.average().count());
 	// ImGui::Text("   PP blur: %4ld µs", m_pp_blur_time.average().count());
@@ -102,6 +103,7 @@ void ClusteredShading::render_gui()
 						cam_right.x, cam_right.y, cam_right.z,
 						cam_up.x, cam_up.y, cam_up.z);
 			ImGui::Text("PVS size : %lu", _scenePvs.size());
+			ImGui::Text("Lights PVS size : %lu", _lightsPvs.size());
 
 			ImGui::Checkbox("Draw AABB", &m_debug_draw_aabb);
 			ImGui::Checkbox("Draw Lights", &m_debug_draw_light_markers);

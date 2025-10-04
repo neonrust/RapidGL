@@ -230,8 +230,7 @@ private:
 	RGL::buffer::Storage<uint>       m_affecting_lights_bitfield_ssbo;
 	dense_set<uint>                  _affecting_lights;
 	RGL::buffer::Storage<uint>       _relevant_lights_index_ssbo;
-	RGL::buffer::Storage<uint>       _volumetric_lights_index_ssbo;
-	RGL::buffer::Mapped<ShadowSlotInfo, MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS + MAX_AREA_LIGHTS> m_shadow_map_params_ssbo;
+	RGL::buffer::Mapped<ShadowSlotInfo, MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS + MAX_AREA_LIGHTS> m_shadow_map_slots_ssbo;
 	LightManager _light_mgr;
 
     /// Area lights variables
@@ -284,6 +283,7 @@ private:
 	SampleWindow<std::chrono::microseconds, 30> m_shadow_time;
 	SampleWindow<std::chrono::microseconds, 30> m_shading_time;
 	SampleWindow<std::chrono::microseconds, 30> m_skybox_time;
+	SampleWindow<std::chrono::microseconds, 30> m_volumetrics_cull_time;
 	SampleWindow<std::chrono::microseconds, 30> m_volumetrics_inject_time;
 	SampleWindow<std::chrono::microseconds, 30> m_volumetrics_march_time;
 	SampleWindow<std::chrono::microseconds, 30> m_tonemap_time;

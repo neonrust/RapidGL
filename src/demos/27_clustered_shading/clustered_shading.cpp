@@ -84,7 +84,6 @@ ClusteredShading::ClusteredShading() :
 	m_cluster_all_lights_index_ssbo("cluster-all-lights"sv),
 	m_affecting_lights_bitfield_ssbo("affecting-lights-bitfield"sv),
 	_relevant_lights_index_ssbo("relevant-lights-index"sv),
-	_volumetric_lights_index_ssbo("volumetric-lights"sv),
 	m_shadow_map_slots_ssbo("shadow-map-slots"sv),
 	m_exposure            (0.4f),
 	m_gamma               (2.2f),
@@ -108,7 +107,6 @@ ClusteredShading::ClusteredShading() :
 	m_affecting_lights_bitfield_ssbo.bindAt(SSBO_BIND_AFFECTING_LIGHTS_BITFIELD);
 	m_cull_lights_args_ssbo.bindAt(SSBO_BIND_CULL_LIGHTS_ARGS);
 	_relevant_lights_index_ssbo.bindAt(SSBO_BIND_RELEVANT_LIGHTS_INDEX);
-	_volumetric_lights_index_ssbo.bindAt(SSBO_BIND_VOLUMETRIC_LIGHTS_INDEX);
 
 	_affecting_lights.reserve(256);
 
@@ -239,6 +237,8 @@ void ClusteredShading::init_app()
     /// Create shaders.
 	const fs::path core_shaders = "resources/shaders/";
 	const fs::path shaders = "src/demos/27_clustered_shading/shaders/";
+
+	Util::AddShaderSearchPath(core_shaders);
 
 	const auto T0 = steady_clock::now();
 
@@ -1270,6 +1270,9 @@ void ClusteredShading::render()
 
 	if(_fog_density > 0)
 	{
+		m_volumetrics_pp.cull_lights(m_camera);
+		m_volumetrics_cull_time.add(_gl_timer.elapsed<microseconds>(true));
+
 		m_volumetrics_pp.setCameraUniforms(m_camera);
 
 		m_volumetrics_pp.setStrength(_fog_strength);
@@ -1286,7 +1289,6 @@ void ClusteredShading::render()
 		m_volumetrics_pp.shader().setUniform("u_volumetric_max_distance"sv, m_camera.farPlane() * s_light_volumetric_fraction);
 		m_volumetrics_pp.shader().setUniform("u_light_max_distance"sv,  m_camera.farPlane() * s_light_affect_fraction);
 		m_volumetrics_pp.shader().setUniform("u_shadow_max_distance"sv, m_camera.farPlane() * s_light_shadow_affect_fraction);
-
 
 		_shadow_atlas.bindDepthTextureSampler(20);
 		m_volumetrics_pp.inject(m_camera);
@@ -1310,7 +1312,7 @@ void ClusteredShading::render()
 		// m_blur3_pp.render(_pp_full_rt, _pp_full_rt);
 
 		// add the scattering effect on to the final image
-		draw2d(_pp_full_rt.color_texture(), _rt, BlendMode::Add);   // why does this (kind of) do "replace" instead?
+		draw2d(_pp_full_rt.color_texture(), _rt, BlendMode::Add);
 		// m_pp_blur_time.add(_gl_timer.elapsed<microseconds>());
 #endif
 
@@ -1587,9 +1589,6 @@ const std::vector<StaticObject> &ClusteredShading::cullScene(const Camera &view)
 
 	const auto max_view_distance = view.farPlane()* s_light_relevant_fraction;
 
-	static std::vector<LightIndex> volumetric_lights;
-	volumetric_lights.reserve(256);
-
 	// this probably doesn't need to be done every frame
 	//   if no lights nor the view moves then only once
 	{
@@ -1598,42 +1597,43 @@ const std::vector<StaticObject> &ClusteredShading::cullScene(const Camera &view)
 		{
 			last_update = T0;
 
+			static dense_set<uint> previous_pvs;
+			previous_pvs.insert(_lightsPvs.begin(), _lightsPvs.end());
 			_lightsPvs.clear();
-			volumetric_lights.clear();
 
+			std::print("   find relevant lights:\n");
 			for(const auto &[l_index, L]: std::views::enumerate(_light_mgr))
 			{
 				const auto light_index = LightIndex(l_index);
 
 				if(GET_LIGHT_TYPE(L) == LIGHT_TYPE_DIRECTIONAL)
-				{
 					_lightsPvs.push_back(light_index);
-					if(IS_VOLUMETRIC(L))
-						volumetric_lights.push_back(light_index);
-				}
 				else
 				{
 					const auto edge_distance = std::max(0.f, glm::distance(L.position, view_pos) - L.affect_radius);
-					if(edge_distance < max_view_distance)
-						_lightsPvs.push_back(light_index);
-					else if(IS_SHADOW_CASTER(L) /* and was in the light pvs before */)
-					{
-						const auto light_id = _light_mgr.light_id(light_index);
-						_shadow_atlas.remove_allocation(light_id);
-					}
+					const auto relevant = edge_distance < max_view_distance
+						and intersect::check(m_camera.frustum(), _light_mgr.light_bounds(L));
 
-					if(IS_VOLUMETRIC(L))
+					if(relevant)
+						_lightsPvs.push_back(light_index);
+					else
 					{
-						if(intersect::check(m_camera.frustum(), _light_mgr.light_bounds(L)))
-							volumetric_lights.push_back(light_index);
+						if(previous_pvs.contains(light_index))
+							std::print("   light {} removed from PVS\n", light_index);
+
+						if(IS_SHADOW_CASTER(L) /* and was in the light pvs before? */)
+						{
+							const auto light_id = _light_mgr.light_id(light_index);
+							_shadow_atlas.remove_allocation(light_id);
+						}
 					}
 				}
 			}
-			// only upload when changed...
+			// TODO: ideally these should be sorted by distance from camera
 			_relevant_lights_index_ssbo.set(_lightsPvs);
 			// std::print("   relevant lights: {}\n", _lightsPvs.size());
-			_volumetric_lights_index_ssbo.set(volumetric_lights);
 		}
+
 	}
 
 	// TODO do something like:
