@@ -1,6 +1,7 @@
 #version 460 core
 
 #include "shared-structs.glh"
+#include "shadpes.h"
 
 #define GROUP_SIZE 8
 
@@ -51,12 +52,6 @@ struct Ray
 	vec3 start;
 	vec3 direction;
 	float max_length;
-};
-
-struct Sphere
-{
-	vec3 center;
-	float radius;
 };
 
 struct SphericalCone
