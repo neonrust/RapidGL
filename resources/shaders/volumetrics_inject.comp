@@ -12,6 +12,8 @@ layout(rgba32f, binding = 5) uniform writeonly image3D   u_output_scatter;
 layout(binding = 6)          uniform           sampler3D u_previous_scatter;
 layout(binding = 20)         uniform           sampler2D u_shadow_atlas;
 
+const uvec2 tile_grid = uvec2(FROXEL_GRID_W/FROXELS_PER_TILE, FROXEL_GRID_H/FROXELS_PER_TILE);
+
 layout(std430, binding = SSBO_BIND_LIGHTS) readonly buffer LightsSSBO
 {
 	GPULight ssbo_lights[];
@@ -22,9 +24,17 @@ layout(std430, binding = SSBO_BIND_SHADOW_SLOTS_INFO) readonly buffer ShadowSlot
 	ShadowSlotInfo ssbo_shadow_slots[];
 };
 
-layout(std430, binding = SSBO_BIND_VOLUMETRIC_LIGHTS_INDEX) readonly buffer VolumetricLightsIndexSSBO
+layout(std430, binding = SSBO_BIND_VOLUMETRIC_ALL_TILE_LIGHTS_INDEX)
+readonly buffer VolAllTileLightsIndexSSBO
 {
-	uint ssbo_volumetric_lights[];
+	uint ssbo_all_tile_start_index;
+	uint ssbo_all_tile_lights[]; // size = avg_lights_per_tile * num_tiles
+};
+
+layout(std430, binding = SSBO_BIND_VOLUMETRIC_TILE_LIGHTS_INDEX)
+readonly buffer VolTileLightsIndexSSBO
+{
+	IndexRange ssbo_tile_lights[];  // size = num_tiles
 };
 
 
@@ -81,9 +91,14 @@ void main()
 
 	vec3 total_scattered = vec3(0);
 
-	for(uint index = 0; index < ssbo_volumetric_lights.length(); ++index)
+	uvec2 tile = uvec2(froxel.x / FROXELS_PER_TILE, froxel.y / FROXELS_PER_TILE);
+	uint tile_index = tile.y*tile_grid.x + tile.x;
+
+	IndexRange lights_range = ssbo_tile_lights[tile_index];
+
+	for(uint index = 0; index < lights_range.count; ++index)
 	{
-		uint light_index = ssbo_volumetric_lights[index];
+		uint light_index = ssbo_all_tile_lights[lights_range.start_index + index];
 		GPULight light = ssbo_lights[light_index];
 
 		vec3 light_to_froxel;
@@ -148,14 +163,17 @@ void main()
 
 	        // find the corresponding UV in the previous froxel grid
 	        vec3 prev_uv = worldToUV(world_pos, u_prev_view);
+			// vec3 prev_uv = worldToFroxelUV(world_pos, u_prev_view);
 
-	        // skip if previous UV is outside the froxel grid
+	        // only mix with UVs that coincide with the current froxel grid
 	        if(all(greaterThanEqual(prev_uv, vec3(0))) && all(lessThanEqual(prev_uv, vec3(1))))
 	        {
-	            // Fetch history sample
+	            // blend with previous froxel sample
 	            vec3 prev_scatter = textureLod(u_previous_scatter, prev_uv, 0).rgb;
-            	scatter_contrib = mix(prev_scatter, scatter_contrib, u_froxel_blend_weight);
+            	scatter_contrib = mix(scatter_contrib, prev_scatter, u_froxel_blend_weight);
 	        }
+			else
+				scatter_contrib = vec3(1, 0, 1);
         }
 
         total_scattered += scatter_contrib;
@@ -289,6 +307,33 @@ vec3 worldToUV(vec3 world_pos, mat4 view)
 {
     vec3 ndc = worldToNDC(world_pos, u_projection * view);
     return ndcToUV(ndc, u_froxel_zexp);
+}
+
+vec3 worldToFroxelUV(vec3 world_pos, mat4 view)
+{
+    // Transform into *view space*
+    vec4 view_pos = view * vec4(world_pos, 1);
+
+    // Perspective divide not needed (we’re in view space now)
+    // viewPos.z is negative in standard right-handed OpenGL camera space.
+    float view_z = -view_pos.z;
+
+    // --- X/Y mapping ---
+    // Project to NDC
+    vec4 clip_pos = u_projection * view_pos;
+    vec3 ndc = clip_pos.xyz / clip_pos.w;   // [ -1, 1 ]
+
+    // Map to [0,1]
+    // float u = ndc.x * 0.5 + 0.5;
+    // float v = ndc.y * 0.5 + 0.5;
+    vec2 uv = (ndc * 0.5 + 0.5).xy;
+
+    // --- Z mapping ---
+    // Match your exponential partitioning
+    // normalize viewZ against far
+    float w = log(view_z / u_near_z) / log(u_far_z / u_near_z);
+
+    return vec3(uv, clamp(w, 0, 1));
 }
 
 // from pbr_scatter_contrib.glh (slightly modified)

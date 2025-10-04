@@ -6,6 +6,11 @@
 #include "filesystem.h"
 
 #include "../demos/27_clustered_shading/light_constants.h"
+#include "../demos/27_clustered_shading/buffer_binds.h"
+#include <ranges>
+
+#include <chrono>
+using namespace std::chrono;
 
 using namespace std::literals;
 
@@ -15,18 +20,41 @@ namespace RGL::PP
 static constexpr glm::uvec3 s_froxels { FROXEL_GRID_W, FROXEL_GRID_H, FROXEL_GRID_D };
 static constexpr glm::uvec3 s_local_size { 8, 8, 1 };
 
+Volumetrics::Volumetrics() :
+	_all_volumetric_lights("volumetric-lights"sv),
+	_all_tile_lights("volumetric-all-tile-lights"sv),
+	_tile_lights_ranges("volumetric-tile-light-ranges"sv)
+	// _debug_stuff("debug-stuff"sv)
+{
+	_all_volumetric_lights.bindAt(SSBO_BIND_ALL_VOLUMETRIC_LIGHTS_INDEX);
+	_all_tile_lights.bindAt(SSBO_BIND_VOLUMETRIC_ALL_TILE_LIGHTS_INDEX);
+	_tile_lights_ranges.bindAt(SSBO_BIND_VOLUMETRIC_TILE_LIGHTS_INDEX);
+	// _debug_stuff.bindAt(30);
+}
+
 bool Volumetrics::create()
 {
 	const auto shaderPath = FileSystem::getResourcesPath() / "shaders";
 
+	new (&_select_shader) Shader(shaderPath / "volumetrics_select_lights.comp");
+	_select_shader.link();
+	_select_shader.setPreBarrier(Shader::Barrier::SSBO);
+	assert(_select_shader);
+
+	new (&_cull_shader) Shader(shaderPath / "volumetrics_cull.comp");
+	_cull_shader.link();
+	_cull_shader.setPreBarrier(Shader::Barrier::SSBO);
+	assert(_cull_shader);
+
 	new (&_inject_shader) Shader(shaderPath / "volumetrics_inject.comp");
 	_inject_shader.link();
-	_inject_shader.setPostBarrier(Shader::Barrier::Image);
+	_inject_shader.setPreBarrier(Shader::Barrier::SSBO);
 	assert(_inject_shader);
 
 	new (&_march_shader) Shader(shaderPath / "volumetrics_march.comp");
 	_march_shader.link();
 	assert(_march_shader);
+	_march_shader.setPreBarrier(Shader::Barrier::Image);
 	_march_shader.setPostBarrier(Shader::Barrier::Image);
 
 	_blue_noise.Load("resources/textures/blue-noise.array");
@@ -41,17 +69,48 @@ bool Volumetrics::create()
 		_transmittance[idx].SetWrapping(TextureWrappingAxis::W, TextureWrappingParam::ClampToEdge);
 	}
 
+	_all_volumetric_lights.resize(256); // that's a lot :)
+
+	const auto num_tiles = s_froxels.x / FROXELS_PER_TILE * s_froxels.y / FROXELS_PER_TILE;
+	_tile_lights_ranges.resize(num_tiles);
+	_all_tile_lights.resize(num_tiles * FROXEL_TILE_AVG_LIGHTS);
+	// _debug_stuff.resize(8);
+
 	return *this;
 }
 
 Volumetrics::operator bool() const
 {
-	return _inject_shader and _march_shader and _blue_noise;
+	return _select_shader and _cull_shader and _inject_shader and _march_shader and _blue_noise;
 }
 
 void Volumetrics::setCameraUniforms(const Camera &camera)
 {
 	camera.setUniforms(_march_shader);
+}
+
+void Volumetrics::cull_lights(const Camera &camera)
+{
+	// TODO: perform tile-based culling (since the lights affect a screen-projected area on the screen
+	//   e.g. a 16x9 grid tiles
+
+	// SSBO_BIND_ALL_VOLUMETRIC_LIGHTS_INDEX -> SSBO_BIND_VOLUMETRIC_TILE_LIGHTS_INDEX
+
+	// first pick the volumetric lights
+	_all_volumetric_lights.clear();
+	_select_shader.invoke(1);
+
+	// std::vector<uint> vol_lights;
+	// _all_volumetric_lights.download(vol_lights);
+	// std::print("   num vol lights: {}\n", vol_lights[0]);
+
+	// then assign lights to overlapping 2d tiles (groups of froxel columns)
+	camera.setUniforms(_cull_shader);
+
+	_tile_lights_ranges.clear();
+	_all_tile_lights.clear();
+	// _debug_stuff.clear();
+	_cull_shader.invoke(s_froxels.x / FROXELS_PER_TILE, s_froxels.y / FROXELS_PER_TILE);
 }
 
 void Volumetrics::inject(const Camera &camera) // TODO: View
@@ -63,7 +122,7 @@ void Volumetrics::inject(const Camera &camera) // TODO: View
 	_blue_noise.BindLayer(_frame % _blue_noise.num_layers(), 3);
 
 	// TODO: better API?
-	//   _inject_shader.bindImage("u_output_transmittance"sv, _transmittance[_frame & 1], ImageAccess::Write);
+	//   _inject_zshader.bindImage("u_output_transmittance"sv, _transmittance[_frame & 1], ImageAccess::Write);
 	const auto active_idx = _frame & 1;
 	_transmittance[active_idx].BindImage(5, ImageAccess::Write);
 	_transmittance[1 - active_idx].Bind(6);

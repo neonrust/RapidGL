@@ -79,9 +79,6 @@ protected:
 	float _squaredRadius;
 };
 
-
-void Sphere::clear();
-
 } // bounds
 
 namespace RGL

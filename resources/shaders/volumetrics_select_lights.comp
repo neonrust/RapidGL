@@ -1,0 +1,36 @@
+#version 460 core
+
+#include "../../src/demos/27_clustered_shading/shaders/shared-structs.glh"
+
+#define THREADS_COUNT 128
+
+layout(local_size_x = THREADS_COUNT, local_size_y = 1, local_size_z = 1) in;
+
+SSBO_RELEVANT_LIGHTS_INDEX_ro;
+
+layout(std430, binding = SSBO_BIND_LIGHTS) readonly buffer LightsSSBO
+{
+	GPULight ssbo_lights[];
+};
+
+layout(std430, binding = SSBO_BIND_ALL_VOLUMETRIC_LIGHTS_INDEX) writeonly buffer VolLightsSSBO
+{
+	uint ssbo_num_volumetric_lights;
+	uint ssbo_volumetric_lights_index[];
+};
+
+
+void main()
+{
+	for (uint index = gl_LocalInvocationIndex; index < ssbo_relevant_lights_index.length(); index += THREADS_COUNT)
+	{
+		uint light_index = ssbo_relevant_lights_index[index];
+		GPULight L = ssbo_lights[light_index];
+
+		if(IS_DIR_LIGHT(L) || IS_VOLUMETRIC(L))
+		{
+			uint index = atomicAdd(ssbo_num_volumetric_lights, 1);
+			ssbo_volumetric_lights_index[index] = light_index;
+		}
+	}
+}

@@ -1,0 +1,197 @@
+#version 460 core
+
+#define GROUP_SIZE 8
+
+layout(local_size_x = GROUP_SIZE, local_size_y = GROUP_SIZE, local_size_z = 1) in;
+
+#include "../../src/demos/27_clustered_shading/shaders/shared-structs.glh"
+#include "shapes.glh"
+
+// 16x9 at 160x90xN froxels
+const uvec2 tile_grid = uvec2(FROXEL_GRID_W/FROXELS_PER_TILE, FROXEL_GRID_H/FROXELS_PER_TILE);
+
+layout(std430, binding = SSBO_BIND_LIGHTS)
+readonly buffer LightsSSBO
+{
+	GPULight ssbo_lights[];
+};
+
+layout(std430, binding = SSBO_BIND_ALL_VOLUMETRIC_LIGHTS_INDEX)
+readonly buffer VolLightsSSBO
+{
+	uint ssbo_num_volumetric_lights;
+	uint ssbo_volumetric_lights_index[];
+};
+
+layout(std430, binding = SSBO_BIND_VOLUMETRIC_ALL_TILE_LIGHTS_INDEX)
+writeonly buffer VolAllTileLightsIndexSSBO
+{
+	uint ssbo_all_tile_start_index;
+	uint ssbo_all_tile_lights[]; // size = avg_lights_per_tile * num_tiles
+};
+
+layout(std430, binding = SSBO_BIND_VOLUMETRIC_TILE_LIGHTS_INDEX)
+writeonly buffer VolTileLightsIndexSSBO
+{
+	IndexRange ssbo_tile_lights[];  // size = num_tiles
+};
+
+// layout(std430, binding = 30)
+// writeonly buffer DebugStuff
+// {
+// 	uint count;
+// 	float debug_stuff[];
+// };
+
+
+SSBO_RELEVANT_LIGHTS_INDEX_ro;
+
+struct Disc
+{
+	vec2 center;
+	float radius;
+};
+
+struct Rect
+{
+	float x, y;
+	float width;
+	float height;
+};
+
+uniform mat4 u_view;
+uniform mat4 u_projection;
+uniform float u_fov_y;
+uniform uvec2 u_viewport_size;
+
+Disc screen_project_sphere(vec3 position, float radius);
+bool intersect(Disc disc, Rect rect);
+
+shared uint s_index_offset;
+shared uint s_light_count;
+shared uint s_affecting_lights[FROXEL_TILE_MAX_LIGHTS];
+
+void main()
+{
+	if(gl_LocalInvocationIndex == 0)
+	{
+		s_index_offset = 0;
+		s_light_count = 0;
+	}
+	barrier();
+
+	// tile coordinate from work group id (0 - tile_grid.x-1, 0 - tile_grid.y-1)
+	ivec2 tile = ivec2(gl_WorkGroupID.xy);
+
+	uvec2 tile_size = uvec2(u_viewport_size / tile_grid);
+	uvec2  tile_pos = tile * tile_size;
+
+	Rect tile_rect = Rect(tile_pos.x, tile_pos.y, tile_size.x, tile_size.y);
+
+	const uint THREADS_COUNT = gl_WorkGroupSize.x;
+
+	for(uint index = gl_LocalInvocationIndex; index < ssbo_num_volumetric_lights; index += THREADS_COUNT)
+	{
+		uint light_index = ssbo_volumetric_lights_index[index];
+		GPULight L = ssbo_lights[light_index];
+
+		if(! IS_VOLUMETRIC(L))
+			continue;
+
+		bool is_affecting = false;
+
+		if(IS_DIR_LIGHT(L))
+			is_affecting = true;
+		else
+		{
+			// project light's affect sphere to screen, check 2d intersection with this tile
+			Sphere sphere;
+			vec4 posVS = u_view * vec4(L.position, 1);
+			if(IS_SPOT_LIGHT(L))
+				posVS.xyz += L.direction*L.spot_bounds_radius;
+    		float radiusVS = IS_SPOT_LIGHT(L)? L.spot_bounds_radius: L.affect_radius;  // in view space
+
+		    // Project to screen
+			Disc disc = screen_project_sphere(posVS.xyz, radiusVS);
+			is_affecting = intersect(disc, tile_rect);
+
+			// debug_stuff[light_index] = disc.radius;
+        }
+
+		if(is_affecting)
+		{
+			uint next_index = atomicAdd(s_light_count, 1);
+			if(next_index < FROXEL_TILE_MAX_LIGHTS)
+				s_affecting_lights[next_index] = light_index;
+		}
+	}
+
+	barrier();
+
+	// write index range entry for the tile (only one thread)
+	if(gl_LocalInvocationIndex == 0)// && s_light_count > 0)
+	{
+		uint count = min(s_light_count, FROXEL_TILE_MAX_LIGHTS);
+		// reserve space ub tge gkibak kust fir tgus tuke
+		uint start_offset = atomicAdd(ssbo_all_tile_start_index, count);
+
+		for(uint idx = 0; idx < count; ++idx)
+			ssbo_all_tile_lights[start_offset + idx] = s_affecting_lights[idx];
+
+		uint tile_index = tile.y*tile_grid.x + tile.x;
+		ssbo_tile_lights[tile_index] = IndexRange(start_offset, count);
+	}
+}
+
+bool intersect(Disc disc, Rect rect)
+{
+	// https://stackoverflow.com/a/402010
+	vec2 rect_center = vec2(rect.x + rect.width/2, rect.y + rect.height/2);
+	vec2 disc_distance = vec2(abs(disc.center - rect_center));
+
+	if(disc_distance.x > (rect.width/2  + disc.radius) || disc_distance.y > (rect.height/2 + disc.radius))
+		return false;
+	if(disc_distance.x <= rect.width/2 || disc_distance.y <= rect.height/2)
+		return true;
+
+	float x_dist = disc_distance.x - rect.width/2;
+	float y_dist = disc_distance.y - rect.height/2;
+	float corner_distance_sq = (x_dist * x_dist) + (y_dist * y_dist);
+
+	return corner_distance_sq <= (disc.radius*disc.radius);
+}
+
+Disc screen_project_sphere(vec3 position, float radius)
+{
+    Disc disc;
+
+    vec4 clip = u_projection * vec4(position, 1);
+    vec3 ndc = clip.xyz / clip.w;
+    vec2 pos_uv = ndc.xy * 0.5 + 0.5;  // [ 0, 1 ]
+
+    // disc center
+    disc.center = pos_uv * vec2(u_viewport_size);
+
+    // sphere/disc radius
+    // project offsets in X, Y, and diagonals
+    vec4 clipX = u_projection * vec4(position + vec3(radius, 0, 0), 1);
+    vec2 uvX = (clipX.xy / clipX.w) * 0.5 + 0.5;
+    float dx = abs(uvX.x - pos_uv.x) * float(u_viewport_size.x);
+
+    vec4 clipY = u_projection * vec4(position + vec3(0, radius, 0), 1);
+    vec2 uvY = (clipY.xy / clipY.w) * 0.5 + 0.5;
+    float dy = abs(uvY.y - pos_uv.y) * float(u_viewport_size.y);
+
+    vec4 clipXY = u_projection * vec4(position + vec3(radius, radius, 0), 1);
+    vec2 uvXY = (clipXY.xy / clipXY.w) * 0.5 + 0.5;
+    float dxy = length((uvXY - pos_uv) * vec2(u_viewport_size));
+
+    vec4 clipXnYn = u_projection * vec4(position + vec3(-radius, -radius, 0), 1);
+    vec2 uvXnYn = (clipXnYn.xy / clipXnYn.w) * 0.5 + 0.5;
+    float dxyn = length((uvXnYn - pos_uv) * vec2(u_viewport_size));
+
+    // over estimate: use the largest value
+    disc.radius = max(max(dx, dy), max(dxy, dxyn));
+
+    return disc;
+}

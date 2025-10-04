@@ -4,6 +4,8 @@
 #include "shader.h"
 #include "texture.h"
 
+#include "../demos/27_clustered_shading/generated//shared-structs.h"
+
 namespace RGL
 {
 class Camera;
@@ -16,6 +18,8 @@ namespace RGL::PP
 class Volumetrics : public PostProcess
 {
 public:
+	Volumetrics();
+
 	bool create();
 	operator bool() const override;
 
@@ -35,18 +39,26 @@ public:
 
 	inline void setDensity(float density) { _density = density; }
 
+	void cull_lights(const Camera &camera);
 	void inject(const Camera &camera);
 	void render(const RenderTarget::Texture2d &, RenderTarget::Texture2d &out) override;
 
 	inline const Texture3D &froxel_texture(uint32_t index=0) const { return _transmittance[index? 1 - (_frame & 1): _frame & 1]; }
 
 private:
+	Shader _select_shader;
+	Shader _cull_shader;
 	Shader _inject_shader;
 	Shader _march_shader;
 	Texture2DArray _blue_noise;
 	Texture3D _transmittance[2];  // read -> write, or write <- read
 	uint32_t _read_index { 0 };  // ping-pong index into '_accumulation'
 	uint32_t _frame { 0 };
+
+	buffer::Storage<uint> _all_volumetric_lights;
+	buffer::Storage<uint> _all_tile_lights;
+	buffer::Storage<IndexRange> _tile_lights_ranges;
+	// buffer::Storage<float> _debug_stuff;
 
 	float _strength { 1.f };
 	float _anisotropy { 0.7f };  // ~0.7 Thin haze / atmospheric fog
