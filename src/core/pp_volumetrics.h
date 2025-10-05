@@ -24,7 +24,6 @@ public:
 	operator bool() const override;
 
 	inline Shader &shader() { return _inject_shader; }
-	void setCameraUniforms(const Camera &camera);
 
 	// multiplier for the volumetrics effect
 	inline void setStrength(float strength) { _strength = strength; }
@@ -41,17 +40,21 @@ public:
 
 	void cull_lights(const Camera &camera);
 	void inject(const Camera &camera);
+	void accumulate(const Camera &camera);
 	void render(const RenderTarget::Texture2d &, RenderTarget::Texture2d &out) override;
 
-	inline const Texture3D &froxel_texture(uint32_t index=0) const { return _transmittance[index? 1 - (_frame & 1): _frame & 1]; }
+	// 0 = current injection, 1 = previous injection, 2 = depth accumulation
+	const Texture3D &froxel_texture(uint32_t index=0) const;
 
 private:
 	Shader _select_shader;
 	Shader _cull_shader;
 	Shader _inject_shader;
-	Shader _march_shader;
+	Shader _accumulate_shader;
+	Shader _bake_shader;
 	Texture2DArray _blue_noise;
 	Texture3D _transmittance[2];  // read -> write, or write <- read
+	Texture3D _accumulation;
 	uint32_t _read_index { 0 };  // ping-pong index into '_accumulation'
 	uint32_t _frame { 0 };
 

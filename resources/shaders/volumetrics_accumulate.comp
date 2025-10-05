@@ -1,0 +1,76 @@
+#version 460 core
+
+#include "../../src/demos/27_clustered_shading/shaders/shared-structs.glh"
+#include "volumetrics.glh"
+
+#define GROUP_SIZE_X 8
+#define GROUP_SIZE_Y 8
+#define GROUP_SIZE_Z 1
+
+#define MARCH_STEPS 128
+#define M_PI 3.14159265359
+
+layout(local_size_x = GROUP_SIZE_X, local_size_y = GROUP_SIZE_Y, local_size_z = 1) in;
+
+layout(binding = 6)          uniform           sampler3D u_in_scatter;
+// layout(binding = 2)          uniform           sampler2D u_input_depth;
+layout(rgba32f, binding = 5) uniform writeonly image3D   u_out_accumulation;
+uniform float u_far_z;
+uniform float u_near_z;
+
+
+
+vec2 froxel_depth_edges(int z);
+float froxel_distance(int z);
+
+void main()
+{
+    ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
+
+    // vec2 depth_uv = vec2(pixel) / vec2(textureSize(u_input_depth, 0));
+    // float depth = texture(u_input_depth, depth_uv).r;
+
+    // if(isnan(fragment_depth) || fragment_depth == 0)
+    // {
+    // 	imageStore(u_output_volumetrics, pixel, vec4(10, 0, 10, 1));
+    //  	return;
+    // }
+
+   	vec3 accumulated = vec3(0);
+	float transmittance = 1;
+
+	for(int z = 0; z < FROXEL_GRID_D; z++)
+	{
+		ivec3 froxel = ivec3(pixel, z);
+
+		vec2 depth_edges = froxel_depth_edges(z);
+		float near_edge = depth_edges.x;
+		float far_edge  = depth_edges.y;
+
+		float thickness = far_edge - near_edge;
+
+		vec4 scattered_density = texelFetch(u_in_scatter, froxel, 0);
+		vec3 scattered = scattered_density.rgb;
+		float density = scattered_density.a;
+
+		float exp_absorption = exp(-density * thickness);
+
+		accumulated += transmittance * scattered * thickness;
+		transmittance *= exp_absorption;
+
+		imageStore(u_out_accumulation, froxel, vec4(accumulated, transmittance));
+	}
+}
+
+float froxel_distance(int z)
+{
+    return u_near_z * pow(u_far_z / u_near_z, (float(z) + 0.5f) / float(FROXEL_GRID_D));
+}
+
+vec2 froxel_depth_edges(int z)
+{
+    return vec2(
+    	froxel_distance(z),
+     	froxel_distance(z + 1)
+    );
+}

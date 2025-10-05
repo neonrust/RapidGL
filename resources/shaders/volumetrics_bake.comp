@@ -1,0 +1,112 @@
+#version 460 core
+
+#include "../../src/demos/27_clustered_shading/shaders/shared-structs.glh"
+#include "volumetrics.glh"
+
+#define GROUP_SIZE_X 8
+#define GROUP_SIZE_Y 8
+#define GROUP_SIZE_Z 1
+
+#define MARCH_STEPS 128
+#define M_PI 3.14159265359
+
+layout(local_size_x = GROUP_SIZE_X, local_size_y = GROUP_SIZE_Y, local_size_z = GROUP_SIZE_Z) in;
+
+uniform float u_effect_scale;
+uniform float u_near_z;
+uniform float u_far_z;
+uniform float u_froxel_zexp;
+uniform mat4  u_view_projection;
+uniform mat4  u_inv_view_projection;
+
+layout(binding = 5)          uniform           sampler3D u_in_accumulation;
+layout(binding = 2)          uniform           sampler2D u_in_depth;
+layout(binding = 1, rgba32f) uniform writeonly image2D   u_out_volumetrics;
+
+
+const float s_min_thickness = 0.001;
+
+vec2 froxel_depth_edges(int z);
+float froxel_distance(int z);
+float depthbuffer_to_view_z(float depth, mat4 proj);
+vec4 texture_tricubic(sampler3D tex, vec3 coord);
+vec3 ndc_to_uv(vec3 ndc, float n, float f, float depth_power);
+float exp_01_to_linear_01_depth(float z, float n, float f);
+
+void main()
+{
+    ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
+
+    vec2 uv = vec2(pixel) / vec2(imageSize(u_out_volumetrics));
+    float zbuf_z = texture(u_in_depth, uv).r;
+    vec4 ndc;
+    ndc.xy = uv * 2 - 1;
+    ndc.z  = zbuf_z * 2 - 1;
+    ndc.w  = 1;
+
+    vec3 froxel_uv = ndc_to_uv(ndc.xyz, u_near_z, u_far_z, u_froxel_zexp);
+
+	vec4 accumulated_transmittance = texture_tricubic(u_in_accumulation, froxel_uv);
+	vec3 accumulated = accumulated_transmittance.rgb;
+	float transmittance = accumulated_transmittance.a;
+
+	accumulated *= u_effect_scale;
+
+    imageStore(u_out_volumetrics, pixel, vec4(accumulated, 1));
+
+    // float linear_z = exp_01_to_linear_01_depth(ndc.z * 0.5f + 0.5f, u_near_z, u_far_z);
+    // float view_z = linear_z * u_far_z;
+    // float froxel_z = (max(log2(max(view_z, 1e-6)) * (float(FROXEL_GRID_D) / log2(u_far_z / u_near_z)) - (float(FROXEL_GRID_D) * log2(u_near_z) / log2(u_far_z / u_near_z)), 0)) / float(FROXEL_GRID_D);
+    // imageStore(u_out_volumetrics, pixel, vec4(linear_z, view_z / u_far_z, froxel_z, 1));
+}
+
+float froxel_distance(int z)
+{
+    return u_near_z * pow(u_far_z / u_near_z, (float(z) + 0.5f) / float(FROXEL_GRID_D));
+}
+
+vec2 froxel_depth_edges(int z)
+{
+    return vec2(
+    	froxel_distance(z),
+     	froxel_distance(z + 1)
+    );
+}
+
+float depthbuffer_to_view_z(float depth, mat4 proj)
+{
+    // Depth buffer -> NDC
+    float z_ndc = depth * 2 - 1;
+
+    // Inverse of proj[2][2] and proj[3][2] does the trick
+    float A = proj[2][2];
+    float B = proj[3][2];
+
+    // Solve clip-space projection relation: z_view = B / (z_ndc - A)
+    return B / (z_ndc - A);
+}
+
+float exp_01_to_linear_01_depth(float z, float n, float f)
+{
+    float z_buffer_params_y = f / n;
+    float z_buffer_params_x = 1.0f - z_buffer_params_y;
+
+    return 1.0f / (z_buffer_params_x * z + z_buffer_params_y);
+}
+
+vec3 ndc_to_uv(vec3 ndc, float n, float f, float depth_power)
+{
+    vec3 uv;
+
+    uv.x = ndc.x * 0.5f + 0.5f;
+    uv.y = ndc.y * 0.5f + 0.5f;
+    uv.z = exp_01_to_linear_01_depth(ndc.z * 0.5f + 0.5f, n, f);
+
+    // Exponential View-Z
+    vec2 params = vec2(float(FROXEL_GRID_D) / log2(f / n), -(float(FROXEL_GRID_D) * log2(n) / log2(f / n)));
+
+    float view_z = uv.z * f;
+    uv.z = (max(log2(view_z) * params.x + params.y, 0)) / FROXEL_GRID_D;
+
+    return uv;
+}

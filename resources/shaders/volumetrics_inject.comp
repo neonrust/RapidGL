@@ -8,8 +8,8 @@
 layout(local_size_x = GROUP_SIZE, local_size_y = GROUP_SIZE, local_size_z = 1) in;
 
 layout(binding = 3)          uniform           sampler2D u_blue_noise;
-layout(rgba32f, binding = 5) uniform writeonly image3D   u_output_scatter;
-layout(binding = 6)          uniform           sampler3D u_previous_scatter;
+layout(rgba32f, binding = 5) uniform writeonly image3D   u_out_scatter;
+layout(binding = 6)          uniform           sampler3D u_prev_scatter;
 layout(binding = 20)         uniform           sampler2D u_shadow_atlas;
 
 const uvec2 tile_grid = uvec2(FROXEL_GRID_W/FROXELS_PER_TILE, FROXEL_GRID_H/FROXELS_PER_TILE);
@@ -169,7 +169,7 @@ void main()
 	        if(all(greaterThanEqual(prev_uv, vec3(0))) && all(lessThanEqual(prev_uv, vec3(1))))
 	        {
 	            // blend with previous froxel sample
-	            vec3 prev_scatter = textureLod(u_previous_scatter, prev_uv, 0).rgb;
+	            vec3 prev_scatter = textureLod(u_prev_scatter, prev_uv, 0).rgb;
             	scatter_contrib = mix(scatter_contrib, prev_scatter, u_froxel_blend_weight);
 	        }
 			else
@@ -180,7 +180,7 @@ void main()
 	}
 
 	float density = u_fog_density; // TODO: noise texture?
-	imageStore(u_output_scatter, froxel, vec4(total_scattered * density, density));
+	imageStore(u_out_scatter, froxel, vec4(total_scattered * density, density));
 }
 
 float froxelThickness(int z)

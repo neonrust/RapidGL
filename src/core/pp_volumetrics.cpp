@@ -1,3 +1,4 @@
+
 #include "pp_volumetrics.h"
 
 #include "rendertarget_2d.h"
@@ -7,10 +8,7 @@
 
 #include "../demos/27_clustered_shading/light_constants.h"
 #include "../demos/27_clustered_shading/buffer_binds.h"
-#include <ranges>
-
-#include <chrono>
-using namespace std::chrono;
+#include <glm/vec3.hpp>
 
 using namespace std::literals;
 
@@ -51,11 +49,16 @@ bool Volumetrics::create()
 	_inject_shader.setPreBarrier(Shader::Barrier::SSBO);
 	assert(_inject_shader);
 
-	new (&_march_shader) Shader(shaderPath / "volumetrics_march.comp");
-	_march_shader.link();
-	assert(_march_shader);
-	_march_shader.setPreBarrier(Shader::Barrier::Image);
-	_march_shader.setPostBarrier(Shader::Barrier::Image);
+	new (&_accumulate_shader) Shader(shaderPath / "volumetrics_accumulate.comp");
+	_accumulate_shader.link();
+	assert(_accumulate_shader);
+	_accumulate_shader.setPreBarrier(Shader::Barrier::Image);
+
+	new (&_bake_shader) Shader(shaderPath / "volumetrics_bake.comp");
+	_bake_shader.link();
+	assert(_bake_shader);
+	_bake_shader.setPreBarrier(Shader::Barrier::Image);
+
 
 	_blue_noise.Load("resources/textures/blue-noise.array");
 
@@ -69,6 +72,13 @@ bool Volumetrics::create()
 		_transmittance[idx].SetWrapping(TextureWrappingAxis::W, TextureWrappingParam::ClampToEdge);
 	}
 
+	_accumulation.Create(s_froxels.x, s_froxels.y, s_froxels.z, GL_RGBA32F);
+	_accumulation.SetFiltering(TextureFiltering::Magnify, TextureFilteringParam::LinearMipLinear);
+	_accumulation.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipLinear);
+	_accumulation.SetWrapping(TextureWrappingAxis::U, TextureWrappingParam::ClampToEdge);
+	_accumulation.SetWrapping(TextureWrappingAxis::V, TextureWrappingParam::ClampToEdge);
+	_accumulation.SetWrapping(TextureWrappingAxis::W, TextureWrappingParam::ClampToEdge);
+
 	_all_volumetric_lights.resize(256); // that's a lot :)
 
 	const auto num_tiles = s_froxels.x / FROXELS_PER_TILE * s_froxels.y / FROXELS_PER_TILE;
@@ -81,12 +91,12 @@ bool Volumetrics::create()
 
 Volumetrics::operator bool() const
 {
-	return _select_shader and _cull_shader and _inject_shader and _march_shader and _blue_noise;
-}
-
-void Volumetrics::setCameraUniforms(const Camera &camera)
-{
-	camera.setUniforms(_march_shader);
+	return _select_shader \
+		and _cull_shader \
+		and _inject_shader \
+		and _accumulate_shader \
+		and _bake_shader \
+		and _blue_noise;
 }
 
 void Volumetrics::cull_lights(const Camera &camera)
@@ -125,7 +135,7 @@ void Volumetrics::inject(const Camera &camera) // TODO: View
 	//   _inject_zshader.bindImage("u_output_transmittance"sv, _transmittance[_frame & 1], ImageAccess::Write);
 	const auto active_idx = _frame & 1;
 	_transmittance[active_idx].BindImage(5, ImageAccess::Write);
-	_transmittance[1 - active_idx].Bind(6);
+	_transmittance[1 - active_idx].Bind(6);    // previous transmittance as input
 
 	_inject_shader.setUniform("u_fog_anisotropy"sv, _anisotropy);
 	_inject_shader.setUniform("u_froxel_zexp"sv,    1.f);
@@ -136,6 +146,7 @@ void Volumetrics::inject(const Camera &camera) // TODO: View
 	const auto view_projection = camera.projectionTransform() * camera.viewTransform();
 	const auto inv_view_projection = glm::inverse(view_projection);
 	_inject_shader.setUniform("u_inv_view_projection"sv, inv_view_projection);
+	_bake_shader.setUniform("u_inv_view_projection"sv, inv_view_projection);
 
 	static glm::mat4 prev_view = camera.viewTransform();  // use current view the first frame
 	// use current for the first frame (there's no "previous" yet)
@@ -143,30 +154,63 @@ void Volumetrics::inject(const Camera &camera) // TODO: View
 	// now there is :)
 	prev_view = camera.viewTransform();
 
-	// TODO: injection is quite slow, probably b/c it naively loops through all lights for all froxel "columns"
-	//   it's probably worth it to do a light culling pre-pass
-	//   maybe with a coarser grid, maybe just 2d (screen-space projection of the lights)
-	//   or build a BVH for the lights?
-	//   see https://worldoffries.wordpress.com/2015/02/19/simple-alternative-to-clustered-shading-for-thousands-of-lights/
-	_inject_shader.invoke(size_t(std::ceil(float(s_froxels.x) / float(s_local_size.x))),
-						  size_t(std::ceil(float(s_froxels.y) / float(s_local_size.y))),
-						  size_t(std::ceil(float(s_froxels.z) / float(s_local_size.z))));
+	const auto num_groups = glm::uvec3(
+		size_t(std::ceil(float(s_froxels.x) / float(s_local_size.x))),
+		size_t(std::ceil(float(s_froxels.y) / float(s_local_size.y))),
+		size_t(std::ceil(float(s_froxels.z) / float(s_local_size.z)))
+	);
+
+	_inject_shader.invoke(num_groups);
+}
+
+void Volumetrics::accumulate(const Camera &camera)
+{
+	_accumulation.BindImage(5, ImageAccess::Write);
+	_transmittance[_frame & 1].Bind(6);
+
+	_accumulate_shader.setUniform("u_near_z"sv, camera.nearPlane());
+	_accumulate_shader.setUniform("u_far_z"sv, camera.farPlane());
+	// for later :)
+	_bake_shader.setUniform("u_near_z"sv, camera.nearPlane());
+	_bake_shader.setUniform("u_far_z"sv, camera.farPlane());
+
+
+	const auto num_groups = glm::uvec3(
+		size_t(std::ceil(float(s_froxels.x))),
+		size_t(std::ceil(float(s_froxels.y))),
+		1
+	);
+
+	_accumulate_shader.invoke(num_groups);
+
+	// TODO: blur '_accumulation'
+
 }
 
 void Volumetrics::render(const RenderTarget::Texture2d &, RenderTarget::Texture2d &out)
 {
-	// TODO: accumulate transmittance, from camera to scene depth
-	_transmittance[_frame & 1].Bind(5);  // read the froxels previously written in inject()
+	_accumulation.Bind(5);  // read the accumulated transmittance
+	//_transmittance[1 - (_frame & 1)].Bind(5);  // read the froxels previously written in inject()
 
 	out.bindImage(1, ImageAccess::Write);
 
-	_march_shader.setUniform("u_effect_scale"sv, _strength);
+	_bake_shader.setUniform("u_effect_scale"sv, _strength);
+	_bake_shader.setUniform("u_froxel_zexp"sv, 1.f);
 
-	_march_shader.invoke(size_t(std::ceil(float(out.width())  / float(s_local_size.x))),
-						 size_t(std::ceil(float(out.height()) / float(s_local_size.y))),
-						 size_t(std::ceil(float(out.depth())  / float(s_local_size.z))));
+	_bake_shader.invoke(size_t(std::ceil(float(out.width())  / float(s_local_size.x))),
+						size_t(std::ceil(float(out.height()) / float(s_local_size.y))),
+						1);
 
 	// TODO: blur 'out'
+}
+
+const Texture3D &RGL::PP::Volumetrics::froxel_texture(uint32_t index) const
+{
+	if(index == 0)
+		return _transmittance[_frame & 1];
+	if(index == 1)
+		return _transmittance[1 - (_frame & 1)];
+	return _accumulation;
 }
 
 } // RGL

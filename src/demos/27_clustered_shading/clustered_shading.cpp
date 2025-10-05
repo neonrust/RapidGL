@@ -97,7 +97,7 @@ ClusteredShading::ClusteredShading() :
 	m_bloom_enabled       (true),
 	_fog_strength         (4.f),
 	_fog_density          (0.1f),    // [ 0, 1 ]
-	_fog_blend_weight     (0.8f)     // [ 0, 1 ]
+	_fog_blend_weight     (0.f)      // [ 0, 1 ]
 {
 	m_cluster_aabb_ssbo.bindAt(SSBO_BIND_CLUSTER_AABB);
 	m_shadow_map_slots_ssbo.bindAt(SSBO_BIND_SHADOW_SLOTS_INFO);
@@ -157,13 +157,14 @@ void ClusteredShading::init_app()
 	// Create camera
 	m_camera = Camera(m_camera_fov, 0.1f, 200);
 	m_camera.setSize(Window::width(), Window::height());
-	// m_camera.setPosition(-8.32222f, 4.5269f, -0.768721f);
-	// m_camera.setOrientation(glm::quat(0.634325f, 0.0407623f, 0.772209f, 0.0543523f));
-	m_camera.setPosition({ -8.5, 3.3f, 1.1f });
-	m_camera.setOrientationEuler({ 0, 117, -0.8f });
+	m_camera.setPosition({ -8.5f, 3.2f, -2.f });
+	m_camera.setOrientationEuler({ 7, 90, 0 });
+	// m_camera.setPosition({ 0, 3.2f, 25.5f });
+	// m_camera.setOrientationEuler({ 0, 90, 0 });
+	std::print("Horizontal FOV: {}\n", m_camera.horizontalFov());
 
-    /// Randomly initialize lights
-	::srand(3281991);
+	/// Randomly initialize lights (predictably)
+	::srand(3281533);//3281991);
 	// m_light_counts_ubo.clear();
 	createLights();
 
@@ -361,7 +362,8 @@ void ClusteredShading::init_app()
 	_rt.create("rt", Window::width(), Window::height());
 	_rt.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipNearest); // not necessary?
 
-	_pp_low_rt.create("pp-low", FROXEL_GRID_W, FROXEL_GRID_H, RenderTarget::Color::Default, RenderTarget::Depth::None);
+	static constexpr auto pp_downscale = 2;
+	_pp_low_rt.create("pp-low", Window::width() / pp_downscale, Window::height() / pp_downscale, RenderTarget::Color::Default, RenderTarget::Depth::None);
 	_pp_low_rt.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipNearest); // not necessary?
 
 	_pp_full_rt.create("pp-full", Window::width(), Window::height(), RenderTarget::Color::Default, RenderTarget::Depth::None);
@@ -1273,8 +1275,6 @@ void ClusteredShading::render()
 		m_volumetrics_pp.cull_lights(m_camera);
 		m_volumetrics_cull_time.add(_gl_timer.elapsed<microseconds>(true));
 
-		m_volumetrics_pp.setCameraUniforms(m_camera);
-
 		m_volumetrics_pp.setStrength(_fog_strength);
 		m_volumetrics_pp.setAnisotropy(0.7f);
 		m_volumetrics_pp.setDensity(_fog_density);  // TODO: noise texture?
@@ -1291,12 +1291,17 @@ void ClusteredShading::render()
 		m_volumetrics_pp.shader().setUniform("u_shadow_max_distance"sv, m_camera.farPlane() * s_light_shadow_affect_fraction);
 
 		_shadow_atlas.bindDepthTextureSampler(20);
+		m_depth_pass_rt.bindDepthTextureSampler(2);
+
 		m_volumetrics_pp.inject(m_camera);
 
 		m_volumetrics_inject_time.add(_gl_timer.elapsed<microseconds>(true));
 
-		m_depth_pass_rt.bindDepthTextureSampler(2);
+		m_volumetrics_pp.accumulate(m_camera);
+		m_volumetrics_accum_time.add(_gl_timer.elapsed<microseconds>(true));
+
 		_pp_low_rt.clear();
+		m_depth_pass_rt.bindDepthTextureSampler(2);
 		m_volumetrics_pp.render(_rt, _pp_low_rt);  // '_rt' actually isn't used but the API expects an argument
 
 
@@ -1601,7 +1606,7 @@ const std::vector<StaticObject> &ClusteredShading::cullScene(const Camera &view)
 			previous_pvs.insert(_lightsPvs.begin(), _lightsPvs.end());
 			_lightsPvs.clear();
 
-			std::print("   find relevant lights:\n");
+			std::print("  finding relevant lights:\n");
 			for(const auto &[l_index, L]: std::views::enumerate(_light_mgr))
 			{
 				const auto light_index = LightIndex(l_index);
@@ -1619,7 +1624,7 @@ const std::vector<StaticObject> &ClusteredShading::cullScene(const Camera &view)
 					else
 					{
 						if(previous_pvs.contains(light_index))
-							std::print("   light {} removed from PVS\n", light_index);
+							std::print("    light {} removed from PVS\n", light_index);
 
 						if(IS_SHADOW_CASTER(L) /* and was in the light pvs before? */)
 						{
