@@ -1,5 +1,8 @@
 #include "frustum.h"
 #include <glm/mat4x4.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/norm.hpp>
+#include <print>
 #include "bounds.h"
 
 namespace X
@@ -180,9 +183,9 @@ inline glm::vec3 Frustum::intersection(const glm::vec3* crosses) const
 namespace RGL
 {
 
-void Frustum::setFromProjection(const glm::mat4 &proj)
+void Frustum::setFromProjection(const glm::mat4 &proj, const glm::vec3 &origin)
 {
-	setFromView(proj, glm::mat4(1));
+	setFromView(proj, glm::mat4(1), origin);
 }
 
 static glm::vec3 intersection(const Plane &A, const Plane &B, const Plane &C, const glm::vec3 &crossAB, const glm::vec3 &crossAC, const glm::vec3 &crossBC)
@@ -195,8 +198,10 @@ static glm::vec3 intersection(const Plane &A, const Plane &B, const Plane &C, co
 	return nom / denom;
 }
 
-void Frustum::setFromView(const glm::mat4 &proj, const glm::mat4 &view)
+void Frustum::setFromView(const glm::mat4 &proj, const glm::mat4 &view, const glm::vec3 &origin)
 {
+	_origin = origin;
+
 	X::Frustum ff(proj * view);
 
 	// transpose to make it easier to extract the frustum plane vectors
@@ -353,6 +358,10 @@ bool check(const Frustum &f, const glm::vec3 &point)
 
 bool check(const Frustum &f, const bounds::Sphere &sphere)
 {
+	const auto distance_sq = glm::distance2(f.origin(), sphere.center());
+	if(distance_sq < sphere.squaredRadius())
+		return true;
+
 	// early-out: sphere outside frustum's AABB
 	if(not intersect::check(f.aabb(), sphere))
 		return false;
