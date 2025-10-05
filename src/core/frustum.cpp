@@ -376,7 +376,6 @@ bool check(const Frustum &f, const bounds::Sphere &sphere)
 
 #define PLANE_TEST(_name_) \
 	{ const auto d = math::distance(f._name_(), sphere.center()); \
-	std::print(" plane {:6} distance: {:.1f}\n", #_name_, d); \
 	if(d < -sphere.radius()) return false; }
 
 	PLANE_TEST(back);
