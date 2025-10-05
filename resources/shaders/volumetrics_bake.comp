@@ -46,18 +46,13 @@ void main()
 
     vec3 froxel_uv = ndc_to_uv(ndc.xyz, u_near_z, u_far_z, u_froxel_zexp);
 
-	vec4 accumulated_transmittance = texture_tricubic(u_in_accumulation, froxel_uv);
+    vec4 accumulated_transmittance = texture_tricubic(u_in_accumulation, froxel_uv);
 	vec3 accumulated = accumulated_transmittance.rgb;
-	float transmittance = accumulated_transmittance.a;
+	// float transmittance = accumulated_transmittance.a;
 
 	accumulated *= u_effect_scale;
 
     imageStore(u_out_volumetrics, pixel, vec4(accumulated, 1));
-
-    // float linear_z = exp_01_to_linear_01_depth(ndc.z * 0.5f + 0.5f, u_near_z, u_far_z);
-    // float view_z = linear_z * u_far_z;
-    // float froxel_z = (max(log2(max(view_z, 1e-6)) * (float(FROXEL_GRID_D) / log2(u_far_z / u_near_z)) - (float(FROXEL_GRID_D) * log2(u_near_z) / log2(u_far_z / u_near_z)), 0)) / float(FROXEL_GRID_D);
-    // imageStore(u_out_volumetrics, pixel, vec4(linear_z, view_z / u_far_z, froxel_z, 1));
 }
 
 float froxel_distance(int z)
