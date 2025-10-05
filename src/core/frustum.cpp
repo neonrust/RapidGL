@@ -202,8 +202,6 @@ void Frustum::setFromView(const glm::mat4 &proj, const glm::mat4 &view, const gl
 {
 	_origin = origin;
 
-	X::Frustum ff(proj * view);
-
 	// transpose to make it easier to extract the frustum plane vectors
 	const auto mvp = glm::transpose(proj * view);
 
@@ -255,16 +253,11 @@ void Frustum::setFromView(const glm::mat4 &proj, const glm::mat4 &view, const gl
 		_aabb.expand(corner);
 
 	// normalize planes after computing corners & AABB
-#define NORMALIZE_PLANE(_plane_) \
-	{ const auto l = glm::length(_plane_.normal()); \
-	_plane_.set(_plane_.normal() / l, _plane_.offset() / l); }
-
-	NORMALIZE_PLANE(_left);
-	NORMALIZE_PLANE(_right);
-	NORMALIZE_PLANE(_bottom);
-	NORMALIZE_PLANE(_top);
-	NORMALIZE_PLANE(_front);
-	NORMALIZE_PLANE(_back);
+	for(Plane &plane: std::array{std::ref(_left), std::ref(_right), std::ref(_bottom), std::ref(_top), std::ref(_front), std::ref(_back)})
+	{
+		const auto l = glm::length(plane.normal());
+		plane.set(plane.normal() / l, plane.offset() / l);
+	}
 }
 
 namespace intersect
