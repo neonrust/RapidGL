@@ -267,6 +267,8 @@ frustum_cull_result check(const Frustum &f, const bounds::AABB &box, const glm::
 {
 	// https://iquilezles.org/articles/frustumcorrect/
 
+	// TODO: should first check whether f.origin() is inside the AABB
+
 	frustum_cull_result result;
 
 	// check if any of the *transformed* 8 corners of the box is contained by the frustum
