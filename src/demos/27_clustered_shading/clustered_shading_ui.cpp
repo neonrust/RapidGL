@@ -278,6 +278,9 @@ void ClusteredShading::render_gui()
 				static float brightness { 4 };
 				ImGui::SliderFloat("Brightness", &brightness, 0, 10, "%.2f");
 
+				static float alpha_boost { 1 };
+				ImGui::SliderFloat("Alpha boost", &alpha_boost, 1, 10, "%.2f");
+
 				const auto shader_path = FileSystem::getResourcesPath() / "shaders";
 				static Shader shader(shader_path / "imgui_3d_texture.vert", shader_path / "imgui_3d_texture.frag");
 				if(not shader)
@@ -287,6 +290,7 @@ void ClusteredShading::render_gui()
 				shader.setUniform("u_axis", major_axis);
 				shader.setUniform("u_level", level);
 				shader.setUniform("u_brightness"sv, brightness);
+				shader.setUniform("u_alpha_boost"sv, alpha_boost);
 
 				visualize_3d_texture(*t3, tex3d_rt, shader);
 
