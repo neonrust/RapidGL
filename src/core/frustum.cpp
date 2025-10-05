@@ -366,11 +366,16 @@ bool check(const Frustum &f, const bounds::Sphere &sphere)
 	if(not intersect::check(f.aabb(), sphere))
 		return false;
 
-	if(math::distance(f.front(), sphere.center())  < -sphere.radius()) return false;
-	if(math::distance(f.left(), sphere.center())   < -sphere.radius()) return false;
-	if(math::distance(f.right(), sphere.center())  < -sphere.radius()) return false;
-	if(math::distance(f.top(), sphere.center())    < -sphere.radius()) return false;
-	if(math::distance(f.bottom(), sphere.center()) < -sphere.radius()) return false;
+#define PLANE_TEST(name) \
+	{ const auto d = math::distance(f.name(), sphere.center()); \
+	if(d < -sphere.radius()) return false; }
+
+	PLANE_TEST(back);
+	PLANE_TEST(front);
+	PLANE_TEST(left);
+	PLANE_TEST(right);
+	PLANE_TEST(top);
+	PLANE_TEST(bottom);
 
 	return true;
 }
