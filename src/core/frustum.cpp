@@ -209,7 +209,8 @@ void Frustum::setFromView(const glm::mat4 &proj, const glm::mat4 &view, const gl
 
 	const glm::vec4 anchor { mvp[3] };
 
-	// TODO: normalize?
+	// this sets UNnormalized values; they're needed in the corners & AABB calculation below.
+	//   normals will be normalized at the end
 	_left.set(  anchor + mvp[0]);
 	_right.set( anchor - mvp[0]);
 	_bottom.set(anchor + mvp[1]);
@@ -252,6 +253,18 @@ void Frustum::setFromView(const glm::mat4 &proj, const glm::mat4 &view, const gl
 
 	for(const auto &corner: _corners)
 		_aabb.expand(corner);
+
+	// normalize planes after computing corners & AABB
+#define NORMALIZE_PLANE(_plane_) \
+	{ const auto l = glm::length(_plane_.normal()); \
+	_plane_.set(_plane_.normal() / l, _plane_.offset() / l); }
+
+	NORMALIZE_PLANE(_left);
+	NORMALIZE_PLANE(_right);
+	NORMALIZE_PLANE(_bottom);
+	NORMALIZE_PLANE(_top);
+	NORMALIZE_PLANE(_front);
+	NORMALIZE_PLANE(_back);
 }
 
 namespace intersect
@@ -366,8 +379,9 @@ bool check(const Frustum &f, const bounds::Sphere &sphere)
 	if(not intersect::check(f.aabb(), sphere))
 		return false;
 
-#define PLANE_TEST(name) \
-	{ const auto d = math::distance(f.name(), sphere.center()); \
+#define PLANE_TEST(_name_) \
+	{ const auto d = math::distance(f._name_(), sphere.center()); \
+	std::print(" plane {:6} distance: {:.1f}\n", #_name_, d); \
 	if(d < -sphere.radius()) return false; }
 
 	PLANE_TEST(back);
