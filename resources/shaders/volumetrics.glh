@@ -1,49 +1,4 @@
 
-vec4 texture_pcf(sampler3D tex, vec3 uv, int lod)
-{
-	float texel_size = 1/float(textureSize(tex, lod).x);
-
-	// TODO: this should utilize the texture filtering ti reduce the number of samples
-	//   which is actually what texture_tricubic seems to be doing
-	//   except it always returns black  :(
-
-	// sample:
-	//   center
-	//   6 neighbour (up, down, left, right, inwards, outwards)
-	//   8 corners
-
-
-#define SAMPLE(x_off, y_off, z_off)  textureLod(tex, uv + vec3(x_off, y_off, z_off)*texel_size, lod)
-
-	const float w_center = 0.3;
-	const float w_n = 0.3 / 6;
-	const float w_c = 0.4 / 8;
-
-	vec4 center = SAMPLE( 0,  0,  0) * w_center;
-	vec4 neighbours = SAMPLE( 1,  0,  0) * w_n
-					+ SAMPLE(-1,  0,  0) * w_n
-					+ SAMPLE( 0,  1,  0) * w_n
-					+ SAMPLE( 0, -1,  0) * w_n
-					+ SAMPLE( 0,  0,  1) * w_n
-					+ SAMPLE( 0,  0, -1) * w_n;
-	vec4 corners = SAMPLE(1, 1, 1) * w_c
-				 + SAMPLE(1, 1, 1) * w_c
-				 + SAMPLE(1, 1, 1) * w_c
-				 + SAMPLE(1, 1, 1) * w_c
-				 + SAMPLE(1, 1, 1) * w_c
-				 + SAMPLE(1, 1, 1) * w_c
-				 + SAMPLE(1, 1, 1) * w_c
-				 + SAMPLE(1, 1, 1) * w_c
-				 + SAMPLE(1, 1, 1) * w_c;
-
-	return center + neighbours + corners;
-}
-
-vec4 texture_pcf(sampler3D tex, vec3 uv)
-{
-	return texture_pcf(tex, uv, 0);
-}
-
 // https://gist.github.com/Fewes/59d2c831672040452aa77da6eaab2234
 vec4 texture_tricubic(sampler3D tex, vec3 coord)
 {
