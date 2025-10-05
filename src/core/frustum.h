@@ -10,8 +10,10 @@ struct Frustum
 {
 	inline Frustum() {}
 
-	void setFromProjection(const glm::mat4 &proj);
-	void setFromView(const glm::mat4 &proj, const glm::mat4 &view);
+	void setFromProjection(const glm::mat4 &proj, const glm::vec3 &origin);
+	void setFromView(const glm::mat4 &proj, const glm::mat4 &view, const glm::vec3 &origin);
+
+	inline const glm::vec3 &origin() const { return _origin; }
 
 	inline const Plane &right() const  { return _right; }
 	inline const Plane &left() const   { return _left; }
@@ -27,6 +29,7 @@ struct Frustum
 	inline const std::array<glm::vec3, 8> corners() const { return _corners; }
 
 private:
+	glm::vec3 _origin;
 	Plane _right;
 	Plane _left;
 	Plane _top;

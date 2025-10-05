@@ -190,7 +190,7 @@ void Camera::update(double dt)
 
 void Camera::updateFrustum()
 {
-	_frustum.setFromView(m_projection, m_view);
+	_frustum.setFromView(m_projection, m_view, m_position);
 }
 
 void Camera::setPosition(const glm::vec3 &position)
