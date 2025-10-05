@@ -54,8 +54,10 @@ public:
 	inline float yaw() const { return _yaw; }
 	inline float pitch() const { return _pitch; }
 
+	// set/get vertical fov (degrees)
 	void setFov(float fov);
-	inline float verticalFov()   const { return m_fovy; }
+	inline float verticalFov() const { return m_fovy; }
+	float horizontalFov() const;
 
 	void setFarPlane(float f);
 	void setNearPlane(float n);
@@ -65,8 +67,8 @@ public:
 
 	inline glm::vec3 directionVector() const { return m_direction; }
 	inline glm::vec3 forwardVector()   const { return -m_direction; }
-		   glm::vec3  rightVector()     const;
-		   glm::vec3  upVector()        const;
+		   glm::vec3 rightVector()     const;
+		   glm::vec3 upVector()        const;
 	inline float aspectRatio()   const { return float(m_width) / float(m_height); }
 	inline float nearPlane()     const { return m_near; }
 	inline float farPlane()      const { return m_far; }

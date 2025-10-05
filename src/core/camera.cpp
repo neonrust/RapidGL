@@ -280,6 +280,11 @@ void Camera::setFov(float fov)
 		setPerspective(fov, m_width, m_height, m_near, m_far);
 }
 
+float Camera::horizontalFov() const
+{
+	return glm::degrees(2.f * std::atan(std::tan(glm::radians(m_fovy) * 0.5f) * aspectRatio()));
+}
+
 void RGL::Camera::setFarPlane(float f)
 {
 	m_is_dirty = f != m_far;
