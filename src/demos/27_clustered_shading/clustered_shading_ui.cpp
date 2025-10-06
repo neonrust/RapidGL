@@ -59,10 +59,11 @@ void ClusteredShading::render_gui()
 	ImGui::Text("    Shading: %4ld µs", m_shading_time.average().count());
 	ImGui::Text("     Skybox: %4ld µs", m_skybox_time.average().count());
 	// ImGui::Text("        PP: %3ld µs", m_pp_time.count());
-	ImGui::Text("Volumetrics: %4ld µs", m_volumetrics_cull_time.average().count() + m_volumetrics_inject_time.average().count() + m_volumetrics_march_time.average().count());
+	ImGui::Text("Volumetrics: %4ld µs", (m_volumetrics_cull_time.average() + m_volumetrics_inject_time.average() + m_volumetrics_accum_time.average() + m_volumetrics_render_time.average()).count());
 	ImGui::Text(" -   cull: %3ld µs", m_volumetrics_cull_time.average().count());
 	ImGui::Text(" - inject: %3ld µs", m_volumetrics_inject_time.average().count());
-	ImGui::Text(" -  march: %3ld µs", m_volumetrics_march_time.average().count());
+	ImGui::Text(" -  accum: %3ld µs", m_volumetrics_accum_time.average().count());
+	ImGui::Text(" - render: %3ld µs", m_volumetrics_render_time.average().count());
 	ImGui::Text("Tonemapping: %4ld µs", m_tonemap_time.average().count());
 	ImGui::Text(" Debug draw: %4ld µs", m_debug_draw_time.average().count());
 	// ImGui::Text("   PP blur: %4ld µs", m_pp_blur_time.average().count());
@@ -214,10 +215,11 @@ void ClusteredShading::render_gui()
 				"shadow_atlas",
 
 				// 3d
-				"scattering froxels [3d]",
-				"scattering froxels alt [3d]",
+				"volumetric froxels [3d]",
+				"volumetric froxels back [3d]",
+				"volumetric froxels acc [3d]",
 			};
-			static int current_image = 6;
+			static int current_image = 10;
 			ImGui::Combo("Render target", &current_image, rt_names, std::size(rt_names));
 
 			RenderTarget::Texture2d *rt = nullptr;
@@ -234,8 +236,9 @@ void ClusteredShading::render_gui()
 			case  7: rt = &_pp_full_rt; break;
 			case  8: rt = &_final_rt; break;
 			case  9: rt = &_shadow_atlas; break;
-			case 10: t3 = &m_volumetrics_pp.froxel_texture(); break;
-			case 11: t3 = &m_volumetrics_pp.froxel_texture(false); break;
+			case 10: t3 = &m_volumetrics_pp.froxel_texture(0); break;
+			case 11: t3 = &m_volumetrics_pp.froxel_texture(1); break;
+			case 12: t3 = &m_volumetrics_pp.froxel_texture(2); break;
 			}
 			// const bool is_cube = current_image >= 1 and current_image <= 3;
 			// const bool is_depth = current_image == 4;
@@ -273,13 +276,14 @@ void ClusteredShading::render_gui()
 				static int major_axis { 2 };
 				ImGui::Combo("Major axis", &major_axis, "X\0Y\0Z\0");
 				static float level { 0 };
-				ImGui::SliderFloat("Major axis value", &level, 0, 1, "%.2f");
+				const char *axis_names[] = { "X", "Y", "Z" };
+				ImGui::SliderFloat(axis_names[major_axis], &level, 0, 1, "%.2f");
 
 				static float brightness { 4 };
-				ImGui::SliderFloat("Brightness", &brightness, 0, 10, "%.2f");
+				ImGui::SliderFloat("Brightness", &brightness, 0, 10, "%.1f");
 
-				static float alpha_boost { 1 };
-				ImGui::SliderFloat("Alpha boost", &alpha_boost, 1, 10, "%.2f");
+				static float alpha_boost { 5 };
+				ImGui::SliderFloat("Alpha boost", &alpha_boost, 1, 10, "%.1f");
 
 				const auto shader_path = FileSystem::getResourcesPath() / "shaders";
 				static Shader shader(shader_path / "imgui_3d_texture.vert", shader_path / "imgui_3d_texture.frag");
