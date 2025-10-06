@@ -271,6 +271,7 @@ private:
     float m_bloom_dirt_intensity;
     bool  m_bloom_enabled;
 
+	bool  _fog_enabled;
 	float _fog_strength;
 	float _fog_density;
 	float _fog_blend_weight;

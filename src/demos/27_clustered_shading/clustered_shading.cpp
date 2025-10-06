@@ -95,9 +95,10 @@ ClusteredShading::ClusteredShading() :
 	m_bloom_intensity     (0.5f),
 	m_bloom_dirt_intensity(0),
 	m_bloom_enabled       (true),
-	_fog_strength         (4.f),
+	_fog_enabled          (true),
+	_fog_strength         (1.2f),
 	_fog_density          (0.1f),    // [ 0, 1 ]
-	_fog_blend_weight     (0.f)      // [ 0, 1 ]
+	_fog_blend_weight     (0.1f)      // [ 0, 1 ]
 {
 	m_cluster_aabb_ssbo.bindAt(SSBO_BIND_CLUSTER_AABB);
 	m_shadow_map_slots_ssbo.bindAt(SSBO_BIND_SHADOW_SLOTS_INFO);
@@ -1270,7 +1271,7 @@ void ClusteredShading::render()
 
 	m_skybox_time.add(_gl_timer.elapsed<microseconds>(true));
 
-	if(_fog_density > 0)
+	if(_fog_enabled and _fog_density > 0)
 	{
 		m_volumetrics_pp.cull_lights(m_camera);
 		m_volumetrics_cull_time.add(_gl_timer.elapsed<microseconds>(true));
