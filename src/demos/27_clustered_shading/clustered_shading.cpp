@@ -1327,7 +1327,7 @@ void ClusteredShading::render()
 		draw2d(_pp_full_rt.color_texture(), _rt, BlendMode::Add);
 		// m_pp_blur_time.add(_gl_timer.elapsed<microseconds>());
 
-		m_volumetrics_march_time.add(_gl_timer.elapsed<microseconds>(true));
+		m_volumetrics_render_time.add(_gl_timer.elapsed<microseconds>(true));
 	}
 	else
 		_pp_full_rt.clear();
@@ -1622,8 +1622,9 @@ const std::vector<StaticObject> &ClusteredShading::cullScene(const Camera &view)
 				else
 				{
 					const auto edge_distance = std::max(0.f, glm::distance(L.position, view_pos) - L.affect_radius);
-					const auto relevant = edge_distance < max_view_distance
-						and intersect::check(m_camera.frustum(), _light_mgr.light_bounds(L));
+					const auto relevant = edge_distance < max_view_distance;
+					// doing a frustum check means that quick camera pans might show unlit areas
+					//	and intersect::check(m_camera.frustum(), _light_mgr.light_bounds(L));
 
 					if(relevant)
 						_lightsPvs.push_back(light_index);
