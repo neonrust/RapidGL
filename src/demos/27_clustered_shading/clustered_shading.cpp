@@ -1309,18 +1309,23 @@ void ClusteredShading::render()
 		// _pp_low_rt.copyTo(_pp_full_rt);  // copy and upscale
 		// NOTE: draw b/c copy(blit) doesn't work!?!?
 		//   no biggie though, it's often faster in practice
+#if 0
+		// blur low-res target
+		m_blur3_pp.render(_pp_low_rt, _pp_low_rt);
+#endif
+		// upscale to full-size
 		draw2d(_pp_low_rt.color_texture(), _pp_full_rt);
 
-#if 1
+#if 0
 		// TODO: change to MipmapBlur
 		// m_blur3_pp.render(_pp_full_rt, _pp_full_rt);
 		// m_blur3_pp.render(_pp_full_rt, _pp_full_rt);
 		// m_blur3_pp.render(_pp_full_rt, _pp_full_rt);
+#endif
 
 		// add the scattering effect on to the final image
 		draw2d(_pp_full_rt.color_texture(), _rt, BlendMode::Add);
 		// m_pp_blur_time.add(_gl_timer.elapsed<microseconds>());
-#endif
 
 		m_volumetrics_march_time.add(_gl_timer.elapsed<microseconds>(true));
 	}
