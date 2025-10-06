@@ -33,8 +33,13 @@ set(SHADER_FILES
 	${SHADER_PATH}/imgui_3d_texture.vert
 	${SHADER_PATH}/imgui_depth_image.frag
 	${SHADER_PATH}/imgui_depth_image.vert
+	${SHADER_PATH}/shapes.glh
+	${SHADER_PATH}/volumetrics.glh
+	${SHADER_PATH}/volumetrics_accumulate.comp
+	${SHADER_PATH}/volumetrics_bake.comp
+	${SHADER_PATH}/volumetrics_cull.comp
 	${SHADER_PATH}/volumetrics_inject.comp
-	${SHADER_PATH}/volumetrics_march.comp
+	${SHADER_PATH}/volumetrics_select_lights.comp
 )
 add_custom_target(CoreShaders
 	SOURCES

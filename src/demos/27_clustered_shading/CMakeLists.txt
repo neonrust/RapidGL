@@ -52,10 +52,7 @@ set(SHADER_FILES
 	shaders/gaussian_blur_lds.comp
 	shaders/gaussian_blur_parametric.comp
 	shaders/generate_clusters.comp
-	shaders/imgui_depth_image.frag
-	shaders/imgui_depth_image.vert
 	shaders/irradiance_convolution.frag
-	shaders/light_scattering.comp
 	shaders/line_draw.frag
 	shaders/line_draw.vert
 	shaders/mipmap_blur.comp
