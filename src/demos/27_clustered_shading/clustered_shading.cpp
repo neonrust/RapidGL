@@ -1608,11 +1608,11 @@ const std::vector<StaticObject> &ClusteredShading::cullScene(const Camera &view)
 		{
 			last_update = T0;
 
-			static dense_set<uint> previous_pvs;
-			previous_pvs.insert(_lightsPvs.begin(), _lightsPvs.end());
+			// static dense_set<uint> previous_pvs;
+			// previous_pvs.insert(_lightsPvs.begin(), _lightsPvs.end());
 			_lightsPvs.clear();
 
-			std::print("  finding relevant lights:\n");
+			// std::print("  finding relevant lights:\n");
 			for(const auto &[l_index, L]: std::views::enumerate(_light_mgr))
 			{
 				const auto light_index = LightIndex(l_index);
@@ -1630,8 +1630,8 @@ const std::vector<StaticObject> &ClusteredShading::cullScene(const Camera &view)
 						_lightsPvs.push_back(light_index);
 					else
 					{
-						if(previous_pvs.contains(light_index))
-							std::print("    light {} removed from PVS\n", light_index);
+						// if(previous_pvs.contains(light_index))
+						// 	std::print("    light {} removed from PVS\n", light_index);
 
 						if(IS_SHADOW_CASTER(L) /* and was in the light pvs before? */)
 						{
