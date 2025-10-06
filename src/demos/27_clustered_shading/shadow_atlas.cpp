@@ -585,7 +585,7 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const small_vec<AtlasLigh
 				// return the previous size slot to the pool
 				// std::print("  [{}]  free {} slots:    {}: {} (-> {})",
 				// 		   light_id, atlas_light.num_slots, size_diff > 0?"pro":"dem", atlas_light.slots[0].size, desired.slots[0].size);
-				std::fflush(stdout);
+				// std::fflush(stdout);
 				auto idx = atlas_light.num_slots;  // loop in reverse to put the slots back in the same order as allocated
 				while(idx-- != 0)
 				{
