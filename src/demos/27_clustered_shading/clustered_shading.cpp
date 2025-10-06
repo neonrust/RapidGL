@@ -1277,7 +1277,7 @@ void ClusteredShading::render()
 		m_volumetrics_cull_time.add(_gl_timer.elapsed<microseconds>(true));
 
 		m_volumetrics_pp.setStrength(_fog_strength);
-		m_volumetrics_pp.setAnisotropy(0.7f);
+		m_volumetrics_pp.setAnisotropy(0.2f);  // 0 - 0.5  -ish
 		m_volumetrics_pp.setDensity(_fog_density);  // TODO: noise texture?
 		if(_fog_blend_weight > 0)
 		{
