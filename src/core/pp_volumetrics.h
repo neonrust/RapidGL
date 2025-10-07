@@ -35,6 +35,7 @@ public:
 
 	inline void setTemporalBlending(bool enable) { _blend = enable; }
 	inline void setTemporalBlendWeight(float weight) { _blend_weight = weight; }
+	// inline void setFalloffMix(float mix) { _falloff_mix = mix; }
 
 	inline void setDensity(float density) { _density = density; }
 
@@ -68,6 +69,7 @@ private:
 	float _density { 0.1f };    // small values, less than ~0.2
 	bool _blend { true };
 	float _blend_weight { 0.5f };
+	// float _falloff_mix { 0 };
 
 	GLuint _dummy_vao_id;
 };

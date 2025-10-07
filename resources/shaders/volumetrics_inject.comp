@@ -46,6 +46,7 @@ uniform float u_shadow_max_distance;
 uniform float u_volumetric_max_distance;
 uniform bool  u_froxel_blend_previous;
 uniform float u_froxel_blend_weight; // e.g. 0.2
+// uniform float u_falloff_mix;
 
 uniform vec3  u_cam_pos;
 uniform float u_near_z;
@@ -138,7 +139,9 @@ void main()
 				// positional lights are affected by their... uhm, position
 				if(IS_POINT_LIGHT(light) || IS_SPOT_LIGHT(light))
 				{
-					contribution *= getSquareFalloffAttenuation(distance_sq, light.affect_radius*light.affect_radius);
+					float falloff_sq = getSquareFalloffAttenuation(distance_sq, light.affect_radius*light.affect_radius);
+					// float falloff_lin = 1 - sqrt(distance_sq) / light.affect_radius;
+					contribution *= falloff_sq;//mix(falloff_sq, falloff_lin, falloff_lin * u_falloff_mix);
 					if(IS_SPOT_LIGHT(light))
 						contribution *= getSpotAngleAttenuation(normalize(light_to_froxel), light.direction, light.outer_angle, light.inner_angle);
 				}

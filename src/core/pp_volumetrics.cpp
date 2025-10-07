@@ -140,6 +140,7 @@ void Volumetrics::inject(const Camera &camera) // TODO: View
 	_inject_shader.setUniform("u_fog_anisotropy"sv, _anisotropy);
 	_inject_shader.setUniform("u_froxel_zexp"sv,    1.f);
 	_inject_shader.setUniform("u_fog_density"sv, _density);
+	// _inject_shader.setUniform("u_falloff_mix"sv, _falloff_mix);
 	_inject_shader.setUniform("u_froxel_blend_previous"sv, _blend);
 	_inject_shader.setUniform("u_froxel_blend_weight"sv, _blend_weight);
 
