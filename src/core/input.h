@@ -117,7 +117,10 @@ namespace RGL
         Mouse1 = GLFW_MOUSE_BUTTON_1,
         Mouse2 = GLFW_MOUSE_BUTTON_2,
         Mouse3 = GLFW_MOUSE_BUTTON_3,
-        MouseLeft = GLFW_MOUSE_BUTTON_LEFT,
+		Mouse4 = GLFW_MOUSE_BUTTON_4,
+		Mouse5 = GLFW_MOUSE_BUTTON_5,
+		Mouse6 = GLFW_MOUSE_BUTTON_6,
+		MouseLeft = GLFW_MOUSE_BUTTON_LEFT,
         MouseMiddle = GLFW_MOUSE_BUTTON_MIDDLE,
         MouseRight = GLFW_MOUSE_BUTTON_RIGHT
     };

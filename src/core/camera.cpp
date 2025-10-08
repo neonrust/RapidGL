@@ -102,7 +102,7 @@ void Camera::update(double dt)
 
 	if(Input::isKeyDown(KeyCode::LeftShift))
 		movement_amount *= 0.25f;
-	else if(Input::isKeyDown(KeyCode::LeftControl))
+	else if(Input::isKeyDown(KeyCode::LeftControl) or Input::isMouseDown(KeyCode::Mouse4))
 		movement_amount *= 4;
 
 
