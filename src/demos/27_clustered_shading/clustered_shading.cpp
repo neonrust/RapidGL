@@ -1753,9 +1753,10 @@ void ClusteredShading::renderSceneShading(const Camera &camera)
 	m_clustered_pbr_shader->setUniform("u_shadow_bias_distance_scale"sv, m_shadow_bias_distance_scale);
 	m_clustered_pbr_shader->setUniform("u_shadow_bias_scale"sv,          m_shadow_bias_scale);
 
-	m_clustered_pbr_shader->setUniform("u_debug_cluster_geom"sv,                    m_debug_cluster_geom);
-	m_clustered_pbr_shader->setUniform("u_debug_clusters_occupancy"sv,              m_debug_clusters_occupancy);
-	m_clustered_pbr_shader->setUniform("u_debug_clusters_occupancy_blend_factor"sv, m_debug_clusters_blend_factor);
+	m_clustered_pbr_shader->setUniform("u_debug_cluster_geom"sv,         m_debug_cluster_geom);
+	m_clustered_pbr_shader->setUniform("u_debug_clusters_occupancy"sv,   m_debug_clusters_occupancy);
+	m_clustered_pbr_shader->setUniform("u_debug_tile_occupancy"sv,       m_debug_tile_occupancy);
+	m_clustered_pbr_shader->setUniform("u_debug_overlay_blend"sv,        m_debug_coverlay_blend);
 
     m_irradiance_cubemap_rt->bindTexture(6);
     m_prefiltered_env_map_rt->bindTexture(7);
