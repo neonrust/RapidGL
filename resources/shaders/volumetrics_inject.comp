@@ -174,8 +174,8 @@ void main()
 	            vec3 prev_scatter = textureLod(u_prev_scatter, prev_uv, 0).rgb;
             	scatter_contrib = mix(scatter_contrib, prev_scatter, u_froxel_blend_weight);
 	        }
-			else
-				scatter_contrib = vec3(1, 0, 1);
+			// else
+			// 	scatter_contrib = vec3(1, 0, 1);
         }
 
         total_scattered += scatter_contrib;
