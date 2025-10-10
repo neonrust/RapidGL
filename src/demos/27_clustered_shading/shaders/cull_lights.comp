@@ -77,9 +77,9 @@ void main()
 			{
 				// use minimal sphere bounds, if set
 	        	if(light.spot_bounds_radius > 0)
-	   			{
-			  		sphere_radius = light.spot_bounds_radius;
-			    	sphere_center = light.position + light.direction*sphere_radius;
+				{
+					sphere_radius = light.spot_bounds_radius;
+					sphere_center += light.direction*sphere_radius;
 				}
 			}
 			break;
