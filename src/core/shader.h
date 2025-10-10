@@ -122,12 +122,14 @@ public:
 	void setUniform(const std::string_view & name, size_t count, const int * values);
 	void setUniform(const std::string_view & name, size_t count, const glm::vec2 * vectors);
 	void setUniform(const std::string_view & name, size_t count, const glm::vec3 * vectors);
+	void setUniform(const std::string_view & name, size_t count, const glm::vec4 * vectors);
 	void setUniform(const std::string_view & name, size_t count, const glm::mat4 * matrices);
 	void setUniform(const std::string_view & name, size_t count, const glm::mat2x4 * matrices);
 	void setUniform(const std::string_view & name, const std::vector<float> &values);
 	void setUniform(const std::string_view & name, const std::vector<int> &values);
 	void setUniform(const std::string_view & name, const std::vector<glm::vec2> &vectors);
 	void setUniform(const std::string_view & name, const std::vector<glm::vec3> &vectors);
+	void setUniform(const std::string_view & name, const std::vector<glm::vec4> &vectors);
 	void setUniform(const std::string_view & name, const std::vector<glm::mat4> &matrices);
 	void setUniform(const std::string_view & name, const std::vector<glm::mat2x4> &matrices);
 	void setUniform(const std::string_view & name, const glm::vec2 & vector);
@@ -137,6 +139,11 @@ public:
 	void setUniform(const std::string_view & name, const glm::uvec3 & vector);
 	void setUniform(const std::string_view & name, const glm::mat3 & matrix);
 	void setUniform(const std::string_view & name, const glm::mat4 & matrix);
+	template <typename T, size_t N>  // TODO: T should be restricted
+	inline void setUniform(const std::string_view & name, const std::array<T, N> &arr)
+	{
+		setUniform(name, N, &arr[0]);
+	}
 
 	void setSubroutine(ShaderType shader_type, const std::string& subroutine_name);
 

@@ -463,6 +463,12 @@ void Shader::setUniform(const std::string_view & name, size_t count, const glm::
 	glProgramUniform3fv(m_program_id, uniformLocation(name), GLsizei(count), glm::value_ptr(vectors[0]));
 }
 
+void Shader::setUniform(const std::string_view &name, size_t count, const glm::vec4 *vectors)
+{
+	assert(vectors);
+	glProgramUniform4fv(m_program_id, uniformLocation(name), GLsizei(count), glm::value_ptr(vectors[0]));
+}
+
 void Shader::setUniform(const std::string_view &name, size_t count, const glm::mat4 *matrices)
 {
 	assert(matrices);
@@ -493,6 +499,11 @@ void Shader::setUniform(const std::string_view &name, const std::vector<glm::vec
 void Shader::setUniform(const std::string_view & name, const std::vector<glm::vec3> &vectors)
 {
 	glProgramUniform3fv(m_program_id, uniformLocation(name), GLsizei(vectors.size()), glm::value_ptr(vectors[0]));
+}
+
+void Shader::setUniform(const std::string_view &name, const std::vector<glm::vec4> &vectors)
+{
+	glProgramUniform4fv(m_program_id, uniformLocation(name), GLsizei(vectors.size()), glm::value_ptr(vectors[0]));
 }
 
 void Shader::setUniform(const std::string_view &name, const std::vector<glm::mat4> &matrices)
