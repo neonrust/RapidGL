@@ -21,6 +21,7 @@ struct Plane
 	inline glm::vec3 normal() const { return _normal; }
 	inline float offset() const { return _offset; }
 
+	inline operator glm::vec4 () const { return { _normal, _offset }; }
 
 private:
 	glm::vec3 _normal { 0.f, 1.f, 0.f };

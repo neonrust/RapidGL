@@ -260,6 +260,11 @@ void Frustum::setFromView(const glm::mat4 &proj, const glm::mat4 &view, const gl
 	}
 }
 
+const std::array<glm::vec4, 6> Frustum::planes() const
+{
+	return { left(), right(), top(), bottom(), front(), back() };
+}
+
 namespace intersect
 {
 
