@@ -79,7 +79,8 @@ SpotLight LightManager::add(const SpotLightParams &s)
 {
 	++_light_id;  // TODO: entt EntityID
 
-	const auto L = to_gpu_light(s);
+	auto L = to_gpu_light(s);
+	compute_spot_bounds(L);
 
 	add(L, _light_id);
 
@@ -274,6 +275,7 @@ bounds::Sphere LightManager::light_bounds(const GPULight &L) const
 
 	auto bounds_center = L.position;
 	auto bounds_radius = L.affect_radius;
+
 	if(IS_SPOT_LIGHT(L))
 	{
 		bounds_center = L.position + L.direction * L.spot_bounds_radius;
@@ -319,10 +321,15 @@ void LightManager::add(const GPULight &L, LightID light_id)
 
 void LightManager::compute_spot_bounds(GPULight &L)
 {
+	// calculate minimal sphere bounds, for visibility culling
+
 	assert(IS_SPOT_LIGHT(L));
 
-	const float tan_theta = std::tan(2*L.outer_angle);
-	L.spot_bounds_radius = L.affect_radius * (1 + tan_theta*tan_theta*0.5f);
+	// const float tan_theta = std::tan(2*L.outer_angle);
+	// L.spot_bounds_radius = L.affect_radius * (1 + tan_theta*tan_theta*0.5f);
+
+	const float half_angle = L.outer_angle; // if outer_angle is already half angle
+	L.spot_bounds_radius = L.affect_radius * 0.5f / std::cos(half_angle);
 }
 
 LightID LightManager::light_id(LightIndex light_index) const
