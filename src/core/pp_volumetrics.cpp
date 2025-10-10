@@ -108,6 +108,8 @@ void Volumetrics::cull_lights(const Camera &camera)
 
 	// first pick the volumetric lights
 	_all_volumetric_lights.clear();
+
+	_select_shader.setUniform("u_frustum_planes"sv, camera.frustum().planes());  // L, R, T, B, N, F
 	_select_shader.invoke(1);
 
 	// std::vector<uint> vol_lights;
