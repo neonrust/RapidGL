@@ -84,7 +84,6 @@ bool Volumetrics::create()
 	const auto num_tiles = s_froxels.x / FROXELS_PER_TILE * s_froxels.y / FROXELS_PER_TILE;
 	_tile_lights_ranges.resize(num_tiles);
 	_all_tile_lights.resize(num_tiles * FROXEL_TILE_AVG_LIGHTS);
-	// _debug_stuff.resize(8);
 
 	return *this;
 }
@@ -101,27 +100,19 @@ Volumetrics::operator bool() const
 
 void Volumetrics::cull_lights(const Camera &camera)
 {
-	// TODO: perform tile-based culling (since the lights affect a screen-projected area on the screen
-	//   e.g. a 16x9 grid tiles
-
-	// SSBO_BIND_ALL_VOLUMETRIC_LIGHTS_INDEX -> SSBO_BIND_VOLUMETRIC_TILE_LIGHTS_INDEX
-
 	// first pick the volumetric lights
+	// SSBO_BIND_RELEVANT_LIGHTS_INDEX -> SSBO_BIND_ALL_VOLUMETRIC_LIGHTS_INDEX
 	_all_volumetric_lights.clear();
 
 	_select_shader.setUniform("u_frustum_planes"sv, camera.frustum().planes());  // L, R, T, B, N, F
-	_select_shader.invoke(1);
-
-	// std::vector<uint> vol_lights;
-	// _all_volumetric_lights.download(vol_lights);
-	// std::print("   num vol lights: {}\n", vol_lights[0]);
+	_select_shader.invoke();
 
 	// then assign lights to overlapping 2d tiles (groups of froxel columns)
+	// SSBO_BIND_ALL_VOLUMETRIC_LIGHTS_INDEX -> SSBO_BIND_VOLUMETRIC_TILE_LIGHTS_INDEX
 	camera.setUniforms(_cull_shader);
 
 	_tile_lights_ranges.clear();
 	_all_tile_lights.clear();
-	// _debug_stuff.clear();
 	_cull_shader.invoke(s_froxels.x / FROXELS_PER_TILE, s_froxels.y / FROXELS_PER_TILE);
 }
 
