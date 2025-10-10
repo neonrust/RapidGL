@@ -143,7 +143,12 @@ void main()
 					// float falloff_lin = 1 - sqrt(distance_sq) / light.affect_radius;
 					contribution *= falloff_sq;//mix(falloff_sq, falloff_lin, falloff_lin * u_falloff_mix);
 					if(IS_SPOT_LIGHT(light))
+					{
+						// fade close to apex,
+						// TODO: fade affected by outer_angle; smaller angle more fading
+						contribution *= smoothstep(0.5f, 1.5f, distance_sq);
 						contribution *= getSpotAngleAttenuation(normalize(light_to_froxel), light.direction, light.outer_angle, light.inner_angle);
+					}
 				}
 				else
 					;// TODO: area, tube, sphere & disc
