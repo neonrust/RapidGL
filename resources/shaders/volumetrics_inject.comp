@@ -55,7 +55,7 @@ uniform mat4  u_prev_view;
 
 vec3 pointLightVisibility(GPULight light, vec3 world_pos);
 float getSquareFalloffAttenuation(float distance_sq, float light_radius);
-float getSpotAngleAttenuation(vec3 to_light, vec3 spot_axis, float outer_angle, float inner_angle);
+float getSpotAngleAttenuation(float distance, vec3 to_light, vec3 spot_axis, float outer_angle, float inner_angle, float affect_radius);
 
 float fadeByDistance(float distance, float hard_limit);
 
@@ -143,12 +143,7 @@ void main()
 					// float falloff_lin = 1 - sqrt(distance_sq) / light.affect_radius;
 					contribution *= falloff_sq;//mix(falloff_sq, falloff_lin, falloff_lin * u_falloff_mix);
 					if(IS_SPOT_LIGHT(light))
-					{
-						// fade close to apex,
-						// TODO: fade affected by outer_angle; smaller angle more fading
-						contribution *= smoothstep(0.5f, 1.5f, distance_sq);
-						contribution *= getSpotAngleAttenuation(normalize(light_to_froxel), light.direction, light.outer_angle, light.inner_angle);
-					}
+						contribution *= getSpotAngleAttenuation(sqrt(distance_sq), normalize(light_to_froxel), light.direction, light.outer_angle, light.inner_angle, light.affect_radius);
 				}
 				else
 					;// TODO: area, tube, sphere & disc
@@ -353,18 +348,22 @@ float getSquareFalloffAttenuation(float distance_sq, float light_radius_squared)
     return (smooth_factor * smooth_factor) / max(distance_sq, 1e-5);
 }
 
-float getSpotAngleAttenuation(vec3 to_light, vec3 spot_dir, float outer_angle, float inner_angle)
+float getSpotAngleAttenuation(float distance, vec3 to_light, vec3 spot_dir, float outer_angle, float inner_angle, float affect_radius)
 {
     // the scale and offset computations can be done CPU-side
     float cos_outer   = cos(outer_angle);
-    // NOTE: in the real-world, the inner angle will most likely be nearly zero
+
     float spot_scale  = 1.0 / max(cos(inner_angle) - cos_outer, 1e-5);
     float spot_offset = -cos_outer * spot_scale;
 
     float cd          = dot(spot_dir, to_light);
     float attenuation = clamp(cd * spot_scale + spot_offset, 0.0, 1.0);
 
-    return attenuation * attenuation;
+    float att_sq = attenuation * attenuation;
+
+	att_sq *= smoothstep(0.05f, 0.2f, attenuation * distance / affect_radius);
+
+    return att_sq;
 }
 
 void detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 view_proj, out vec4 rect)
