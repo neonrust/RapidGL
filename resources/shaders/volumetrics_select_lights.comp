@@ -19,6 +19,19 @@ layout(std430, binding = SSBO_BIND_ALL_VOLUMETRIC_LIGHTS_INDEX) writeonly buffer
 	uint ssbo_volumetric_lights_index[];
 };
 
+uniform vec4 u_frustum_planes[6];  // xyz = normal, w = offset (L, R, T, B, N, F)
+
+bool frustumSphereIntersect(vec3 center, float radius)
+{
+    for(int idx = 0; idx < 6; ++idx)
+    {
+        vec4 plane = u_frustum_planes[idx];  // normal, offset
+        float dist = dot(plane.xyz, center) + plane.w;
+        if(dist < -radius)
+            return false;
+    }
+    return true;
+}
 
 void main()
 {
@@ -27,10 +40,30 @@ void main()
 		uint light_index = ssbo_relevant_lights_index[index];
 		GPULight L = ssbo_lights[light_index];
 
-		if(IS_DIR_LIGHT(L) || IS_VOLUMETRIC(L))
+		if(! IS_VOLUMETRIC(L))
+			continue;
+
+		bool add_light = false;
+
+		if(IS_DIR_LIGHT(L))
+			add_light = true;
+		else
 		{
-			uint index = atomicAdd(ssbo_num_volumetric_lights, 1);
-			ssbo_volumetric_lights_index[index] = light_index;
+			vec3 sphere_center = L.position;
+			float sphere_radius = L.affect_radius;
+			if(IS_SPOT_LIGHT(L))
+			{
+				sphere_center += L.direction * L.spot_bounds_radius;
+				sphere_radius = L.spot_bounds_radius;
+			}
+
+			add_light = frustumSphereIntersect(sphere_center, sphere_radius);
+		}
+
+		if(add_light)
+		{
+			uint out_index = atomicAdd(ssbo_num_volumetric_lights, 1);
+			ssbo_volumetric_lights_index[out_index] = light_index;
 		}
 	}
 }
