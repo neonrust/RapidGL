@@ -598,6 +598,7 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const small_vec<AtlasLigh
 
 				// TODO: possible to blit-copy the existing rendered slots to the new ones for demotions
 				//   However, this should only be implemented if really beneficial on a larger scale!
+				//   b/c implies a fair degree of compexity
 
 				// std::print("; {} remaining\n", _slot_sets[atlas_light.slots[0].size].size());
 			}
@@ -654,7 +655,7 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const small_vec<AtlasLigh
 
 				if(remove_allocation(light_id))
 					++counters.dropped;
-				std::print("  [{}] RAN out of slots of size {}\n", light_id, desired.slots[0].size);
+				std::print("  [{}] OUT OF SLOTS size {}\n", light_id, desired.slots[0].size);
 				assert(false);
 				continue;
 			}
