@@ -5,10 +5,9 @@
 layout(local_size_x = GROUP_SIZE, local_size_y = GROUP_SIZE, local_size_z = 1) in;
 
 #include "../../src/demos/27_clustered_shading/shaders/shared-structs.glh"
+#include "volumetrics.glh"
 #include "shapes.glh"
 
-// 16x9 at 160x90xN froxels
-const uvec2 tile_grid = uvec2(FROXEL_GRID_W/FROXELS_PER_TILE, FROXEL_GRID_H/FROXELS_PER_TILE);
 
 layout(std430, binding = SSBO_BIND_LIGHTS)
 readonly buffer LightsSSBO
@@ -35,14 +34,6 @@ writeonly buffer VolTileLightsIndexSSBO
 {
 	IndexRange ssbo_tile_lights[];  // size = num_tiles
 };
-
-// layout(std430, binding = 30)
-// writeonly buffer DebugStuff
-// {
-// 	uint count;
-// 	float debug_stuff[];
-// };
-
 
 SSBO_RELEVANT_LIGHTS_INDEX_ro;
 
@@ -98,21 +89,22 @@ void main()
 		if(! IS_VOLUMETRIC(L))
 			continue;
 
-		bool is_affecting = false;
+		bool is_affecting = true;
 
-		if(IS_DIR_LIGHT(L))
-			is_affecting = true;
-		else
+		if(! IS_DIR_LIGHT(L))
 		{
 			// project light's affect sphere to screen, check 2d intersection with this tile
 			Sphere sphere;
-			vec4 posVS = u_view * vec4(L.position, 1);
+			vec3 posVS = (u_view * vec4(L.position, 1)).xyz;
 			if(IS_SPOT_LIGHT(L))
-				posVS.xyz += L.direction*L.spot_bounds_radius;
-    		float radiusVS = IS_SPOT_LIGHT(L)? L.spot_bounds_radius: L.affect_radius;  // in view space
+			{
+				vec3 dirVS = normalize((u_view * vec4(L.direction, 0)).xyz);
+				posVS += dirVS * L.spot_bounds_radius;
+			}
+			float radiusVS = IS_SPOT_LIGHT(L)? L.spot_bounds_radius: L.affect_radius;  // in view space
 
-		    // Project to screen
-			Disc disc = screen_project_sphere(posVS.xyz, radiusVS);
+			// Project to screen
+			Disc disc = screen_project_sphere(posVS, radiusVS);
 			is_affecting = intersect(disc, tile_rect);
 
 			// debug_stuff[light_index] = disc.radius;
