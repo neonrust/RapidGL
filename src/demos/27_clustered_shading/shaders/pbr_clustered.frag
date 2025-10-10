@@ -73,11 +73,14 @@ vec3 tubeLightVisibility(GPULight light);
 vec3 sphereLightVisibility(GPULight light);
 vec3 discLightVisibility(GPULight light);
 
+vec2 shadow_atlas_texel_size ;
 
 void main()
 {
     vec3 radiance = vec3(0);
     vec3 normal = normalize(in_normal);
+
+	shadow_atlas_texel_size = 1.0 / vec2(textureSize(u_shadow_atlas, 0));
 
     MaterialProperties material = getMaterialProperties(normal);
 
@@ -349,7 +352,7 @@ float fadeLightByDistance(GPULight light)
 }
 
 // returns [1, 0] whther the fragment corresponding to 'atlas_uv' has LOS to the light
-float sampleShadow(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max, vec2 texel_size);
+float sampleShadow(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max);
 float fadeByDistance(float distance, float hard_limit);
 
 void detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 view_proj, out vec4 rect);
@@ -386,8 +389,7 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 	rect.z -= 2;
 	rect.w -= 2;
 
-	vec2 texel_size = 1.0 / vec2(textureSize(u_shadow_atlas, 0));
-	vec4 rect_uv = rect * vec4(texel_size, texel_size);
+	vec4 rect_uv = rect * vec4(shadow_atlas_texel_size, shadow_atlas_texel_size);
 
 	// to light space
 	vec4 light_space = proj * vec4(world_pos, 1);
@@ -397,13 +399,11 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 	float light_distance = length(light_to_frag);
 	float normalized_depth = light_distance / light.affect_radius;
 
-	vec2 atlas_uv = rect_uv.xy + face_uv * (rect_uv.zw + texel_size);
+	vec2 atlas_uv = rect_uv.xy + face_uv * (rect_uv.zw + shadow_atlas_texel_size);
 
-	// calculate shadow depdth bias by various factors
-	float bias = 0;
-
+	// calculate shadow depth bias by various factors
 	// bias by depth
-	bias += normalized_depth * u_shadow_bias_distance_scale;
+	float bias = normalized_depth * u_shadow_bias_distance_scale;
 
 	// bias based on surface normals
 	// bias increases when the angle between normal and light_dir is steep.
@@ -424,8 +424,8 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 	normalized_depth -= bias;
 
 	vec2 uv_min = vec2(rect_uv.x, rect_uv.y);
-	vec2 uv_max = vec2(rect_uv.x + rect_uv.z - texel_size.x, rect_uv.y + rect_uv.w - texel_size.y);
-	float shadow_sample = sampleShadow(normalized_depth, atlas_uv, uv_min, uv_max, texel_size);
+	vec2 uv_max = vec2(rect_uv.x + rect_uv.z - shadow_atlas_texel_size.x, rect_uv.y + rect_uv.w - shadow_atlas_texel_size.y);
+	float shadow_sample = sampleShadow(normalized_depth, atlas_uv, uv_min, uv_max);
 
 	float v_faded = 1 - (1 - shadow_sample) * shadow_fade;
 	float visible = light_fade * v_faded;
@@ -443,6 +443,75 @@ vec3 spotLightVisibility(GPULight light, vec3 world_pos)
 	float light_fade = fadeLightByDistance(light);
 	if(light_fade == 0)
 		return vec3(0);
+
+	if(! IS_SHADOW_CASTER(light))
+		return vec3(light_fade);
+
+	uint shadow_idx = GET_SHADOW_IDX(light);
+	if(shadow_idx == LIGHT_NO_SHADOW)
+		return vec3(light_fade);  // no shadow map in use
+
+	// fade the shadow sample by distance (utilize cluster z-coord?)
+	float fragment_distance = distance(world_pos, u_cam_pos);
+	float shadow_fade = fadeByDistance(fragment_distance, u_shadow_max_distance);
+	if(shadow_fade == 0)
+		return vec3(light_fade);
+
+	ShadowSlotInfo slot_info = ssbo_shadow_slots[shadow_idx];
+
+	vec3 light_to_frag = world_pos - light.position;
+
+	mat4 proj = slot_info.view_proj[0];
+	vec4 rect = slot_info.atlas_rect[0];
+
+	// ignore 1 pixel around the edges
+	rect.x += 1;
+	rect.y += 1;
+	rect.z -= 2;
+	rect.w -= 2;
+
+	vec4 rect_uv = rect * vec4(shadow_atlas_texel_size, shadow_atlas_texel_size);
+
+	// to light space
+	vec4 light_space = proj * vec4(world_pos, 1);
+	light_space.xyz /= light_space.w; // NDC
+	vec2 face_uv = light_space.xy * 0.5 + 0.5; // [0, 1]
+
+	float light_distance = length(light_to_frag);
+	float normalized_depth = light_distance / light.affect_radius;
+
+	vec2 atlas_uv = rect_uv.xy + face_uv * (rect_uv.zw + shadow_atlas_texel_size);
+
+	// calculate shadow depth bias by various factors
+	// bias by depth
+	float bias = normalized_depth * u_shadow_bias_distance_scale;
+
+	// bias based on surface normals
+	// bias increases when the angle between normal and light_dir is steep.
+	if(u_shadow_bias_slope_scale > 0)
+	{
+		vec2 encoded_normal = textureLod(u_shadow_atlas_normals, atlas_uv, 0).xy;
+		vec3 depth_normal = unpackNormal(encoded_normal);
+		vec3 light_dir = normalize(-light_to_frag);
+		float angle = dot(depth_normal, light_dir);
+		angle = pow(angle, u_shadow_bias_slope_power);
+		angle = clamp(angle, 0.0, 0.99);
+		bias += (0.001 / angle) * u_shadow_bias_slope_scale;
+	}
+
+	bias += u_shadow_bias_constant;
+	bias = clamp(bias, -0.05, 0.05) * u_shadow_bias_scale;
+
+	normalized_depth -= bias;
+
+	vec2 uv_min = vec2(rect_uv.x, rect_uv.y);
+	vec2 uv_max = vec2(rect_uv.x + rect_uv.z - shadow_atlas_texel_size.x, rect_uv.y + rect_uv.w - shadow_atlas_texel_size.y);
+	float shadow_sample = sampleShadow(normalized_depth, atlas_uv, uv_min, uv_max);
+
+	float v_faded = 1 - (1 - shadow_sample) * shadow_fade;
+	float visible = light_fade * v_faded;
+
+	return vec3(light_fade);
 }
 
 vec3 areaLightVisibility(GPULight light)
@@ -483,7 +552,7 @@ vec3 discLightVisibility(GPULight light)
 // 	return shadow / 9.0;
 // }
 
-float sampleShadow(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max, vec2 texel_size)
+float sampleShadow(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
 {
 	// 3x3 gauss kernel
 
@@ -504,7 +573,7 @@ float sampleShadow(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max,
 
 	// sample a 3x3 box around the sample
 #define SAMPLE(uv_offset, weight) \
-	uv = atlas_uv + uv_offset*texel_size; \
+	uv = atlas_uv + uv_offset*shadow_atlas_texel_size; \
 	uv.x = clamp(uv.x, uv_min.x, uv_max.x); \
 	uv.y = clamp(uv.y, uv_min.y, uv_max.y); \
 	sample_depth = textureLod(u_shadow_atlas, uv, 0).r; \
