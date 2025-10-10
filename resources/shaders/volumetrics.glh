@@ -1,3 +1,5 @@
+// 16x9 at 160x90xN froxels
+const uvec2 tile_grid = uvec2(FROXEL_GRID_W/FROXELS_PER_TILE, FROXEL_GRID_H/FROXELS_PER_TILE);
 
 // https://gist.github.com/Fewes/59d2c831672040452aa77da6eaab2234
 vec4 texture_tricubic(sampler3D tex, vec3 coord)
