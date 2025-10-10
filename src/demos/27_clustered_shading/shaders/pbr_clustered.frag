@@ -1,5 +1,6 @@
 #version 460 core
 #include "pbr_lighting.glh"
+#include "volumetrics.glh"
 
 out vec4 frag_color;
 
@@ -12,6 +13,7 @@ uniform float u_shadow_max_distance;
 
 uniform bool u_debug_cluster_geom;
 uniform bool u_debug_clusters_occupancy;
+uniform bool u_debug_tile_occupancy;
 uniform float u_debug_overlay_blend;
 
 uniform float u_shadow_bias_constant;
@@ -48,6 +50,12 @@ SSBO_ALL_CLUSTER_LIGHTS_ro;
 layout(std430, binding = SSBO_BIND_SHADOW_SLOTS_INFO) readonly buffer ShadowParamsSSBO
 {
 	ShadowSlotInfo ssbo_shadow_slots[];
+};
+
+layout(std430, binding = SSBO_BIND_VOLUMETRIC_TILE_LIGHTS_INDEX)
+readonly buffer VolTileLightsIndexSSBO
+{
+	IndexRange ssbo_tile_lights[];  // size = num_tiles
 };
 
 vec3  fromRedToGreen(float interpolant);
@@ -191,6 +199,27 @@ void main()
         	// no lights, draw "a pattern"
         	float pattern = uint(gl_FragCoord.x / 8 + gl_FragCoord.y / 5) % 2 == 0 ? 0.3: 0.5;
 	    	frag_color = vec4(0.3, pattern, 0.4, 1); // purple is not in the heat map gradient
+		}
+    }
+    else if(u_debug_tile_occupancy)
+    {
+		uvec2 tile = uvec2(gl_FragCoord.xy) / uvec2(120, 120); // TODO: screen_size / tile_grid = (120, 120)
+		uint tile_index = tile.y*tile_grid.x + tile.x;
+
+		IndexRange lights_range = ssbo_tile_lights[tile_index];
+
+		if (lights_range.count > 0)
+        {
+            float normalized_light_count = float(lights_range.count) / FROXEL_TILE_MAX_LIGHTS;
+            vec3 heat_map_color = falseColor(clamp(normalized_light_count, 0, 1));
+
+            frag_color = vec4(mix(radiance, heat_map_color, u_debug_overlay_blend), 1);
+        }
+        else
+        {
+        	// no lights, draw "a pattern"
+        	float pattern = uint(gl_FragCoord.x / 8 + gl_FragCoord.y / 5) % 2 == 0 ? 0.3: 0.5;
+			frag_color = vec4(0.3, pattern, 0.4, 1); // purple is not in the heat map gradient
 		}
     }
     else
