@@ -119,14 +119,24 @@ void ClusteredShading::render_gui()
 
 			ImGui::Text("Cluster  resolution: %u x %u x %u", m_cluster_resolution.x, m_cluster_resolution.y, m_cluster_resolution.z);
 			ImGui::Checkbox("Draw cluster grid (slow!)  [c]", &m_debug_draw_cluster_grid);
-			if (ImGui::Checkbox("Show cluster geom", &m_debug_cluster_geom))
+			if(ImGui::Checkbox("Show cluster geom", &m_debug_cluster_geom) and m_debug_cluster_geom)
+			{
 				m_debug_clusters_occupancy = false;
-
-			if (ImGui::Checkbox("Show cluster occupancy", &m_debug_clusters_occupancy))
+				m_debug_tile_occupancy = false;
+			}
+			if(ImGui::Checkbox("Show cluster occupancy", &m_debug_clusters_occupancy) and m_debug_clusters_occupancy)
+			{
 				m_debug_cluster_geom = false;
+				m_debug_tile_occupancy = false;
+			}
+			if(ImGui::Checkbox("Show tile occupancy", &m_debug_tile_occupancy) and m_debug_tile_occupancy)
+			{
+				m_debug_cluster_geom = false;
+				m_debug_clusters_occupancy = false;
+			}
 
-			if (m_debug_cluster_geom or m_debug_clusters_occupancy or m_debug_draw_cluster_grid)
-				ImGui::SliderFloat("Cluster debug blending", &m_debug_clusters_blend_factor, 0.0f, 1.0f);
+			if (m_debug_cluster_geom or m_debug_clusters_occupancy or m_debug_draw_cluster_grid or m_debug_tile_occupancy)
+				ImGui::SliderFloat("Debug overlay blend", &m_debug_coverlay_blend, 0.0f, 1.0f);
 
 			ImGui::Checkbox   ("Animate Lights",    &m_animate_lights);
 			ImGui::SliderFloat("Animation Speed",   &m_animation_speed, 0.0f, 15.0f, "%.1f");

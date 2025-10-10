@@ -199,7 +199,8 @@ private:
 
 	bool  m_debug_cluster_geom           = false;
 	bool  m_debug_clusters_occupancy     = false;
-	float m_debug_clusters_blend_factor  = 0.7f;
+	bool  m_debug_tile_occupancy         = false;
+	float m_debug_coverlay_blend         = 0.7f;
 	float m_shadow_bias_constant         = 0.f;
 	float m_shadow_bias_slope_scale      = 0.f;
 	float m_shadow_bias_slope_power      = 2.f;
