@@ -12,8 +12,6 @@ layout(rgba32f, binding = 5) uniform writeonly image3D   u_out_scatter;
 layout(binding = 6)          uniform           sampler3D u_prev_scatter;
 layout(binding = 20)         uniform           sampler2D u_shadow_atlas;
 
-const uvec2 tile_grid = uvec2(FROXEL_GRID_W/FROXELS_PER_TILE, FROXEL_GRID_H/FROXELS_PER_TILE);
-
 layout(std430, binding = SSBO_BIND_LIGHTS) readonly buffer LightsSSBO
 {
 	GPULight ssbo_lights[];
@@ -87,7 +85,6 @@ void main()
 	float noise = sampleBlueNoise(froxel) - 0.5f; // * 0.999f
 
 	vec3 world_pos = froxelWorldPos(froxel, u_froxel_zexp, u_inv_view_projection, noise);
-	vec3 cam_to_pos = normalize(u_cam_pos - world_pos);
 	float thickness  = froxelThickness(froxel.z);
 
 	vec3 total_scattered = vec3(0);
@@ -112,17 +109,19 @@ void main()
 			distance_sq = dot(light_to_froxel, light_to_froxel);
 			if(distance_sq > light.affect_radius*light.affect_radius)
 				affecting_froxel = false; // still need to mix with value from previous frame
-
-			float light_edge_distance = max(0, distance(light.position, u_cam_pos) - light.affect_radius);
-			// fade the volumetrics by distance
-			distance_fade = fadeByDistance(light_edge_distance, min(u_light_max_distance, u_volumetric_max_distance));
-			if(distance_fade < s_min_contribution)
-				continue;
+			else
+			{
+				float light_edge_distance = max(0, distance(light.position, u_cam_pos) - light.affect_radius);
+				// fade the volumetrics by distance
+				distance_fade = fadeByDistance(light_edge_distance, min(u_light_max_distance, u_volumetric_max_distance));
+				// if(distance_fade < s_min_contribution)
+				// 	continue;
+			}
 		}
 
 		vec3 scatter_contrib = vec3(0);
 
-		if(affecting_froxel)
+		if(affecting_froxel && distance_fade >= s_min_contribution)
 		{
 		    vec3 visibility = pointLightVisibility(light, world_pos);
 
@@ -134,7 +133,8 @@ void main()
 				else
 					light_direction = normalize(light.position - world_pos);
 
-				float contribution = phaseFunction(cam_to_pos, -light_direction, u_fog_anisotropy);
+				vec3 cam_to_pos = normalize(u_cam_pos - world_pos);
+				float contribution = distance_fade * phaseFunction(cam_to_pos, -light_direction, u_fog_anisotropy);
 
 				// positional lights are affected by their... uhm, position
 				if(IS_POINT_LIGHT(light) || IS_SPOT_LIGHT(light))
@@ -150,11 +150,10 @@ void main()
 
 				if(contribution > s_min_contribution)
 				{
-		        	scatter_contrib = light.color
+		        	scatter_contrib = contribution
+											* light.color
 											* light.intensity
-											* light.fog_intensity
-											* contribution
-											* distance_fade;
+											* light.fog_intensity;
 				}
 			}
 		}
