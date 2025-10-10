@@ -67,7 +67,7 @@ uvec3 computeClusterCoord(vec2 screen_pos, float view_z);
 
 vec3 pointLightVisibility(GPULight light, vec3 world_pos);
 vec3 dirLightVisibility(GPULight light);
-vec3 spotLightVisibility(GPULight light);
+vec3 spotLightVisibility(GPULight light, vec3 world_pos);
 vec3 areaLightVisibility(GPULight light);
 vec3 tubeLightVisibility(GPULight light);
 vec3 sphereLightVisibility(GPULight light);
@@ -124,7 +124,7 @@ void main()
 
 			case LIGHT_TYPE_SPOT:
 			{
-				visibility = spotLightVisibility(light);
+				visibility = spotLightVisibility(light, in_world_pos);
 			    if(visibility.x + visibility.y + visibility.z > s_min_visibility)
     				contribution = calcSpotLight(light, in_world_pos, material);
         	}
@@ -339,6 +339,15 @@ vec3 unpackNormal(vec2 f)
     return normalize(n);
 }
 
+float fadeByDistance(float distance, float hard_limit);
+
+float fadeLightByDistance(GPULight light)
+{
+	float light_edge_distance = max(0, distance(light.position, u_cam_pos) - light.affect_radius);
+	// fade the whole light by distance
+	return fadeByDistance(light_edge_distance, u_light_max_distance);
+}
+
 // returns [1, 0] whther the fragment corresponding to 'atlas_uv' has LOS to the light
 float sampleShadow(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max, vec2 texel_size);
 float fadeByDistance(float distance, float hard_limit);
@@ -347,9 +356,7 @@ void detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 v
 
 vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 {
-	float light_edge_distance = max(0, distance(light.position, u_cam_pos) - light.affect_radius);
-	// fade the whole light by distance
-	float light_fade = fadeByDistance(light_edge_distance, u_light_max_distance);
+	float light_fade = fadeLightByDistance(light);
 	if(light_fade == 0)
 		return vec3(0);
 
@@ -431,9 +438,11 @@ vec3 dirLightVisibility(GPULight light)
 	return vec3(1); // TODO
 }
 
-vec3 spotLightVisibility(GPULight light)
+vec3 spotLightVisibility(GPULight light, vec3 world_pos)
 {
-	return vec3(1); // TODO
+	float light_fade = fadeLightByDistance(light);
+	if(light_fade == 0)
+		return vec3(0);
 }
 
 vec3 areaLightVisibility(GPULight light)
