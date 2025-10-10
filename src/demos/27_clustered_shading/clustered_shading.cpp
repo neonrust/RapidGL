@@ -96,7 +96,7 @@ ClusteredShading::ClusteredShading() :
 	m_bloom_dirt_intensity(0),
 	m_bloom_enabled       (true),
 	_fog_enabled          (true),
-	_fog_strength         (1.2f),
+	_fog_strength         (0.4f),
 	_fog_density          (0.1f),    // [ 0, 1 ]
 	_fog_blend_weight     (0.1f)      // [ 0, 1 ]
 {
