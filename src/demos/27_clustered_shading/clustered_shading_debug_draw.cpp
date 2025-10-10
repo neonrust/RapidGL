@@ -460,10 +460,10 @@ void ClusteredShading::debugDrawSpotLight(const SpotLight &light, const glm::vec
 
 void ClusteredShading::debugDrawClusterGrid()
 {
-	const glm::vec4 grid_color{ 0.1f, 1.f, 0.6f, m_debug_clusters_blend_factor };
-	const glm::vec4 cluster_color{ 0.7f, 0.3f, 0.2f, m_debug_clusters_blend_factor };
-	const glm::vec4 text_color { 1, 0.9f, 0.2f, m_debug_clusters_blend_factor };
-	const glm::vec4 grid2d_color{ 0.1f, 0.3f, 0.9f, 0.8f * m_debug_clusters_blend_factor };
+	const glm::vec4 grid_color{ 0.1f, 1.f, 0.6f, m_debug_coverlay_blend };
+	const glm::vec4 cluster_color{ 0.7f, 0.3f, 0.2f, m_debug_coverlay_blend };
+	const glm::vec4 text_color { 1, 0.9f, 0.2f, m_debug_coverlay_blend };
+	const glm::vec4 grid2d_color{ 0.1f, 0.3f, 0.9f, 0.8f * m_debug_coverlay_blend };
 
 	const auto ww = Window::width();
 	const auto wh = Window::height();
