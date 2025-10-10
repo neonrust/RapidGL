@@ -12,7 +12,7 @@ uniform float u_shadow_max_distance;
 
 uniform bool u_debug_cluster_geom;
 uniform bool u_debug_clusters_occupancy;
-uniform float u_debug_clusters_occupancy_blend_factor;
+uniform float u_debug_overlay_blend;
 
 uniform float u_shadow_bias_constant;
 uniform float u_shadow_bias_slope_scale;
@@ -175,7 +175,7 @@ void main()
 			radiance = vec3(max(radiance.r, max(radiance.g, radiance.b))) - radiance;
 		}
 
-		frag_color = vec4(mix(radiance, cluster_color, u_debug_clusters_occupancy_blend_factor), 1);
+		frag_color = vec4(mix(radiance, cluster_color, u_debug_overlay_blend), 1);
     }
     else if (u_debug_clusters_occupancy)
     {
@@ -184,7 +184,7 @@ void main()
             float normalized_light_count = float(lights_range.count) / 32.f;//float(CLUSTER_MAX_LIGHTS);
             vec3 heat_map_color = falseColor(clamp(normalized_light_count, 0, 1));
 
-            frag_color = vec4(mix(radiance, heat_map_color, u_debug_clusters_occupancy_blend_factor), 1.0);
+            frag_color = vec4(mix(radiance, heat_map_color, u_debug_overlay_blend), 1);
         }
         else
         {
