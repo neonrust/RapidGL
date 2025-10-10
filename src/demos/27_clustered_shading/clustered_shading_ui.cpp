@@ -174,17 +174,27 @@ void ClusteredShading::render_gui()
 
 		if (ImGui::CollapsingHeader("Bloom"))
 		{
-			ImGui::Checkbox   ("Bloom enabled",        &m_bloom_enabled);
-			ImGui::SliderFloat("Bloom threshold",      &m_bloom_threshold,      0, 15.f, "%.1f");
-			ImGui::SliderFloat("Bloom knee",           &m_bloom_knee,           0,  1.f, "%.1f");
-			ImGui::SliderFloat("Bloom intensity",      &m_bloom_intensity,      0,  2.f, "%.1f");
-			ImGui::SliderFloat("Bloom dirt intensity", &m_bloom_dirt_intensity, 0, 10.f, "%.1f");
+			ImGui::Checkbox("Bloom enabled",        &m_bloom_enabled);
+			if(m_bloom_enabled)
+			{
+				ImGui::SliderFloat("Bloom threshold",      &m_bloom_threshold,      0, 15.f, "%.1f");
+				ImGui::SliderFloat("Bloom knee",           &m_bloom_knee,           0,  1.f, "%.1f");
+				ImGui::SliderFloat("Bloom intensity",      &m_bloom_intensity,      0,  2.f, "%.1f");
+				ImGui::SliderFloat("Bloom dirt intensity", &m_bloom_dirt_intensity, 0, 10.f, "%.1f");
+			}
 		}
 		if(ImGui::CollapsingHeader("Fog / Volumetrics", ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			ImGui::SliderFloat("Strength", &_fog_strength, 0.1f, 4.f);
-			ImGui::SliderFloat("Density", &_fog_density, 0.f, 1.f);
-			ImGui::SliderFloat("Temporal blend", &_fog_blend_weight, 0.f, 0.99f);  // lerp: <current> - <previous>
+			ImGui::Checkbox("Enabled",    &_fog_enabled);
+			if(_fog_enabled)
+			{
+				ImGui::SliderFloat("Strength", &_fog_strength, 0.f, 4.f);
+				ImGui::SliderFloat("Density", &_fog_density, 0.f, 1.f);
+				ImGui::SliderFloat("Temporal blend", &_fog_blend_weight, 0.f, 0.5f, "%.2f");  // lerp: <current> - <previous>
+				// static float falloff_mix { 0 };
+				// if(ImGui::SliderFloat("Falloff mix", &falloff_mix, 0.f, 1.f, "%.2f"))
+				// 	m_volumetrics_pp.setFalloffMix(falloff_mix);
+			}
 		}
 
 		if(ImGui::CollapsingHeader("Shadows"))//, ImGuiTreeNodeFlags_DefaultOpen))
