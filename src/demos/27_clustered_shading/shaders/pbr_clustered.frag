@@ -22,7 +22,7 @@ uniform float u_shadow_bias_distance_scale;
 uniform float u_shadow_bias_slope_power;
 uniform float u_shadow_bias_scale;
 
-const float s_min_visibility = 0.01;
+const float s_min_visibility = 1e-3;
 
 // TODO distance-based fg
 // uniform float u_fog_thickness;
