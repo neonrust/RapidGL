@@ -49,6 +49,7 @@ struct Texture2d
 	Texture &depth_texture();
 	const Texture &depth_texture() const;
 	inline GLenum depth_format() const { return _depth_format; }
+	void enableHardwarePCF();
 
 	//! bind color (if any) for use in shader as a texture
 	void bindTextureSampler(GLuint unit=0) const;

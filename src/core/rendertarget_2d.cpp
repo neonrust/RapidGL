@@ -51,7 +51,7 @@ void Texture2d::create(const char *name, size_t width, size_t height, Color::Con
 
 	if(_has_color and (color_cfg & Color::Texture))
 	{
-		// TODO: bake this into add_component() ?
+		// TODO: bake this into attach() ?
 		bool ok = _color_texture.Create(width, height, _color_format, _mip_levels);
 		assert(ok);
 
@@ -63,7 +63,7 @@ void Texture2d::create(const char *name, size_t width, size_t height, Color::Con
 
 	if(_has_depth and (depth_cfg & Depth::Texture))
 	{
-		// TODO: bake this into add_component() ?
+		// TODO: bake this into attach() ?
 		bool ok = _depth_texture.Create(width, height, _depth_format, _mip_levels);
 		assert(ok);
 
@@ -222,6 +222,16 @@ Texture &Texture2d::depth_texture()
 const Texture &Texture2d::depth_texture() const
 {
 	return _depth_texture;
+}
+
+void Texture2d::enableHardwarePCF()
+{
+	assert(_has_depth and _depth_texture);
+	glTextureParameteri(_depth_texture.texture_id(), GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+	glTextureParameteri(_depth_texture.texture_id(), GL_TEXTURE_COMPARE_FUNC, GL_LESS); // or GL_LEQUAL
+
+	_depth_texture.SetFiltering(TextureFiltering::Minify,  TextureFilteringParam::Linear);
+	_depth_texture.SetFiltering(TextureFiltering::Magnify, TextureFilteringParam::Linear);
 }
 
 void Texture2d::bindDepthTextureSampler(GLuint unit) const

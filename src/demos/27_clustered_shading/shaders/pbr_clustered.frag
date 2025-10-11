@@ -425,6 +425,9 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 
 	vec2 uv_min = vec2(rect_uv.x, rect_uv.y);
 	vec2 uv_max = vec2(rect_uv.x + rect_uv.z - shadow_atlas_texel_size.x, rect_uv.y + rect_uv.w - shadow_atlas_texel_size.y);
+	// TODO: depending on 'fragment_distance', use different number of samples:
+	//    1, 6 in X shape, and finally full 3x3 fauss-weighted box
+	//    -> have 3 different sampleShadow() functions?
 	float shadow_sample = sampleShadow(normalized_depth, atlas_uv, uv_min, uv_max);
 
 	float v_faded = 1 - (1 - shadow_sample) * shadow_fade;
@@ -576,8 +579,7 @@ float sampleShadow(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
 	uv = atlas_uv + uv_offset*shadow_atlas_texel_size; \
 	uv.x = clamp(uv.x, uv_min.x, uv_max.x); \
 	uv.y = clamp(uv.y, uv_min.y, uv_max.y); \
-	sample_depth = textureLod(u_shadow_atlas, uv, 0).r; \
- 	shadow += current_depth > sample_depth ? 0.0 : (weight);
+	shadow += texture(u_shadow_atlas, vec3(uv, current_depth))*weight;
 
 #if 0
   	// 3x3 gauss box
