@@ -212,9 +212,23 @@ bool Texture::Create(size_t width, size_t height, size_t depth, GLenum internalF
 	m_metadata.width = GLuint(width);
 	m_metadata.height = GLuint(height);
 	m_metadata.depth = GLuint(depth);
-	m_metadata.channels = 0;      // 1 - 4
-	m_metadata.channel_type = 0;  // GL_UNSIGNED_INT or GL_FLOAT or GL_HALF_FLOAT
 	m_metadata.channel_format = internalFormat;
+	m_metadata.channels = 4;
+	switch(internalFormat)
+	{
+	case GL_RGB32F:
+		m_metadata.channels = 3;
+	case GL_RGBA32F:
+		m_metadata.channel_type = GL_FLOAT;
+		break;
+	case GL_RG16F:
+		m_metadata.channel_type = GL_HALF_FLOAT;
+		m_metadata.channels = 2;
+		break;
+	default:
+		m_metadata.channel_type = GL_UNSIGNED_INT;
+		break;
+	}
 
 #if defined(DEBUG)
 	const auto format_name = gl_lookup::enum_name(internalFormat).substr(3);
