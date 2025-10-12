@@ -565,10 +565,6 @@ float sampleShadowMid(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_m
 {
 	// 5-point "kernel", X-shape
 
-	// TODO: random sampling
-	//    https://www.youtube.com/watch?v=NCptEJ1Uevg&t=380s
-	//    https://www.youtube.com/watch?v=3FMONJ1O39U&t=850s
-
 	vec2 uv;
 	float shadow = 0;
 	float sample_depth;
