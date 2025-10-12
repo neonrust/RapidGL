@@ -122,7 +122,10 @@ void Volumetrics::inject(const Camera &camera) // TODO: View
 
 	camera.setUniforms(_inject_shader);
 
-	_blue_noise.BindLayer(_frame % _blue_noise.num_layers(), 3);
+	if(_blend)
+		_blue_noise.BindLayer(_frame % _blue_noise.num_layers(), 3);
+	else
+		_blue_noise.BindLayer(0, 3);
 
 	// TODO: better API?
 	//   _inject_zshader.bindImage("u_output_transmittance"sv, _transmittance[_frame & 1], ImageAccess::Write);
