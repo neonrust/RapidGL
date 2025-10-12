@@ -213,6 +213,8 @@ public:
 
 	void set(const TextureDescriptor &descr);
 
+	std::vector<uint8_t> download() const;
+
 protected:
 	bool Create(size_t width, size_t height, size_t depth, GLenum internalFormat, size_t num_mipmaps);
 
