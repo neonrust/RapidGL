@@ -3,9 +3,7 @@
 #include "../../src/demos/27_clustered_shading/shaders/shared-structs.glh"
 #include "volumetrics.glh"
 
-#define GROUP_SIZE 8
-
-layout(local_size_x = GROUP_SIZE, local_size_y = GROUP_SIZE, local_size_z = 1) in;
+layout(local_size_x = FROXEL_THREADS_X, local_size_y = FROXEL_THREADS_Y, local_size_z = FROXEL_THREADS_Z) in;
 
 layout(binding = 3)          uniform           sampler2D u_blue_noise;
 layout(rgba32f, binding = 5) uniform writeonly image3D   u_out_scatter;
