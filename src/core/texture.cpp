@@ -361,6 +361,20 @@ void Texture::set(const TextureDescriptor &descr)
 	_texture_id = descr.texture_id;
 }
 
+std::vector<uint8_t> Texture::download() const
+{
+	const size_t num_pixels = m_metadata.width * m_metadata.height * m_metadata.depth;
+	const size_t channel_size = m_metadata.channel_type == GL_FLOAT? 4: 1;
+	const size_t pixel_size = m_metadata.channels * channel_size;
+
+	std::vector<uint8_t> pixels;
+	pixels.resize(num_pixels * pixel_size);
+
+	glGetTextureImage(_texture_id, 0, m_metadata.channel_format, m_metadata.channel_type, GLsizei(pixels.size()), pixels.data());
+
+	return pixels;
+}
+
 void Texture::BindImage(uint32_t unit, ImageAccess access, uint32_t mip_level) const
 {
 	glBindImageTexture(unit, _texture_id, GLint(mip_level), GL_FALSE, 0, GLenum(access), m_metadata.channel_format);
