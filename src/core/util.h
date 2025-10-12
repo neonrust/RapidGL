@@ -23,8 +23,8 @@ namespace RGL
 		GLuint depth { 1 };   // only 3d textures
 		GLuint layers { 0 };  // only for array textures
         GLuint channels;
-		GLuint channel_format = GL_RGB;
-		GLuint channel_type = GL_UNSIGNED_INT;
+		GLenum channel_format = GL_RGB;
+		GLenum channel_type = GL_UNSIGNED_INT;
     };
 
     class Util
