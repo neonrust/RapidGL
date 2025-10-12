@@ -106,8 +106,6 @@ void main()
 			// Project to screen
 			Disc disc = screen_project_sphere(posVS, radiusVS);
 			is_affecting = intersect(disc, tile_rect);
-
-			// debug_stuff[light_index] = disc.radius;
         }
 
 		if(is_affecting)
