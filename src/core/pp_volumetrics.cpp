@@ -36,18 +36,18 @@ bool Volumetrics::create()
 
 	new (&_select_shader) Shader(shaderPath / "volumetrics_select_lights.comp");
 	_select_shader.link();
-	_select_shader.setPreBarrier(Shader::Barrier::SSBO);
 	assert(_select_shader);
+	_select_shader.setPreBarrier(Shader::Barrier::SSBO);
 
 	new (&_cull_shader) Shader(shaderPath / "volumetrics_cull.comp");
 	_cull_shader.link();
-	_cull_shader.setPreBarrier(Shader::Barrier::SSBO);
 	assert(_cull_shader);
+	_cull_shader.setPreBarrier(Shader::Barrier::SSBO);
 
 	new (&_inject_shader) Shader(shaderPath / "volumetrics_inject.comp");
 	_inject_shader.link();
-	_inject_shader.setPreBarrier(Shader::Barrier::SSBO);
 	assert(_inject_shader);
+	_inject_shader.setPreBarrier(Shader::Barrier::SSBO);
 
 	new (&_accumulate_shader) Shader(shaderPath / "volumetrics_accumulate.comp");
 	_accumulate_shader.link();
