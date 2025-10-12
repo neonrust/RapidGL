@@ -16,7 +16,7 @@ namespace RGL::PP
 {
 
 static constexpr glm::uvec3 s_froxels { FROXEL_GRID_W, FROXEL_GRID_H, FROXEL_GRID_D };
-static constexpr glm::uvec3 s_local_size { 8, 8, 1 };
+static constexpr glm::uvec3 s_local_size { FROXEL_THREADS_X, FROXEL_THREADS_Y, FROXEL_THREADS_Z };
 
 Volumetrics::Volumetrics() :
 	_all_volumetric_lights("volumetric-lights"sv),
