@@ -52,8 +52,9 @@ uniform mat4  u_inv_view_projection;
 uniform mat4  u_prev_view;
 
 vec3 pointLightVisibility(GPULight light, vec3 world_pos);
-float getSquareFalloffAttenuation(float distance_sq, float light_radius);
-float getSpotAngleAttenuation(float distance, vec3 to_light, vec3 spot_axis, float outer_angle, float inner_angle, float affect_radius);
+float getSquareFalloffAttenuation(float distance_sq, float light_radius_sq);
+float getSpotSquareFalloffAttenuation(float distance_sq, float light_radius_sq);
+float getSpotAngleAttenuation(vec3 to_light, vec3 spot_axis, float outer_angle, float inner_angle);
 
 float fadeByDistance(float distance, float hard_limit);
 
@@ -135,13 +136,16 @@ void main()
 				float contribution = distance_fade * phaseFunction(cam_to_pos, -light_direction, u_fog_anisotropy);
 
 				// positional lights are affected by their... uhm, position
-				if(IS_POINT_LIGHT(light) || IS_SPOT_LIGHT(light))
+				if(IS_POINT_LIGHT(light))
 				{
 					float falloff_sq = getSquareFalloffAttenuation(distance_sq, light.affect_radius*light.affect_radius);
 					// float falloff_lin = 1 - sqrt(distance_sq) / light.affect_radius;
 					contribution *= falloff_sq;//mix(falloff_sq, falloff_lin, falloff_lin * u_falloff_mix);
-					if(IS_SPOT_LIGHT(light))
-						contribution *= getSpotAngleAttenuation(sqrt(distance_sq), normalize(light_to_froxel), light.direction, light.outer_angle, light.inner_angle, light.affect_radius);
+				}
+				if(IS_SPOT_LIGHT(light))
+				{
+					contribution *= getSpotSquareFalloffAttenuation(distance_sq, light.affect_radius*light.affect_radius);
+					contribution *= getSpotAngleAttenuation(normalize(light_to_froxel), light.direction, light.outer_angle, light.inner_angle);
 				}
 				else
 					;// TODO: area, tube, sphere & disc
@@ -346,7 +350,21 @@ float getSquareFalloffAttenuation(float distance_sq, float light_radius_squared)
     return (smooth_factor * smooth_factor) / max(distance_sq, 1e-5);
 }
 
-float getSpotAngleAttenuation(float distance, vec3 to_light, vec3 spot_dir, float outer_angle, float inner_angle, float affect_radius)
+// TODO: combine these two functions?
+float getSpotSquareFalloffAttenuation(float distance_sq, float light_radius_sq)
+{
+    // float distance_square = dot(pos_to_light, pos_to_light);
+    float factor          = distance_sq / light_radius_sq;
+    float smooth_factor   = max(1.0 - factor * factor, 0.0);
+
+    // minimize the "warbling wasp stinger" by fading out near the apex
+    float dist_fraction = distance_sq / light_radius_sq;
+   	smooth_factor *= smoothstep(0.f, 0.01f, dist_fraction);
+
+    return (smooth_factor * smooth_factor) / max(distance_sq, 1e-5);
+}
+
+float getSpotAngleAttenuation(vec3 to_light, vec3 spot_dir, float outer_angle, float inner_angle)
 {
     // the scale and offset computations can be done CPU-side
     float cos_outer   = cos(outer_angle);
@@ -357,11 +375,7 @@ float getSpotAngleAttenuation(float distance, vec3 to_light, vec3 spot_dir, floa
     float cd          = dot(spot_dir, to_light);
     float attenuation = clamp(cd * spot_scale + spot_offset, 0.0, 1.0);
 
-    float att_sq = attenuation * attenuation;
-
-	att_sq *= smoothstep(0.05f, 0.3f, attenuation * distance / affect_radius);
-
-    return att_sq;
+    return attenuation * attenuation;
 }
 
 void detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 view_proj, out vec4 rect)
