@@ -213,47 +213,47 @@ void Frustum::setFromView(const glm::mat4 &proj, const glm::mat4 &view, const gl
 	_right.set( anchor - mvp[0]);
 	_bottom.set(anchor + mvp[1]);
 	_top.set(   anchor - mvp[1]);
-	_front.set( anchor + mvp[2]);
-	_back.set(  anchor - mvp[2]);
+	_near.set(  anchor + mvp[2]);
+	_far.set(   anchor - mvp[2]);
 
 	// build an AABB around the frustum for even faster early-outs
-	_aabb.clear();
 
 	// compute the 8 corners of the frustum by intersecting the 3 adjacent planes
 	const glm::vec3 crosses[] = {
 		{}, // glm::cross(_left.normal(),   _right.normal()), // 0
 		glm::cross(_left.normal(),   _bottom.normal()),  // 1
 		glm::cross(_left.normal(),   _top.normal()),     // 2
-		glm::cross(_left.normal(),   _front.normal()),   // 3
-		glm::cross(_left.normal(),   _back.normal()),    // 4
+		glm::cross(_left.normal(),   _near.normal()),   // 3
+		glm::cross(_left.normal(),   _far.normal()),    // 4
 		glm::cross(_right.normal(),  _bottom.normal()),  // 5
 		glm::cross(_right.normal(),  _top.normal()),     // 6
-		glm::cross(_right.normal(),  _front.normal()),   // 7
-		glm::cross(_right.normal(),  _back.normal()),    // 8
+		glm::cross(_right.normal(),  _near.normal()),   // 7
+		glm::cross(_right.normal(),  _far.normal()),    // 8
 		{}, // glm::cross(_bottom.normal(), _top.normal()),  // 9
-		glm::cross(_bottom.normal(), _front.normal()),   // 10
-		glm::cross(_bottom.normal(), _back.normal()),    // 11
-		glm::cross(_top.normal(),    _front.normal()),   // 12
-		glm::cross(_top.normal(),    _back.normal()),    // 13
+		glm::cross(_bottom.normal(), _near.normal()),   // 10
+		glm::cross(_bottom.normal(), _far.normal()),    // 11
+		glm::cross(_top.normal(),    _near.normal()),   // 12
+		glm::cross(_top.normal(),    _far.normal()),    // 13
 		{} // glm::cross(_front.normal(),  _back.normal())   // 14
 	};
 
 	_corners = {
-		intersection(_left,  _top,    _front, crosses[2], crosses[3], crosses[12]),
-		intersection(_left,  _bottom, _front, crosses[1], crosses[3], crosses[10]),
-		intersection(_left,  _top,    _back,  crosses[2], crosses[4], crosses[13]),
-		intersection(_left,  _bottom, _back,  crosses[1], crosses[4], crosses[11]),
-		intersection(_right, _top,    _front, crosses[6], crosses[7], crosses[12]),
-		intersection(_right, _bottom, _front, crosses[5], crosses[7], crosses[10]),
-		intersection(_right, _top,    _back,  crosses[6], crosses[8], crosses[13]),
-		intersection(_right, _bottom, _back,  crosses[5], crosses[8], crosses[11])
+		intersection(_left,  _top,    _near, crosses[2], crosses[3], crosses[12]),
+		intersection(_left,  _bottom, _near, crosses[1], crosses[3], crosses[10]),
+		intersection(_left,  _top,    _far,  crosses[2], crosses[4], crosses[13]),
+		intersection(_left,  _bottom, _far,  crosses[1], crosses[4], crosses[11]),
+		intersection(_right, _top,    _near, crosses[6], crosses[7], crosses[12]),
+		intersection(_right, _bottom, _near, crosses[5], crosses[7], crosses[10]),
+		intersection(_right, _top,    _far,  crosses[6], crosses[8], crosses[13]),
+		intersection(_right, _bottom, _far,  crosses[5], crosses[8], crosses[11])
 	};
 
+	_aabb.clear();
 	for(const auto &corner: _corners)
 		_aabb.expand(corner);
 
 	// normalize planes after computing corners & AABB
-	for(Plane &plane: std::array{std::ref(_left), std::ref(_right), std::ref(_bottom), std::ref(_top), std::ref(_front), std::ref(_back)})
+	for(Plane &plane: std::array{std::ref(_left), std::ref(_right), std::ref(_bottom), std::ref(_top), std::ref(_near), std::ref(_far)})
 	{
 		const auto l = glm::length(plane.normal());
 		plane.set(plane.normal() / l, plane.offset() / l);
@@ -262,7 +262,7 @@ void Frustum::setFromView(const glm::mat4 &proj, const glm::mat4 &view, const gl
 
 const std::array<glm::vec4, 6> Frustum::planes() const
 {
-	return { left(), right(), top(), bottom(), front(), back() };
+	return { left(), right(), top(), bottom(), near(), far() };
 }
 
 namespace intersect
@@ -293,7 +293,7 @@ frustum_cull_result check(const Frustum &f, const bounds::AABB &box, const glm::
 	const auto &box_corners = tfm_aabb.corners();
 
 	decltype(frustum_cull_result::culled_by_plane) cull_plane = 0;
-	for(const auto &plane: { f.left(), f.right(), f.top(), f.bottom(), f.front(), f.back() })
+	for(const auto &plane: { f.left(), f.right(), f.top(), f.bottom(), f.near(), f.far() })
 	{
 		for(const auto &corner: box_corners)
 		{
@@ -306,7 +306,7 @@ frustum_cull_result check(const Frustum &f, const bounds::AABB &box, const glm::
 	}
 
 	cull_plane = 0;
-	for(const auto &plane: { f.left(), f.right(), f.top(), f.bottom(), f.front(), f.back() })
+	for(const auto &plane: { f.left(), f.right(), f.top(), f.bottom(), f.near(), f.far() })
 	{
 		bool potentially_inside = false;
 		for(const auto &corner: box_corners)
@@ -364,7 +364,7 @@ bool check(const Frustum &f, const glm::vec3 &point)
 		return false;
 
 	// true if the 'point' is "in front of"" all planes
-	return math::facing(f.back(), point) and math::facing(f.front(), point)
+	return math::facing(f.far(), point) and math::facing(f.near(), point)
 		and math::facing(f.left(), point) and math::facing(f.right(), point)
 		and math::facing(f.top(), point) and math::facing(f.bottom(), point);
 }
@@ -383,8 +383,8 @@ bool check(const Frustum &f, const bounds::Sphere &sphere)
 	{ const auto d = math::distance(f._name_(), sphere.center()); \
 	if(d < -sphere.radius()) return false; }
 
-	PLANE_TEST(back);
-	PLANE_TEST(front);
+	PLANE_TEST(far);
+	PLANE_TEST(near);
 	PLANE_TEST(left);
 	PLANE_TEST(right);
 	PLANE_TEST(top);

@@ -19,8 +19,8 @@ struct Frustum
 	inline const Plane &left() const   { return _left; }
 	inline const Plane &top() const    { return _top; }
 	inline const Plane &bottom() const { return _bottom; }
-	inline const Plane &front() const  { return _front; } // a.k.a. near
-	inline const Plane &back() const   { return _back; }  // a.k.a. far
+	inline const Plane &near() const   { return _near; }
+	inline const Plane &far() const    { return _far; }
 
 	//! world-space AABB
 	inline const bounds::AABB &aabb() const { return _aabb; }
@@ -36,8 +36,8 @@ private:
 	Plane _left;
 	Plane _top;
 	Plane _bottom;
-	Plane _front;   // a.k.a. near
-	Plane _back;    // a.k.a. far
+	Plane _near;
+	Plane _far;
 
 	std::array<glm::vec3, 8> _corners;
 
