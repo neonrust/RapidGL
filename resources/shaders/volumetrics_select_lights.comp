@@ -1,6 +1,7 @@
 #version 460 core
 
 #include "../../src/demos/27_clustered_shading/shaders/shared-structs.glh"
+#include "shapes.glh"
 
 #define THREADS_COUNT 128
 
@@ -19,19 +20,9 @@ layout(std430, binding = SSBO_BIND_ALL_VOLUMETRIC_LIGHTS_INDEX) writeonly buffer
 	uint ssbo_volumetric_lights_index[];
 };
 
-uniform vec4 u_frustum_planes[6];  // xyz = normal, w = offset (L, R, T, B, N, F)
+uniform vec4 u_frustum_planes[6];  // xyz = normal, w = offset
 
-bool frustumSphereIntersect(vec3 center, float radius)
-{
-    for(int idx = 0; idx < 6; ++idx)
-    {
-        vec4 plane = u_frustum_planes[idx];  // normal, offset
-        float dist = dot(plane.xyz, center) + plane.w;
-        if(dist < -radius)
-            return false;
-    }
-    return true;
-}
+bool frustumIntersect(Sphere sphere);
 
 void main()
 {
@@ -57,7 +48,7 @@ void main()
 				sphere_radius = L.spot_bounds_radius;
 			}
 
-			add_light = frustumSphereIntersect(sphere_center, sphere_radius);
+			add_light = frustumIntersect(Sphere(sphere_center, sphere_radius));
 		}
 
 		if(add_light)
@@ -66,4 +57,16 @@ void main()
 			ssbo_volumetric_lights_index[out_index] = light_index;
 		}
 	}
+}
+
+bool frustumIntersect(Sphere sphere)
+{
+    for(uint idx = 0; idx < 6; ++idx)
+    {
+        vec4 plane = u_frustum_planes[idx];  // normal, offset
+        float dist = dot(plane.xyz, sphere.center) + plane.w;
+        if(dist < -sphere.radius) // behind the plane (i.e. outside the frustum)
+            return false;
+    }
+    return true;
 }
