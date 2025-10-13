@@ -122,10 +122,6 @@ void Volumetrics::inject(const Camera &camera) // TODO: View
 
 	camera.setUniforms(_inject_shader);
 
-	if(_blend)
-		_blue_noise.BindLayer(_frame % _blue_noise.num_layers(), 3);
-	else
-		_blue_noise.BindLayer(0, 3);
 
 	// TODO: better API?
 	//   _inject_zshader.bindImage("u_output_transmittance"sv, _transmittance[_frame & 1], ImageAccess::Write);
@@ -156,6 +152,10 @@ void Volumetrics::inject(const Camera &camera) // TODO: View
 		size_t(std::ceil(float(s_froxels.y) / float(s_local_size.y))),
 		size_t(std::ceil(float(s_froxels.z) / float(s_local_size.z)))
 	);
+	if(_blend)
+		_blue_noise.BindLayer(_frame % _blue_noise.num_layers(), 3);
+	else
+		_blue_noise.BindLayer(0, 3);
 
 	_inject_shader.invoke(num_groups);
 }

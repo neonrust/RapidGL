@@ -33,7 +33,7 @@ public:
 	// < 0: backward scattering; light tends to scatter back toward the source (rare in nature, but can approximate retroreflective effects).
 	inline void setAnisotropy(float anisotropy) { _anisotropy = anisotropy; }
 
-	inline void setTemporalBlending(bool enable) { _blend = enable; }
+	inline void setTemporalBlending(bool enable=true) { _blend = enable; }
 	inline void setTemporalBlendWeight(float weight) { _blend_weight = weight; }
 	// inline void setFalloffMix(float mix) { _falloff_mix = mix; }
 

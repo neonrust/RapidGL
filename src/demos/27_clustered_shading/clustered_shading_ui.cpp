@@ -190,7 +190,11 @@ void ClusteredShading::render_gui()
 			{
 				ImGui::SliderFloat("Strength", &_fog_strength, 0.f, 4.f);
 				ImGui::SliderFloat("Density", &_fog_density, 0.f, 1.f);
-				ImGui::SliderFloat("Temporal blend", &_fog_blend_weight, 0.f, 0.5f, "%.2f");  // lerp: <current> - <previous>
+				static bool blend_enabled { true };
+				if(ImGui::Checkbox("Temporal blending", &blend_enabled))
+					m_volumetrics_pp.setTemporalBlending(blend_enabled);
+				if(blend_enabled)
+					ImGui::SliderFloat("Temporal blend", &_fog_blend_weight, 0.f, 0.5f, "%.2f");  // lerp: <current> - <previous>
 				// static float falloff_mix { 0 };
 				// if(ImGui::SliderFloat("Falloff mix", &falloff_mix, 0.f, 1.f, "%.2f"))
 				// 	m_volumetrics_pp.setFalloffMix(falloff_mix);
