@@ -983,6 +983,9 @@ struct std::formatter<glm::mat4> {
 
 static glm::mat4 light_view_projection(const GPULight &light, size_t idx)
 {
+	const auto far_z  = light.affect_radius;
+	const auto near_z = glm::max(0.1f, far_z / 250.f);
+
 	if(IS_POINT_LIGHT(light))
 	{
 		static constexpr auto square = 1.f;
@@ -992,7 +995,7 @@ static glm::mat4 light_view_projection(const GPULight &light, size_t idx)
 
 		assert(glm::epsilonEqual(glm::length(view_forward), 1.f, 0.01f));
 		const auto light_view      = glm::lookAt(light.position, light.position + view_forward, view_up);
-		const auto face_projection = glm::perspective(glm::half_pi<float>(), square, 0.05f, light.affect_radius);
+		const auto face_projection = glm::perspective(glm::half_pi<float>(), square, near_z, far_z);
 		const auto light_vp        = face_projection * light_view;
 
 		// std::print("  VP {} ->\n{: .3f}\n", face_names[idx], light_view);
@@ -1012,7 +1015,7 @@ static glm::mat4 light_view_projection(const GPULight &light, size_t idx)
 		auto view_up = AXIS_Z;
 
 		const auto light_view  = glm::lookAt(light.position, light.position + view_forward, view_up);
-		const auto projection  = glm::perspective(glm::radians(light.outer_angle), square, 0.05f, light.affect_radius);
+		const auto projection  = glm::perspective(glm::radians(light.outer_angle), square, near_z, far_z);
 		const auto light_vp    = projection * light_view;
 
 		return light_vp;
