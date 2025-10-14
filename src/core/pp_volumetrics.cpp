@@ -104,7 +104,7 @@ void Volumetrics::cull_lights(const Camera &camera)
 	// SSBO_BIND_RELEVANT_LIGHTS_INDEX -> SSBO_BIND_ALL_VOLUMETRIC_LIGHTS_INDEX
 	_all_volumetric_lights.clear();
 
-	_select_shader.setUniform("u_frustum_planes"sv, camera.frustum().planes());  // L, R, T, B, N, F
+	_select_shader.setUniform("u_frustum_planes"sv, camera.frustum().planes());  // left, right, top, bottom, near, far
 	_select_shader.invoke();
 
 	// then assign lights to overlapping 2d tiles (groups of froxel columns)
