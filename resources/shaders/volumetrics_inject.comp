@@ -52,6 +52,8 @@ uniform mat4  u_inv_view_projection;
 uniform mat4  u_prev_view;
 
 vec3 pointLightVisibility(GPULight light, vec3 world_pos);
+vec3 spotLightVisibility(GPULight light, vec3 world_pos);
+
 float getSquareFalloffAttenuation(float distance_sq, float light_radius_sq);
 float getSpotSquareFalloffAttenuation(float distance_sq, float light_radius_sq);
 float getSpotAngleAttenuation(vec3 to_light, vec3 spot_axis, float outer_angle, float inner_angle);
@@ -75,11 +77,15 @@ vec3 worldToFroxelUV(vec3 world_pos, mat4 view);
 const float s_min_visibility = 1e-3;
 const float s_min_contribution = 1e-5;
 
+vec2 shadow_atlas_texel_size;
+
 void main()
 {
 	ivec3 froxel = ivec3(gl_GlobalInvocationID.xyz);
 	if(froxel.x >= FROXEL_GRID_W ||froxel.y >= FROXEL_GRID_H || froxel.z >= FROXEL_GRID_D)
 		return;
+
+	shadow_atlas_texel_size = 1.0 / vec2(textureSize(u_shadow_atlas, 0));
 
 	float noise = sampleBlueNoise(froxel) - 0.5f; // * 0.999f
 
@@ -122,7 +128,12 @@ void main()
 
 		if(affecting_froxel && distance_fade >= s_min_contribution)
 		{
-		    vec3 visibility = pointLightVisibility(light, world_pos);
+			vec3 visibility = vec3(0);
+
+			if(IS_POINT_LIGHT(light))
+				visibility = pointLightVisibility(light, world_pos);
+			else if(IS_SPOT_LIGHT(light))
+				visibility = spotLightVisibility(light, world_pos);
 
 			if(visibility.x + visibility.y + visibility.z > s_min_visibility)
 			{
@@ -455,17 +466,22 @@ void detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 v
 	}
 }
 
-float sampleShadow(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max, vec2 texel_size)
+float sampleShadow(float current_depth, vec2 atlas_uv)
 {
 	float sample_depth = textureLod(u_shadow_atlas, atlas_uv, 0).r;
  	return current_depth > sample_depth ? 0 : 1;
 }
 
-vec3 pointLightVisibility(GPULight light, vec3 world_pos)
+float fadeLightByDistance(GPULight light)
 {
 	float light_edge_distance = max(0, distance(light.position, u_cam_pos) - light.affect_radius);
 	// fade the whole light by distance
-	float light_fade = fadeByDistance(light_edge_distance, u_light_max_distance);
+	return fadeByDistance(light_edge_distance, u_light_max_distance);
+}
+
+vec3 pointLightVisibility(GPULight light, vec3 world_pos)
+{
+	float light_fade = fadeLightByDistance(light);
 	if(light_fade == 0)
 		return vec3(0);
 
@@ -495,8 +511,7 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 	rect.z -= 2;
 	rect.w -= 2;
 
-	vec2 texel_size = 1.0 / vec2(textureSize(u_shadow_atlas, 0));
-	vec4 rect_uv = rect * vec4(texel_size, texel_size);
+	vec4 rect_uv = rect * vec4(shadow_atlas_texel_size, shadow_atlas_texel_size);
 
 	// to light space
 	vec4 light_space = proj * vec4(world_pos, 1);
@@ -506,13 +521,67 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 	float light_distance = length(light_to_frag);
 	float normalized_depth = light_distance / light.affect_radius;
 
-	vec2 atlas_uv = rect_uv.xy + face_uv * (rect_uv.zw + texel_size);
+	vec2 atlas_uv = rect_uv.xy + face_uv * (rect_uv.zw + shadow_atlas_texel_size);
 
 	vec2 uv_min = vec2(rect_uv.x, rect_uv.y);
-	vec2 uv_max = vec2(rect_uv.x + rect_uv.z - texel_size.x, rect_uv.y + rect_uv.w - texel_size.y);
-	float shadow_sample = sampleShadow(normalized_depth, atlas_uv, uv_min, uv_max, texel_size);
+	vec2 uv_max = vec2(rect_uv.x + rect_uv.z - shadow_atlas_texel_size.x, rect_uv.y + rect_uv.w - shadow_atlas_texel_size.y);
+	float shadow_sample = sampleShadow(normalized_depth, atlas_uv);
 
 	float v_faded = 1 - (1 - shadow_sample) * shadow_fade;
+	float visible = light_fade * v_faded;
+
+	return vec3(visible);
+}
+
+vec3 spotLightVisibility(GPULight light, vec3 world_pos)
+{
+	float light_fade = fadeLightByDistance(light);
+	if(light_fade == 0)
+		return vec3(0);
+
+	if(! IS_SHADOW_CASTER(light))
+		return vec3(light_fade);
+
+	uint shadow_idx = GET_SHADOW_IDX(light);
+	if(shadow_idx == LIGHT_NO_SHADOW)
+		return vec3(light_fade);  // no shadow map in use
+
+	// fade the shadow sample by distance (utilize cluster z-coord?)
+	float fragment_distance = distance(world_pos, u_cam_pos);
+	float shadow_fade = fadeByDistance(fragment_distance, u_shadow_max_distance);
+	if(shadow_fade == 0)
+		return vec3(light_fade);
+
+	ShadowSlotInfo slot_info = ssbo_shadow_slots[shadow_idx];
+
+	vec3 light_to_frag = world_pos - light.position;
+
+	mat4 proj = slot_info.view_proj[0];
+	vec4 rect = slot_info.atlas_rect[0];
+
+	// ignore 1 pixel around the edges
+	rect.x += 1;
+	rect.y += 1;
+	rect.z -= 2;
+	rect.w -= 2;
+
+	vec4 rect_uv = rect * vec4(shadow_atlas_texel_size, shadow_atlas_texel_size);
+
+	// to light space
+	vec4 light_space = proj * vec4(world_pos, 1);
+	light_space.xyz /= light_space.w; // NDC
+	vec2 face_uv = light_space.xy * 0.5 + 0.5; // [0, 1]
+
+	float light_distance = length(light_to_frag);
+	float normalized_depth = light_distance / light.affect_radius;
+
+	vec2 atlas_uv = rect_uv.xy + face_uv * (rect_uv.zw + shadow_atlas_texel_size);
+
+	vec2 uv_min = vec2(rect_uv.x, rect_uv.y);
+	vec2 uv_max = vec2(rect_uv.x + rect_uv.z - shadow_atlas_texel_size.x, rect_uv.y + rect_uv.w - shadow_atlas_texel_size.y);
+	float shadow_visibility = sampleShadow(normalized_depth, atlas_uv);
+
+	float v_faded = 1 - (1 - shadow_visibility) * shadow_fade;
 	float visible = light_fade * v_faded;
 
 	return vec3(visible);
