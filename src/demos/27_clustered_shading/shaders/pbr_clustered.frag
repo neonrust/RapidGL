@@ -385,7 +385,7 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 	vec3 light_to_frag = world_pos - light.position;
 
 	mat4 proj;
-	vec4 rect;
+	vec4 rect; // shadow slot rectangle in atlas, in absolute pixels
 	detectCubeFaceSlot(light_to_frag, slot_info, proj, rect);
 	// ignore 1 pixel around the edges
 	rect.x += 1;
@@ -393,7 +393,14 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 	rect.z -= 2;
 	rect.w -= 2;
 
-	vec4 rect_uv = rect * vec4(shadow_atlas_texel_size, shadow_atlas_texel_size);
+
+	// TODO: need to understand the relation between rect_uv, face_uv and atlas_uv ...?
+
+	// rect     : slot square in atlas pixel-space; x,y & w,h
+	// rect_uv  : slot square in atlas UV-space; x,y & w,h
+	// face_uv  : location of fragment within the point light's cube face (facing the direction of the fragment)
+	//            0,0 of that cube face corresponds to the "top-lect" corner of the slot square
+	// atlas_uv : combination of above; the rect_uv + offset by face_uv, in atlas UV-space.
 
 	// to light space
 	vec4 light_space = proj * vec4(world_pos, 1);
@@ -403,6 +410,7 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 	float light_distance = length(light_to_frag);
 	float normalized_depth = light_distance / light.affect_radius;
 
+	vec4 rect_uv = rect * vec4(shadow_atlas_texel_size, shadow_atlas_texel_size);
 	vec2 atlas_uv = rect_uv.xy + face_uv * (rect_uv.zw + shadow_atlas_texel_size);
 
 	// calculate shadow depth bias by various factors
@@ -426,6 +434,8 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 	bias = clamp(bias, -0.05, 0.05) * u_shadow_bias_scale;
 
 	normalized_depth -= bias;
+
+	// TODO: isn't this UV clamping trimming the border again?
 
 	vec2 uv_min = vec2(rect_uv.x, rect_uv.y);
 	vec2 uv_max = vec2(rect_uv.x + rect_uv.z - shadow_atlas_texel_size.x, rect_uv.y + rect_uv.w - shadow_atlas_texel_size.y);
