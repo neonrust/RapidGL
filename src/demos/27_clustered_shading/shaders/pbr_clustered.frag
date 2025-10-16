@@ -437,8 +437,8 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 
 	// TODO: isn't this UV clamping trimming the border again?
 
-	vec2 uv_min = vec2(rect_uv.x, rect_uv.y);
-	vec2 uv_max = vec2(rect_uv.x + rect_uv.z - shadow_atlas_texel_size.x, rect_uv.y + rect_uv.w - shadow_atlas_texel_size.y);
+	vec2 uv_min = rect_uv.xy;
+	vec2 uv_max = rect_uv.xy + rect_uv.zw - shadow_atlas_texel_size;
 	float shadow_visibility = sampleShadow(fragment_distance, normalized_depth, atlas_uv, uv_min, uv_max);
 
 	float v_faded = 1 - (1 - shadow_visibility) * shadow_fade;
@@ -518,8 +518,8 @@ vec3 spotLightVisibility(GPULight light, vec3 world_pos)
 
 	normalized_depth -= bias;
 
-	vec2 uv_min = vec2(rect_uv.x, rect_uv.y);
-	vec2 uv_max = vec2(rect_uv.x + rect_uv.z - shadow_atlas_texel_size.x, rect_uv.y + rect_uv.w - shadow_atlas_texel_size.y);
+	vec2 uv_min = rect_uv.xy;
+	vec2 uv_max = rect_uv.xy + rect_uv.zw - shadow_atlas_texel_size;
 	float shadow_visibility = sampleShadow(fragment_distance, normalized_depth, atlas_uv, uv_min, uv_max);
 
 	float v_faded = 1 - (1 - shadow_visibility) * shadow_fade;
@@ -568,7 +568,18 @@ vec3 discLightVisibility(GPULight light)
 
 float sampleShadow1(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
 {
-	return texture(u_shadow_atlas, vec3(atlas_uv, current_depth));
+	// if 'atlas_uv' is closer than 2 pixels to 'uv_min' or 'uv_mac' (component wise),
+	// use the _single sampler
+	float margin = shadow_atlas_texel_size.x*2;
+
+	if(atlas_uv.x <= uv_min.x + margin || atlas_uv.x >= uv_max.x - margin
+	   || atlas_uv.y <= uv_min.y + margin || atlas_uv.y >= uv_max.y - margin)
+	{
+		atlas_uv = clamp(atlas_uv, uv_min, uv_max);
+		return texture(u_shadow_atlas_single, atlas_uv).r > current_depth? 1: 0;
+	}
+	else
+		return texture(u_shadow_atlas, vec3(atlas_uv, current_depth));
 }
 
 float sampleShadow5(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
