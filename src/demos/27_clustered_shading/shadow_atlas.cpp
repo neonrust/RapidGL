@@ -984,7 +984,7 @@ struct std::formatter<glm::mat4> {
 static glm::mat4 light_view_projection(const GPULight &light, size_t idx)
 {
 	const auto far_z  = light.affect_radius;
-	const auto near_z = glm::max(0.1f, far_z / 250.f);
+	const auto near_z = std::max(0.1f, far_z / 250.f);
 
 	if(IS_POINT_LIGHT(light))
 	{
