@@ -359,7 +359,7 @@ float fadeLightByDistance(GPULight light)
 float sampleShadow(float distance, float normalized_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max);
 float fadeByDistance(float distance, float hard_limit);
 
-void detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 view_proj, out vec4 rect);
+uint detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 view_proj, out vec4 rect);
 
 vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 {
@@ -662,7 +662,7 @@ float fadeByDistance(float distance, float hard_limit)
 	return 1 - smoothstep(hard_limit*0.8, hard_limit, distance);
 }
 
-void detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 view_proj, out vec4 rect)
+uint detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 view_proj, out vec4 rect)
 {
 	// figure out which of the 6 cube faces is relevant
 
@@ -698,15 +698,19 @@ void detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 v
 	vec4 rect_4 = slot_info.atlas_rect[4];
 	vec4 rect_5 = slot_info.atlas_rect[5];
 
+	uint face;
+
 	if (major_axis == 0)
 	{
 	    if(light_to_frag.x > 0) // +X
 		{
+			face = 0;
 			view_proj = vp_0;
 			rect = rect_0;
 		}
 		else  // -X
 		{
+			face = 1;
 			view_proj = vp_1;
 			rect = rect_1;
 		}
@@ -715,11 +719,13 @@ void detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 v
 	{
 		if(light_to_frag.y > 0) // +Y
 		{
+			face = 2;
 			view_proj = vp_2;
 			rect = rect_2;
 		}
 		else  // -Y
 		{
+			face = 3;
 			view_proj = vp_3;
 			rect = rect_3;
 		}
@@ -728,13 +734,16 @@ void detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 v
 	{
 	    if(light_to_frag.z > 0) // +Z
 		{
+			face = 4;
 			view_proj = vp_4;
 			rect = rect_4;
 		}
 		else  // -Z
 		{
+			face = 5;
 			view_proj = vp_5;
 			rect = rect_5;
 		}
 	}
+	return face;
 }
