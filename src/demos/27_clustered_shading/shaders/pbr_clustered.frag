@@ -436,8 +436,6 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 
 	normalized_depth -= bias;
 
-	// TODO: isn't this UV clamping trimming the border again?
-
 	vec2 uv_min = rect_uv.xy;
 	vec2 uv_max = rect_uv.xy + rect_uv.zw - shadow_atlas_texel_size;
 	float shadow_visibility = sampleShadow(fragment_distance, normalized_depth, atlas_uv, uv_min, uv_max);
