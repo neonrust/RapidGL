@@ -387,7 +387,8 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 	mat4 proj;
 	vec4 rect; // shadow slot rectangle in atlas, in absolute pixels
 	detectCubeFaceSlot(light_to_frag, slot_info, proj, rect);
-	// ignore 1 pixel around the edges
+	// ignore 1 pixel around the edges,
+	//   so the linear filtering doesn't blend  outside the slot rect
 	rect.x += 1;
 	rect.y += 1;
 	rect.z -= 2;
