@@ -170,7 +170,7 @@ void main()
             break;
 
             default:
-            	// set an "error" color
+            	// unexpected light type, set an "error" color
 	            frag_color = vec4(10, 0, 2, 1);
 				return;
 		}
@@ -443,22 +443,22 @@ vec3 spotLightVisibility(GPULight light, vec3 world_pos)
 
 vec3 areaLightVisibility(GPULight light)
 {
-	return vec3(1); // TODO
+	return vec3(1); // TODO will probably never cast shadows
 }
 
 vec3 tubeLightVisibility(GPULight light)
 {
-	return vec3(1); // TODO
+	return vec3(1); // TODO will probably never cast shadows
 }
 
 vec3 sphereLightVisibility(GPULight light)
 {
-	return vec3(1); // TODO
+	return vec3(1); // TODO will probably never cast shadows
 }
 
 vec3 discLightVisibility(GPULight light)
 {
-	return vec3(1); // TODO
+	return vec3(1); // TODO will probably never cast shadows
 }
 
 vec2 calculateShadowUV(vec3 world_pos, mat4 proj, vec4 rect, out vec4 rect_uv)
