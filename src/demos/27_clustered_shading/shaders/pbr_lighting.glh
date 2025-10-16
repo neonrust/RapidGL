@@ -25,7 +25,8 @@ layout (binding = 7) uniform samplerCube u_prefiltered_map;
 layout (binding = 8) uniform sampler2D   u_brdf_lut;
 // 9, 10 is in area_light_ltc.glh
 layout (binding = 20) uniform sampler2DShadow u_shadow_atlas;
-layout (binding = 21) uniform sampler2D       u_shadow_atlas_normals;
+layout (binding = 21) uniform sampler2D       u_shadow_atlas_single;
+layout (binding = 22) uniform sampler2D       u_shadow_atlas_normals;
 
 uniform bool u_has_albedo_map;
 uniform bool u_has_normal_map;
