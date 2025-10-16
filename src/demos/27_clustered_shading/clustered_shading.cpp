@@ -1463,6 +1463,7 @@ void ClusteredShading::renderShadowMaps()
 			const auto slot_index = _light_mgr.shadow_index(light_id);
 
 			// render only up to the light's radius
+			// NOTE: I think this must match the projection matrix, see light_view_projection() in shadow_atlas.cpp
 			const auto far_z = light.affect_radius;
 
 			// TODO: possible to render all cube faces in one draw call, using a geomety shader?
