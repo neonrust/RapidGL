@@ -566,12 +566,12 @@ vec3 discLightVisibility(GPULight light)
 // 	return shadow / 9.0;
 // }
 
-float sampleShadowLow(float current_depth, vec2 atlas_uv)
+float sampleShadow1(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
 {
 	return texture(u_shadow_atlas, vec3(atlas_uv, current_depth));
 }
 
-float sampleShadowMid(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
+float sampleShadow5(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
 {
 	// 5-point "kernel", X-shape
 
@@ -583,11 +583,12 @@ float sampleShadowMid(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_m
 	//   but strictly, the sampling should in those cases instead sample from the
 	//   "spatial naighbour" slot. That is, however, quite complicated... :|
 
+	// TODO: sample using sampler2DShadow for all samples,
+	//   except near edges (1-2 texel margin), where sampler2D should be used.
+	//   otherwise, sampler2DShadow will sample outside the slot square (commonly uses 2x2 texels)
 #define SAMPLE(uv_offset, weight) \
 	uv = atlas_uv + uv_offset*shadow_atlas_texel_size; \
-	uv.x = clamp(uv.x, uv_min.x, uv_max.x); \
-	uv.y = clamp(uv.y, uv_min.y, uv_max.y); \
-	shadow += texture(u_shadow_atlas, vec3(uv, current_depth))*weight;
+	shadow += sampleShadow1(current_depth, uv, uv_min, uv_max)*weight;
 
 	// cheaper sampling: only center and four corners of the 3x3 box
 	const float weights5[2] = { 0.4, 0.15 };  // total = 1
@@ -603,8 +604,7 @@ float sampleShadowMid(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_m
 	return shadow;
 }
 
-
-float sampleShadowHigh(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
+float sampleShadow9(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
 {
 	// 3x3 gauss kernel
 
@@ -626,9 +626,7 @@ float sampleShadowHigh(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_
 	// sample a 3x3 box around the sample
 #define SAMPLE(uv_offset, weight) \
 	uv = atlas_uv + uv_offset*shadow_atlas_texel_size; \
-	uv.x = clamp(uv.x, uv_min.x, uv_max.x); \
-	uv.y = clamp(uv.y, uv_min.y, uv_max.y); \
-	shadow += texture(u_shadow_atlas, vec3(uv, current_depth))*weight;
+	shadow += sampleShadow1(current_depth, uv, uv_min, uv_max)*weight;
 
   	// 3x3 gauss box
   	const float weights9[3] = { 0.25, 0.125, 0.0625 };  // total = 1
@@ -651,10 +649,10 @@ float sampleShadowHigh(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_
 float sampleShadow(float distance, float normalized_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
 {
 	if(distance > shadow_low_sampling_distance)
-		return sampleShadowLow(normalized_depth, atlas_uv);
+		return sampleShadow1(normalized_depth, atlas_uv, uv_min, uv_max);
 	else if(distance > shadow_mid_sampling_distance)
-		return sampleShadowMid(normalized_depth, atlas_uv, uv_min, uv_max);
-	return sampleShadowHigh(normalized_depth, atlas_uv, uv_min, uv_max);
+		return sampleShadow5(normalized_depth, atlas_uv, uv_min, uv_max);
+	return sampleShadow9(normalized_depth, atlas_uv, uv_min, uv_max);
 }
 
 float fadeByDistance(float distance, float hard_limit)
