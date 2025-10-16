@@ -14,8 +14,8 @@ public:
 	inline SampleWindow &operator += (T value) { add(value); return *this; }
 	void clear();
 
-	[[nodiscard]] T average(T def=T{0}) const noexcept;
-	[[nodiscard]] T sum(T def=T{0}) const noexcept;
+	[[nodiscard]] T average(T init=T{0}) const noexcept;
+	[[nodiscard]] T sum(T init=T{0}) const noexcept;
 	[[nodiscard]] inline T min(T def=T{0}) const noexcept;
 	[[nodiscard]] inline T max(T def=T{0}) const noexcept;
 	[[nodiscard]] inline T first(T def=T{0}) const noexcept;
@@ -41,19 +41,17 @@ inline void SampleWindow<T, size>::clear()
 }
 
 template<typename T, size_t size> requires (size > 0)
-inline T SampleWindow<T, size>::average(T def) const noexcept
+inline T SampleWindow<T, size>::average(T init) const noexcept
 {
 	if(empty())
-		return def;
-	return sum() / num_samples();
+		return init;
+	return sum(init) / num_samples();
 }
 
 template<typename T, size_t size> requires (size > 0)
-inline T SampleWindow<T, size>::sum(T def) const noexcept
+inline T SampleWindow<T, size>::sum(T init) const noexcept
 {
-	if(empty())
-		return def;
-	return std::accumulate(_samples.begin(), _samples.end(), T{ 0 });
+	return std::accumulate(_samples.begin(), _samples.end(), init);
 }
 
 template<typename T, size_t size> requires (size > 0)
