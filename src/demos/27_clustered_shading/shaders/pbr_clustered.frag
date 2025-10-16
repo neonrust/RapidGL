@@ -75,8 +75,8 @@ vec3 discLightVisibility(GPULight light);
 
 vec2 shadow_atlas_texel_size;
 
-float shadow_low_sampling_distance  = u_shadow_max_distance / 2;
-float shadow_mid_sampling_distance  = u_shadow_max_distance / 4;
+float shadow_low_sampling_distance  = u_shadow_max_distance / 3;
+float shadow_mid_sampling_distance  = u_shadow_max_distance / 8;
 
 
 void main()
