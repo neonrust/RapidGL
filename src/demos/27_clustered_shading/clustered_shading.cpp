@@ -909,7 +909,25 @@ void ClusteredShading::update(double delta_time)
 	}
 */
 
-    if (m_animate_lights)
+	const float ajust_amount = 1.0f * delta_time;
+	float adjust_position = 0.f;
+	if(Input::isKeyDown(KeyCode::LeftArrow))
+		adjust_position = -ajust_amount;
+	else if(Input::isKeyDown(KeyCode::RightArrow))
+		adjust_position = +ajust_amount;
+
+	if(adjust_position != 0)
+	{
+		for(LightIndex light_index = 0; light_index <  _light_mgr.size(); ++light_index)
+		{
+			const auto &[light_id, L] =_light_mgr.at(light_index);
+			auto Lmut = L;
+			// orbit around the world origin
+			Lmut.position.z += adjust_position;
+			_light_mgr.set(light_id, Lmut);
+		}
+	}
+	else if (m_animate_lights)
     {
 		// time_accum  += float(delta_time * m_animation_speed);
 		auto orbit_mat = glm::rotate(glm::mat4(1), glm::radians(-23.f * float(delta_time)) * 2.f * m_animation_speed, AXIS_Y);
@@ -926,9 +944,12 @@ void ClusteredShading::update(double delta_time)
 			Lmut.position = orbit_mat * glm::vec4(L.position, 1);
 			_light_mgr.set(light_id, Lmut);
 		}
-
-		updateLightsSSBOs();
 	}
+
+
+	if(m_animate_lights or adjust_position != 0)
+		updateLightsSSBOs();
+
 }
 
 void ClusteredShading::createLights()
