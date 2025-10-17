@@ -1345,7 +1345,14 @@ void ClusteredShading::render()
 		m_volumetrics_render_time.add(_gl_timer.elapsed<microseconds>(true));
 	}
 	else
+	{
 		_pp_full_rt.clear();
+
+		m_volumetrics_cull_time.clear();
+		m_volumetrics_inject_time.clear();
+		m_volumetrics_accum_time.clear();
+		m_volumetrics_render_time.clear();
+	}
 
 
 	// TODO: compute average luminance of rendered image
