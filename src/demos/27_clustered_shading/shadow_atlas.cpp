@@ -988,6 +988,7 @@ static glm::mat4 light_view_projection(const GPULight &light, size_t idx)
 
 	if(IS_POINT_LIGHT(light))
 	{
+		assert(idx < 6);
 		static constexpr auto square = 1.f;
 
 		const auto &view_forward   = s_cube_face_forward[idx];
@@ -998,25 +999,27 @@ static glm::mat4 light_view_projection(const GPULight &light, size_t idx)
 		const auto face_projection = glm::perspective(glm::half_pi<float>(), square, near_z, far_z);
 		const auto light_vp        = face_projection * light_view;
 
-		// std::print("  VP {} ->\n{: .3f}\n", face_names[idx], light_view);
+		// std::print("  point VP {} ->\n{: .3f}\n", face_names[idx], light_view);
 
 		return light_vp;
 	}
 	if(IS_DIR_LIGHT(light))
 	{
+		assert(idx < 3);
 		// TODO
 		//   3 cascades (CSM)
 	}
 	if(IS_SPOT_LIGHT(light))
 	{
+		assert(idx == 0);
 		static constexpr auto square = 1.f;
 
-		const auto view_forward   = light.direction;
-		auto view_up = AXIS_Z;
+		const auto &view_forward = light.direction;
+		const auto &view_up      = view_forward == AXIS_Z or view_forward == -AXIS_Z? AXIS_X: AXIS_Z;
 
-		const auto light_view  = glm::lookAt(light.position, light.position + view_forward, view_up);
-		const auto projection  = glm::perspective(glm::radians(light.outer_angle), square, near_z, far_z);
-		const auto light_vp    = projection * light_view;
+		const auto light_view    = glm::lookAt(light.position, light.position + view_forward, view_up);
+		const auto projection    = glm::perspective(light.outer_angle, square, near_z, far_z);
+		const auto light_vp      = projection * light_view;
 
 		return light_vp;
 	}
