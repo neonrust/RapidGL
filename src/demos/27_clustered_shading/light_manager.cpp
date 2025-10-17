@@ -325,10 +325,7 @@ void LightManager::compute_spot_bounds(GPULight &L)
 
 	assert(IS_SPOT_LIGHT(L));
 
-	// const float tan_theta = std::tan(2*L.outer_angle);
-	// L.spot_bounds_radius = L.affect_radius * (1 + tan_theta*tan_theta*0.5f);
-
-	const float half_angle = L.outer_angle; // if outer_angle is already half angle
+	const float half_angle = L.outer_angle;
 	L.spot_bounds_radius = L.affect_radius * 0.5f / std::cos(half_angle);
 }
 
