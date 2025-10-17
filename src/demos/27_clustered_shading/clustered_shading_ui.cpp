@@ -59,11 +59,14 @@ void ClusteredShading::render_gui()
 	ImGui::Text("    Shading: %4ld µs", m_shading_time.average().count());
 	ImGui::Text("     Skybox: %4ld µs", m_skybox_time.average().count());
 	// ImGui::Text("        PP: %3ld µs", m_pp_time.count());
-	ImGui::Text("Volumetrics: %4ld µs", (m_volumetrics_cull_time.average() + m_volumetrics_inject_time.average() + m_volumetrics_accum_time.average() + m_volumetrics_render_time.average()).count());
-	ImGui::Text(" -   cull: %3ld µs", m_volumetrics_cull_time.average().count());
-	ImGui::Text(" - inject: %3ld µs", m_volumetrics_inject_time.average().count());
-	ImGui::Text(" -  accum: %3ld µs", m_volumetrics_accum_time.average().count());
-	ImGui::Text(" - render: %3ld µs", m_volumetrics_render_time.average().count());
+	if(_fog_enabled)
+	{
+		ImGui::Text("Volumetrics: %4ld µs", (m_volumetrics_cull_time.average() + m_volumetrics_inject_time.average() + m_volumetrics_accum_time.average() + m_volumetrics_render_time.average()).count());
+		ImGui::Text(" -   cull: %3ld µs", m_volumetrics_cull_time.average().count());
+		ImGui::Text(" - inject: %3ld µs", m_volumetrics_inject_time.average().count());
+		ImGui::Text(" -  accum: %3ld µs", m_volumetrics_accum_time.average().count());
+		ImGui::Text(" - render: %3ld µs", m_volumetrics_render_time.average().count());
+	}
 	ImGui::Text("Tonemapping: %4ld µs", m_tonemap_time.average().count());
 	ImGui::Text(" Debug draw: %4ld µs", m_debug_draw_time.average().count());
 	// ImGui::Text("   PP blur: %4ld µs", m_pp_blur_time.average().count());
