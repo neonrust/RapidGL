@@ -1,7 +1,7 @@
 #version 460 core
 
 layout(location = 0) in vec2 in_uv;
-layout(location = 1) flat in int in_icon_index;
+layout(location = 1) flat in uint in_icon_index;
 layout(location = 2) flat in vec3 in_color_tint;
 out vec4 fragColor;
 

@@ -1,11 +1,11 @@
 #version 460 core
 
-layout(location = 0) in vec3  in_position;  // per-instance: center
-layout(location = 1) in float in_icon_index;
-layout(location = 2) in vec3  in_color_tint;
+layout(location = 0) in vec3 in_position;  // per-instance: center
+layout(location = 1) in uint in_icon_index;
+layout(location = 2) in vec3 in_color_tint;
 
 layout(location = 0)      out vec2 out_uv;
-layout(location = 1) flat out int  out_icon_index;
+layout(location = 1) flat out uint out_icon_index;
 layout(location = 2) flat out vec3 out_color_tint;
 
 uniform mat4 u_view;
@@ -37,7 +37,7 @@ void main()
 
     // Map quad corners to [0,1] UV
     out_uv = quad_vertex * 0.5 + 0.5;
-    out_icon_index = int(in_icon_index);
+    out_icon_index = in_icon_index;
 
     out_color_tint = in_color_tint;
 }

@@ -120,13 +120,14 @@ void ClusteredShading::debugDrawLightMarkers()
 	enum class Icon : uint32_t
 	{
 		PointLight = 0,
+		SpotLight  = 1,
 	};
 
 	struct IconData
 	{
 		glm::vec3 world_pos;
 		glm::vec3 color_tint;
-		Icon      icon;
+		uint32_t  icon;
 		float     distance_sq;
 
 		inline bool operator > (const IconData &that) const { return distance_sq > that.distance_sq; }
@@ -179,26 +180,25 @@ void ClusteredShading::debugDrawLightMarkers()
 
 		if(IS_POINT_LIGHT(L))
 		{
-			// debugDrawLine(L.position + AXIS_X*0.5f, L.position - AXIS_X*0.5f, color_blend);
-			// debugDrawLine(L.position + AXIS_Y*0.5f, L.position - AXIS_Y*0.5f, color_blend);
-			// debugDrawLine(L.position + AXIS_Z*0.5f, L.position - AXIS_Z*0.5f, color_blend);
-
-			//debugDrawIcon(L.position, _point_light_icon, L.affect_radius/20.f, color_blend);
 			const auto to_light = L.position - m_camera.position();
 			float distance_sq = glm::dot(to_light, to_light);
 			icons.push_back({
 				.world_pos   = L.position,
 				.color_tint  = L.color,
-				.icon        = Icon::PointLight,
+				.icon        = uint32_t(Icon::PointLight),
 				.distance_sq = distance_sq,
 			});
 		}
 		else if(IS_SPOT_LIGHT(L))
 		{
-			const auto spot_ = _light_mgr.to_<SpotLight>(L);
-			const auto &spot = spot_.value();
-
-			// TODO: draw the icon at world origin, I guess?
+			const auto to_light = L.position - m_camera.position();
+			float distance_sq = glm::dot(to_light, to_light);
+			icons.push_back({
+				.world_pos   = L.position,
+				.color_tint  = L.color,
+				.icon        = uint32_t(Icon::SpotLight),
+				.distance_sq = distance_sq,
+			});
 		}
 	}
 
