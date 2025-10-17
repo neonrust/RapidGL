@@ -79,6 +79,8 @@ struct DirectionalLight
 	float inner_angle     { 0 };        \
 	float bounds_radius  // also the distance from 'position' along 'direction'
 
+// '(outer|inner)_angle is in radians
+
 struct SpotLightParams
 {
 	SPOT_LIGHT;
