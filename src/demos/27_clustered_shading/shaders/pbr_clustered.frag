@@ -387,11 +387,11 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 
 	vec3 light_to_frag = world_pos - light.position;
 
-	mat4 proj;
+	mat4 view_proj;
 	vec4 rect; // shadow slot rectangle in atlas, in absolute pixels
-	detectCubeFaceSlot(light_to_frag, slot_info, proj, rect);
+	detectCubeFaceSlot(light_to_frag, slot_info, view_proj, rect);
 
-	float shadow_visibility = shadowVisibility(light_to_frag, world_pos, light, proj, rect);
+	float shadow_visibility = shadowVisibility(light_to_frag, world_pos, light, view_proj, rect);
 
 	float v_faded = 1 - (1 - shadow_visibility) * shadow_fade;
 	float visible = light_fade * v_faded;
@@ -427,13 +427,13 @@ vec3 spotLightVisibility(GPULight light, vec3 world_pos)
 
 	vec3 light_to_frag = world_pos - light.position;
 
-	mat4 proj = slot_info.view_proj[0];
+	mat4 view_proj = slot_info.view_proj[0];
 	vec4 rect = slot_info.atlas_rect[0];
 
 	vec4 rect_uv;
-	vec2 atlas_uv = calculateShadowUV(world_pos, proj, rect, rect_uv);
+	vec2 atlas_uv = calculateShadowUV(world_pos, view_proj, rect, rect_uv);
 
-	float shadow_visibility = shadowVisibility(light_to_frag, world_pos, light, proj, rect);
+	float shadow_visibility = shadowVisibility(light_to_frag, world_pos, light, view_proj, rect);
 
 	float v_faded = 1 - (1 - shadow_visibility) * shadow_fade;
 	float visible = light_fade * v_faded;
@@ -461,7 +461,7 @@ vec3 discLightVisibility(GPULight light)
 	return vec3(1); // TODO will probably never cast shadows
 }
 
-vec2 calculateShadowUV(vec3 world_pos, mat4 proj, vec4 rect, out vec4 rect_uv)
+vec2 calculateShadowUV(vec3 world_pos, mat4 view_proj, vec4 rect, out vec4 rect_uv)
 {
 	// rect     : slot square in atlas pixel-space; x,y & w,h
 	// rect_uv  : slot square in atlas UV-space; x,y & w,h
@@ -477,17 +477,17 @@ vec2 calculateShadowUV(vec3 world_pos, mat4 proj, vec4 rect, out vec4 rect_uv)
 	rect.w -= 2;
 
 	// to light space
-	vec4 light_space = proj * vec4(world_pos, 1);
+	vec4 light_space = view_proj * vec4(world_pos, 1);
 	light_space.xyz /= light_space.w; // NDC
 	vec2 face_uv = light_space.xy * 0.5 + 0.5; // [0, 1]
 	rect_uv = rect * vec4(shadow_atlas_texel_size, shadow_atlas_texel_size);
 	return rect_uv.xy + face_uv * (rect_uv.zw + shadow_atlas_texel_size);
 }
 
-float shadowVisibility(vec3 light_to_frag, vec3 world_pos, GPULight light, mat4 proj, vec4 rect)
+float shadowVisibility(vec3 light_to_frag, vec3 world_pos, GPULight light, mat4 view_proj, vec4 rect)
 {
 	vec4 rect_uv;
-	vec2 atlas_uv = calculateShadowUV(world_pos, proj, rect, rect_uv);
+	vec2 atlas_uv = calculateShadowUV(world_pos, view_proj, rect, rect_uv);
 
 	float camera_distance = distance(world_pos, u_cam_pos);
 	float light_distance = length(light_to_frag);
