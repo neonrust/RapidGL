@@ -368,6 +368,9 @@ void ClusteredShading::render_gui()
 				{
 					const auto &texture = rt->depth_texture();
 
+					static float depth_brightness { 0 };
+					if(ImGui::SliderFloat("Brightness", &depth_brightness, 1, 100, "%.1f"))
+						m_imgui_depth_texture_shader->setUniform("u_brightness"sv, depth_brightness);
 					// render with shader to show as gray scale
 					ImGui_ImageEx(texture.texture_id(), img_size, top_left, bottom_right, m_imgui_depth_texture_shader->program_id());
 
