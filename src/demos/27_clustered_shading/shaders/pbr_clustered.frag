@@ -393,8 +393,8 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 
 	float shadow_visibility = shadowVisibility(light_to_frag, world_pos, light, view_proj, rect);
 
-	float v_faded = 1 - (1 - shadow_visibility) * shadow_fade;
-	float visible = light_fade * v_faded;
+	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade;
+	float visible = light_fade * shadow_faded;
 
 	return vec3(visible);
 }
@@ -435,8 +435,8 @@ vec3 spotLightVisibility(GPULight light, vec3 world_pos)
 
 	float shadow_visibility = shadowVisibility(light_to_frag, world_pos, light, view_proj, rect);
 
-	float v_faded = 1 - (1 - shadow_visibility) * shadow_fade;
-	float visible = light_fade * v_faded;
+	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade;
+	float visible = light_fade * shadow_faded;
 
 	return vec3(visible);
 }
