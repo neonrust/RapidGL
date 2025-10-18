@@ -11,9 +11,6 @@ uniform float u_shadow_bias_distance_scale;
 uniform float u_shadow_bias_slope_power;
 uniform float u_shadow_bias_scale;
 
-float shadow_low_sampling_distance  = u_shadow_max_distance / 3;
-float shadow_mid_sampling_distance  = u_shadow_max_distance / 8;
-
 vec2 shadow_atlas_texel_size;
 
 uint detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 view_proj, out vec4 rect)
@@ -267,7 +264,10 @@ float sampleShadow9(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max
 	return shadow;
 }
 
-float sampleShadow(float distance, float normalized_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
+float shadow_low_sampling_distance  = u_shadow_max_distance / 3;
+float shadow_mid_sampling_distance  = u_shadow_max_distance / 8; // closer -> high sampling (3x3)
+
+float sampleShadowDynamic(float distance, float normalized_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
 {
 	if(distance > shadow_low_sampling_distance)
 		return sampleShadow1(normalized_depth, atlas_uv, uv_min, uv_max);
