@@ -425,14 +425,13 @@ vec3 spotLightVisibility(GPULight light, vec3 world_pos)
 
 	ShadowSlotInfo slot_info = ssbo_shadow_slots[shadow_idx];
 
-	vec3 light_to_frag = world_pos - light.position;
-
 	mat4 view_proj = slot_info.view_proj[0];
 	vec4 rect = slot_info.atlas_rect[0];
 
 	vec4 rect_uv;
 	vec2 atlas_uv = calculateShadowUV(world_pos, view_proj, rect, rect_uv);
 
+	vec3 light_to_frag = world_pos - light.position;
 	float shadow_visibility = shadowVisibility(light_to_frag, world_pos, light, view_proj, rect);
 
 	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade;
