@@ -1,5 +1,6 @@
 #version 460 core
 #include "pbr_lighting.glh"
+#include "shadows.glh"
 #include "volumetrics.glh"
 
 out vec4 frag_color;
@@ -9,18 +10,11 @@ uniform uvec3 u_cluster_resolution;
 uniform uvec2 u_cluster_size_ss;
 uniform float u_log_cluster_res_y;
 uniform float u_light_max_distance;
-uniform float u_shadow_max_distance;
 
 uniform bool u_debug_cluster_geom;
 uniform bool u_debug_clusters_occupancy;
 uniform bool u_debug_tile_occupancy;
 uniform float u_debug_overlay_blend;
-
-uniform float u_shadow_bias_constant;
-uniform float u_shadow_bias_slope_scale;
-uniform float u_shadow_bias_distance_scale;
-uniform float u_shadow_bias_slope_power;
-uniform float u_shadow_bias_scale;
 
 const float s_min_visibility = 1e-3;
 
@@ -72,11 +66,6 @@ vec3 areaLightVisibility(GPULight light);
 vec3 tubeLightVisibility(GPULight light);
 vec3 sphereLightVisibility(GPULight light);
 vec3 discLightVisibility(GPULight light);
-
-vec2 shadow_atlas_texel_size;
-
-float shadow_low_sampling_distance  = u_shadow_max_distance / 3;
-float shadow_mid_sampling_distance  = u_shadow_max_distance / 8;
 
 
 void main()
@@ -333,19 +322,6 @@ vec3 falseColor(float value)
 	return mix(c7, c8, (value - 7*w) * N);
 }
 
-vec3 unpackNormal(vec2 f)
-{
-    // float z = sqrt(max(0, 1 - dot(f, f)));
-    // return vec3(f, z);
-
-    // octahedral encoding
-    f = f * 2.0 - 1.0; // Back to [-1, 1]
-    vec3 n = vec3(f.xy, 1.0 - abs(f.x) - abs(f.y));
-    float t = clamp(-n.z, 0.0, 1.0);
-    n.xy -= sign(n.xy) * t;
-    return normalize(n);
-}
-
 float fadeByDistance(float distance, float hard_limit);
 
 float fadeLightByDistance(GPULight light)
@@ -356,13 +332,7 @@ float fadeLightByDistance(GPULight light)
 }
 
 // returns [1, 0] whther the fragment corresponding to 'atlas_uv' has LOS to the light
-float sampleShadow(float distance, float normalized_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max);
 float fadeByDistance(float distance, float hard_limit);
-
-uint detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 view_proj, out vec4 rect);
-
-float shadowVisibility(vec3 light_to_frag, vec3 world_pos, GPULight light, mat4 proj, vec4 rect);
-vec2 calculateShadowUV(vec3 world_pos, mat4 proj, vec4 rect, out vec4 rect_uv);
 
 vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 {
@@ -391,7 +361,7 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 	vec4 rect; // shadow slot rectangle in atlas, in absolute pixels
 	detectCubeFaceSlot(light_to_frag, slot_info, view_proj, rect);
 
-	float shadow_visibility = shadowVisibility(light_to_frag, world_pos, light, view_proj, rect);
+	float shadow_visibility = shadowVisibility(light_to_frag, world_pos, u_cam_pos, light, view_proj, rect);
 
 	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade;
 	float visible = light_fade * shadow_faded;
@@ -432,7 +402,7 @@ vec3 spotLightVisibility(GPULight light, vec3 world_pos)
 	vec2 atlas_uv = calculateShadowUV(world_pos, view_proj, rect, rect_uv);
 
 	vec3 light_to_frag = world_pos - light.position;
-	float shadow_visibility = shadowVisibility(light_to_frag, world_pos, light, view_proj, rect);
+	float shadow_visibility = shadowVisibility(light_to_frag, world_pos, u_cam_pos, light, view_proj, rect);
 
 	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade;
 	float visible = light_fade * shadow_faded;
@@ -460,252 +430,8 @@ vec3 discLightVisibility(GPULight light)
 	return vec3(1); // TODO will probably never cast shadows
 }
 
-vec2 calculateShadowUV(vec3 world_pos, mat4 view_proj, vec4 rect, out vec4 rect_uv)
-{
-	// rect     : slot square in atlas pixel-space; x,y & w,h
-	// rect_uv  : slot square in atlas UV-space; x,y & w,h
-	// face_uv  : fragment position within the point light's cube face (facing the direction of the fragment)
-	//            0,0 of that cube face corresponds to the "top-lect" corner of the slot square
-	// atlas_uv : combination of above; the rect_uv + offset by face_uv, in atlas UV-space.
-
-	// ignore 1 pixel around the edges,
-	//   so the linear filtering doesn't blend  outside the slot rect
-	rect.x += 1;
-	rect.y += 1;
-	rect.z -= 2;
-	rect.w -= 2;
-
-	// to light space
-	vec4 light_space = view_proj * vec4(world_pos, 1);
-	light_space.xyz /= light_space.w; // NDC
-	vec2 face_uv = light_space.xy * 0.5 + 0.5; // [0, 1]
-	rect_uv = rect * vec4(shadow_atlas_texel_size, shadow_atlas_texel_size);
-	return rect_uv.xy + face_uv * (rect_uv.zw + shadow_atlas_texel_size);
-}
-
-float shadowVisibility(vec3 light_to_frag, vec3 world_pos, GPULight light, mat4 view_proj, vec4 rect)
-{
-	vec4 rect_uv;
-	vec2 atlas_uv = calculateShadowUV(world_pos, view_proj, rect, rect_uv);
-
-	float camera_distance = distance(world_pos, u_cam_pos);
-	float light_distance = length(light_to_frag);
-	float normalized_depth = light_distance / light.affect_radius;
-
-	// calculate shadow depth bias by various factors
-	// bias by depth
-	float bias = normalized_depth * u_shadow_bias_distance_scale;
-
-	// bias based on surface normals
-	// bias increases when the angle between normal and light_dir is steep.
-	if(u_shadow_bias_slope_scale > 0)
-	{
-		vec2 encoded_normal = textureLod(u_shadow_atlas_normals, atlas_uv, 0).xy;
-		vec3 depth_normal = unpackNormal(encoded_normal);
-		vec3 light_dir = normalize(-light_to_frag);
-		float angle = dot(depth_normal, light_dir);
-		angle = pow(angle, u_shadow_bias_slope_power);
-		angle = clamp(angle, 0.0, 0.99);
-		bias += (0.001 / angle) * u_shadow_bias_slope_scale;
-	}
-
-	bias += u_shadow_bias_constant;
-	bias = clamp(bias, -0.05, 0.05) * u_shadow_bias_scale;
-
-	normalized_depth -= bias;
-
-	vec2 uv_min = rect_uv.xy;
-	vec2 uv_max = rect_uv.xy + rect_uv.zw - shadow_atlas_texel_size;
-	return sampleShadow(camera_distance, normalized_depth, atlas_uv, uv_min, uv_max);
-}
-
-float sampleShadow1(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
-{
-	// if 'atlas_uv' is closer than 2 pixels to 'uv_min' or 'uv_mac' (component wise),
-	// use the _single sampler
-	float margin = shadow_atlas_texel_size.x*2;
-
-	if(atlas_uv.x <= uv_min.x + margin || atlas_uv.x >= uv_max.x - margin
-	   || atlas_uv.y <= uv_min.y + margin || atlas_uv.y >= uv_max.y - margin)
-	{
-		atlas_uv = clamp(atlas_uv, uv_min, uv_max);
-		return texture(u_shadow_atlas_single, atlas_uv).r > current_depth? 1: 0;
-	}
-	else
-		return texture(u_shadow_atlas, vec3(atlas_uv, current_depth));
-}
-
-float sampleShadow5(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
-{
-	// 5-point "kernel", X-shape
-
-	vec2 uv;
-	float shadow = 0;
-	float sample_depth;
-
-	// NOTE: UV is capped to stay withing the single shadow map slot (cube face)
-	//   but strictly, the sampling should in those cases instead sample from the
-	//   "spatial naighbour" slot. That is, however, quite complicated... :|
-
-	// TODO: sample using sampler2DShadow for all samples,
-	//   except near edges (1-2 texel margin), where sampler2D should be used.
-	//   otherwise, sampler2DShadow will sample outside the slot square (commonly uses 2x2 texels)
-#define SAMPLE(uv_offset, weight) \
-	uv = atlas_uv + uv_offset*shadow_atlas_texel_size; \
-	shadow += sampleShadow1(current_depth, uv, uv_min, uv_max)*weight;
-
-	// cheaper sampling: only center and four corners of the 3x3 box
-	const float weights5[2] = { 0.4, 0.15 };  // total = 1
-	// top corners
-	SAMPLE(vec2(-1, -1), weights5[1]);
-	SAMPLE(vec2( 1, -1), weights5[1]);
-	// center
-	SAMPLE(vec2( 0,  0), weights5[0]);
-	// bottom corners
-	SAMPLE(vec2(-1,  1), weights5[1]);
-	SAMPLE(vec2( 1,  1), weights5[1]);
-
-	return shadow;
-}
-
-float sampleShadow9(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
-{
-	// 3x3 gauss kernel
-
-	// TODO: random sampling
-	//    https://www.youtube.com/watch?v=NCptEJ1Uevg&t=380s
-	//    https://www.youtube.com/watch?v=3FMONJ1O39U&t=850s
-
-	vec2 uv;
-	float shadow = 0;
-	float sample_depth;
-
-	// NOTE: UV is capped to stay withing the single shadow map slot (cube face)
-	//   but strictly, the sampling should in those cases instead sample from the
-	//   "spatial naighbour" slot. That is, however, quite complicated... :|
-
-	// TODO: possible to increase the sample raidus depending on 'current_depth'
-	//   i.e. to achieve more blurred shadow for more distant shadows
-
-	// sample a 3x3 box around the sample
-#define SAMPLE(uv_offset, weight) \
-	uv = atlas_uv + uv_offset*shadow_atlas_texel_size; \
-	shadow += sampleShadow1(current_depth, uv, uv_min, uv_max)*weight;
-
-  	// 3x3 gauss box
-  	const float weights9[3] = { 0.25, 0.125, 0.0625 };  // total = 1
-	// top row
-	SAMPLE(vec2(-1, -1), weights9[2]);
-	SAMPLE(vec2( 0, -1), weights9[1]);
-	SAMPLE(vec2( 1, -1), weights9[2]);
-	// middle row
-	SAMPLE(vec2(-1,  0), weights9[1]);
-	SAMPLE(vec2( 0,  0), weights9[0]);
-	SAMPLE(vec2( 1,  0), weights9[1]);
-	// bottom row
-	SAMPLE(vec2(-1,  1), weights9[2]);
-	SAMPLE(vec2( 0,  1), weights9[1]);
-	SAMPLE(vec2( 1,  1), weights9[2]);
-
-	return shadow;
-}
-
-float sampleShadow(float distance, float normalized_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
-{
-	if(distance > shadow_low_sampling_distance)
-		return sampleShadow1(normalized_depth, atlas_uv, uv_min, uv_max);
-	else if(distance > shadow_mid_sampling_distance)
-		return sampleShadow5(normalized_depth, atlas_uv, uv_min, uv_max);
-	return sampleShadow9(normalized_depth, atlas_uv, uv_min, uv_max);
-}
 
 float fadeByDistance(float distance, float hard_limit)
 {
 	return 1 - smoothstep(hard_limit*0.8, hard_limit, distance);
-}
-
-uint detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 view_proj, out vec4 rect)
-{
-	// figure out which of the 6 cube faces is relevant
-
-	// X-axis as initial assumption
-	int major_axis = 0;
-	float max_axis = abs(light_to_frag.x);
-	vec3 abs_dir = abs(light_to_frag);
-
-	if (abs_dir.y > max_axis)
-	{
-	    major_axis = 1;
-	    max_axis = abs_dir.y;
-	}
-	if (abs_dir.z > max_axis)
-	{
-	    major_axis = 2;
-	    max_axis = abs_dir.z;
-	}
-
-	// select projection and atlas rect for this face
-	//   surprisingly, this ugliness is quite a bit faster than just view_proj[face]
-	mat4 vp_0 = slot_info.view_proj[0];
-	mat4 vp_1 = slot_info.view_proj[1];
-	mat4 vp_2 = slot_info.view_proj[2];
-	mat4 vp_3 = slot_info.view_proj[3];
-	mat4 vp_4 = slot_info.view_proj[4];
-	mat4 vp_5 = slot_info.view_proj[5];
-
-	vec4 rect_0 = slot_info.atlas_rect[0];
-	vec4 rect_1 = slot_info.atlas_rect[1];
-	vec4 rect_2 = slot_info.atlas_rect[2];
-	vec4 rect_3 = slot_info.atlas_rect[3];
-	vec4 rect_4 = slot_info.atlas_rect[4];
-	vec4 rect_5 = slot_info.atlas_rect[5];
-
-	uint face;
-
-	if (major_axis == 0)
-	{
-	    if(light_to_frag.x > 0) // +X
-		{
-			face = 0;
-			view_proj = vp_0;
-			rect = rect_0;
-		}
-		else  // -X
-		{
-			face = 1;
-			view_proj = vp_1;
-			rect = rect_1;
-		}
-	}
-	else if (major_axis == 1)
-	{
-		if(light_to_frag.y > 0) // +Y
-		{
-			face = 2;
-			view_proj = vp_2;
-			rect = rect_2;
-		}
-		else  // -Y
-		{
-			face = 3;
-			view_proj = vp_3;
-			rect = rect_3;
-		}
-	}
-	else
-	{
-	    if(light_to_frag.z > 0) // +Z
-		{
-			face = 4;
-			view_proj = vp_4;
-			rect = rect_4;
-		}
-		else  // -Z
-		{
-			face = 5;
-			view_proj = vp_5;
-			rect = rect_5;
-		}
-	}
-	return face;
 }
