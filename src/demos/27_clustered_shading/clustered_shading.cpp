@@ -1306,7 +1306,8 @@ void ClusteredShading::render()
 		m_volumetrics_pp.shader().setUniform("u_light_max_distance"sv,  m_camera.farPlane() * s_light_affect_fraction);
 		m_volumetrics_pp.shader().setUniform("u_shadow_max_distance"sv, m_camera.farPlane() * s_light_shadow_affect_fraction);
 
-		_shadow_atlas.bindDepthTextureSampler(20);
+		_shadow_atlas.bindDepthTextureSampler(20);  // sampler2DShadow
+		_shadow_atlas.bindDepthTextureSampler(21);  // sampler2D
 		m_depth_pass_rt.bindDepthTextureSampler(2);
 
 		m_volumetrics_pp.inject(m_camera);
@@ -1317,7 +1318,6 @@ void ClusteredShading::render()
 		m_volumetrics_accum_time.add(_gl_timer.elapsed<microseconds>(true));
 
 		_pp_low_rt.clear();
-		m_depth_pass_rt.bindDepthTextureSampler(2);
 		m_volumetrics_pp.render(_rt, _pp_low_rt);  // '_rt' actually isn't used but the API expects an argument
 
 
@@ -1787,8 +1787,8 @@ void ClusteredShading::renderSceneShading(const Camera &camera)
     m_ltc_mat_lut->Bind(9);
     m_ltc_amp_lut->Bind(10);
 
-	_shadow_atlas.bindDepthTextureSampler(20);
-	_shadow_atlas.bindDepthTextureSampler(21);
+	_shadow_atlas.bindDepthTextureSampler(20);  // sampler2DShadow
+	_shadow_atlas.bindDepthTextureSampler(21);  // sampler2D
 	_shadow_atlas.bindTextureSampler(22);   // encoded normals
 
 	// we need updated textures (shadow maps) and SSBO data
