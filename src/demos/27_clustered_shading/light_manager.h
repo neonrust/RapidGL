@@ -180,12 +180,8 @@ LT LightManager::to_(const GPULight &L, LightID light_id) const
 	const auto found = _id_to_index.find(light_id);
 	assert(found != _id_to_index.end());
 
-	const auto list_index = found->second;
-
 	auto l = to_<LT>(L).value();
-
 	l.uuid = light_id;
-	l.list_index = list_index;
 
 	return l;
 }
@@ -243,7 +239,6 @@ std::optional<LT> LightManager::to_(const GPULight &L) const
 	LT l;
 	l.color         = L.color;
 	l.intensity     = L.intensity;
-	l.affect_radius = L.affect_radius;
 	l.fog           = L.fog_intensity;
 	l.shadow_caster = IS_SHADOW_CASTER(L);
 
@@ -256,8 +251,7 @@ std::optional<LT> LightManager::to_(const GPULight &L) const
 			return std::nullopt;
 		}
 
-		l.position      = L.position;
-		l.affect_radius = L.affect_radius;
+		l.position   = L.position;
 	}
 	else if constexpr (std::same_as<LT, DirectionalLight>)
 	{
@@ -294,10 +288,10 @@ std::optional<LT> LightManager::to_(const GPULight &L) const
 			return std::nullopt;
 		}
 
-		l.points[0] = L.shape_points[0];
-		l.points[1] = L.shape_points[1];
-		l.points[2] = L.shape_points[2];
-		l.points[3] = L.shape_points[3];
+		l.points[0] = glm::vec3(L.shape_points[0]);
+		l.points[1] = glm::vec3(L.shape_points[1]);
+		l.points[2] = glm::vec3(L.shape_points[2]);
+		l.points[3] = glm::vec3(L.shape_points[3]);
 		l.two_sided = (L.type_flags & LIGHT_TWO_SIDED) > 0;
 	}
 	else if constexpr (std::same_as<LT, TubeLight>)
@@ -309,8 +303,8 @@ std::optional<LT> LightManager::to_(const GPULight &L) const
 			return std::nullopt;
 		}
 
-		l.end_points[0] = L.shape_points[0];
-		l.end_points[1] = L.shape_points[1];
+		l.end_points[0] = glm::vec3(L.shape_points[0]);
+		l.end_points[1] = glm::vec3(L.shape_points[1]);
 		l.thickness     = L.shape_points[2].x;
 	}
 	else if constexpr (std::same_as<LT, SphereLight>)
@@ -348,12 +342,12 @@ GPULight LightManager::to_gpu_light(const LT &l)
 	L.color         = l.color;
 	L.intensity     = l.intensity;
 	L.fog_intensity = l.fog;
-	L.affect_radius = l.affect_radius;
 
 	if constexpr (std::same_as<LT, PointLight> or std::same_as<LT, PointLightParams>)
 	{
 		L.type_flags    = LIGHT_TYPE_POINT | (l.shadow_caster? LIGHT_SHADOW_CASTER: 0);
 		L.position      = l.position;
+		L.affect_radius = std::pow(l.intensity, 0.6f);
 	}
 	else if constexpr (std::same_as<LT, DirectionalLight> or std::same_as<LT, DirectionalLightParams>)
 	{
@@ -367,26 +361,31 @@ GPULight LightManager::to_gpu_light(const LT &l)
 		L.direction      = l.direction;
 		L.outer_angle    = l.outer_angle;
 		L.inner_angle    = l.inner_angle;
+		L.affect_radius  = std::pow(l.intensity, 0.6f);
 	}
 	else if constexpr (std::same_as<LT, AreaLight> or std::same_as<LT, AreaLightParams>)
 	{
 		L.type_flags      = LIGHT_TYPE_AREA | (l.two_sided? LIGHT_TWO_SIDED: 0);
-		L.shape_points[0] = l.points[0];
-		L.shape_points[1] = l.points[1];
-		L.shape_points[2] = l.points[2];
-		L.shape_points[3] = l.points[3];
+		L.shape_points[0] = glm::vec4(l.points[0], 1);
+		L.shape_points[1] = glm::vec4(l.points[1], 1);
+		L.shape_points[2] = glm::vec4(l.points[2], 1);
+		L.shape_points[3] = glm::vec4(l.points[3], 1);
+		const auto center =  glm::vec3((L.shape_points[1] + L.shape_points[2]) / 2.f);
+		L.affect_radius   = 50 * l.intensity * glm::distance(center, glm::vec3(L.shape_points[1]));
 	}
 	else if constexpr (std::same_as<LT, TubeLight> or std::same_as<LT, TubeLightParams>)
 	{
 		L.type_flags        = LIGHT_TYPE_TUBE;
-		L.shape_points[0]   = l.end_points[0];
-		L.shape_points[1]   = l.end_points[1];
+		L.shape_points[0]   = glm::vec4(l.end_points[0], 1);
+		L.shape_points[1]   = glm::vec4(l.end_points[1], 1);
 		L.shape_points[2].x = l.thickness;
+		// L.affect_radius     =
 	}
 	else if constexpr (std::same_as<LT, SphereLight> or std::same_as<LT, SphereLightParams>)
 	{
 		L.type_flags        = LIGHT_TYPE_SPHERE;
 		L.shape_points[0].x = l.sphere_radius;
+		// L.affect_radius     =
 	}
 	else if constexpr (std::same_as<LT, DiscLight> or std::same_as<LT, DiscLightParams>)
 	{
@@ -394,6 +393,7 @@ GPULight LightManager::to_gpu_light(const LT &l)
 		L.position          = l.position;
 		L.direction         = l.direction;
 		L.shape_points[0].x = l.disc_radius;
+		// L.affect_radius     =
 	}
 
 	if(l.fog > 0)

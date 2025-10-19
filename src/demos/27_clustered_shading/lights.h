@@ -21,7 +21,6 @@ class LightManager;
 #define COMMON                              \
 	glm::vec3 color     { 1.f, 1.f, 1.f };  \
 	float intensity     { 10.f };           \
-	float affect_radius { 3.5f };           \
 	float fog           { 0.f };            \
 	bool shadow_caster  { false }
 
@@ -29,8 +28,7 @@ class LightManager;
 	inline LightID id() const { return uuid; }  \
 private:                                        \
 	friend class LightManager;                  \
-	LightID uuid        { NO_LIGHT_ID };        \
-	uint32_t list_index { std::numeric_limits<uint32_t>::max() }
+	LightID uuid        { NO_LIGHT_ID }
 
 #define POINT                        \
 	glm::vec3 position  { 0, 0, 0 }  \
@@ -96,7 +94,7 @@ struct SpotLight
 
 #define AREA_LIGHT        \
 	COMMON;               \
-	glm::vec4 points[4];  \
+	glm::vec3 points[4];  \
 	bool two_sided
 
 struct AreaLightParams
@@ -114,7 +112,7 @@ struct AreaLight
 
 #define TUBE_LIGHT           \
 	COMMON;                  \
-	glm::vec4 end_points[2];  /* stored in GPULight shape_points[0-1] */ \
+	glm::vec3 end_points[2];  /* stored in GPULight shape_points[0-1] */ \
 	float thickness      // stored in GPULight shape_points[2]
 
 struct TubeLightParams
