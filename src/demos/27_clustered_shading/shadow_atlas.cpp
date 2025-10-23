@@ -107,7 +107,6 @@ ShadowAtlas::ShadowAtlas(uint32_t size, LightManager &lights) :
 		_allocated_sun.slots[idx].rect = to_uvec4(_allocator.rect(node_index));
 	}
 	_allocated_sun._dirty = true;
-	_allocated_sun._last_rendered = steady_clock::now() - 1h;  // to "guarantee" rendering immediately
 }
 
 ShadowAtlas::~ShadowAtlas()
