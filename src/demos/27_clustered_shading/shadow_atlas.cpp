@@ -44,7 +44,7 @@ struct hash<glm::vec3>
 	-AXIS_Y, -AXIS_Y,
 };
 
-#define LIGHT_NUM_SLOTS(light)   (IS_POINT_LIGHT(light)? 6u: (IS_DIR_LIGHT(light)? 3: 1u))
+#define NUM_SHADOW_SLOTS(light)   (IS_POINT_LIGHT(light)? 6u: (IS_DIR_LIGHT(light)? 3: 1u))
 
 
 using namespace std::chrono;
@@ -191,11 +191,9 @@ size_t ShadowAtlas::eval_lights(const std::vector<LightIndex> &relevant_lights, 
 
 	for(const auto &prio_light: prioritized)
 	{
-		const auto &light = _lights.get_by_id(prio_light.light_id);
-
 		AtlasLight atlas_light;
 		atlas_light.uuid      = prio_light.light_id;
-		atlas_light.num_slots = LIGHT_NUM_SLOTS(light);
+		atlas_light.num_slots = prio_light.num_slots;
 
 		// calculate where to start searching for slots, based on the light's value
 		const auto size_idx = static_cast<uint32_t>(std::floor(static_cast<float>(distribution.size()) * (1 - prio_light.value)));
@@ -507,7 +505,7 @@ ShadowAtlas::Counters ShadowAtlas::prioritize_lights(const std::vector<LightInde
 					strongest_dir_value = value;
 				}
 				else
-					prioritized.emplace_back(value, light_id, LIGHT_NUM_SLOTS(light));
+					prioritized.emplace_back(value, light_id, NUM_SHADOW_SLOTS(light));
 			}
 			else
 			{
