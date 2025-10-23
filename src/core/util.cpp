@@ -22,7 +22,7 @@ namespace RGL
 
 static small_vec<fs::path, 16> s_shader_include_paths;
 
-std::tuple<std::string, bool> Util::LoadFile(const fs::path & filename)
+std::tuple<std::string, bool> Util::LoadFile(const fs::path & filename, bool fail_ok)
 {
 	if (filename.empty())
 		return { {}, false };
@@ -34,7 +34,8 @@ std::tuple<std::string, bool> Util::LoadFile(const fs::path & filename)
 
 	if(not inFile)
 	{
-		std::print(stderr, "Could not open file {}\n", filepath.string());
+		if(not fail_ok)
+			std::print(stderr, "Could not open file {}\n", filepath.string());
 		inFile.close();
 
 		return { {}, false };
@@ -56,20 +57,25 @@ std::tuple<std::string, bool> Util::LoadFile(const fs::path & filename)
 
 std::tuple<std::string, std::filesystem::path> Util::LoadFileInPaths(const fs::path &filename, const small_vec<fs::path, 16> &search_paths)
 {
+	static constexpr bool FailOk = true;
+
 	// if absolute, just load it as-is
 	if(not filename.is_relative())
 	{
 		const auto &[data, ok] = LoadFile(filename);
+		// return, successful or not
 		return { data, filename };
 	}
 
 	for(const auto &search_path: search_paths)
 	{
 		auto with_path = search_path / filename;
-		const auto &[include_data, ok] = LoadFile(with_path);
+		const auto &[include_data, ok] = LoadFile(with_path, FailOk);
 		if(ok)
 			return { include_data, with_path };
 	}
+
+	std::print(stderr, "Could not open file {} in any search path\n", filename.string());
 	return { {}, {} };
 }
 
