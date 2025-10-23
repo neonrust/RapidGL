@@ -89,7 +89,7 @@ void main()
 				// center from average of two diagonal points
 	            sphere_center = (light.shape_points[1].xyz + light.shape_points[2].xyz) / 2;
 	            // approximation of the light radius
-	            // sphere_radius = 50 * light.intensity * distance(sphere_center, light.shape_points[1].xyz);
+	            sphere_radius = 50 * light.intensity * distance(sphere_center, light.shape_points[1].xyz);
 			}
 			break;
 
