@@ -93,6 +93,8 @@ ShadowAtlas::ShadowAtlas(uint32_t size, LightManager &lights) :
 
 	// set aside 3 sots to sun light (uses CSM)
 	// will be used by the (strongest) directional light
+	// TODO: try to avoid hard-coding this allocation
+	//   seem slike a waste if there's actually no sun light present.
 	_allocated_sun.uuid = NO_LIGHT_ID;
 	_allocated_sun.num_slots = 3;
 	static constexpr bool LastSlot = false;
