@@ -68,13 +68,14 @@ constexpr T sign_cmp(T a, T b)
 {
 	return sign(a - b);
 }
+static const auto s_slot_max_size_shift = 3;
 
 ShadowAtlas::ShadowAtlas(uint32_t size, LightManager &lights) :
 	Texture2d(),
 	_lights(lights),
 	_min_change_interval(1s),
 	_shadow_slots_info_ssbo("shadow-params"),
-	_allocator(size, size >> 6, size >> 3)
+	_allocator(size, size >> (s_slot_max_size_shift + 3), size >> s_slot_max_size_shift)
 {
 	if(__builtin_popcount(size) != 1)
 		size = 1 << (sizeof(size)*8 -  size_t(__builtin_clz(size)));  // round up to next Po2
@@ -95,11 +96,16 @@ ShadowAtlas::ShadowAtlas(uint32_t size, LightManager &lights) :
 	// will be used by the (strongest) directional light
 	_allocated_sun.uuid = NO_LIGHT_ID;
 	_allocated_sun.num_slots = 3;
+	static constexpr bool LastSlot = false;
+	const auto start_size = size >> s_slot_max_size_shift;
 	for(auto idx = 0u; idx < _allocated_sun.num_slots; ++idx)
 	{
-		_allocated_sun.slots[idx].size = size >> (3 + idx);
-		_allocated_sun.slots[idx].node_index = alloc_slot(_allocated_sun.slots[idx].size, false);
-		_allocated_sun.slots[idx].rect = to_uvec4(_allocator.rect(_allocated_sun.slots[idx].node_index));
+		const auto slot_size = start_size >> idx;
+		const auto node_index = alloc_slot(slot_size, LastSlot);
+
+		_allocated_sun.slots[idx].size = slot_size;
+		_allocated_sun.slots[idx].node_index = node_index;
+		_allocated_sun.slots[idx].rect = to_uvec4(_allocator.rect(node_index));
 	}
 	_allocated_sun._dirty = true;
 	_allocated_sun._last_rendered = steady_clock::now() - 1h;  // to "guarantee" rendering immediately
