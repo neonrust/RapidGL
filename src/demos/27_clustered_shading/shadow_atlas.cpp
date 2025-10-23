@@ -19,6 +19,8 @@
 
 using namespace std::literals;
 
+static constexpr float s_min_light_value = 1e-2f;
+
 
 namespace std
 {
@@ -496,9 +498,8 @@ ShadowAtlas::Counters ShadowAtlas::prioritize_lights(const std::vector<LightInde
 
 			const auto light_id = _lights.light_id(LightIndex(light_index));
 
-			if(value > 0)
+			if(value > s_min_light_value)
 			{
-
 				if(IS_DIR_LIGHT(light) and value > strongest_dir_value)
 				{
 					_allocated_sun.uuid = light_id;
@@ -516,7 +517,7 @@ ShadowAtlas::Counters ShadowAtlas::prioritize_lights(const std::vector<LightInde
 		}
 	}
 
-	if(strongest_dir_value > -1.f)
+	if(strongest_dir_value > s_min_light_value)
 	{
 		prioritized.push_back({
 			.value = 2.f,          // light should *always* be included
