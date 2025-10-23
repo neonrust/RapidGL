@@ -17,14 +17,16 @@
 
 
 // 'type_flags' bits:
-// 31                                     0
-//  .... .... .... SSSS SSSS SSSS CV.2 TTTT
-//  . = unused
-//  T = light type (4 bits)
-//  2 = two-sided (1 bit), area & disc lights
-//  C = shadow caster (1 bit)
-//  V = volunetric fog (1 bit)
-//  S = shadw slots info (12 bits, 4095 values) - index into SSBO_BIND_SHADOW_SLOTS_INFO)
+//
+//     31                                     0
+//      .... .... .... SSSS SSSS SSSS CV.2 TTTT
+//
+//   . = unused
+//   T = light type (4 bits)
+//   2 = two-sided (1 bit); area & disc lights
+//   C = shadow caster (1 bit); point, dir & spot (likely)
+//   V = volunetric fog (1 bit)
+//   S = shadw slots info index (12 bits; 4095 values, 0xfff = no slot) - index into SSBO_BIND_SHADOW_SLOTS_INFO)
 //
 #define LIGHT_TYPE_MASK          0x0fu
 #define LIGHT_TYPE_POINT         0x00u
@@ -35,20 +37,20 @@
 #define LIGHT_TYPE_SPHERE        0x05u
 #define LIGHT_TYPE_DISC          0x06u
 
-#define GET_LIGHT_TYPE(light)    ((light).type_flags & LIGHT_TYPE_MASK)
-#define IS_POINT_LIGHT(light)    (GET_LIGHT_TYPE(light) == LIGHT_TYPE_POINT)
-#define IS_DIR_LIGHT(light)      (GET_LIGHT_TYPE(light) == LIGHT_TYPE_DIRECTIONAL)
-#define IS_SPOT_LIGHT(light)     (GET_LIGHT_TYPE(light) == LIGHT_TYPE_SPOT)
-#define IS_AREA_LIGHT(light)     (GET_LIGHT_TYPE(light) == LIGHT_TYPE_AREA)
-#define IS_TUBE_LIGHT(light)     (GET_LIGHT_TYPE(light) == LIGHT_TYPE_TUBE)
-#define IS_SPHERE_LIGHT(light)   (GET_LIGHT_TYPE(light) == LIGHT_TYPE_SPHERE)
-#define IS_DISC_LIGHT(light)     (GET_LIGHT_TYPE(light) == LIGHT_TYPE_DISC)
+#define GET_LIGHT_TYPE(light)      ((light).type_flags & LIGHT_TYPE_MASK)
+#define IS_LIGHT_TYPE(light, type) (GET_LIGHT_TYPE(light) == (type))
+#define IS_POINT_LIGHT(light)      (IS_LIGHT_TYPE(light, LIGHT_TYPE_POINT))
+#define IS_DIR_LIGHT(light)        (IS_LIGHT_TYPE(light, LIGHT_TYPE_DIRECTIONAL))
+#define IS_SPOT_LIGHT(light)       (IS_LIGHT_TYPE(light, LIGHT_TYPE_SPOT))
+#define IS_AREA_LIGHT(light)       (IS_LIGHT_TYPE(light, LIGHT_TYPE_AREA))
+#define IS_TUBE_LIGHT(light)       (IS_LIGHT_TYPE(light, LIGHT_TYPE_TUBE))
+#define IS_SPHERE_LIGHT(light)     (IS_LIGHT_TYPE(light, LIGHT_TYPE_SPHERE))
+#define IS_DISC_LIGHT(light)       (IS_LIGHT_TYPE(light, LIGHT_TYPE_DISC))
 
 #define LIGHT_TWO_SIDED          0x10u   // area & disc lights
 
-// max 256 shadw-casting lights?
 #define LIGHT_SHADOW_CASTER      0x00000080u
-#define LIGHT_SHADOW_MASK        0x000fff00u
+#define LIGHT_SHADOW_MASK        0x000fff00u  // max 1023 shadw-casting lights
 #define LIGHT_SHADOW_SHIFT       8u
 #define LIGHT_VOLUMETRIC         0x00000040u
 
