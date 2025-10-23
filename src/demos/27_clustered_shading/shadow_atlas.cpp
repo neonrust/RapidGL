@@ -77,8 +77,7 @@ ShadowAtlas::ShadowAtlas(uint32_t size, LightManager &lights) :
 	_shadow_slots_info_ssbo("shadow-params"),
 	_allocator(size, size >> (s_slot_max_size_shift + 3), size >> s_slot_max_size_shift)
 {
-	if(__builtin_popcount(size) != 1)
-		size = 1 << (sizeof(size)*8 -  size_t(__builtin_clz(size)));  // round up to next Po2
+	size = std::bit_ceil(size);
 	assert(size >= 1024 and size <= 16384);
 
 	_shadow_slots_info_ssbo.bindAt(SSBO_BIND_SHADOW_SLOTS_INFO);
