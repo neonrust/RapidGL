@@ -134,7 +134,7 @@ struct TubeLight
 #define SPHERE_LIGHT      \
 	COMMON;               \
 	POINT;                \
-	float sphere_radius // stored in GPULight::shape_points[0]
+	float radius // stored in GPULight::shape_points[0].x
 
 struct SphereLightParams
 {
@@ -153,7 +153,7 @@ struct SphereLight
 	COMMON;              \
 	POINT;               \
 	glm::vec3 direction; \
-	float disc_radius  // stored in GPULight::shape_points[0]
+	float radius  // stored in GPULight::shape_points[0].x
 
 struct DiscLightParams
 {
