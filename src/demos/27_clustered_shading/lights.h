@@ -116,7 +116,7 @@ struct AreaLight
 #define TUBE_LIGHT           \
 	COMMON;                  \
 	glm::vec3 end_points[2];  /* stored in GPULight shape_points[0-1] */ \
-	float thickness      // stored in GPULight shape_points[2]
+	float thickness      // stored in GPULight shape_points[2].x
 
 struct TubeLightParams
 {
