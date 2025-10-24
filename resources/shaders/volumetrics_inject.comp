@@ -116,8 +116,6 @@ void main()
 				float light_edge_distance = max(0, distance(light.position, u_cam_pos) - light.affect_radius);
 				// fade the volumetrics by distance
 				distance_fade = fadeByDistance(light_edge_distance, min(u_light_max_distance, u_volumetric_max_distance));
-				// if(distance_fade < s_min_contribution)
-				// 	continue;
 			}
 		}
 
@@ -143,20 +141,35 @@ void main()
 				vec3 cam_to_pos = normalize(u_cam_pos - world_pos);
 				float contribution = distance_fade * phaseFunction(cam_to_pos, -light_direction, u_fog_anisotropy);
 
-				// positional lights are affected by their... uhm, position
-				if(IS_POINT_LIGHT(light))
+				switch(GET_LIGHT_TYPE(light))
 				{
-					float falloff_sq = getSquareFalloffAttenuation(distance_sq, light.affect_radius*light.affect_radius);
+				case LIGHT_TYPE_POINT:
+					contribution *= getSquareFalloffAttenuation(distance_sq, light.affect_radius*light.affect_radius);
 					// float falloff_lin = 1 - sqrt(distance_sq) / light.affect_radius;
-					contribution *= falloff_sq;//mix(falloff_sq, falloff_lin, falloff_lin * u_falloff_mix);
-				}
-				if(IS_SPOT_LIGHT(light))
-				{
+					// mix(falloff_sq, falloff_lin, falloff_lin * u_falloff_mix);
+					break;
+
+				case LIGHT_TYPE_SPOT:
 					contribution *= getSpotSquareFalloffAttenuation(distance_sq, light.affect_radius*light.affect_radius);
 					contribution *= getSpotAngleAttenuation(normalize(light_to_froxel), light.direction, light.outer_angle, light.inner_angle);
+					break;
+
+				case LIGHT_TYPE_AREA:
+					// TODO: calculate the amount of energy at 'world_pos'
+					break;
+
+				case LIGHT_TYPE_TUBE:
+					// TODO: calculate the amount of energy at 'world_pos'
+					break;
+
+				case LIGHT_TYPE_SPHERE:
+					// TODO: calculate the amount of energy at 'world_pos'
+					break;
+
+				case LIGHT_TYPE_DISC:
+					// TODO: calculate the amount of energy at 'world_pos'
+					break;
 				}
-				else
-					;// TODO: area, tube, sphere & disc
 
 				if(contribution > s_min_contribution)
 				{
