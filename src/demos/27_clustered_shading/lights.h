@@ -52,9 +52,12 @@ struct PointLight
 
 // ------------------------------------------------------------------
 
+#define DIRECTION  \
+	glm::vec3 direction { 0, 0, -1 }
+
 #define DIR_LIGHT  \
 	COMMON;        \
-	glm::vec3 direction { 0, 0, -1 }
+	DIRECTION
 
 struct DirectionalLightParams
 {
@@ -72,7 +75,7 @@ struct DirectionalLight
 #define SPOT_LIGHT  \
 	COMMON;         \
 	POINT;          \
-	glm::vec3 direction   { 0, 0, -1 }; \
+	DIRECTION; \
 	float outer_angle     { glm::radians(15.f) }; \
 	float inner_angle     { 0 };        \
 	float bounds_radius  // also the distance from 'position' along 'direction'
