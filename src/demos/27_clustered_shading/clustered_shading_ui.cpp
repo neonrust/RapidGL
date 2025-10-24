@@ -114,6 +114,9 @@ void ClusteredShading::render_gui()
 
 			if(ImGui::SliderFloat("FOV", &m_camera_fov, 25.f, 150.f))
 				calculateShadingClusterGrid();
+			static float target_fps = static_cast<float>(1.0 / m_frame_time);
+			if(ImGui::SliderFloat("Target FPS", &target_fps, 5.f, 200.f))
+				m_frame_time = 1.f / target_fps;
 		}
 
 		if (ImGui::CollapsingHeader("Lights"))//, ImGuiTreeNodeFlags_DefaultOpen))
