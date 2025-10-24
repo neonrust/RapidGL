@@ -31,10 +31,12 @@ namespace RGL
 
         virtual bool take_screenshot_png(const std::string & filename, size_t dst_width = 0, size_t dst_height = 0);
 
+	protected:
+		double   m_frame_time;
+
     private:
         void run();
 
-        double   m_frame_time;
         uint32_t m_fps;
         bool     m_is_running;
 		SampleWindow<std::chrono::microseconds, 30> _render_time;
