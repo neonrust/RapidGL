@@ -141,61 +141,19 @@ size_t ShadowAtlas::eval_lights(const std::vector<LightIndex> &relevant_lights, 
 	prioritized.reserve(std::max(64ul, relevant_lights.size()));
 	prioritized.clear();
 
+	// 1. assign value to all, shadow-casting, lights
 	auto counters = prioritize_lights(relevant_lights, view_pos, view_forward, prioritized);
 
-	// count how many lights we have slots for
-	// TODO: this is not accurate: does not take into account
-	//    that a light must be allocated only same-size slots.
-	//    it might allow too many lights -> will fail when allocating
+	// 2. "pour" the valued lights into the sizd -buckets.
+	//    NOTE: this is just a "desire"; not affected by already allocated slots
 
-	// TODO: is this check even necessary?
-	//   can't we just rely on slots running out in apply_desired_slots() ?
-	//   (which it currently doesn't support)
+	static std::vector<AtlasLight> desired_slots;
+	desired_slots.reserve(std::max(64ul, prioritized.size()));
+	desired_slots.clear();
 
-	auto needed_slots = 0u;
-	auto space_for_lights = 0u;
-	for(const auto &prio_light: prioritized)
-	{
-		if(prio_light.num_slots + needed_slots > _max_shadow_slots)
-			break;
-		needed_slots += prio_light.num_slots;
-		++space_for_lights;
-	}
-
-	// the rest: no soup for you!
-	if(space_for_lights < prioritized.size())
-	{
-		std::print("{} lights w/o shadow slot -> {} remaining\n", prioritized.size() - space_for_lights, space_for_lights);
-
-		for(const auto &prio: std::ranges::subrange(prioritized.begin() + ptrdiff_t(space_for_lights), prioritized.end()))
-		{
-			// free the previous slot (if any)
-			if(remove_allocation(prio.light_id))
-				++counters.dropped;
-		}
-
-		// cut off excess lights
-		prioritized.resize(space_for_lights);
-	}
-
-	// "pour" the valued lights into the size-buckets.
-	//   the top light's value determines which size to start at.
-	//   the rest follows in value order, with decreasing sizes as distribution allows.
-
-	small_vec<AtlasLight, 120> desired_slots;
-
-	// const auto top_light_value = prioritized.begin()->value;
-	// value = 1 is the most important possible; gets the highest-resolution slot
 	small_vec<size_t, 8> distribution(_distribution.begin(), _distribution.end());
 
 	// std::print("  start_size_idx: {}   top value: {}  [{}]\n", size_idx, top_light_value, prioritized.begin()->light_id);
-
-
-	// TODO: directional lights, using CSM. see: https://learnopengl.com/Guest-Articles/2021/CSM
-	//   might be reasonable to dedicate 3 slots to it; 1024, 512, 256, straight up
-
-	// "drop" the light at the top of 'distribution' (start size)
-	// allotting where there's first space.
 
 	for(const auto &prio_light: prioritized)
 	{
@@ -203,31 +161,31 @@ size_t ShadowAtlas::eval_lights(const std::vector<LightIndex> &relevant_lights, 
 		atlas_light.uuid      = prio_light.light_id;
 		atlas_light.num_slots = prio_light.num_slots;
 
-		// calculate where to start searching for slots, based on the light's value
-		const auto size_idx = static_cast<uint32_t>(std::floor(static_cast<float>(distribution.size()) * (1 - prio_light.value)));
+		// based on the light's value, deduce where to start searching for available slots
+		auto size_idx = static_cast<uint32_t>(std::floor(static_cast<float>(distribution.size()) * (1 - prio_light.value)));
 		// initial position and corresponding slot size
-		auto iter = distribution.begin() + size_idx;
 		auto slot_size = _allocator.max_size() >> size_idx;
 
-		while(*iter < atlas_light.num_slots and iter != distribution.end())
+		// find a slot size  tier that still has room for required slots
+		while(distribution[size_idx] < atlas_light.num_slots and size_idx < distribution.size())
 		{
-			// nothing availablem, next size
-			++iter;
+			// nothing available, next size
+			++size_idx;
 			slot_size >>= 1;
 		}
-		if(iter != distribution.end())
+		if(size_idx < distribution.size())
 		{
-			// declare the desired slot sizes
-
+			// define the desired slot sizes
 			for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
 				atlas_light.slots[idx].size = slot_size;
 
 			desired_slots.push_back(atlas_light);
-			*iter -= atlas_light.num_slots;
+			distribution[size_idx] -= atlas_light.num_slots;
 		}
 		else
 		{
-			// no slots available
+			// no slots available, remove any previous allocation
+			std::print(" [{}] can't fit {} slots\n", atlas_light.uuid, atlas_light.num_slots);
 			if(remove_allocation(prio_light.light_id))
 				++counters.dropped;
 			else
@@ -237,6 +195,7 @@ size_t ShadowAtlas::eval_lights(const std::vector<LightIndex> &relevant_lights, 
 
 	// _dump_desired(desired_slots);
 
+	// 3. apply the desired slots; actually allocate the slots & assign to the AtlasLight entry
 	counters += apply_desired_slots(desired_slots, T0);
 
 	const auto num_changes = counters.changed();
@@ -488,13 +447,11 @@ void ShadowAtlas::clear()
 
 ShadowAtlas::Counters ShadowAtlas::prioritize_lights(const std::vector<LightIndex> &relevant_lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward, std::vector<ShadowAtlas::ValueLight> &prioritized)
 {
+	// calculate "value" for each shadow-casting light
+
 	float strongest_dir_value { -1.f };
 
 	Counters counters;
-
-	// TODO: lights in '_id_to_allocated' NOT in 'relevant_lights' needs to be deallocated
-
-	// calculate "value" for each shadow-casting light
 
 	for(const auto &light_index: relevant_lights)
 	{
@@ -520,7 +477,7 @@ ShadowAtlas::Counters ShadowAtlas::prioritize_lights(const std::vector<LightInde
 			}
 			else
 			{
-				// light has no value  (e.g. too far away)
+				// light is not important  (e.g. too far away)
 				if(remove_allocation(light_id))
 					++counters.dropped;
 			}
@@ -530,7 +487,7 @@ ShadowAtlas::Counters ShadowAtlas::prioritize_lights(const std::vector<LightInde
 	if(strongest_dir_value > s_min_light_value)
 	{
 		prioritized.push_back({
-			.value = 2.f,          // light should *always* be included
+			.value = 2.f,          // light should _always_ be included
 			.light_id = _allocated_sun.uuid,
 			.num_slots = 3,        // CSM  see: https://learnopengl.com/Guest-Articles/2021/CSM
 		});
@@ -1042,7 +999,6 @@ ShadowAtlas::AtlasLight::AtlasLight(const AtlasLight &other) :
 	slots(other.slots),
 	hash(0),
 	_dirty(true),
-	_prev_light_value(0.f),
 	_frames_skipped(0)
 {
 }
