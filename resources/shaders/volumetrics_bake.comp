@@ -17,7 +17,6 @@ uniform float u_near_z;
 uniform float u_far_z;
 uniform float u_froxel_zexp;
 uniform mat4  u_view_projection;
-uniform mat4  u_inv_view_projection;
 
 layout(binding = 5)          uniform           sampler3D u_in_accumulation;
 layout(binding = 2)          uniform           sampler2D u_in_depth;
