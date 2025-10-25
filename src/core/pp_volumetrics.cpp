@@ -22,12 +22,10 @@ Volumetrics::Volumetrics() :
 	_all_volumetric_lights("volumetric-lights"sv),
 	_all_tile_lights("volumetric-all-tile-lights"sv),
 	_tile_lights_ranges("volumetric-tile-light-ranges"sv)
-	// _debug_stuff("debug-stuff"sv)
 {
 	_all_volumetric_lights.bindAt(SSBO_BIND_ALL_VOLUMETRIC_LIGHTS_INDEX);
 	_all_tile_lights.bindAt(SSBO_BIND_VOLUMETRIC_ALL_TILE_LIGHTS_INDEX);
 	_tile_lights_ranges.bindAt(SSBO_BIND_VOLUMETRIC_TILE_LIGHTS_INDEX);
-	// _debug_stuff.bindAt(30);
 }
 
 bool Volumetrics::create()

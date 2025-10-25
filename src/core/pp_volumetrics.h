@@ -66,7 +66,6 @@ private:
 	buffer::Storage<uint> _all_volumetric_lights;
 	buffer::Storage<uint> _all_tile_lights;
 	buffer::Storage<IndexRange> _tile_lights_ranges;
-	// buffer::Storage<float> _debug_stuff;
 
 	float _strength { 1.f };
 	float _anisotropy { 0.7f };  // ~0.7 Thin haze / atmospheric fog
