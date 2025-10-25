@@ -89,12 +89,13 @@ void main()
 	vec3 world_pos = froxelWorldPos(froxel, u_froxel_zexp, u_inv_view_projection, noise);
 	float thickness  = froxelThickness(froxel.z);
 
-	vec3 total_scattered = vec3(0);
-
 	uvec2 tile = uvec2(froxel.x / FROXELS_PER_TILE, froxel.y / FROXELS_PER_TILE);
 	uint tile_index = tile.y*tile_grid.x + tile.x;
 
 	IndexRange lights_range = ssbo_tile_lights[tile_index];
+
+
+	vec3 total_scattered = vec3(0);
 
 	for(uint index = 0; index < lights_range.count; ++index)
 	{
@@ -181,31 +182,32 @@ void main()
 			}
 		}
 
-        if(u_froxel_blend_previous)
-        {
-        	// same as above, but without noise
-	        vec3 world_pos = froxelWorldPos(froxel, u_froxel_zexp, u_inv_view_projection);
-
-	        // find the corresponding UV in the previous froxel grid
-	        vec3 prev_uv = worldToUV(world_pos, u_prev_view);
-			// vec3 prev_uv = worldToFroxelUV(world_pos, u_prev_view);
-
-	        // only mix with UVs that coincide with the current froxel grid
-	        if(all(greaterThanEqual(prev_uv, vec3(0))) && all(lessThanEqual(prev_uv, vec3(1))))
-	        {
-	            // blend with previous froxel sample
-	            vec3 prev_scatter = textureLod(u_prev_scatter, prev_uv, 0).rgb;
-            	scatter_contrib = mix(scatter_contrib, prev_scatter, u_froxel_blend_weight);
-	        }
-			// else
-			// 	scatter_contrib = vec3(1, 0, 1);
-        }
-
         total_scattered += scatter_contrib;
 	}
 
 	float density = u_fog_density; // TODO: noise texture?
-	imageStore(u_out_scatter, froxel, vec4(total_scattered * density, density));
+	total_scattered *= density;
+
+	if(u_froxel_blend_previous)
+	{
+		// same as above, but without noise
+		vec3 world_pos = froxelWorldPos(froxel, u_froxel_zexp, u_inv_view_projection);
+
+		// find the corresponding UV in the previous froxel grid
+		vec3 prev_uv = worldToUV(world_pos, u_prev_view);
+
+		// only mix with UVs that coincide with the current froxel grid
+		if(all(greaterThanEqual(prev_uv, vec3(0))) && all(lessThanEqual(prev_uv, vec3(1))))
+		{
+			// read previous froxel
+			vec3 prev_scattered = textureLod(u_prev_scatter, prev_uv, 0).rgb;
+			total_scattered = mix(total_scattered, prev_scattered, u_froxel_blend_weight);
+		}
+		// else
+		// 	total_scattered = vec3(1, 0, 1);
+	}
+
+	imageStore(u_out_scatter, froxel, vec4(total_scattered, density));
 }
 
 float froxelThickness(int z)
