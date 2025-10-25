@@ -230,6 +230,8 @@ size_t ShadowAtlas::eval_lights(const std::vector<LightIndex> &relevant_lights, 
 			// no slots available
 			if(remove_allocation(prio_light.light_id))
 				++counters.dropped;
+			else
+				++counters.denied;
 		}
 	}
 
@@ -248,6 +250,8 @@ size_t ShadowAtlas::eval_lights(const std::vector<LightIndex> &relevant_lights, 
 			std::print(" \x1b[1m=\x1b[m{}", counters.retained);
 		if(counters.dropped)
 			std::print(" \x1b[31;1m❌\x1b[m{}", counters.dropped);
+		if(counters.denied)
+			std::print(" \x1b[31;1m!\x1b[m{}", counters.denied);
 		if(counters.promoted)
 			std::print(" \x1b[32;m➚\x1b[m{}", counters.promoted);
 		if(counters.demoted)

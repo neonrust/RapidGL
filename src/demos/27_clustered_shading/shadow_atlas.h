@@ -118,6 +118,7 @@ private:
 			allocated(0),
 			retained(0),
 			dropped(0),
+			denied(0),
 			promoted(0),
 			demoted(0),
 			change_pending(0)
@@ -125,6 +126,7 @@ private:
 		uint32_t allocated;
 		uint32_t retained;
 		uint32_t dropped;
+		uint32_t denied;
 		uint32_t promoted;
 		uint32_t demoted;
 		uint32_t change_pending;
@@ -134,6 +136,7 @@ private:
 			allocated += other.allocated;
 			retained += other.retained;
 			dropped += other.dropped;
+			denied += other.denied;
 			promoted += other.promoted;
 			demoted += other.demoted;
 			change_pending += other.change_pending;
