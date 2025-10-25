@@ -501,7 +501,7 @@ ShadowAtlas::Counters ShadowAtlas::prioritize_lights(const std::vector<LightInde
 	return counters;
 }
 
-ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const small_vec<AtlasLight, 120> &desired_slots, const Time now)
+ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const std::vector<AtlasLight> &desired_slots, const Time now)
 {
 	// std::puts("-- apply_desired_slots()");
 
