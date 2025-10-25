@@ -28,6 +28,8 @@ public:
 	// multiplier for the volumetrics effect
 	inline void setStrength(float strength) { _strength = strength; }
 
+	inline void setBlurEnabled(bool enabled) { _3dblur_enabled = enabled; }
+
 	// = 0: isotropic scattering; light is scattered equally in all directions (like fog or smoke).
 	// > 0: forward scattering; light tends to keep going the same way it was headed (like mist, clouds, water droplets).
 	// < 0: backward scattering; light tends to scatter back toward the source (rare in nature, but can approximate retroreflective effects).
@@ -51,11 +53,13 @@ private:
 	Shader _select_shader;
 	Shader _cull_shader;
 	Shader _inject_shader;
+	Shader _3dblur_shader;
 	Shader _accumulate_shader;
 	Shader _bake_shader;
 	Texture2DArray _blue_noise;
 	Texture3D _transmittance[2];  // read -> write, or write <- read
 	Texture3D _accumulation;
+	Texture3D _3dblur[2];
 	uint32_t _read_index { 0 };  // ping-pong index into '_accumulation'
 	uint32_t _frame { 0 };
 
@@ -70,6 +74,7 @@ private:
 	bool _blend { true };
 	float _blend_weight { 0.5f };
 	// float _falloff_mix { 0 };
+	bool _3dblur_enabled { true };
 
 	GLuint _dummy_vao_id;
 };

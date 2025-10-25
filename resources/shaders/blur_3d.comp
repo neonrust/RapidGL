@@ -1,0 +1,42 @@
+#version 460 core
+
+// froxel_blur.comp
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(binding = 0, rgba32f) uniform image3D u_input;
+layout(binding = 1, rgba32f) uniform image3D u_output;
+
+uniform ivec3 u_grid_size;  // or use imageSize(u_input)
+uniform uint u_axis;       // 0 = X, 1 = Y, 2 = Z
+
+shared vec4 cache[8 + 8 + 8]; // small local cache window
+
+// 5-tap Gaussian
+const float weights[5] = float[5](
+	0.227027,
+	0.1945946,
+	0.1216216,
+	0.054054,
+	0.016216
+);
+
+void main()
+{
+	ivec3 coord = ivec3(gl_GlobalInvocationID);
+	if(any(greaterThanEqual(coord, u_grid_size)))
+		return;
+
+	// center pixel
+	vec4 color = imageLoad(u_input, coord) * weights[0];
+
+	// 5 pixels on either side
+	for(int idx = 1; idx < 5; ++idx)
+	{
+		ivec3 offset = ivec3(0);
+		offset[u_axis] = idx;
+		color += imageLoad(u_input, clamp(coord + offset, ivec3(0), u_grid_size - 1)) * weights[idx];
+		color += imageLoad(u_input, clamp(coord - offset, ivec3(0), u_grid_size - 1)) * weights[idx];
+	}
+
+	imageStore(u_output, coord, color);
+}

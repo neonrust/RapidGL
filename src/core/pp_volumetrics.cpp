@@ -49,6 +49,12 @@ bool Volumetrics::create()
 	assert(_inject_shader);
 	_inject_shader.setPreBarrier(Shader::Barrier::SSBO);
 
+	new (&_3dblur_shader) Shader(shaderPath / "blur_3d.comp");
+	_3dblur_shader.link();
+	assert(_3dblur_shader);
+	_3dblur_shader.setPreBarrier(Shader::Barrier::Image);
+	_3dblur_shader.setUniform("u_grid_size"sv, glm::ivec3(s_froxels));
+
 	new (&_accumulate_shader) Shader(shaderPath / "volumetrics_accumulate.comp");
 	_accumulate_shader.link();
 	assert(_accumulate_shader);
@@ -70,6 +76,13 @@ bool Volumetrics::create()
 		_transmittance[idx].SetWrapping(TextureWrappingAxis::U, TextureWrappingParam::ClampToEdge);
 		_transmittance[idx].SetWrapping(TextureWrappingAxis::V, TextureWrappingParam::ClampToEdge);
 		_transmittance[idx].SetWrapping(TextureWrappingAxis::W, TextureWrappingParam::ClampToEdge);
+
+		_3dblur[idx].Create(s_froxels.x, s_froxels.y, s_froxels.z, GL_RGBA32F);
+		_3dblur[idx].SetFiltering(TextureFiltering::Magnify, TextureFilteringParam::Linear);
+		_3dblur[idx].SetFiltering(TextureFiltering::Minify, TextureFilteringParam::Linear);
+		_3dblur[idx].SetWrapping(TextureWrappingAxis::U, TextureWrappingParam::ClampToEdge);
+		_3dblur[idx].SetWrapping(TextureWrappingAxis::V, TextureWrappingParam::ClampToEdge);
+		_3dblur[idx].SetWrapping(TextureWrappingAxis::W, TextureWrappingParam::ClampToEdge);
 	}
 
 	_accumulation.Create(s_froxels.x, s_froxels.y, s_froxels.z, GL_RGBA32F);
@@ -78,6 +91,7 @@ bool Volumetrics::create()
 	_accumulation.SetWrapping(TextureWrappingAxis::U, TextureWrappingParam::ClampToEdge);
 	_accumulation.SetWrapping(TextureWrappingAxis::V, TextureWrappingParam::ClampToEdge);
 	_accumulation.SetWrapping(TextureWrappingAxis::W, TextureWrappingParam::ClampToEdge);
+
 
 	_all_volumetric_lights.resize(256); // that's a lot :)
 
@@ -121,14 +135,22 @@ void Volumetrics::inject(const Camera &camera) // TODO: View
 	++_frame;
 
 	camera.setUniforms(_inject_shader);
+	const auto active_idx = _frame & 1;
+
+	const auto num_groups = glm::uvec3(
+		size_t(std::ceil(float(s_froxels.x) / float(s_local_size.x))),
+		size_t(std::ceil(float(s_froxels.y) / float(s_local_size.y))),
+		size_t(std::ceil(float(s_froxels.z) / float(s_local_size.z)))
+		);
+
 
 
 	// TODO: better API?
 	//   _inject_zshader.bindImage("u_output_transmittance"sv, _transmittance[_frame & 1], ImageAccess::Write);
-	const auto active_idx = _frame & 1;
 	_transmittance[active_idx].BindImage(5, ImageAccess::Write);
 	_transmittance[1 - active_idx].Bind(6);    // previous transmittance as input
 
+	camera.setUniforms(_inject_shader);
 	_inject_shader.setUniform("u_fog_anisotropy"sv, _anisotropy);
 	_inject_shader.setUniform("u_froxel_zexp"sv,    1.f);
 	_inject_shader.setUniform("u_fog_density"sv, _density);
@@ -139,31 +161,74 @@ void Volumetrics::inject(const Camera &camera) // TODO: View
 	const auto view_projection = camera.projectionTransform() * camera.viewTransform();
 	const auto inv_view_projection = glm::inverse(view_projection);
 	_inject_shader.setUniform("u_inv_view_projection"sv, inv_view_projection);
-	_bake_shader.setUniform("u_inv_view_projection"sv, inv_view_projection);
 
 	static glm::mat4 prev_view = camera.viewTransform();  // use current view the first frame
 	// use current for the first frame (there's no "previous" yet)
 	_inject_shader.setUniform("u_prev_view"sv, prev_view);
-	// now there is :)
 	prev_view = camera.viewTransform();
 
-	const auto num_groups = glm::uvec3(
-		size_t(std::ceil(float(s_froxels.x) / float(s_local_size.x))),
-		size_t(std::ceil(float(s_froxels.y) / float(s_local_size.y))),
-		size_t(std::ceil(float(s_froxels.z) / float(s_local_size.z)))
-	);
-	if(_blend)
-		_blue_noise.BindLayer(_frame % _blue_noise.num_layers(), 3);
-	else
-		_blue_noise.BindLayer(0, 3);
+	_blue_noise.BindLayer(_frame % _blue_noise.num_layers(), 3);
 
 	_inject_shader.invoke(num_groups);
 }
 
 void Volumetrics::accumulate(const Camera &camera)
 {
+	const auto active_idx = _frame & 1;
+
+	auto num_groups = glm::uvec3(
+		size_t(std::ceil(float(s_froxels.x) / float(s_local_size.x))),
+		size_t(std::ceil(float(s_froxels.y) / float(s_local_size.y))),
+		size_t(std::ceil(float(s_froxels.z) / float(s_local_size.z)))
+	);
+
+	if(_3dblur_enabled)
+	{
+		// 1st pass
+
+		// injection -> blur[0]
+		_transmittance[active_idx].BindImage(0, ImageAccess::Read);
+		_3dblur[0].BindImage(1, ImageAccess::Write);
+		_3dblur_shader.setUniform("u_axis"sv, 0u);  // X axis
+		_3dblur_shader.invoke(num_groups);
+
+		// blur[0] -> blur[1]
+		_3dblur[0].BindImage(0, ImageAccess::Read);
+		_3dblur[1].BindImage(1, ImageAccess::Write);
+		_3dblur_shader.setUniform("u_axis"sv, 1u);  // Y axis
+		_3dblur_shader.invoke(num_groups);
+
+		// blur[1] -> blur[0]
+		_3dblur[1].BindImage(0, ImageAccess::Read);
+		_3dblur[0].BindImage(1, ImageAccess::Write);
+		_3dblur_shader.setUniform("u_axis"sv, 2u);  // Z axis
+		_3dblur_shader.invoke(num_groups);
+
+		// // 2nd pass
+		// // blur[0] -> blur[1]
+		// _3dblur[0].BindImage(0, ImageAccess::Write);
+		// _3dblur[1].BindImage(1, ImageAccess::Write);
+		// _3dblur_shader.setUniform("u_axis"sv, 0u);  // X axis
+		// _3dblur_shader.invoke(num_groups);
+
+		// // blur[1] -> blur[0]
+		// _3dblur[1].BindImage(0, ImageAccess::Read);
+		// _3dblur[0].BindImage(1, ImageAccess::Write);
+		// _3dblur_shader.setUniform("u_axis"sv, 1u);  // Z axis
+		// _3dblur_shader.invoke(num_groups);
+
+		// // blur[0] -> blur[1]
+		// _3dblur[0].BindImage(0, ImageAccess::Read);
+		// _3dblur[1].BindImage(1, ImageAccess::Write);
+		// _3dblur_shader.setUniform("u_axis"sv, 2u);  // Y axis
+		// _3dblur_shader.invoke(num_groups);
+
+		_3dblur[0].BindImage(6, ImageAccess::Read);
+	}
+	else
+		_transmittance[active_idx].BindImage(6, ImageAccess::Read);
+
 	_accumulation.BindImage(5, ImageAccess::Write);
-	_transmittance[_frame & 1].Bind(6);
 
 	_accumulate_shader.setUniform("u_near_z"sv, camera.nearPlane());
 	_accumulate_shader.setUniform("u_far_z"sv, camera.farPlane());
@@ -171,17 +236,8 @@ void Volumetrics::accumulate(const Camera &camera)
 	_bake_shader.setUniform("u_near_z"sv, camera.nearPlane());
 	_bake_shader.setUniform("u_far_z"sv, camera.farPlane());
 
-
-	const auto num_groups = glm::uvec3(
-		size_t(std::ceil(float(s_froxels.x))),
-		size_t(std::ceil(float(s_froxels.y))),
-		1
-	);
-
+	num_groups.z = 1;
 	_accumulate_shader.invoke(num_groups);
-
-	// TODO: blur '_accumulation'
-
 }
 
 void Volumetrics::render(const RenderTarget::Texture2d &, RenderTarget::Texture2d &out)
@@ -198,7 +254,7 @@ void Volumetrics::render(const RenderTarget::Texture2d &, RenderTarget::Texture2
 						size_t(std::ceil(float(out.height()) / float(s_local_size.y))),
 						1);
 
-	// TODO: blur 'out'
+	// TODO: blur 'out' (2d) ?
 }
 
 const Texture3D &RGL::PP::Volumetrics::froxel_texture(uint32_t index) const

@@ -204,6 +204,10 @@ void ClusteredShading::render_gui()
 				// static float falloff_mix { 0 };
 				// if(ImGui::SliderFloat("Falloff mix", &falloff_mix, 0.f, 1.f, "%.2f"))
 				// 	m_volumetrics_pp.setFalloffMix(falloff_mix);
+
+				static bool blur_enabled { true };
+				if(ImGui::Checkbox("3D Blur", &blur_enabled))
+					m_volumetrics_pp.setBlurEnabled(blur_enabled);
 			}
 		}
 
