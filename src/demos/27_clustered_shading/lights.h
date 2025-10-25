@@ -2,8 +2,10 @@
 
 
 #include <glm/trigonometric.hpp>
+#include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
+#include <glm/ext/quaternion_float.hpp>
 
 #include <cstdint>
 
@@ -77,8 +79,7 @@ struct DirectionalLight
 	POINT;          \
 	DIRECTION; \
 	float outer_angle     { glm::radians(15.f) }; \
-	float inner_angle     { 0 };        \
-	float bounds_radius  // also the distance from 'position' along 'direction'
+	float inner_angle     { 0 }
 
 // '(outer|inner)_angle is in radians
 
@@ -95,10 +96,13 @@ struct SpotLight
 
 // ------------------------------------------------------------------
 
-#define AREA_LIGHT        \
-	COMMON;               \
-	glm::vec3 points[4];  \
-	bool two_sided
+#define AREA_LIGHT                      \
+	COMMON;                             \
+	POINT;                              \
+	glm::vec2 size        { 1, 1 };     \
+	glm::quat orientation;              \
+	bool double_sided { false }
+
 
 struct AreaLightParams
 {

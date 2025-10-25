@@ -51,86 +51,6 @@ std::string_view LightManager::type_name(const GPULight &L) const
 	return s_light_type_names[GET_LIGHT_TYPE(L)];
 }
 
-static LightID _light_id { 0 };
-
-PointLight LightManager::add(const PointLightParams &pd)
-{
-	++_light_id;  // TODO: entt EntityID
-
-	const auto L = to_gpu_light(pd);
-
-	add(L, _light_id);
-
-	return to_<PointLight>(L, _light_id);
-}
-
-DirectionalLight LightManager::add(const DirectionalLightParams &d)
-{
-	++_light_id;  // TODO: entt EntityID
-
-	const auto L = to_gpu_light(d);
-
-	add(L, _light_id);
-
-	return to_<DirectionalLight>(L, _light_id);
-}
-
-SpotLight LightManager::add(const SpotLightParams &s)
-{
-	++_light_id;  // TODO: entt EntityID
-
-	auto L = to_gpu_light(s);
-	compute_spot_bounds(L);
-
-	add(L, _light_id);
-
-	return to_<SpotLight>(L, _light_id);
-}
-
-AreaLight LightManager::add(const AreaLightParams &a)
-{
-	++_light_id;  // TODO: entt EntityID
-
-	const auto L = to_gpu_light(a);
-
-	add(L, _light_id);
-
-	return to_<AreaLight>(L, _light_id);
-}
-
-TubeLight LightManager::add(const TubeLightParams &t)
-{
-	++_light_id;  // TODO: entt EntityID
-
-	const auto L = to_gpu_light(t);
-
-	add(L, _light_id);
-
-	return to_<TubeLight>(L, _light_id);
-}
-
-SphereLight LightManager::add(const SphereLightParams &s)
-{
-	++_light_id;  // TODO: entt EntityID
-
-	const auto L = to_gpu_light(s);
-
-	add(L, _light_id);
-
-	return to_<SphereLight>(L, _light_id);
-}
-
-DiscLight LightManager::add(const DiscLightParams &d)
-{
-	++_light_id;  // TODO: entt EntityID
-
-	const auto L = to_gpu_light(d);
-
-	add(L, _light_id);
-
-	return to_<DiscLight>(L, _light_id);
-}
-
 void LightManager::clear()
 {
 	_id_to_index.clear();
@@ -192,11 +112,9 @@ void LightManager::set(LightID uuid, const GPULight &L)
 		_dirty_list.push_back(light_index);
 }
 
-
-
 void LightManager::flush()
 {
-	// more lights than before; upload all  (hpefully, this doesn't happen often)
+	// more/less lights than before; upload all  (hpefully, this doesn't happen often)
 	if(_lights.size() != _lights_ssbo.size() or _dirty.size() == _lights.size())
 	{
 		_lights_ssbo.set(_lights);
@@ -267,6 +185,13 @@ void LightManager::clear_shadow_index(LightID light_id)
 	}
 }
 
+void LightManager::set_spot_angle(GPULight &L, float new_outer_angle)
+{
+	L.intensity *= spot_intensity_multiplier(new_outer_angle) / spot_intensity_multiplier(L.outer_angle);
+	L.inner_angle *= new_outer_angle / L.outer_angle;
+	L.outer_angle = new_outer_angle;
+}
+
 bounds::Sphere LightManager::light_bounds(const GPULight &L) const
 {
 	assert(not IS_DIR_LIGHT(L));
@@ -278,7 +203,7 @@ bounds::Sphere LightManager::light_bounds(const GPULight &L) const
 
 	if(IS_SPOT_LIGHT(L))
 	{
-		bounds_center = L.position + L.direction * L.spot_bounds_radius;
+		bounds_center += L.direction * L.spot_bounds_radius;
 		bounds_radius = L.spot_bounds_radius;
 	}
 
@@ -345,4 +270,10 @@ LightIndex LightManager::light_index(LightID light_id) const
 	if(found == _id_to_index.end())
 		return NO_LIGHT_INDEX;
 	return found->second;
+}
+
+float LightManager::spot_intensity_multiplier(float angle)
+{
+	const auto inv_cos_ref_angle = 1.f - std::cos(glm::radians(45.f));
+	return inv_cos_ref_angle / (1.f - std::cos(angle));
 }

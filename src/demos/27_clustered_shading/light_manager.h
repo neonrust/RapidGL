@@ -33,8 +33,23 @@ concept LightParamsType = std::is_same_v<PointLightParams, T>
 	or std::is_same_v<SphereLightParams, T>
 	or std::is_same_v<DiscLightParams, T>
 	;
-} // _private
 
+// create "mapping" from type XParams -> type X
+template<typename T>
+struct light_map;
+#define MAP_PARAMS_TYPE(LT) template <> struct light_map<LT ## Params>  { using type = LT; }
+MAP_PARAMS_TYPE(PointLight);
+MAP_PARAMS_TYPE(DirectionalLight);
+MAP_PARAMS_TYPE(SpotLight);
+MAP_PARAMS_TYPE(AreaLight);
+MAP_PARAMS_TYPE(TubeLight);
+MAP_PARAMS_TYPE(SphereLight);
+MAP_PARAMS_TYPE(DiscLight);
+
+template <typename LTP>
+using return_type = typename light_map<LTP>::type;
+
+} // _private
 
 // TODO: not entirely happy with this API ...
 //   the tricky part is that we need both index-based and ID-based access.
@@ -56,13 +71,16 @@ public:
 
 	std::string_view type_name(const GPULight &L) const;
 
-	PointLight    add(const PointLightParams &p);
-	DirectionalLight add(const DirectionalLightParams &d);
-	SpotLight     add(const SpotLightParams &s);
-	AreaLight     add(const AreaLightParams &a);
-	TubeLight     add(const TubeLightParams &t);
-	SphereLight   add(const SphereLightParams &s);
-	DiscLight     add(const DiscLightParams &d);
+	template<_private::LightParamsType LTP>
+	auto add(const LTP &ltp) -> _private::return_type<LTP>;
+
+	// PointLight    add(const PointLightParams &p);
+	// DirectionalLight add(const DirectionalLightParams &d);
+	// SpotLight     add(const SpotLightParams &s);
+	// AreaLight     add(const AreaLightParams &a);
+	// TubeLight     add(const TubeLightParams &t);
+	// SphereLight   add(const SphereLightParams &s);
+	// DiscLight     add(const DiscLightParams &d);
 
 	void clear();
 
@@ -104,24 +122,27 @@ public:
 	template<typename LT=GPULight> requires (std::same_as<LT, GPULight> || _private::LightType<LT>)
 	inline size_t num_lights() const;
 
-	template<_private::LightType LT>
-	std::optional<LT> to_(const GPULight &L) const;
+	static void set_spot_angle(GPULight &L, float new_outer_angle);
 
 	bounds::Sphere light_bounds(const GPULight &L) const;
 
 private:
 	void add(const GPULight &L, LightID light_id);
-	void compute_spot_bounds(GPULight &L);
 
-	template<_private::LightType LT>
-	LT to_(const GPULight &L, LightID light_id) const;
-
+	// convert any light type to a GPULight
 	template<typename LT> requires _private::LightType<LT> || _private::LightParamsType<LT>
 	static GPULight to_gpu_light(const LT &l);
+	static void compute_spot_bounds(GPULight &L);
+	static float spot_intensity_multiplier(float angle);
+
+	// convert an XParams light type to its corresponding "handle" type (includes LightID)
+	template<_private::LightParamsType LTP>
+	auto to_typed(const LTP &lpt, LightID light_id) const -> _private::return_type<LTP>;
 
 private:
 	dense_map<LightID, LightIndex> _id_to_index;
 	dense_map<LightIndex, LightID> _index_to_id; // TODO: can this be a vector? store directly in '_lights'?
+
 
 	dense_set<LightIndex> _dirty;
 	std::vector<LightIndex> _dirty_list;
@@ -150,40 +171,11 @@ inline void LightManager::set(const LT &l)
 
 	const auto light_index = found->second;
 
-#if defined(DEBUG)
-	if constexpr (std::same_as<LT, PointLight>)
-		assert(IS_POINT_LIGHT(_lights[light_index]));
-	else if constexpr (std::same_as<LT, DirectionalLight>)
-		assert(IS_DIR_LIGHT(_lights[light_index]));
-	else if constexpr (std::same_as<LT, SpotLight>)
-		assert(IS_SPOT_LIGHT(_lights[light_index]));
-	else if constexpr (std::same_as<LT, AreaLight>)
-		assert(IS_AREA_LIGHT(_lights[light_index]));
-	else if constexpr (std::same_as<LT, TubeLight>)
-		assert(IS_TUBE_LIGHT(_lights[light_index]));
-	else if constexpr (std::same_as<LT, SphereLight>)
-		assert(IS_SPHERE_LIGHT(_lights[light_index]));
-	else if constexpr (std::same_as<LT, DiscLight>)
-		assert(IS_DISC_LIGHT(_lights[light_index]));
-#endif
-
 	_lights[light_index] = L;
 
 	// TODO: compare 'L' and '_lights[light_index]' if they actually differ?
 	if(const auto &[_, ok] =_dirty.insert(light_index); ok)
 		_dirty_list.push_back(light_index);
-}
-
-template<_private::LightType LT>
-LT LightManager::to_(const GPULight &L, LightID light_id) const
-{
-	const auto found = _id_to_index.find(light_id);
-	assert(found != _id_to_index.end());
-
-	auto l = to_<LT>(L).value();
-	l.uuid = light_id;
-
-	return l;
 }
 
 template<typename LT>  requires (std::same_as<LT, GPULight> || _private::LightType<LT>)
@@ -216,7 +208,7 @@ LT LightManager::at(LightIndex light_index) const
 
 	const auto uuid = found_id->second;
 
-	return to_<LT>(light, uuid);
+	return to_typed<LT>(light, uuid);
 }
 
 template<_private::LightType LT>
@@ -230,109 +222,26 @@ std::optional<LT> LightManager::get(LightID light_id)
 
 	const auto &L = _lights[index];
 
-	return to_<LT>(L, light_id);
+	return to_typed<LT>(L, light_id);
 }
 
-template<_private::LightType LT>
-std::optional<LT> LightManager::to_(const GPULight &L) const
+namespace
 {
-	LT l;
-	l.color         = L.color;
-	l.intensity     = L.intensity;
-	l.fog           = L.fog_intensity;
-	l.shadow_caster = IS_SHADOW_CASTER(L);
+static LightID s_light_id { 0 };
+}
 
-	if constexpr (std::same_as<LT, PointLight>)
-	{
-		assert(IS_POINT_LIGHT(L));
-		if(not IS_POINT_LIGHT(L))
-		{
-			std::print(stderr, "Expected point light, got {}\n", type_name(L));
-			return std::nullopt;
-		}
+template<_private::LightParamsType LTP>
+auto LightManager::add(const LTP &ltp) -> _private::return_type<LTP>
+{
+	++s_light_id;
 
-		l.position   = L.position;
-	}
-	else if constexpr (std::same_as<LT, DirectionalLight>)
-	{
-		assert(IS_DIR_LIGHT(L));
-		if(not IS_DIR_LIGHT(L))
-		{
-			std::print(stderr, "Expected directional light, got {}\n", type_name(L));
-			return std::nullopt;
-		}
+	assert(not _id_to_index.contains(s_light_id));
 
-		l.direction = L.direction;
-	}
-	else if constexpr (std::same_as<LT, SpotLight>)
-	{
-		assert(IS_SPOT_LIGHT(L));
-		if(not IS_SPOT_LIGHT(L))
-		{
-			std::print(stderr, "Expected spot light, got {}\n", type_name(L));
-			return std::nullopt;
-		}
+	auto L = to_gpu_light(ltp);
 
-		l.position      = L.position;
-		l.direction     = L.direction;
-		l.outer_angle   = L.outer_angle;
-		l.inner_angle   = L.inner_angle;
-		l.bounds_radius = L.spot_bounds_radius;
-	}
-	else if constexpr (std::same_as<LT, AreaLight>)
-	{
-		assert(IS_AREA_LIGHT(L));
-		if(not IS_AREA_LIGHT(L))
-		{
-			std::print(stderr, "Expected area light, got {}\n", type_name(L));
-			return std::nullopt;
-		}
+	add(L, s_light_id);
 
-		l.points[0] = glm::vec3(L.shape_points[0]);
-		l.points[1] = glm::vec3(L.shape_points[1]);
-		l.points[2] = glm::vec3(L.shape_points[2]);
-		l.points[3] = glm::vec3(L.shape_points[3]);
-		l.two_sided = (L.type_flags & LIGHT_TWO_SIDED) > 0;
-	}
-	else if constexpr (std::same_as<LT, TubeLight>)
-	{
-		assert(IS_TUBE_LIGHT(L));
-		if(not IS_TUBE_LIGHT(L))
-		{
-			std::print(stderr, "Expected tube light, got {}\n", type_name(L));
-			return std::nullopt;
-		}
-
-		l.end_points[0] = glm::vec3(L.shape_points[0]);
-		l.end_points[1] = glm::vec3(L.shape_points[1]);
-		l.thickness     = L.shape_points[2].x;
-	}
-	else if constexpr (std::same_as<LT, SphereLight>)
-	{
-		assert(IS_SPHERE_LIGHT(L));
-		if(not IS_SPHERE_LIGHT(L))
-		{
-			std::print(stderr, "Expected sphere light, got {}\n", type_name(L));
-			return std::nullopt;
-		}
-
-		l.sphere_radius = L.shape_points[0].x;
-	}
-	else if constexpr (std::same_as<LT, DiscLight>)
-	{
-		assert(IS_DISC_LIGHT(L));
-		if(not IS_DISC_LIGHT(L))
-		{
-			std::print(stderr, "Expected disc light, got {}\n", type_name(L));
-			return std::nullopt;
-		}
-
-		l.position    = L.position;
-		l.direction   = L.direction;
-		l.disc_radius = L.shape_points[0].x;
-	}
-
-	return l;
+	return to_typed(ltp, s_light_id);
 }
 
 template<typename LT> requires _private::LightType<LT> || _private::LightParamsType<LT>
@@ -345,33 +254,39 @@ GPULight LightManager::to_gpu_light(const LT &l)
 
 	if constexpr (std::same_as<LT, PointLight> or std::same_as<LT, PointLightParams>)
 	{
-		L.type_flags    = LIGHT_TYPE_POINT | (l.shadow_caster? LIGHT_SHADOW_CASTER: 0);
+		L.type_flags    = LIGHT_TYPE_POINT;
 		L.position      = l.position;
 		L.affect_radius = std::pow(l.intensity, 0.6f);
 	}
 	else if constexpr (std::same_as<LT, DirectionalLight> or std::same_as<LT, DirectionalLightParams>)
 	{
-		L.type_flags    = LIGHT_TYPE_DIRECTIONAL;
+		L.type_flags    = LIGHT_TYPE_DIRECTIONAL | (l.fog > 0? LIGHT_VOLUMETRIC: 0);
 		L.direction     = l.direction;
 	}
 	else if constexpr (std::same_as<LT, SpotLight> or std::same_as<LT, SpotLightParams>)
 	{
-		L.type_flags     = LIGHT_TYPE_SPOT | (l.shadow_caster? LIGHT_SHADOW_CASTER: 0);
+		L.type_flags     = LIGHT_TYPE_SPOT;
 		L.position       = l.position;
 		L.direction      = l.direction;
 		L.outer_angle    = l.outer_angle;
 		L.inner_angle    = l.inner_angle;
-		L.affect_radius  = std::pow(l.intensity, 0.6f);
+
+		// narrower spot cone should be brighter
+		L.intensity = l.intensity * spot_intensity_multiplier(L.outer_angle);
+		L.affect_radius  = std::pow(L.intensity, 0.6f);
+
+		compute_spot_bounds(L);
 	}
 	else if constexpr (std::same_as<LT, AreaLight> or std::same_as<LT, AreaLightParams>)
 	{
-		L.type_flags      = LIGHT_TYPE_AREA | (l.two_sided? LIGHT_TWO_SIDED: 0);
-		L.shape_points[0] = glm::vec4(l.points[0], 1);
-		L.shape_points[1] = glm::vec4(l.points[1], 1);
-		L.shape_points[2] = glm::vec4(l.points[2], 1);
-		L.shape_points[3] = glm::vec4(l.points[3], 1);
-		const auto center =  glm::vec3((L.shape_points[1] + L.shape_points[2]) / 2.f);
-		L.affect_radius   = 50 * l.intensity * glm::distance(center, glm::vec3(L.shape_points[1]));
+		L.type_flags      = LIGHT_TYPE_AREA;
+		glm::vec3 right   = l.orientation * glm::vec3(l.size.x * 0.5f, 0, 0);
+		glm::vec3 up      = l.orientation * glm::vec3(0, l.size.y * 0.5f, 0);
+		L.shape_points[0] = glm::vec4(l.position - right - up, 1);
+		L.shape_points[1] = glm::vec4(l.position + right - up, 1);
+		L.shape_points[2] = glm::vec4(l.position + right + up, 1);
+		L.shape_points[3] = glm::vec4(l.position - right + up, 1);
+		L.affect_radius   = 50 * l.intensity * glm::distance(l.position, glm::vec3(L.shape_points[1]));
 	}
 	else if constexpr (std::same_as<LT, TubeLight> or std::same_as<LT, TubeLightParams>)
 	{
@@ -379,27 +294,81 @@ GPULight LightManager::to_gpu_light(const LT &l)
 		L.shape_points[0]   = glm::vec4(l.end_points[0], 1);
 		L.shape_points[1]   = glm::vec4(l.end_points[1], 1);
 		L.shape_points[2].x = l.thickness;
-		// L.affect_radius     =
+		// L.affect_radius     =      TODO
 	}
 	else if constexpr (std::same_as<LT, SphereLight> or std::same_as<LT, SphereLightParams>)
 	{
 		L.type_flags        = LIGHT_TYPE_SPHERE;
-		L.shape_points[0].x = l.sphere_radius;
-		// L.affect_radius     =
+		L.shape_points[0].x = l.radius;
+		// L.affect_radius     =       TODO
 	}
 	else if constexpr (std::same_as<LT, DiscLight> or std::same_as<LT, DiscLightParams>)
 	{
 		L.type_flags        = LIGHT_TYPE_DISC;
 		L.position          = l.position;
 		L.direction         = l.direction;
-		L.shape_points[0].x = l.disc_radius;
-		// L.affect_radius     =
+		L.shape_points[0].x = l.radius;
+		// L.affect_radius     =       TODO
 	}
 
+	if(l.shadow_caster)
+		L.type_flags |= LIGHT_SHADOW_CASTER;
 	if(l.fog > 0)
 		L.type_flags |= LIGHT_VOLUMETRIC;
 
 	CLR_SHADOW_IDX(L);
 
 	return L;
+}
+
+template<_private::LightParamsType LTP>
+auto LightManager::to_typed(const LTP &ltp, LightID light_id) const -> _private::return_type<LTP>
+{
+	using LT = _private::return_type<LTP>;
+
+	LT lt;
+	lt.color      = ltp.color;
+	lt.intensity  = ltp.intensity;
+	lt.fog        = ltp.fog;
+	lt.uuid       = light_id;
+
+	if constexpr (std::same_as<LTP, PointLightParams>)
+	{
+		lt.position = ltp.position;
+	}
+	else if constexpr (std::same_as<LTP, DirectionalLightParams>)
+	{
+		lt.direction = ltp.direction;
+	}
+	else if constexpr (std::same_as<LTP, SpotLightParams>)
+	{
+		lt.position    = ltp.position;
+		lt.direction   = ltp.direction;
+		lt.outer_angle = ltp.outer_angle;
+		lt.inner_angle = ltp.inner_angle;
+	}
+	else if constexpr (std::same_as<LTP, AreaLightParams>)
+	{
+		lt.position     = ltp.position;
+		lt.orientation  = ltp.orientation;
+		lt.size         = ltp.size;
+		lt.double_sided = ltp.double_sided;
+	}
+	else if constexpr (std::same_as<LTP, TubeLightParams>)
+	{
+		lt.end_points   = ltp.end_points;
+		lt.thickness    = ltp.thickness;
+	}
+	else if constexpr (std::same_as<LTP, SphereLightParams>)
+	{
+		lt.position     = ltp.position;
+		lt.radius       = ltp.radius;
+	}
+	else if constexpr (std::same_as<LTP, DiscLightParams>)
+	{
+		lt.position    = ltp.position;
+		lt.direction   = ltp.direction;
+	}
+
+	return lt;
 }
