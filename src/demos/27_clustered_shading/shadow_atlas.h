@@ -30,23 +30,22 @@ public:
 	using SlotSize = allocator_t::SizeT;
 	using SlotID = allocator_t::NodeIndex;
 
-	//dense_map<LightID, Slot> _lights;
 	struct SlotDef
 	{
 		SlotSize size;
 		SlotID node_index;
-		glm::uvec4 rect;       // TODO: only store 'top_left'? rect.zw is same as 'size'
+		glm::uvec4 rect;
 	};
 	using LightSlots = std::array<SlotDef, 6>;
 	struct AtlasLight
 	{
-		inline AtlasLight() {};
+		inline AtlasLight() : _dirty(true) {}
 		AtlasLight(const AtlasLight &other);
 		AtlasLight &operator = (const AtlasLight &other) = default;
 
 		LightID uuid;
-		size_t num_slots;     // point: 6, dir: 3?, all others: 1
-		LightSlots slots;     // per slot:
+		size_t num_slots;     // point: 6, dir: 3?, all others: 1; size of 'slots' array
+		LightSlots slots;     // per slot
 
 		inline bool is_dirty() const { return _dirty; }
 
@@ -63,8 +62,7 @@ public:
 
 	private:
 		mutable bool _dirty;
-		float _prev_light_value;
-		mutable Time _last_rendered;   // TODO: define a "pixels per second" limit for how many shadow map slots can be updated (in light-value/age order?)
+		mutable Time _last_rendered;   // TODO: define a "pixels per second" limit to dictate a limit for how many shadow map slots may be updated (in light-value/age order?)
 		mutable uint32_t _frames_skipped;
 		Time _last_size_change;
 
