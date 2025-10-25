@@ -135,6 +135,8 @@ public:
 	void setUniform(const std::string_view & name, const glm::vec2 & vector);
 	void setUniform(const std::string_view & name, const glm::vec3 & vector);
 	void setUniform(const std::string_view & name, const glm::vec4 & vector);
+	void setUniform(const std::string_view & name, const glm::ivec2 & vector);
+	void setUniform(const std::string_view & name, const glm::ivec3 & vector);
 	void setUniform(const std::string_view & name, const glm::uvec2 & vector);
 	void setUniform(const std::string_view & name, const glm::uvec3 & vector);
 	void setUniform(const std::string_view & name, const glm::mat3 & matrix);

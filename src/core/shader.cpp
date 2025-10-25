@@ -531,6 +531,16 @@ void Shader::setUniform(const std::string_view & name, const glm::vec4 & vector)
 	glProgramUniform4fv(m_program_id, uniformLocation(name), 1, glm::value_ptr(vector));
 }
 
+void Shader::setUniform(const std::string_view &name, const glm::ivec2 &vector)
+{
+	glProgramUniform2iv(m_program_id, uniformLocation(name), 1, glm::value_ptr(vector));
+}
+
+void Shader::setUniform(const std::string_view &name, const glm::ivec3 &vector)
+{
+	glProgramUniform3iv(m_program_id, uniformLocation(name), 1, glm::value_ptr(vector));
+}
+
 void Shader::setUniform(const std::string_view & name, const glm::uvec2& vector)
 {
 	glProgramUniform2uiv(m_program_id, uniformLocation(name), 1, glm::value_ptr(vector));
