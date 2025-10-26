@@ -44,13 +44,6 @@ void LightManager::reserve(size_t count)
 	_lights.reserve(count);
 }
 
-std::string_view LightManager::type_name(const GPULight &L) const
-{
-	const auto light_type = GET_LIGHT_TYPE(L);
-	assert(light_type < std::size(s_light_type_names));
-	return s_light_type_names[GET_LIGHT_TYPE(L)];
-}
-
 void LightManager::clear()
 {
 	_id_to_index.clear();
@@ -276,4 +269,16 @@ float LightManager::spot_intensity_multiplier(float angle)
 {
 	const auto inv_cos_ref_angle = 1.f - std::cos(glm::radians(45.f));
 	return inv_cos_ref_angle / (1.f - std::cos(angle));
+}
+
+std::string_view LightManager::type_name(const GPULight &L)
+{
+	return type_name(GET_LIGHT_TYPE(L));
+}
+
+
+std::string_view LightManager::type_name(uint_fast8_t light_type)
+{
+	assert(light_type < std::size(s_light_type_names));
+	return s_light_type_names[light_type];
 }

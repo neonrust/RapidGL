@@ -69,8 +69,6 @@ public:
 	// create light entity, return to augmented instance (e.g. with uuid set)
 	//  add() or create() ?
 
-	std::string_view type_name(const GPULight &L) const;
-
 	template<_private::LightParamsType LTP>
 	auto add(const LTP &ltp) -> _private::return_type<LTP>;
 
@@ -126,6 +124,10 @@ public:
 
 	bounds::Sphere light_bounds(const GPULight &L) const;
 
+	template<_private::LightType LT>
+	static std::string_view type_name();
+	static std::string_view type_name(const GPULight &L);
+
 private:
 	void add(const GPULight &L, LightID light_id);
 
@@ -138,6 +140,8 @@ private:
 	// convert an XParams light type to its corresponding "handle" type (includes LightID)
 	template<_private::LightParamsType LTP>
 	auto to_typed(const LTP &lpt, LightID light_id) const -> _private::return_type<LTP>;
+
+	static std::string_view type_name(uint_fast8_t light_type);
 
 private:
 	dense_map<LightID, LightIndex> _id_to_index;
@@ -371,4 +375,25 @@ auto LightManager::to_typed(const LTP &ltp, LightID light_id) const -> _private:
 	}
 
 	return lt;
+}
+
+template<_private::LightType LT>
+std::string_view LightManager::type_name()
+{
+	if constexpr (std::is_same_v<LT, PointLight>)
+		return type_name(LIGHT_TYPE_POINT);
+	if constexpr (std::is_same_v<LT, DirectionalLight>)
+		return type_name(LIGHT_TYPE_DIRECTIONAL);
+	if constexpr (std::is_same_v<LT, SpotLight>)
+		return type_name(LIGHT_TYPE_SPOT);
+	if constexpr (std::is_same_v<LT, AreaLight>)
+		return type_name(LIGHT_TYPE_AREA);
+	if constexpr (std::is_same_v<LT, TubeLight>)
+		return type_name(LIGHT_TYPE_TUBE);
+	if constexpr (std::is_same_v<LT, SphereLight>)
+		return type_name(LIGHT_TYPE_SPHERE);
+	if constexpr (std::is_same_v<LT, DiscLight>)
+		return type_name(LIGHT_TYPE_DISC);
+	else
+		static_assert(false);
 }
