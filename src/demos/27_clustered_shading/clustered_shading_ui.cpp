@@ -50,36 +50,44 @@ void ClusteredShading::render_gui()
 	ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
 	ImGui::SetNextWindowSize({ 400, 1024 });
 
-	ImGui::Text("    Culling: %4ld µs", m_cull_scene_time.average().count());
-	ImGui::Text("    Shadows: %4ld µs", m_shadow_time.average().count());
-	ImGui::Text("     Z-pass: %4ld µs", m_depth_time.average().count());
-	ImGui::Text(" Clstr.find: %4ld µs", m_cluster_find_time.average().count());
-	ImGui::Text(" Clstr.coll: %4ld µs", m_cluster_index_time.average().count());
-	ImGui::Text(" Light cull: %4ld µs", m_light_cull_time.average().count());
-	ImGui::Text("    Shading: %4ld µs", m_shading_time.average().count());
-	ImGui::Text("     Skybox: %4ld µs", m_skybox_time.average().count());
-	// ImGui::Text("        PP: %3ld µs", m_pp_time.count());
-	if(_fog_enabled)
+#define ROW() ImGui::TableNextRow();
+#define COL(n) ImGui::TableSetColumnIndex(n)
+#define TIMING(label, time) ROW();\
+COL(0); ImGui::Text(label); \
+COL(1); ImGui::Text("%4ld µs", (time).count())
+
+	ImGui::BeginTable("Timings", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable);
 	{
-		ImGui::Text("Volumetrics: %4ld µs", (m_volumetrics_cull_time.average() + m_volumetrics_inject_time.average() + m_volumetrics_accum_time.average() + m_volumetrics_render_time.average()).count());
-		ImGui::Text(" -   cull: %3ld µs", m_volumetrics_cull_time.average().count());
-		ImGui::Text(" - inject: %3ld µs", m_volumetrics_inject_time.average().count());
-		ImGui::Text(" -  accum: %3ld µs", m_volumetrics_accum_time.average().count());
-		ImGui::Text(" - render: %3ld µs", m_volumetrics_render_time.average().count());
+		ImGui::TableSetupColumn("Phase",    ImGuiTableColumnFlags_WidthFixed);
+		ImGui::TableSetupColumn("Duration", ImGuiTableColumnFlags_WidthFixed);
+		ImGui::TableHeadersRow();
+
+		TIMING("Culling",  m_cull_scene_time.average());
+		TIMING("Z-pass", m_depth_time.average());
+
+		TIMING("Shadow", m_shadow_time.average() + m_shadow_alloc_time.average());
+		TIMING("  alloc", m_shadow_alloc_time.average());
+		TIMING("  render", m_shadow_time.average());
+
+		TIMING("Clusters", m_cluster_find_time.average() + m_cluster_index_time.average() + m_light_cull_time.average());
+		TIMING("  find", m_cluster_find_time.average());
+		TIMING("  collect", m_cluster_index_time.average());
+		TIMING("  cull", m_light_cull_time.average());
+
+		TIMING("Shading", m_shading_time.average());
+		TIMING("Skybox", m_skybox_time.average());
+
+		TIMING("Volumetrics", m_volumetrics_cull_time.average() + m_volumetrics_inject_time.average() + m_volumetrics_accum_time.average() + m_volumetrics_render_time.average());
+		TIMING("  cull", m_volumetrics_cull_time.average());
+		TIMING("  inject", m_volumetrics_inject_time.average());
+		TIMING("  accum",  m_volumetrics_accum_time.average());
+		TIMING("  render", m_volumetrics_render_time.average());
+
+		TIMING("Tonemapping", m_tonemap_time.average());
+		TIMING("Debug draw", m_debug_draw_time.average());
+		// TIMING("PP blur", m_pp_blur_time.average());
 	}
-	ImGui::Text("Tonemapping: %4ld µs", m_tonemap_time.average().count());
-	ImGui::Text(" Debug draw: %4ld µs", m_debug_draw_time.average().count());
-	// ImGui::Text("   PP blur: %4ld µs", m_pp_blur_time.average().count());
-
-	// if (ImPlot::BeginPlot("plots"))
-	// {
-	// 	const float x[] = { 0, 1, 2, 3 };
-	// 	const float v[] = { 3.5f, 1.f, 2.f, 4.4f };
-	// 	ImPlot::SetupAxesLimits(0, 100, 0, 100);
-	// 	ImPlot::PlotShaded("Shadows", x, v, 4);
-
-	// 	ImPlot::EndPlot();
-	// }
+	ImGui::EndTable();
 
 	ImGui::Begin("Settings");
 	{
