@@ -134,14 +134,6 @@ void Volumetrics::inject(const Camera &camera) // TODO: View
 
 	const auto active_idx = _frame & 1;
 
-	const auto num_groups = glm::uvec3(
-		size_t(std::ceil(float(s_froxels.x) / float(s_local_size.x))),
-		size_t(std::ceil(float(s_froxels.y) / float(s_local_size.y))),
-		size_t(std::ceil(float(s_froxels.z) / float(s_local_size.z)))
-		);
-
-
-
 	// TODO: better API?
 	//   _inject_zshader.bindImage("u_output_transmittance"sv, _transmittance[_frame & 1], ImageAccess::Write);
 	_transmittance[active_idx].BindImage(5, ImageAccess::Write);
@@ -166,6 +158,12 @@ void Volumetrics::inject(const Camera &camera) // TODO: View
 
 	_blue_noise.BindLayer(_frame % _blue_noise.num_layers(), 3);
 
+	const auto num_groups = glm::uvec3(
+		size_t(std::ceil(float(s_froxels.x) / float(s_local_size.x))),
+		size_t(std::ceil(float(s_froxels.y) / float(s_local_size.y))),
+		size_t(std::ceil(float(s_froxels.z) / float(s_local_size.z)))
+	);
+
 	_inject_shader.invoke(num_groups);
 }
 
@@ -173,54 +171,10 @@ void Volumetrics::accumulate(const Camera &camera)
 {
 	const auto active_idx = _frame & 1;
 
-	auto num_groups = glm::uvec3(
-		size_t(std::ceil(float(s_froxels.x) / float(s_local_size.x))),
-		size_t(std::ceil(float(s_froxels.y) / float(s_local_size.y))),
-		size_t(std::ceil(float(s_froxels.z) / float(s_local_size.z)))
-	);
-
 	if(_3dblur_enabled)
 	{
-		// 1st pass
-
-		// injection -> blur[0]
-		_transmittance[active_idx].BindImage(0, ImageAccess::Read);
-		_3dblur[0].BindImage(1, ImageAccess::Write);
-		_3dblur_shader.setUniform("u_axis"sv, 0u);  // X axis
-		_3dblur_shader.invoke(num_groups);
-
-		// blur[0] -> blur[1]
-		_3dblur[0].BindImage(0, ImageAccess::Read);
-		_3dblur[1].BindImage(1, ImageAccess::Write);
-		_3dblur_shader.setUniform("u_axis"sv, 1u);  // Y axis
-		_3dblur_shader.invoke(num_groups);
-
-		// blur[1] -> blur[0]
-		_3dblur[1].BindImage(0, ImageAccess::Read);
-		_3dblur[0].BindImage(1, ImageAccess::Write);
-		_3dblur_shader.setUniform("u_axis"sv, 2u);  // Z axis
-		_3dblur_shader.invoke(num_groups);
-
-		// // 2nd pass
-		// // blur[0] -> blur[1]
-		// _3dblur[0].BindImage(0, ImageAccess::Write);
-		// _3dblur[1].BindImage(1, ImageAccess::Write);
-		// _3dblur_shader.setUniform("u_axis"sv, 0u);  // X axis
-		// _3dblur_shader.invoke(num_groups);
-
-		// // blur[1] -> blur[0]
-		// _3dblur[1].BindImage(0, ImageAccess::Read);
-		// _3dblur[0].BindImage(1, ImageAccess::Write);
-		// _3dblur_shader.setUniform("u_axis"sv, 1u);  // Z axis
-		// _3dblur_shader.invoke(num_groups);
-
-		// // blur[0] -> blur[1]
-		// _3dblur[0].BindImage(0, ImageAccess::Read);
-		// _3dblur[1].BindImage(1, ImageAccess::Write);
-		// _3dblur_shader.setUniform("u_axis"sv, 2u);  // Y axis
-		// _3dblur_shader.invoke(num_groups);
-
-		_3dblur[0].BindImage(6, ImageAccess::Read);
+		auto &blur_output = blur_froxels(_transmittance[active_idx]);
+		blur_output.BindImage(6, ImageAccess::Read);
 	}
 	else
 		_transmittance[active_idx].BindImage(6, ImageAccess::Read);
@@ -233,7 +187,11 @@ void Volumetrics::accumulate(const Camera &camera)
 	_bake_shader.setUniform("u_near_z"sv, camera.nearPlane());
 	_bake_shader.setUniform("u_far_z"sv, camera.farPlane());
 
-	num_groups.z = 1;
+	const auto num_groups = glm::uvec3(
+		size_t(std::ceil(float(s_froxels.x) / float(s_local_size.x))),
+		size_t(std::ceil(float(s_froxels.y) / float(s_local_size.y))),
+		1
+	);
 	_accumulate_shader.invoke(num_groups);
 }
 
@@ -261,6 +219,58 @@ const Texture3D &RGL::PP::Volumetrics::froxel_texture(uint32_t index) const
 	if(index == 1)
 		return _transmittance[1 - (_frame & 1)];
 	return _accumulation;
+}
+
+Texture3D &Volumetrics::blur_froxels(Texture3D &input)
+{
+	const auto num_groups = glm::uvec3(
+		size_t(std::ceil(float(s_froxels.x) / float(s_local_size.x))),
+		size_t(std::ceil(float(s_froxels.y) / float(s_local_size.y))),
+		size_t(std::ceil(float(s_froxels.z) / float(s_local_size.z)))
+	);
+
+
+	// 1st pass
+	// input-> blur[0]
+	input.BindImage(     0, ImageAccess::Read);
+	_3dblur[0].BindImage(1, ImageAccess::Write);
+	_3dblur_shader.setUniform("u_axis"sv, 0u);  // X axis
+	_3dblur_shader.invoke(num_groups);
+
+	// blur[0] -> blur[1]
+	_3dblur[0].BindImage(0, ImageAccess::Read);
+	_3dblur[1].BindImage(1, ImageAccess::Write);
+	_3dblur_shader.setUniform("u_axis"sv, 1u);  // Y axis
+	_3dblur_shader.invoke(num_groups);
+
+	// blur[1] -> blur[0]
+	_3dblur[1].BindImage(0, ImageAccess::Read);
+	_3dblur[0].BindImage(1, ImageAccess::Write);
+	_3dblur_shader.setUniform("u_axis"sv, 2u);  // Z axis
+	_3dblur_shader.invoke(num_groups);
+
+	return _3dblur[0];
+
+	// // 2nd pass
+	// // blur[0] -> blur[1]
+	// _3dblur[0].BindImage(0, ImageAccess::Write);
+	// _3dblur[1].BindImage(1, ImageAccess::Write);
+	// _3dblur_shader.setUniform("u_axis"sv, 0u);  // X axis
+	// _3dblur_shader.invoke(num_groups);
+
+	// // blur[1] -> blur[0]
+	// _3dblur[1].BindImage(0, ImageAccess::Read);
+	// _3dblur[0].BindImage(1, ImageAccess::Write);
+	// _3dblur_shader.setUniform("u_axis"sv, 1u);  // Z axis
+	// _3dblur_shader.invoke(num_groups);
+
+	// // blur[0] -> blur[1]
+	// _3dblur[0].BindImage(0, ImageAccess::Read);
+	// _3dblur[1].BindImage(1, ImageAccess::Write);
+	// _3dblur_shader.setUniform("u_axis"sv, 2u);  // Y axis
+	// _3dblur_shader.invoke(num_groups);
+
+	// return _3dblur[1];
 }
 
 } // RGL

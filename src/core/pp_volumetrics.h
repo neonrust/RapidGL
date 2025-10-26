@@ -50,6 +50,9 @@ public:
 	const Texture3D &froxel_texture(uint32_t index=0) const;
 
 private:
+	Texture3D &blur_froxels(Texture3D &input);
+
+private:
 	Shader _select_shader;
 	Shader _cull_shader;
 	Shader _inject_shader;
