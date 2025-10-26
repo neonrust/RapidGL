@@ -1,6 +1,5 @@
 #include "clustered_shading.h"
 
-#include "constants.h"
 #include "window.h"
 #include <ranges>
 
@@ -107,10 +106,8 @@ void ClusteredShading::debugDrawSceneBounds()
 		}
 		else if(IS_SPOT_LIGHT(L))
 		{
-			const auto spot_ = _light_mgr.to_<SpotLight>(L);
-			const auto &spot = spot_.value();
-			// TODO: take shadow map (size) into account
-			debugDrawSpotLight(spot, glm::vec4(spot.color, 1));
+			// TODO: take shadow map (size) into account?
+			debugDrawSpotLight(L, glm::vec4(L.color, 1));
 		}
 	}
 }
@@ -427,8 +424,23 @@ void ClusteredShading::debugDrawSphere(const glm::vec3 &center, float radius, si
 	glDisableVertexAttribArray(0);
 }
 
-void ClusteredShading::debugDrawSpotLight(const SpotLight &light, const glm::vec4 &color)
+void ClusteredShading::debugDrawIcon(const glm::vec3 &position, const Texture2D &icon, float size, const glm::vec4 &color)
 {
+	(void)position;
+	(void)size;
+	(void)color;
+	// TODO
+	m_icon_shader->bind();
+	icon.Bind(0);
+	m_camera.setUniforms(*m_icon_shader);
+	glBindVertexArray(_empty_vao);
+	glDrawArrays(GL_TRIANGLES, 0, 3);
+}
+
+void ClusteredShading::debugDrawSpotLight(const GPULight &light, const glm::vec4 &color)
+{
+	assert(IS_SPOT_LIGHT(light));
+
 	const auto &L = light;
 
 	const auto dir_space = make_common_space_from_direction(L.direction);
