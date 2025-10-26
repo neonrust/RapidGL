@@ -12,8 +12,8 @@
 
 layout(local_size_x = GROUP_SIZE_X, local_size_y = GROUP_SIZE_Y, local_size_z = 1) in;
 
-layout(binding = 6, rgba32f) uniform image3D u_in_scatter;
-layout(binding = 5, rgba32f) uniform image3D u_out_accumulation;
+layout(binding = 6, rgba16f) uniform image3D u_in_scatter;
+layout(binding = 5, rgba16f) uniform image3D u_out_accumulation;
 uniform float u_far_z;
 uniform float u_near_z;
 
