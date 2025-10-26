@@ -116,7 +116,7 @@ void main()
 			{
 				float light_edge_distance = max(0, distance(light.position, u_cam_pos) - light.affect_radius);
 				// fade the volumetrics by distance
-				distance_fade = fadeByDistance(light_edge_distance, min(u_light_max_distance, u_volumetric_max_distance));
+				distance_fade = fadeByDistance(light_edge_distance, light.affect_radius/1.5);//min(u_light_max_distance, u_volumetric_max_distance));
 			}
 		}
 
