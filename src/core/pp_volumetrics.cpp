@@ -132,7 +132,6 @@ void Volumetrics::inject(const Camera &camera) // TODO: View
 {
 	++_frame;
 
-	camera.setUniforms(_inject_shader);
 	const auto active_idx = _frame & 1;
 
 	const auto num_groups = glm::uvec3(
