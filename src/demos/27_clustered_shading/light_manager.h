@@ -394,6 +394,5 @@ std::string_view LightManager::type_name()
 		return type_name(LIGHT_TYPE_SPHERE);
 	if constexpr (std::is_same_v<LT, DiscLight>)
 		return type_name(LIGHT_TYPE_DISC);
-	else
-		static_assert(false);
+	return std::string_view("{unknown}");
 }
