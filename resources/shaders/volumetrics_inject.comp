@@ -195,16 +195,11 @@ void main()
 
 		// find the corresponding UV in the previous froxel grid
 		vec3 prev_uv = worldToUV(world_pos, u_prev_view);
+		// NOTE: relying on "camp to edge" here
 
-		// only mix with UVs that coincide with the current froxel grid
-		if(all(greaterThanEqual(prev_uv, vec3(0))) && all(lessThanEqual(prev_uv, vec3(1))))
-		{
-			// read previous froxel
-			vec3 prev_scattered = textureLod(u_prev_scatter, prev_uv, 0).rgb;
-			total_scattered = mix(total_scattered, prev_scattered, u_froxel_blend_weight);
-		}
-		// else
-		// 	total_scattered = vec3(1, 0, 1);
+		// read previous froxel
+		vec3 prev_scattered = textureLod(u_prev_scatter, prev_uv, 0).rgb;
+		total_scattered = mix(total_scattered, prev_scattered, u_froxel_blend_weight);
 	}
 
 	imageStore(u_out_scatter, froxel, vec4(total_scattered, density));
