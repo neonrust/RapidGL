@@ -74,7 +74,7 @@ private:
 	float _anisotropy { 0.7f };  // ~0.7 Thin haze / atmospheric fog
 	float _density { 0.1f };    // small values, less than ~0.2
 	bool _blend { true };
-	float _blend_weight { 0.5f };
+	float _blend_weight { 0.1f };
 	// float _falloff_mix { 0 };
 	bool _3dblur_enabled { true };
 
