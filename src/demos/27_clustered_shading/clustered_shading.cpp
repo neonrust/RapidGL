@@ -1432,10 +1432,11 @@ void ClusteredShading::renderShadowMaps()
 	if(now - last_eval_time > 100ms)
 	{
 		last_eval_time = now;
-		// TODO: probably should be a separate setting
-		_shadow_atlas.set_max_distance(m_camera.farPlane() * s_light_shadow_max_fraction);
 
+		_shadow_atlas.set_max_distance(m_camera.farPlane() * s_light_shadow_max_fraction);
+		const auto T0 = steady_clock::now();
 		_shadow_atlas.eval_lights(_lightsPvs, m_camera.position(), m_camera.forwardVector());
+		m_shadow_alloc_time.add(duration_cast<microseconds>(steady_clock::now() - T0));
 	}
 
 	// light projections needs to be updated more often than the allocation
