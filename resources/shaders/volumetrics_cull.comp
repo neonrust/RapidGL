@@ -1,6 +1,7 @@
 #version 460 core
 
 layout(local_size_x = FROXEL_THREADS_X, local_size_y = FROXEL_THREADS_Y, local_size_z = FROXEL_THREADS_Z) in;
+const uint THREADS_COUNT = gl_WorkGroupSize.x * gl_WorkGroupSize.y * gl_WorkGroupSize.z;
 
 #include "../../src/demos/27_clustered_shading/shaders/shared-structs.glh"
 #include "volumetrics.glh"
@@ -79,8 +80,6 @@ void main()
 	uvec2  tile_pos = tile * tile_size;
 
 	Rect tile_rect = Rect(tile_pos.x, tile_pos.y, tile_size.x, tile_size.y);
-
-	const uint THREADS_COUNT = gl_WorkGroupSize.x * gl_WorkGroupSize.y;
 
 	for(uint index = gl_LocalInvocationIndex; index < ssbo_num_volumetric_lights; index += THREADS_COUNT)
 	{
