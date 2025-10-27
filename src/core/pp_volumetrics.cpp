@@ -208,7 +208,17 @@ void Volumetrics::render(const RenderTarget::Texture2d &, RenderTarget::Texture2
 						size_t(std::ceil(float(out.height()) / float(s_local_size.y))),
 						1);
 
-	// TODO: blur 'out' (2d) ?
+	if(_2dblur_enabled)
+	{
+		if(not _blur3x3)
+		{
+			_blur3x3.create(out.width(), out.height());
+			assert(_blur3x3);
+		}
+		_blur3x3.render(out, out);
+		// _blur3x3.render(out, out);
+		// _blur3x3.render(out, out);
+	}
 }
 
 const Texture3D &RGL::PP::Volumetrics::froxel_texture(uint32_t index) const

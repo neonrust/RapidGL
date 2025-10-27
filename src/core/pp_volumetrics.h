@@ -1,6 +1,7 @@
 #pragma once
 
 #include "postprocess.h"
+#include "pp_gaussian_blur_fixed.h"
 #include "shader.h"
 #include "texture.h"
 
@@ -28,7 +29,8 @@ public:
 	// multiplier for the volumetrics effect
 	inline void setStrength(float strength) { _strength = strength; }
 
-	inline void setBlurEnabled(bool enabled) { _3dblur_enabled = enabled; }
+	inline void setFroxelBlurEnabled(bool enabled) { _3dblur_enabled = enabled; }
+	inline void setPostBlurEnabled(bool enabled) { _2dblur_enabled = enabled; }
 
 	// = 0: isotropic scattering; light is scattered equally in all directions (like fog or smoke).
 	// > 0: forward scattering; light tends to keep going the same way it was headed (like mist, clouds, water droplets).
@@ -69,6 +71,7 @@ private:
 	buffer::Storage<uint> _all_volumetric_lights;
 	buffer::Storage<uint> _all_tile_lights;
 	buffer::Storage<IndexRange> _tile_lights_ranges;
+	RGL::PP::BlurFixed<3.f> _blur3x3;
 
 	float _strength { 1.f };
 	float _anisotropy { 0.7f };  // ~0.7 Thin haze / atmospheric fog
@@ -77,6 +80,7 @@ private:
 	float _blend_weight { 0.1f };
 	// float _falloff_mix { 0 };
 	bool _3dblur_enabled { true };
+	bool _2dblur_enabled { true };
 
 	GLuint _dummy_vao_id;
 };

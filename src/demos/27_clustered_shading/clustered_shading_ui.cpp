@@ -208,14 +208,13 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 				if(ImGui::Checkbox("Temporal blending", &blend_enabled))
 					m_volumetrics_pp.setTemporalBlending(blend_enabled);
 				if(blend_enabled)
-					ImGui::SliderFloat("Temporal blend", &_fog_blend_weight, 0.f, 0.5f, "%.2f");  // lerp: <current> - <previous>
-				// static float falloff_mix { 0 };
-				// if(ImGui::SliderFloat("Falloff mix", &falloff_mix, 0.f, 1.f, "%.2f"))
-				// 	m_volumetrics_pp.setFalloffMix(falloff_mix);
-
-				static bool blur_enabled { true };
-				if(ImGui::Checkbox("3D Blur", &blur_enabled))
-					m_volumetrics_pp.setBlurEnabled(blur_enabled);
+					ImGui::SliderFloat("Temporal blend", &_fog_blend_weight, 0.f, 0.4f, "%.2f");  // lerp: <current> - <previous>
+				static bool blur3_enabled { true };
+				if(ImGui::Checkbox("3D Blur", &blur3_enabled))
+					m_volumetrics_pp.setFroxelBlurEnabled(blur3_enabled);
+				static bool blur2_enabled { true };
+				if(ImGui::Checkbox("2D Blur", &blur2_enabled))
+					m_volumetrics_pp.setPostBlurEnabled(blur2_enabled);
 			}
 		}
 
