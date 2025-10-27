@@ -1,7 +1,8 @@
 #version 460 core
 
-layout(local_size_x = FROXEL_THREADS_X, local_size_y = FROXEL_THREADS_Y, local_size_z = FROXEL_THREADS_Z) in;
-const uint THREADS_COUNT = gl_WorkGroupSize.x * gl_WorkGroupSize.y * gl_WorkGroupSize.z;
+#define GROUP_SIZE 8
+
+layout(local_size_x = GROUP_SIZE, local_size_y = GROUP_SIZE, local_size_z = 1) in;
 
 #include "../../src/demos/27_clustered_shading/shaders/shared-structs.glh"
 #include "volumetrics.glh"
@@ -65,6 +66,8 @@ void main()
 {
 	if(ssbo_num_volumetric_lights == 0)
 		return; // nothing for this shader to do
+
+	const uint THREADS_COUNT = gl_WorkGroupSize.x * gl_WorkGroupSize.y * gl_WorkGroupSize.z;
 
 	if(gl_LocalInvocationIndex == 0)
 	{
