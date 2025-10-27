@@ -29,10 +29,14 @@ set(SHADER_PATH resources/shaders)
 set(SHADER_FILES
 	${SHADER_PATH}/billboard-icon.vert
 	${SHADER_PATH}/billboard-icon.frag
+	${SHADER_PATH}/blur_3d.comp
+	${SHADER_PATH}/gaussian_blur.comp
 	${SHADER_PATH}/imgui_3d_texture.frag
 	${SHADER_PATH}/imgui_3d_texture.vert
 	${SHADER_PATH}/imgui_depth_image.frag
 	${SHADER_PATH}/imgui_depth_image.vert
+	${SHADER_PATH}/mipmap_blur.comp
+	${SHADER_PATH}/shadows.glh
 	${SHADER_PATH}/shapes.glh
 	${SHADER_PATH}/volumetrics.glh
 	${SHADER_PATH}/volumetrics_accumulate.comp
