@@ -894,35 +894,40 @@ void ClusteredShading::update(double delta_time)
 {
 	_running_time += seconds_f(delta_time);
 
-    /* Update variables here. */
 	m_camera.update(delta_time);
 
-	// static float     rotation_speed = 1;
-	// static float     time_accum     = 0;
-
-/*
-	for(auto &spot: m_spot_lights)
-	{
-		spot.outer_angle = glm::radians(s_spot_outer_angle);
-		spot.point.base.intensity = s_spot_intensity;
-	}
-*/
-
-	const float ajust_amount = 1.0f * delta_time;
+	const float move_amount = float(1.0f * delta_time);
 	float adjust_position = 0.f;
 	if(Input::isKeyDown(KeyCode::LeftArrow))
-		adjust_position = -ajust_amount;
+		adjust_position = -move_amount;
 	else if(Input::isKeyDown(KeyCode::RightArrow))
-		adjust_position = +ajust_amount;
+		adjust_position = +move_amount;
 
-	if(adjust_position != 0)
+	const float angle_amount = float(glm::radians(10.f)*delta_time);
+	float adjust_angle  = 0.f;
+	if(Input::isKeyDown(KeyCode::RightBracket))
+		adjust_angle = angle_amount;
+	else if(Input::isKeyDown(KeyCode::LeftBracket))
+		adjust_angle  = -angle_amount;
+
+	const auto spin_mat = glm::angleAxis(glm::radians(float(15*delta_time)), AXIS_Y);
+
+	if(adjust_position != 0 or adjust_angle  != 0)
 	{
 		for(LightIndex light_index = 0; light_index <  _light_mgr.size(); ++light_index)
 		{
 			const auto &[light_id, L] =_light_mgr.at(light_index);
 			auto Lmut = L;
-			// orbit around the world origin
+
 			Lmut.position.z += adjust_position;
+
+			if(adjust_angle  != 0 and IS_SPOT_LIGHT(Lmut))
+			{
+				float new_angle = std::max(Lmut.outer_angle + adjust_angle, glm::radians(5.f));  // noise becomes apparent at smaller degrees
+				_light_mgr.set_spot_angle(Lmut, new_angle);
+				std::print("  [{}] spot angle: {:.1f}\n", light_id, glm::degrees(Lmut.outer_angle));
+			}
+
 			_light_mgr.set(light_id, Lmut);
 		}
 	}
@@ -939,8 +944,12 @@ void ClusteredShading::update(double delta_time)
 		{
 			const auto &[light_id, L] =_light_mgr.at(light_index);
 			auto Lmut = L;
-			// orbit around the world origin
-			Lmut.position = orbit_mat * glm::vec4(L.position, 1);
+
+			if(IS_SPOT_LIGHT(Lmut))
+				Lmut.direction = spin_mat * glm::vec4(Lmut.direction, 0);
+			else
+				Lmut.position = orbit_mat * glm::vec4(L.position, 1); // orbit around the world origin
+
 			_light_mgr.set(light_id, Lmut);
 		}
 	}
