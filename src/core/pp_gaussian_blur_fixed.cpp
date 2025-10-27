@@ -1,5 +1,7 @@
 #include "pp_gaussian_blur_fixed.h"
 
+#include "filesystem.h"
+
 using namespace std::literals;
 
 namespace RGL::PP
@@ -48,19 +50,21 @@ bool _blur_fixed_init(size_t width, size_t height, float sigma, Shader &horizont
 			std::printf("  %s\n", c.c_str());
 	}
 
-	new (&vertical) Shader("src/demos/27_clustered_shading/shaders/gaussian_blur.comp", conditionals);
+	const auto shader_dir = FileSystem::getResourcesPath() / "shaders";
+
+	new (&vertical) Shader(shader_dir / "gaussian_blur.comp", conditionals);
 	vertical.link();
 	assert(bool(vertical));
 	vertical.setPostBarrier(Shader::Barrier::Image);
 
 	conditionals.insert("HORIZONTAL");
 
-	new (&horizontal) Shader("src/demos/27_clustered_shading/shaders/gaussian_blur.comp", conditionals);
+	new (&horizontal) Shader(shader_dir / "gaussian_blur.comp", conditionals);
 	horizontal.link();
 	assert(bool(horizontal));
 	horizontal.setPostBarrier(Shader::Barrier::Image);
 
-	temp.create("gsauss temp", width, height, RenderTarget::Color::Default, RenderTarget::Depth::None);
+	temp.create("blur temp", width, height, RenderTarget::Color::HalfFloat | RenderTarget::Color::Texture, RenderTarget::Depth::None);
 	temp.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipNearest);
 
 	return false;
