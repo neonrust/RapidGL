@@ -43,6 +43,8 @@ void Texture2d::create(const char *name, size_t width, size_t height, Color::Con
 			_color_format = GL_RG16F;
 		else if(color_cfg & Color::Float)
 			_color_format = GL_RGBA32F;
+		else if(color_cfg & Color::HalfFloat)
+			_color_format = GL_RGBA16F;
 		else
 			_color_format = GL_RGBA8;
 	}
