@@ -62,6 +62,9 @@ shared uint s_affecting_lights[FROXEL_TILE_MAX_LIGHTS];
 
 void main()
 {
+	if(ssbo_num_volumetric_lights == 0)
+		return; // nothing for this shader to do
+
 	if(gl_LocalInvocationIndex == 0)
 	{
 		s_index_offset = 0;
