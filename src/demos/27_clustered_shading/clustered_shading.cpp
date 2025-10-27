@@ -357,21 +357,24 @@ void ClusteredShading::init_app()
 	const auto shader_init_time = duration_cast<microseconds>(T1 - T0);
 	std::print("Shader init time: {:.1f} ms\n", float(shader_init_time.count())/1000.f);
 
+	namespace C = RenderTarget::Color;
+	namespace D = RenderTarget::Depth;
+
 	// Create depth pre-pass render target
-	m_depth_pass_rt.create("depth-pass", Window::width(), Window::height(), RenderTarget::Color::None, RenderTarget::Depth::Texture);
+	m_depth_pass_rt.create("depth-pass", Window::width(), Window::height(), C::None, D::Texture);
 
 	_rt.create("rt", Window::width(), Window::height());
 	_rt.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipNearest); // not necessary?
 
 	static constexpr auto pp_downscale = 2;
-	_pp_low_rt.create("pp-low", Window::width() / pp_downscale, Window::height() / pp_downscale, RenderTarget::Color::Default, RenderTarget::Depth::None);
+	_pp_low_rt.create("pp-low", Window::width() / pp_downscale, Window::height() / pp_downscale, C::HalfFloat | C::Texture, D::None);
 	_pp_low_rt.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipNearest); // not necessary?
 
-	_pp_full_rt.create("pp-full", Window::width(), Window::height(), RenderTarget::Color::Default, RenderTarget::Depth::None);
+	_pp_full_rt.create("pp-full", Window::width(), Window::height(), C::Default, D::None);
 	_pp_full_rt.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipNearest); // not necessary?
 
 	// TODO: final_rt.cloneFrom(_rt);
-	_final_rt.create("final", Window::width(), Window::height(), RenderTarget::Color::Default, RenderTarget::Depth::None);
+	_final_rt.create("final", Window::width(), Window::height(), C::Default, D::None);
 	_final_rt.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipNearest); // not necessary?
 
 	// IBL precomputations.
@@ -380,14 +383,10 @@ void ClusteredShading::init_app()
 	m_env_cubemap_rt = std::make_shared<RenderTarget::Cube>();
 	m_env_cubemap_rt->create("env", 2048, 2048);
 
-	{
-		_shadow_atlas.create();
+	_shadow_atlas.create();
 
-		m_brdf_lut_rt = std::make_shared<RenderTarget::Texture2d>();
-		namespace C = RenderTarget::Color;
-		namespace D = RenderTarget::Depth;
-		m_brdf_lut_rt->create("brdf-lut", 512, 512, C::Texture | C::Float2);
-	}
+	m_brdf_lut_rt = std::make_shared<RenderTarget::Texture2d>();
+	m_brdf_lut_rt->create("brdf-lut", 512, 512, C::Texture | C::Float2);
 
 	m_irradiance_cubemap_rt = std::make_shared<RenderTarget::Cube>();
     m_irradiance_cubemap_rt->set_position(glm::vec3(0.0));
