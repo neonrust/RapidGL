@@ -1,8 +1,6 @@
 #version 460 core
 
-#define GROUP_SIZE 8
-
-layout(local_size_x = GROUP_SIZE, local_size_y = GROUP_SIZE, local_size_z = 1) in;
+layout(local_size_x = FROXEL_THREADS_X, local_size_y = FROXEL_THREADS_Y, local_size_z = FROXEL_THREADS_Z) in;
 
 #include "../../src/demos/27_clustered_shading/shaders/shared-structs.glh"
 #include "volumetrics.glh"
@@ -79,7 +77,7 @@ void main()
 
 	Rect tile_rect = Rect(tile_pos.x, tile_pos.y, tile_size.x, tile_size.y);
 
-	const uint THREADS_COUNT = gl_WorkGroupSize.x;
+	const uint THREADS_COUNT = gl_WorkGroupSize.x * gl_WorkGroupSize.y;
 
 	for(uint index = gl_LocalInvocationIndex; index < ssbo_num_volumetric_lights; index += THREADS_COUNT)
 	{
