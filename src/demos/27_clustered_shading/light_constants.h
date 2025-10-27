@@ -60,6 +60,7 @@
 #ifdef __cplusplus
 void SET_SHADOW_IDX(auto &light, auto idx)
 {
+	assert(idx != LIGHT_NO_SHADOW and idx < LIGHT_SHADOW_MASK);
 	light.type_flags = (light.type_flags & ~LIGHT_SHADOW_MASK) | uint32_t(idx << LIGHT_SHADOW_SHIFT);
 }
 #endif
