@@ -30,35 +30,35 @@ Volumetrics::Volumetrics() :
 
 bool Volumetrics::create()
 {
-	const auto shaderPath = FileSystem::getResourcesPath() / "shaders";
+	const auto shader_dir = FileSystem::getResourcesPath() / "shaders";
 
-	new (&_select_shader) Shader(shaderPath / "volumetrics_select_lights.comp");
+	new (&_select_shader) Shader(shader_dir / "volumetrics_select_lights.comp");
 	_select_shader.link();
 	assert(_select_shader);
 	_select_shader.setPreBarrier(Shader::Barrier::SSBO);
 
-	new (&_cull_shader) Shader(shaderPath / "volumetrics_cull.comp");
+	new (&_cull_shader) Shader(shader_dir / "volumetrics_cull.comp");
 	_cull_shader.link();
 	assert(_cull_shader);
 	_cull_shader.setPreBarrier(Shader::Barrier::SSBO);
 
-	new (&_inject_shader) Shader(shaderPath / "volumetrics_inject.comp");
+	new (&_inject_shader) Shader(shader_dir / "volumetrics_inject.comp");
 	_inject_shader.link();
 	assert(_inject_shader);
 	_inject_shader.setPreBarrier(Shader::Barrier::SSBO);
 
-	new (&_3dblur_shader) Shader(shaderPath / "blur_3d.comp");
+	new (&_3dblur_shader) Shader(shader_dir / "blur_3d.comp");
 	_3dblur_shader.link();
 	assert(_3dblur_shader);
 	_3dblur_shader.setPreBarrier(Shader::Barrier::Image);
 	_3dblur_shader.setUniform("u_grid_size"sv, glm::ivec3(s_froxels));
 
-	new (&_accumulate_shader) Shader(shaderPath / "volumetrics_accumulate.comp");
+	new (&_accumulate_shader) Shader(shader_dir / "volumetrics_accumulate.comp");
 	_accumulate_shader.link();
 	assert(_accumulate_shader);
 	_accumulate_shader.setPreBarrier(Shader::Barrier::Image);
 
-	new (&_bake_shader) Shader(shaderPath / "volumetrics_bake.comp");
+	new (&_bake_shader) Shader(shader_dir / "volumetrics_bake.comp");
 	_bake_shader.link();
 	assert(_bake_shader);
 	_bake_shader.setPreBarrier(Shader::Barrier::Image);
@@ -89,7 +89,6 @@ bool Volumetrics::create()
 	_accumulation.SetWrapping(TextureWrappingAxis::U, TextureWrappingParam::ClampToEdge);
 	_accumulation.SetWrapping(TextureWrappingAxis::V, TextureWrappingParam::ClampToEdge);
 	_accumulation.SetWrapping(TextureWrappingAxis::W, TextureWrappingParam::ClampToEdge);
-
 
 	_all_volumetric_lights.resize(256); // that's a lot :)
 
@@ -228,7 +227,6 @@ Texture3D &Volumetrics::blur_froxels(Texture3D &input)
 		size_t(std::ceil(float(s_froxels.y) / float(s_local_size.y))),
 		size_t(std::ceil(float(s_froxels.z) / float(s_local_size.z)))
 	);
-
 
 	// 1st pass
 	// input-> blur[0]
