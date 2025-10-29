@@ -1,0 +1,14 @@
+bool intersect_frustum(Plane planes[6], Sphere sphere)
+{
+    // TODO: might get false positives, e.g. large spheres at the right position
+    // https://wickedengine.net/2018/01/optimizing-tile-based-light-culling/
+	// https://gamedev.stackexchange.com/a/86010
+
+    // return true if 'sphere' is facing all frustum planes
+    return plane_facing(planes[0], sphere)
+		&& plane_facing(planes[1], sphere)
+		&& plane_facing(planes[2], sphere)
+		&& plane_facing(planes[3], sphere)
+		&& plane_facing(planes[4], sphere)
+		&& plane_facing(planes[5], sphere);
+}
