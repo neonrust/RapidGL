@@ -3,3 +3,26 @@ struct Sphere
 	vec3 center;
 	float radius;
 };
+
+struct Plane
+{
+    vec3  normal;
+    float offset;
+};
+
+Plane make_plane(vec3 p0, vec3 p1, vec3 p2)
+{
+    vec3 normal = normalize(cross(p1 - p0, p2 - p0));
+    return Plane(normal, -dot(normal, p0));
+}
+
+float plane_distance(Plane plane, Sphere sphere)
+{
+    return dot(sphere.center, plane.normal) + plane.offset;
+}
+
+bool plane_facing(Plane plane, Sphere sphere)
+{
+    float dist = plane_distance(plane, sphere);
+    return dist + sphere.radius > 0;
+}
