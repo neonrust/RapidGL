@@ -1,3 +1,4 @@
+#include <numeric>
 #if !defined(zstr_h_Included)
 #define zstr_h_Included
 
@@ -34,7 +35,37 @@ std::vector<std::string> split(const std::string &input, const RE &delimiter);
 //  TODO add support for any range of any string type
 std::string join(const std::vector<std::string> &list, const std::string_view &delimiter = ", "sv);
 
+template<typename iT, typename dT=iT::value_type> //requires (not std::same_as<iT, dT>)
+iT::value_type join(iT beg, iT end, const dT &delimiter={})
+{
+	typename iT::value_type res;
+	// reserve space for the result
+	const auto num_elements = std::distance(beg, end);
+	res.resize(
+		std::accumulate(
+			beg,
+			end,
+			// typename iT::value_type::size_type(delimiter.size())*typename iT::value_type::size_type(num_elements - 1),
+			delimiter.size()*(num_elements - 1),
+			[] (iT::value_type::size_type acc, const auto &s) {
+				return acc + s.size();
+			}));
+
+	// generate the joined/accumulated result
+	std::accumulate(beg, end, res.begin(),
+					[&res, &delimiter] (const auto &dest, const auto &s) {
+						auto d = dest;
+						if(dest != res.begin())
+							d = std::copy(delimiter.begin(), delimiter.end(), dest);
+						return std::copy(s.cbegin(), s.cend(), d);
+					});
+
+	return res;
+}
+
+
 //! extract a python-like slice of a string list.
+//  TODO add support for any range of any type
 std::vector<std::string> slice(const std::vector<std::string> &v, int start=INT_MAX, int end=INT_MAX, int skip=1);
 
 //! true if 'find' is present in 'list'
