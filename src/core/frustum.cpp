@@ -379,6 +379,9 @@ bool check(const Frustum &f, const bounds::Sphere &sphere)
 	if(not intersect::check(f.aabb(), sphere))
 		return false;
 
+	// https://wickedengine.net/2018/01/optimizing-tile-based-light-culling/
+	// https://gamedev.stackexchange.com/a/86010
+
 #define PLANE_TEST(_name_) \
 	{ const auto d = math::distance(f._name_(), sphere.center()); \
 	if(d < -sphere.radius()) return false; }
