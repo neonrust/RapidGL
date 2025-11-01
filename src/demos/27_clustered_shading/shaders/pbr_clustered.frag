@@ -15,6 +15,7 @@ uniform bool u_debug_cluster_geom;
 uniform bool u_debug_clusters_occupancy;
 uniform bool u_debug_tile_occupancy;
 uniform float u_debug_overlay_blend;
+uniform uvec2 u_viewport_size;
 
 const float s_min_visibility = 1e-3;
 
@@ -199,14 +200,14 @@ void main()
     }
     else if(u_debug_tile_occupancy)
     {
-		uvec2 tile = uvec2(gl_FragCoord.xy) / uvec2(120, 120); // TODO: screen_size / tile_grid = (120, 120)
+		uvec2 tile = uvec2(gl_FragCoord.xy) / (u_viewport_size / tile_grid);
 		uint tile_index = tile.y*tile_grid.x + tile.x;
 
 		IndexRange lights_range = ssbo_tile_lights[tile_index];
 
 		if (lights_range.count > 0)
         {
-            float normalized_light_count = float(lights_range.count) / FROXEL_TILE_MAX_LIGHTS;
+            float normalized_light_count = float(lights_range.count) / float(FROXEL_TILE_MAX_LIGHTS);
             vec3 heat_map_color = falseColor(clamp(normalized_light_count, 0, 1));
 
             frag_color = vec4(mix(radiance, heat_map_color, u_debug_overlay_blend), 1);
