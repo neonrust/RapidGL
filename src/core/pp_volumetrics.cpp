@@ -109,25 +109,33 @@ Volumetrics::operator bool() const
 		and _blue_noise;
 }
 
-void Volumetrics::cull_lights(const Camera &camera)
+void Volumetrics::setViewParams(const Camera &camera, float farPlane)   // TODO: View
+{
+	_camera = camera;
+	if(farPlane > 0)
+		_camera.setFarPlane(5.f);
+}
+
+void Volumetrics::cull_lights()
 {
 	// first pick the volumetric lights
 	// SSBO_BIND_RELEVANT_LIGHTS_INDEX -> SSBO_BIND_ALL_VOLUMETRIC_LIGHTS_INDEX
 	_all_volumetric_lights.clear();
 
-	_select_shader.setUniform("u_frustum_planes"sv, camera.frustum().planes());  // left, right, top, bottom, near, far
+	_select_shader.setUniform("u_frustum_planes"sv, _camera.frustum().planes());  // left, right, top, bottom, near, far
 	_select_shader.invoke();
 
 	// then assign lights to overlapping 2d tiles (groups of froxel columns)
 	// SSBO_BIND_ALL_VOLUMETRIC_LIGHTS_INDEX -> SSBO_BIND_VOLUMETRIC_TILE_LIGHTS_INDEX
-	camera.setUniforms(_cull_shader);
+	_camera.setUniforms(_cull_shader);
 
 	_tile_lights_ranges.clear();
 	_all_tile_lights.clear();
+	_cull_shader.setUniform("u_frustum_corners"sv, _camera.frustum().corners());
 	_cull_shader.invoke(s_froxels.x / FROXELS_PER_TILE, s_froxels.y / FROXELS_PER_TILE);
 }
 
-void Volumetrics::inject(const Camera &camera) // TODO: View
+void Volumetrics::inject()
 {
 	++_frame;
 
@@ -138,7 +146,7 @@ void Volumetrics::inject(const Camera &camera) // TODO: View
 	_transmittance[active_idx].BindImage(5, ImageAccess::Write);
 	_transmittance[1 - active_idx].Bind(6);    // previous transmittance as input
 
-	camera.setUniforms(_inject_shader);
+	_camera.setUniforms(_inject_shader);
 	_inject_shader.setUniform("u_fog_anisotropy"sv, _anisotropy);
 	_inject_shader.setUniform("u_froxel_zexp"sv,    1.f);
 	_inject_shader.setUniform("u_fog_density"sv, _density);
@@ -146,14 +154,16 @@ void Volumetrics::inject(const Camera &camera) // TODO: View
 	_inject_shader.setUniform("u_froxel_blend_previous"sv, _blend);
 	_inject_shader.setUniform("u_froxel_blend_weight"sv, _blend_weight);
 
-	const auto view_projection = camera.projectionTransform() * camera.viewTransform();
+	_inject_shader.setUniform("u_volumetric_max_distance"sv, _camera.farPlane());
+
+	const auto view_projection = _camera.projectionTransform() * _camera.viewTransform();
 	const auto inv_view_projection = glm::inverse(view_projection);
 	_inject_shader.setUniform("u_inv_view_projection"sv, inv_view_projection);
 
-	static glm::mat4 prev_view = camera.viewTransform();  // use current view the first frame
+	static glm::mat4 prev_view = _camera.viewTransform();  // use current view the first frame
 	// use current for the first frame (there's no "previous" yet)
 	_inject_shader.setUniform("u_prev_view"sv, prev_view);
-	prev_view = camera.viewTransform();
+	prev_view = _camera.viewTransform();
 
 	_blue_noise.BindLayer(_frame % _blue_noise.num_layers(), 3);
 
@@ -166,7 +176,7 @@ void Volumetrics::inject(const Camera &camera) // TODO: View
 	_inject_shader.invoke(num_groups);
 }
 
-void Volumetrics::accumulate(const Camera &camera)
+void Volumetrics::accumulate()
 {
 	const auto active_idx = _frame & 1;
 
@@ -180,11 +190,11 @@ void Volumetrics::accumulate(const Camera &camera)
 
 	_accumulation.BindImage(5, ImageAccess::Write);
 
-	_accumulate_shader.setUniform("u_near_z"sv, camera.nearPlane());
-	_accumulate_shader.setUniform("u_far_z"sv, camera.farPlane());
+	_accumulate_shader.setUniform("u_near_z"sv, _camera.nearPlane());
+	_accumulate_shader.setUniform("u_far_z"sv, _camera.farPlane());
 	// for later :)
-	_bake_shader.setUniform("u_near_z"sv, camera.nearPlane());
-	_bake_shader.setUniform("u_far_z"sv, camera.farPlane());
+	_bake_shader.setUniform("u_near_z"sv, _camera.nearPlane());
+	_bake_shader.setUniform("u_far_z"sv, _camera.farPlane());
 
 	const auto num_groups = glm::uvec3(
 		size_t(std::ceil(float(s_froxels.x) / float(s_local_size.x))),
@@ -203,6 +213,7 @@ void Volumetrics::render(const RenderTarget::Texture2d &, RenderTarget::Texture2
 
 	_bake_shader.setUniform("u_effect_scale"sv, _strength);
 	_bake_shader.setUniform("u_froxel_zexp"sv, 1.f);
+
 
 	_bake_shader.invoke(size_t(std::ceil(float(out.width())  / float(s_local_size.x))),
 						size_t(std::ceil(float(out.height()) / float(s_local_size.y))),

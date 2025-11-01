@@ -1,5 +1,6 @@
 #pragma once
 
+#include "camera.h"
 #include "postprocess.h"
 #include "pp_gaussian_blur_fixed.h"
 #include "shader.h"
@@ -43,9 +44,10 @@ public:
 
 	inline void setDensity(float density) { _density = density; }
 
-	void cull_lights(const Camera &camera);
-	void inject(const Camera &camera);
-	void accumulate(const Camera &camera);
+	void setViewParams(const Camera &camera, float farPlane=0.f);
+	void cull_lights();
+	void inject();
+	void accumulate();
 	void render(const RenderTarget::Texture2d &, RenderTarget::Texture2d &out) override;
 
 	// 0 = current injection, 1 = previous injection, 2 = depth accumulation
@@ -67,6 +69,7 @@ private:
 	Texture3D _3dblur[2];
 	uint32_t _read_index { 0 };  // ping-pong index into '_accumulation'
 	uint32_t _frame { 0 };
+	Camera _camera;
 
 	buffer::Storage<uint> _all_volumetric_lights;
 	buffer::Storage<uint> _all_tile_lights;

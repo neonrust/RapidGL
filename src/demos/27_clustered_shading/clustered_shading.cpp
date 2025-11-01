@@ -1302,7 +1302,8 @@ void ClusteredShading::render()
 
 	if(_fog_enabled and _fog_density > 0)
 	{
-		m_volumetrics_pp.cull_lights(m_camera);
+		m_volumetrics_pp.setViewParams(m_camera, m_camera.farPlane() * s_light_volumetric_fraction);
+		m_volumetrics_pp.cull_lights();
 		m_volumetrics_cull_time.add(_gl_timer.elapsed<microseconds>(true));
 
 		m_volumetrics_pp.setStrength(_fog_strength);
@@ -1318,11 +1319,11 @@ void ClusteredShading::render()
 		_shadow_atlas.bindDepthTextureSampler(21);  // sampler2D
 		m_depth_pass_rt.bindDepthTextureSampler(2);
 
-		m_volumetrics_pp.inject(m_camera);
+		m_volumetrics_pp.inject();
 
 		m_volumetrics_inject_time.add(_gl_timer.elapsed<microseconds>(true));
 
-		m_volumetrics_pp.accumulate(m_camera);
+		m_volumetrics_pp.accumulate();
 		m_volumetrics_accum_time.add(_gl_timer.elapsed<microseconds>(true));
 
 		_pp_low_rt.clear();
