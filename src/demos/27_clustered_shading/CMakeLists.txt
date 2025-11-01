@@ -48,14 +48,12 @@ set(SHADER_FILES
 	shaders/find_nonempty_clusters.comp
 	shaders/FSQ.frag
 	shaders/FSQ.vert
-	shaders/gaussian_blur.comp
 	shaders/gaussian_blur_lds.comp
 	shaders/gaussian_blur_parametric.comp
 	shaders/generate_clusters.comp
 	shaders/irradiance_convolution.frag
 	shaders/line_draw.frag
 	shaders/line_draw.vert
-	shaders/mipmap_blur.comp
 	shaders/pbr_clustered.frag
 	shaders/pbr_lighting.glh
 	shaders/pbr_lighting.vert
