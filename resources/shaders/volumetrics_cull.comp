@@ -7,6 +7,7 @@ layout(local_size_x = GROUP_SIZE, local_size_y = GROUP_SIZE, local_size_z = 1) i
 #include "../../src/demos/27_clustered_shading/shaders/shared-structs.glh"
 #include "volumetrics.glh"
 #include "shapes.glh"
+#include "frustum.glh"
 
 
 layout(std430, binding = SSBO_BIND_LIGHTS)
@@ -37,26 +38,11 @@ writeonly buffer VolTileLightsIndexSSBO
 
 SSBO_RELEVANT_LIGHTS_INDEX_ro;
 
-struct Disc
-{
-	vec2 center;
-	float radius;
-};
 
-struct Rect
-{
-	float x, y;
-	float width;
-	float height;
-};
+uniform vec3  u_frustum_corners[8];
 
-uniform mat4 u_view;
-uniform mat4 u_projection;
-uniform float u_fov_y;
-uniform uvec2 u_viewport_size;
-
-Disc screen_project_sphere(vec3 position, float radius);
-bool intersect(Disc disc, Rect rect);
+bool intersect_frustum(Plane planes[6], Sphere sphere);
+void compute_tile_frustum(ivec2 tile, out Plane planes[6]);
 
 shared uint s_index_offset;
 shared uint s_light_count;
@@ -74,15 +60,14 @@ void main()
 		s_index_offset = 0;
 		s_light_count = 0;
 	}
-	barrier();
 
 	// tile coordinate from work group id (0 - tile_grid.x-1, 0 - tile_grid.y-1)
 	ivec2 tile = ivec2(gl_WorkGroupID.xy);
 
-	uvec2 tile_size = uvec2(u_viewport_size / tile_grid);
-	uvec2  tile_pos = tile * tile_size;
+	Plane frustum_planes[6];
+	compute_tile_frustum(tile, frustum_planes);
 
-	Rect tile_rect = Rect(tile_pos.x, tile_pos.y, tile_size.x, tile_size.y);
+	barrier();
 
 	for(uint index = gl_LocalInvocationIndex; index < ssbo_num_volumetric_lights; index += THREADS_COUNT)
 	{
@@ -93,19 +78,14 @@ void main()
 
 		if(! IS_DIR_LIGHT(L))
 		{
-			// project light's affect sphere to screen, check 2d intersection with this tile
+			// test light's bounding sphere against the tile's frustum
 			Sphere sphere;
-			vec3 posVS = (u_view * vec4(L.position, 1)).xyz;
+			sphere.center = L.position;
 			if(IS_SPOT_LIGHT(L))
-			{
-				vec3 dirVS = normalize((u_view * vec4(L.direction, 0)).xyz);
-				posVS += dirVS * L.spot_bounds_radius;
-			}
-			float radiusVS = IS_SPOT_LIGHT(L)? L.spot_bounds_radius: L.affect_radius;  // in view space
+				sphere.center += L.direction * L.spot_bounds_radius;
+			sphere.radius = IS_SPOT_LIGHT(L)? L.spot_bounds_radius: L.affect_radius;  // in view space
 
-			// Project to screen
-			Disc disc = screen_project_sphere(posVS, radiusVS);
-			is_affecting = intersect(disc, tile_rect);
+			is_affecting = intersect_frustum(frustum_planes, sphere);
         }
 
 		if(is_affecting)
@@ -133,55 +113,72 @@ void main()
 	}
 }
 
-bool intersect(Disc disc, Rect rect)
+void compute_tile_frustum(ivec2 tile, out Plane planes[6])
 {
-	// https://stackoverflow.com/a/402010
-	vec2 rect_center = vec2(rect.x + rect.width/2, rect.y + rect.height/2);
-	vec2 disc_distance = vec2(abs(disc.center - rect_center));
+	// Build per-tile frustum corners correctly.
+	// u_frustum_corners[] are ordered as:
+	//   0: near top left (NTL)
+	//   1: near bottom left (NBL)
+	//   2: far  top left (FTL)
+	//   3: far  bottom left (FBL)
+	//   4: near top right (NTR)
+	//   5: near bottom right (NBR)
+	//   6: far  top right (FTR)
+	//   7: far  bottom right (FBR)
+	// We must interpolate horizontally between left/right pairs first, then assign
+	// the near/far and top/bottom corners for the tile.
 
-	if(disc_distance.x > (rect.width/2  + disc.radius) || disc_distance.y > (rect.height/2 + disc.radius))
-		return false;
-	if(disc_distance.x <= rect.width/2 || disc_distance.y <= rect.height/2)
-		return true;
+	// not sure where the below goes wrong such that flipping of the Y axis is needed?
+	tile.y = int(tile_grid.y) - 1 - tile.y;
 
-	float x_dist = disc_distance.x - rect.width/2;
-	float y_dist = disc_distance.y - rect.height/2;
-	float corner_distance_sq = (x_dist * x_dist) + (y_dist * y_dist);
+	vec3 frustum_corners[8];
 
-	return corner_distance_sq <= (disc.radius*disc.radius);
-}
+	float a0 = (float(tile.x)    ) / float(tile_grid.x);
+	float a1 = (float(tile.x) + 1) / float(tile_grid.x);
+	float b0 = (float(tile.y)    ) / float(tile_grid.y);
+	float b1 = (float(tile.y) + 1) / float(tile_grid.y);
 
-Disc screen_project_sphere(vec3 position, float radius)
-{
-    Disc disc;
+	// Near plane horizontal samples (top and bottom)
+	vec3 near_top_a0    = mix(u_frustum_corners[0], u_frustum_corners[4], a0); // NTL -> NTR
+	vec3 near_top_a1    = mix(u_frustum_corners[0], u_frustum_corners[4], a1);
+	vec3 near_bottom_a0 = mix(u_frustum_corners[1], u_frustum_corners[5], a0); // NBL -> NBR
+	vec3 near_bottom_a1 = mix(u_frustum_corners[1], u_frustum_corners[5], a1);
+	// Far plane horizontal samples (top and bottom)
+	vec3 far_top_a0     = mix(u_frustum_corners[2], u_frustum_corners[6], a0); // FTL -> FTR
+	vec3 far_top_a1     = mix(u_frustum_corners[2], u_frustum_corners[6], a1);
+	vec3 far_bottom_a0  = mix(u_frustum_corners[3], u_frustum_corners[7], a0); // FBL -> FBR
+	vec3 far_bottom_a1  = mix(u_frustum_corners[3], u_frustum_corners[7], a1);
 
-    vec4 clip = u_projection * vec4(position, 1);
-    vec3 ndc = clip.xyz / clip.w;
-    vec2 pos_uv = ndc.xy * 0.5 + 0.5;  // [ 0, 1 ]
+	// Build the four combinations per (a,b) so we interpolate horizontally (a)
+	// then vertically (b). We want the corners at (a0,b0), (a0,b1), (a1,b0), (a1,b1)
+	// for both near and far planes.
+	vec3 near_a0_b0 = mix(near_top_a0, near_bottom_a0, b0);
+	vec3 near_a0_b1 = mix(near_top_a0, near_bottom_a0, b1);
+	vec3 near_a1_b0 = mix(near_top_a1, near_bottom_a1, b0);
+	vec3 near_a1_b1 = mix(near_top_a1, near_bottom_a1, b1);
 
-    // disc center
-    disc.center = pos_uv * vec2(u_viewport_size);
+	vec3 far_a0_b0  = mix( far_top_a0,  far_bottom_a0, b0);
+	vec3 far_a0_b1  = mix( far_top_a0,  far_bottom_a0, b1);
+	vec3 far_a1_b0  = mix( far_top_a1,  far_bottom_a1, b0);
+	vec3 far_a1_b1  = mix( far_top_a1,  far_bottom_a1, b1);
 
-    // sphere/disc radius
-    // project offsets in X, Y, and diagonals
-    vec4 clipX = u_projection * vec4(position + vec3(radius, 0, 0), 1);
-    vec2 uvX = (clipX.xy / clipX.w) * 0.5 + 0.5;
-    float dx = abs(uvX.x - pos_uv.x) * float(u_viewport_size.x);
+	// Assign in the same semantic order the rest of the shader expects:
+	// 0: near top left, 1: near bottom left, 2: far top left, 3: far bottom left,
+	// 4: near top right, 5: near bottom right, 6: far top right, 7: far bottom right
+	frustum_corners[0] = near_a0_b0; // NTL
+	frustum_corners[1] = near_a0_b1; // NBL
+	frustum_corners[2] =  far_a0_b0; // FTL
+	frustum_corners[3] =  far_a0_b1; // FBL
+	frustum_corners[4] = near_a1_b0; // NTR
+	frustum_corners[5] = near_a1_b1; // NBR
+	frustum_corners[6] =  far_a1_b0; // FTR
+	frustum_corners[7] =  far_a1_b1; // FBR
 
-    vec4 clipY = u_projection * vec4(position + vec3(0, radius, 0), 1);
-    vec2 uvY = (clipY.xy / clipY.w) * 0.5 + 0.5;
-    float dy = abs(uvY.y - pos_uv.y) * float(u_viewport_size.y);
-
-    vec4 clipXY = u_projection * vec4(position + vec3(radius, radius, 0), 1);
-    vec2 uvXY = (clipXY.xy / clipXY.w) * 0.5 + 0.5;
-    float dxy = length((uvXY - pos_uv) * vec2(u_viewport_size));
-
-    vec4 clipXnYn = u_projection * vec4(position + vec3(-radius, -radius, 0), 1);
-    vec2 uvXnYn = (clipXnYn.xy / clipXnYn.w) * 0.5 + 0.5;
-    float dxyn = length((uvXnYn - pos_uv) * vec2(u_viewport_size));
-
-    // over estimate: use the largest value
-    disc.radius = max(max(dx, dy), max(dxy, dxyn));
-
-    return disc;
+	// NOTE: vertex order (winding) is important, to ensure normals point inwards
+	planes[0] = make_plane(frustum_corners[0], frustum_corners[1], frustum_corners[2]); // left
+	planes[1] = make_plane(frustum_corners[5], frustum_corners[4], frustum_corners[6]); // right
+	planes[2] = make_plane(frustum_corners[0], frustum_corners[2], frustum_corners[4]); // top
+	planes[3] = make_plane(frustum_corners[1], frustum_corners[5], frustum_corners[3]); // bottom
+	planes[4] = make_plane(frustum_corners[2], frustum_corners[3], frustum_corners[6]); // far
+	planes[5] = make_plane(frustum_corners[0], frustum_corners[4], frustum_corners[1]); // near
 }
