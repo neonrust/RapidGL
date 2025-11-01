@@ -33,24 +33,24 @@ float exp_01_to_linear_01_depth(float z, float n, float f);
 
 void main()
 {
-    ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
+	ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
 
-    vec2 uv = vec2(pixel) / vec2(imageSize(u_out_volumetrics));
-    float zbuf_z = texture(u_in_depth, uv).r;
-    vec4 ndc;
-    ndc.xy = uv * 2 - 1;
-    ndc.z  = zbuf_z * 2 - 1;
-    ndc.w  = 1;
+	vec2 uv = vec2(pixel) / vec2(imageSize(u_out_volumetrics));
+	float zbuf_z = texture(u_in_depth, uv).r;
+	vec4 ndc;
+	ndc.xy = uv * 2 - 1;
+	ndc.z  = zbuf_z * 2 - 1;
+	ndc.w  = 1;
 
-    vec3 froxel_uv = ndc_to_uv(ndc.xyz, u_near_z, u_far_z, u_froxel_zexp);
+	vec3 froxel_uv = ndc_to_uv(ndc.xyz, u_near_z, u_far_z, u_froxel_zexp);
 
-    vec4 accumulated_transmittance = texture_tricubic(u_in_accumulation, froxel_uv);
+	vec4 accumulated_transmittance = texture_tricubic(u_in_accumulation, froxel_uv);
 	vec3 accumulated = accumulated_transmittance.rgb;
 	// float transmittance = accumulated_transmittance.a;
 
 	accumulated *= u_effect_scale;
 
-    imageStore(u_out_volumetrics, pixel, vec4(accumulated, 1));
+	imageStore(u_out_volumetrics, pixel, vec4(accumulated, 1));
 }
 
 float froxel_distance(int z)
