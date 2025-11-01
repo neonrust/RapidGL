@@ -2,6 +2,7 @@
 
 #include "../../src/demos/27_clustered_shading/shaders/shared-structs.glh"
 #include "shapes.glh"
+#include "frustum.glh"
 
 #define THREADS_COUNT 128
 
@@ -22,7 +23,7 @@ layout(std430, binding = SSBO_BIND_ALL_VOLUMETRIC_LIGHTS_INDEX) writeonly buffer
 
 uniform vec4 u_frustum_planes[6];  // xyz = normal, w = offset
 
-bool frustumIntersect(Sphere sphere);
+bool frustum_intersect(Sphere sphere);
 
 void main()
 {
@@ -40,15 +41,16 @@ void main()
 			add_light = true;
 		else
 		{
-			vec3 sphere_center = L.position;
-			float sphere_radius = L.affect_radius;
+			Sphere sphere;
+			sphere.center = L.position;
+			sphere.radius = L.affect_radius;
 			if(IS_SPOT_LIGHT(L))
 			{
-				sphere_center += L.direction * L.spot_bounds_radius;
-				sphere_radius = L.spot_bounds_radius;
+				sphere.center += L.direction * L.spot_bounds_radius;
+				sphere.radius = L.spot_bounds_radius;
 			}
 
-			add_light = frustumIntersect(Sphere(sphere_center, sphere_radius));
+			add_light = frustum_intersect(sphere);
 		}
 
 		if(add_light)
@@ -59,14 +61,18 @@ void main()
 	}
 }
 
-bool frustumIntersect(Sphere sphere)
+bool frustum_intersect(Sphere sphere)
 {
+	// TODO: might get false positives, e.g. large spheres at the right position
+	// https://wickedengine.net/2018/01/optimizing-tile-based-light-culling/
+	// https://gamedev.stackexchange.com/a/86010
+
     for(uint idx = 0; idx < 6; ++idx)
     {
-        vec4 plane = u_frustum_planes[idx];  // normal, offset
-        float dist = dot(plane.xyz, sphere.center) + plane.w;
-        if(dist < -sphere.radius) // behind the plane (i.e. outside the frustum)
-            return false;
+        vec4 plane_eq = u_frustum_planes[idx];  // normal, offset
+        Plane plane = Plane(plane_eq.xyz, plane_eq.w);
+        if(! plane_facing(plane, sphere))
+           	return false;
     }
     return true;
 }
