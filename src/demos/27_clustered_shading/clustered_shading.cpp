@@ -1311,7 +1311,6 @@ void ClusteredShading::render()
 		m_volumetrics_pp.setDensity(_fog_density);  // TODO: noise texture?
 		m_volumetrics_pp.setTemporalBlendWeight(_fog_blend_weight);  // if blending is enabled
 
-		m_volumetrics_pp.shader().setUniform("u_volumetric_max_distance"sv, m_camera.farPlane() * s_light_volumetric_fraction);
 		m_volumetrics_pp.shader().setUniform("u_light_max_distance"sv,  m_camera.farPlane() * s_light_affect_fraction);
 		m_volumetrics_pp.shader().setUniform("u_shadow_max_distance"sv, m_camera.farPlane() * s_light_shadow_affect_fraction);
 
