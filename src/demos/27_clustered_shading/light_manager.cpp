@@ -181,6 +181,7 @@ void LightManager::clear_shadow_index(LightID light_id)
 void LightManager::set_spot_angle(GPULight &L, float new_outer_angle)
 {
 	L.intensity *= spot_intensity_multiplier(new_outer_angle) / spot_intensity_multiplier(L.outer_angle);
+	L.affect_radius  = std::pow(L.intensity, 0.6f);
 	L.inner_angle *= new_outer_angle / L.outer_angle;
 	L.outer_angle = new_outer_angle;
 }
