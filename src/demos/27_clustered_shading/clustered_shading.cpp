@@ -963,29 +963,73 @@ void ClusteredShading::update(double delta_time)
 void ClusteredShading::createLights()
 {
 	// point lights
-	for(auto idx = 0u; idx < 32; ++idx)
+	for(auto idx = 0u; idx < 4; ++idx)
 	{
 		const auto rand_color= hsv2rgb(
 			float(Util::RandomDouble(1, 360)),       // hue
 			float(Util::RandomDouble(0.1f, 0.7f)),   // saturation
 			1.f                                      // value (brightness)
 		);
-		const auto rand_pos = Util::RandomVec3({ -18, 0.5f, -18 }, { 178, 3.5f, 18 });
-		// const auto rand_pos = glm::vec3(0, 0, 10.f + float(idx)*20);
+		// const auto rand_pos = Util::RandomVec3({ -18, 0.5f, -18 }, { 178, 3.5f, 18 });
+		const auto rand_pos = glm::vec3(-5.f + float(idx)*20, 2.5f, 0 );
 
-		const auto rand_intensity = float(Util::RandomDouble(1, 100))*2;
+		const auto rand_intensity = 30.f;//float(Util::RandomDouble(1, 100))*2;
 
-		auto l = _light_mgr.add(PointLightParams{
-			.color = rand_color,
-			.intensity = rand_intensity,
-			.affect_radius = std::pow(rand_intensity, 0.6f), // maybe this could be scaled down as the total light count goes up?
-			.fog = 1.f,
-			.shadow_caster = true,
-			.position = rand_pos,
-		});
+		LightID l_id;
+		std::string_view type_name;
+		switch(idx % 4)
+		{
+		case LIGHT_TYPE_POINT:
+		case LIGHT_TYPE_DIRECTIONAL:
+		{
+			auto l = _light_mgr.add(PointLightParams{
+				.color = rand_color,
+				.intensity = rand_intensity,
+				.fog = 1.f,
+				.shadow_caster = true,
+				.position = rand_pos,
+			});
+			type_name = _light_mgr.type_name<decltype(l)>();
+			l_id = l.id();
+		}
+		break;
+		case LIGHT_TYPE_SPOT:
+		{
+			auto l = _light_mgr.add(SpotLightParams{
+				.color = rand_color,
+				.intensity = rand_intensity,
+				.fog = 1.f,
+				.shadow_caster = true,
+				.position = rand_pos,
+				.direction = -AXIS_Z, //glm::normalize(Util::RandomVec3(0, 1)),
+				.outer_angle = glm::radians(5.f),
+				.inner_angle = glm::radians(3.f),
+			});
+			type_name = _light_mgr.type_name<decltype(l)>();
+			l_id = l.id();
+		}
+		break;
+		case LIGHT_TYPE_AREA:
+		{
+			auto l = _light_mgr.add(AreaLightParams{
+				.color = rand_color,
+				.intensity = rand_intensity,
+				.fog = 1.f,
+				.shadow_caster = false,
+				.position = rand_pos,
+				.size = glm::vec2(2, 2),
+				.orientation = glm::quat{},
+				.double_sided = false,
+			});
+			type_name = _light_mgr.type_name<decltype(l)>();
+			l_id = l.id();
+		}
+		break;
+		}
 
-		std::print("light[{:2}] @ {:5.1f}; {:3.1f}; {:5.1f}  {:3},{:3},{:3}  {:4.0f}\n",
-				   l.id(),
+		std::print("light[{:2}] {:5} @ {:5.1f}; {:3.1f}; {:5.1f}  {:3},{:3},{:3}  {:4.0f}\n",
+				   l_id,
+				   type_name,
 				   rand_pos.x, rand_pos.y, rand_pos.z,
 				   uint(rand_color.r*255), uint(rand_color.g*255), uint(rand_color.b*255),
 				   rand_intensity);
