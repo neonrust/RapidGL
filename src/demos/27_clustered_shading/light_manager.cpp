@@ -268,7 +268,7 @@ LightIndex LightManager::light_index(LightID light_id) const
 
 float LightManager::spot_intensity_multiplier(float angle)
 {
-	const auto inv_cos_ref_angle = 1.f - std::cos(glm::radians(45.f));
+	const auto inv_cos_ref_angle = 1.f - std::cos(_private::s_spot_reference_angle);
 	return inv_cos_ref_angle / (1.f - std::cos(angle));
 }
 
