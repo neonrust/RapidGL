@@ -71,7 +71,7 @@ void SET_SHADOW_IDX(auto &light, auto idx)
 
 #define FROXEL_GRID_W      160
 #define FROXEL_GRID_H      90
-#define FROXEL_GRID_D      128
+#define FROXEL_GRID_D      64
 #define FROXEL_THREADS_X   8
 #define FROXEL_THREADS_Y   8
 #define FROXEL_THREADS_Z   1

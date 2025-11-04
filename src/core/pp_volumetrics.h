@@ -29,7 +29,8 @@ public:
 
 	// multiplier for the volumetrics effect
 	inline void setStrength(float strength) { _strength = strength; }
-
+	inline void setFalloffPower(float power) { _falloff_power = power; }
+	inline void setFroxelNoiseEnabled(bool enabled) { _z_noise_enabled = enabled; }
 	inline void setFroxelBlurEnabled(bool enabled) { _3dblur_enabled = enabled; }
 	inline void setPostBlurEnabled(bool enabled) { _2dblur_enabled = enabled; }
 
@@ -38,7 +39,10 @@ public:
 	// < 0: backward scattering; light tends to scatter back toward the source (rare in nature, but can approximate retroreflective effects).
 	inline void setAnisotropy(float anisotropy) { _anisotropy = anisotropy; }
 
-	inline void setTemporalBlending(bool enable=true) { _blend = enable; }
+	inline void setNoiseEnabled(bool enabled) { _noise_enabled = enabled; }
+	inline void setNoiseOffset(float offset) { _noise_offset = offset; }
+	inline void setNoiseFrequency(float freq) { _noise_freq = freq; }
+	inline void setTemporalBlending(bool enable=true) { _blend_previous = enable; }
 	inline void setTemporalBlendWeight(float weight) { _blend_weight = weight; }
 	// inline void setFalloffMix(float mix) { _falloff_mix = mix; }
 
@@ -76,16 +80,22 @@ private:
 	buffer::Storage<IndexRange> _tile_lights_ranges;
 	RGL::PP::BlurFixed<3.f> _blur3x3;
 
-	float _strength { 1.f };
-	float _anisotropy { 0.7f };  // ~0.7 Thin haze / atmospheric fog
+	float _strength { 0.4f };
+	float _anisotropy { 0.2f };  // ~0.7 Thin haze / atmospheric fog
 	float _density { 0.1f };    // small values, less than ~0.2
-	bool _blend { true };
-	float _blend_weight { 0.1f };
+	bool _blend_previous { true };
+	float _blend_weight { 0.8f };
 	// float _falloff_mix { 0 };
-	bool _3dblur_enabled { true };
-	bool _2dblur_enabled { true };
+	float _debug_uv_offset { 0.f };
+	float _falloff_power { 0.2f };
+	bool _z_noise_enabled { true };
+	bool _3dblur_enabled { false };
+	bool _2dblur_enabled { false };
 
 	GLuint _dummy_vao_id;
+	bool _noise_enabled { true };
+	float _noise_freq { 1.f };
+	float _noise_offset { 0.f };
 };
 
 } // RGL::PP

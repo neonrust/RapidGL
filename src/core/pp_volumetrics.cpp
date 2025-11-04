@@ -150,11 +150,17 @@ void Volumetrics::inject()
 	_transmittance[1 - active_idx].Bind(6);    // previous transmittance as input
 
 	_camera.setUniforms(_inject_shader);
+	_inject_shader.setUniform("u_frame_index"sv, _frame);
+	_inject_shader.setUniform("u_falloff_power"sv, _falloff_power);
 	_inject_shader.setUniform("u_fog_anisotropy"sv, _anisotropy);
 	_inject_shader.setUniform("u_froxel_zexp"sv,    1.f);
 	_inject_shader.setUniform("u_fog_density"sv, _density);
 	// _inject_shader.setUniform("u_falloff_mix"sv, _falloff_mix);
-	_inject_shader.setUniform("u_froxel_blend_previous"sv, _blend);
+	_inject_shader.setUniform("u_froxel_z_noise"sv, _z_noise_enabled);
+	_inject_shader.setUniform("u_fog_noise"sv, true);
+	_inject_shader.setUniform("u_fog_noise_offset"sv, 0.f);
+	_inject_shader.setUniform("u_fog_noise_frequency"sv, 1.f);
+	_inject_shader.setUniform("u_froxel_blend_previous"sv, _blend_previous);
 	_inject_shader.setUniform("u_froxel_blend_weight"sv, _blend_weight);
 
 	_inject_shader.setUniform("u_volumetric_max_distance"sv, _camera.farPlane());

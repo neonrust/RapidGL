@@ -204,15 +204,30 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			{
 				ImGui::SliderFloat("Strength", &_fog_strength, 0.f, 4.f);
 				ImGui::SliderFloat("Density", &_fog_density, 0.f, 1.f);
+				static float anisotropy { 0.7f };
+				if(ImGui::SliderFloat("Anisotropy", &anisotropy, -1.f, 1.f))
+					m_volumetrics_pp.setAnisotropy(anisotropy);
+				static float falloff_power { 0.2f };
+				if(ImGui::SliderFloat("Falloff power", &falloff_power, 0.2f, 2.f))
+					m_volumetrics_pp.setFalloffPower(falloff_power);
+				static float noise_offset { 0.f };
+				if(ImGui::SliderFloat("Noise offset", &noise_offset, 0.f, 100.f))
+					m_volumetrics_pp.setNoiseOffset(noise_offset);
+				static float noise_freq{ 1.f };
+				if(ImGui::SliderFloat("Noise frequency", &noise_freq, 0.f, 100.f))
+					m_volumetrics_pp.setNoiseFrequency(noise_freq);
+				static bool z_noise_enabled { true };
+				if(ImGui::Checkbox("Z-Noise", &z_noise_enabled))
+					m_volumetrics_pp.setFroxelNoiseEnabled(z_noise_enabled);
 				static bool blend_enabled { true };
 				if(ImGui::Checkbox("Temporal blending", &blend_enabled))
 					m_volumetrics_pp.setTemporalBlending(blend_enabled);
 				if(blend_enabled)
-					ImGui::SliderFloat("Temporal blend", &_fog_blend_weight, 0.f, 0.4f, "%.2f");  // lerp: <current> - <previous>
-				static bool blur3_enabled { true };
+					ImGui::SliderFloat("Temporal blend", &_fog_blend_weight, 0.f, 0.95f, "%.2f");  // lerp: <current> - <previous>
+				static bool blur3_enabled { false };
 				if(ImGui::Checkbox("3D Blur", &blur3_enabled))
 					m_volumetrics_pp.setFroxelBlurEnabled(blur3_enabled);
-				static bool blur2_enabled { true };
+				static bool blur2_enabled { false };
 				if(ImGui::Checkbox("2D Blur", &blur2_enabled))
 					m_volumetrics_pp.setPostBlurEnabled(blur2_enabled);
 			}
