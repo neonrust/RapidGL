@@ -98,7 +98,7 @@ ClusteredShading::ClusteredShading() :
 	_fog_enabled          (true),
 	_fog_strength         (0.4f),
 	_fog_density          (0.1f),    // [ 0, 1 ]
-	_fog_blend_weight     (0.1f)      // [ 0, 1 ]
+	_fog_blend_weight     (0.8f)     // [ 0, 1 ]
 {
 	m_cluster_aabb_ssbo.bindAt(SSBO_BIND_CLUSTER_AABB);
 	m_shadow_map_slots_ssbo.bindAt(SSBO_BIND_SHADOW_SLOTS_INFO);
