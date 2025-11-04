@@ -443,8 +443,8 @@ void ImGui_ImageEx(ImTextureID texture_id, ImVec2 size, ImVec2 uv0, ImVec2 uv1, 
 	};
 
 	auto *args = new CB_args{
-		shader_id,
-		GLuint(texture_id),
+		.program_id = shader_id,
+		.texture_id = GLuint(texture_id),
 	};
 
 	static TextureSampler clamp0_sampler;
