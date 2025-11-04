@@ -118,6 +118,7 @@ void ClusteredShading::debugDrawLightMarkers()
 	{
 		PointLight = 0,
 		SpotLight  = 1,
+		AreaLight  = 2,
 	};
 
 	struct IconData
@@ -175,28 +176,21 @@ void ClusteredShading::debugDrawLightMarkers()
 
 		const glm::vec4 color_blend(L.color, 1.f);
 
-		if(IS_POINT_LIGHT(L))
-		{
-			const auto to_light = L.position - m_camera.position();
-			float distance_sq = glm::dot(to_light, to_light);
-			icons.push_back({
-				.world_pos   = L.position,
-				.color_tint  = L.color,
-				.icon        = uint32_t(Icon::PointLight),
-				.distance_sq = distance_sq,
-			});
-		}
-		else if(IS_SPOT_LIGHT(L))
-		{
-			const auto to_light = L.position - m_camera.position();
-			float distance_sq = glm::dot(to_light, to_light);
-			icons.push_back({
-				.world_pos   = L.position,
-				.color_tint  = L.color,
-				.icon        = uint32_t(Icon::SpotLight),
-				.distance_sq = distance_sq,
-			});
-		}
+		const auto to_light = L.position - m_camera.position();
+		float distance_sq = glm::dot(to_light, to_light);
+		auto icon = Icon::PointLight;
+
+		if(IS_SPOT_LIGHT(L))
+			icon = Icon::SpotLight;
+		else if(IS_AREA_LIGHT(L))
+			icon = Icon::AreaLight;
+
+		icons.push_back({
+			.world_pos   = L.position,
+			.color_tint  = L.color,
+			.icon        = uint32_t(icon),
+			.distance_sq = distance_sq,
+		});
 	}
 
 	std::ranges::sort(icons, std::greater{});
