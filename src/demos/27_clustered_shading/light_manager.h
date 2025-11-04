@@ -284,13 +284,15 @@ GPULight LightManager::to_gpu_light(const LT &l)
 	}
 	else if constexpr (std::same_as<LT, AreaLight> or std::same_as<LT, AreaLightParams>)
 	{
-		L.type_flags      = LIGHT_TYPE_AREA;
-		glm::vec3 right   = l.orientation * glm::vec3(l.size.x * 0.5f, 0, 0);
-		glm::vec3 up      = l.orientation * glm::vec3(0, l.size.y * 0.5f, 0);
-		L.shape_points[0] = glm::vec4(l.position - right - up, 1);
-		L.shape_points[1] = glm::vec4(l.position + right - up, 1);
+		L.type_flags      = LIGHT_TYPE_AREA | LIGHT_TWO_SIDED;
+		glm::vec3 right   = l.orientation * glm::vec3(l.size.x * 0.5f, 0,               0);
+		glm::vec3 up      = l.orientation * glm::vec3(0,               l.size.y * 0.5f, 0);
+		L.position        = l.position;
+		L.shape_points[0] = glm::vec4(l.position + right - up, 1);
+		L.shape_points[1] = glm::vec4(l.position - right - up, 1);
 		L.shape_points[2] = glm::vec4(l.position + right + up, 1);
 		L.shape_points[3] = glm::vec4(l.position - right + up, 1);
+		// TODO: this is MASSIVELY over estimating the radius
 		L.affect_radius   = 50 * l.intensity * glm::distance(l.position, glm::vec3(L.shape_points[1]));
 	}
 	else if constexpr (std::same_as<LT, TubeLight> or std::same_as<LT, TubeLightParams>)
