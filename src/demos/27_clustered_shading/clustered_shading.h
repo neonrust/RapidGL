@@ -282,6 +282,7 @@ private:
 	SampleWindow<std::chrono::microseconds, 30> m_cluster_find_time;
 	SampleWindow<std::chrono::microseconds, 30> m_cluster_index_time;
 	SampleWindow<std::chrono::microseconds, 30> m_light_cull_time;
+	SampleWindow<std::chrono::microseconds, 30> m_shadow_alloc_time;
 	SampleWindow<std::chrono::microseconds, 30> m_shadow_time;
 	SampleWindow<std::chrono::microseconds, 30> m_shading_time;
 	SampleWindow<std::chrono::microseconds, 30> m_skybox_time;
