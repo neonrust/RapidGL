@@ -296,6 +296,7 @@ GPULight LightManager::to_gpu_light(const LT &l)
 	else if constexpr (std::same_as<LT, TubeLight> or std::same_as<LT, TubeLightParams>)
 	{
 		L.type_flags        = LIGHT_TYPE_TUBE;
+		L.position          = l.position;
 		L.shape_points[0]   = glm::vec4(l.end_points[0], 1);
 		L.shape_points[1]   = glm::vec4(l.end_points[1], 1);
 		L.shape_points[2].x = l.thickness;
@@ -304,6 +305,7 @@ GPULight LightManager::to_gpu_light(const LT &l)
 	else if constexpr (std::same_as<LT, SphereLight> or std::same_as<LT, SphereLightParams>)
 	{
 		L.type_flags        = LIGHT_TYPE_SPHERE;
+		L.position          = l.position;
 		L.shape_points[0].x = l.radius;
 		// L.affect_radius     =       TODO
 	}
