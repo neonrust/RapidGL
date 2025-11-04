@@ -3,6 +3,7 @@
 #include "../../src/demos/27_clustered_shading/shaders/shared-structs.glh"
 #include "shadows.glh"
 #include "volumetrics.glh"
+#include "noise.glh"
 
 layout(local_size_x = FROXEL_THREADS_X, local_size_y = FROXEL_THREADS_Y, local_size_z = FROXEL_THREADS_Z) in;
 
@@ -37,6 +38,9 @@ readonly buffer VolTileLightsIndexSSBO
 uniform float u_froxel_zexp;
 uniform float u_fog_density; // TODO: noise texture?
 uniform float u_fog_anisotropy;
+uniform bool  u_fog_noise;
+uniform float u_fog_noise_offset;
+uniform float u_fog_noise_frequency;
 uniform float u_light_max_distance;
 uniform float u_volumetric_max_distance;
 uniform bool  u_froxel_z_noise;
@@ -195,6 +199,18 @@ void main()
 
 	float density = u_fog_density; // TODO: noise texture?
 	total_scattered *= density;
+
+	if(u_fog_noise)
+	{
+		float noise_density = perlinNoise((world_pos + u_fog_noise_offset) * u_fog_noise_frequency);
+
+		// Transform noise from [-1,1] range to [0,1] range:
+		noise_density = noise_density * 0.5 + 0.5;
+
+		// Calculate scattering and absorption for this froxel:
+		total_scattered *= noise_density;
+		// absorption *= density;
+	}
 
 	if(u_froxel_blend_previous)
 	{
