@@ -49,6 +49,8 @@ MAP_PARAMS_TYPE(DiscLight);
 template <typename LTP>
 using return_type = typename light_map<LTP>::type;
 
+static constexpr float s_spot_reference_angle = glm::radians(45.f);
+
 } // _private
 
 // TODO: not entirely happy with this API ...
@@ -272,13 +274,12 @@ GPULight LightManager::to_gpu_light(const LT &l)
 		L.type_flags     = LIGHT_TYPE_SPOT;
 		L.position       = l.position;
 		L.direction      = l.direction;
-		L.outer_angle    = l.outer_angle;
-		L.inner_angle    = l.inner_angle;
+		L.outer_angle    = _private::s_spot_reference_angle;
+		assert(l.outer_angle >= l.inner_angle);
+		const auto inner_angle = std::min(l.inner_angle, l.outer_angle);
+		L.inner_angle    = (inner_angle / l.outer_angle) * L.outer_angle;
 
-		// narrower spot cone should be brighter
-		L.intensity = l.intensity * spot_intensity_multiplier(L.outer_angle);
-		L.affect_radius  = std::pow(L.intensity, 0.6f);
-
+		set_spot_angle(L, l.outer_angle);
 		compute_spot_bounds(L);
 	}
 	else if constexpr (std::same_as<LT, AreaLight> or std::same_as<LT, AreaLightParams>)
