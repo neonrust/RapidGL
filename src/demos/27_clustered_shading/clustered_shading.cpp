@@ -31,12 +31,13 @@ static constexpr auto s_relevant_lights_update_min_interval = 250ms;
 //  must be in this order
 static constexpr auto s_light_relevant_fraction      = 0.6f;  // input to cluster light culling
 static constexpr auto s_light_affect_fraction        = 0.5f;  // fade shading by distance
-static constexpr auto s_light_volumetric_fraction    = 0.4f;  // fade volumetric/scattering by distance
+static constexpr auto s_light_volumetric_fraction    = 0.2f;  // fade volumetric/scattering by distance
 static constexpr auto s_light_shadow_max_fraction    = 0.4f;  // may allocated  sdhadow map
 static constexpr auto s_light_shadow_affect_fraction = 0.3f;  // fade shadow by distance
 
 static_assert(s_light_relevant_fraction > s_light_affect_fraction);
 static_assert(s_light_affect_fraction > s_light_shadow_max_fraction);
+static_assert(s_light_affect_fraction > s_light_volumetric_fraction);
 static_assert(s_light_shadow_max_fraction > s_light_shadow_affect_fraction);
 
 glm::mat3 make_common_space_from_direction(const glm::vec3 &direction)
