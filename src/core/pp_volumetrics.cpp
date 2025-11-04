@@ -69,8 +69,8 @@ bool Volumetrics::create()
 	for(auto idx = 0u; idx < 2; ++idx)
 	{
 		_transmittance[idx].Create(s_froxels.x, s_froxels.y, s_froxels.z, GL_RGBA16F);
-		_transmittance[idx].SetFiltering(TextureFiltering::Magnify, TextureFilteringParam::LinearMipLinear);
-		_transmittance[idx].SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipLinear);
+		_transmittance[idx].SetFiltering(TextureFiltering::Magnify, TextureFilteringParam::Linear);
+		_transmittance[idx].SetFiltering(TextureFiltering::Minify, TextureFilteringParam::Linear);
 		_transmittance[idx].SetWrapping(TextureWrappingAxis::U, TextureWrappingParam::ClampToEdge);
 		_transmittance[idx].SetWrapping(TextureWrappingAxis::V, TextureWrappingParam::ClampToEdge);
 		_transmittance[idx].SetWrapping(TextureWrappingAxis::W, TextureWrappingParam::ClampToEdge);
@@ -84,8 +84,8 @@ bool Volumetrics::create()
 	}
 
 	_accumulation.Create(s_froxels.x, s_froxels.y, s_froxels.z, GL_RGBA16F);
-	_accumulation.SetFiltering(TextureFiltering::Magnify, TextureFilteringParam::LinearMipLinear);
-	_accumulation.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipLinear);
+	_accumulation.SetFiltering(TextureFiltering::Magnify, TextureFilteringParam::Linear);
+	_accumulation.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::Linear);
 	_accumulation.SetWrapping(TextureWrappingAxis::U, TextureWrappingParam::ClampToEdge);
 	_accumulation.SetWrapping(TextureWrappingAxis::V, TextureWrappingParam::ClampToEdge);
 	_accumulation.SetWrapping(TextureWrappingAxis::W, TextureWrappingParam::ClampToEdge);
