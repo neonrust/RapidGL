@@ -72,7 +72,7 @@ public:
 	static constexpr AxisT default_min_size_shift = 6; // i.e. size/64  (128 or 8192)
 
 public:
-	SpatialAllocator(AxisT size, AxisT min_block_size=AxisT(0), AxisT max_block_size=AxisT(0));
+	SpatialAllocator(AxisT size, size_t min_block_size_shift=0, size_t max_block_size_shift=0);
 
 	void reset();  // free *all* allocated nodes
 
@@ -122,10 +122,10 @@ private:
 };
 
 template<IntT AxisT>
-inline SpatialAllocator<AxisT>::SpatialAllocator(AxisT size, AxisT min_block_size, AxisT max_block_size) :
+inline SpatialAllocator<AxisT>::SpatialAllocator(AxisT size, size_t min_block_size_shift, size_t max_block_size_shift) :
 	_size(std::bit_ceil(size)),
-	_max_size(max_block_size? std::bit_ceil(max_block_size): _size >> default_max_size_shift),
-	_min_size(min_block_size? std::bit_ceil(min_block_size): _size >> default_min_size_shift)
+	_max_size(max_block_size_shift? _size >> max_block_size_shift: _size >> default_max_size_shift),
+	_min_size(min_block_size_shift? _size >> min_block_size_shift: _size >> default_min_size_shift)
 {
 	assert(_max_size <= _size);
 	assert(_min_size <= _size);

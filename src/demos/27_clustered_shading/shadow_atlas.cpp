@@ -76,43 +76,66 @@ ShadowAtlas::ShadowAtlas(uint32_t size, LightManager &lights) :
 	_lights(lights),
 	_min_change_interval(1s),
 	_shadow_slots_info_ssbo("shadow-params"),
-	_allocator(size, size >> (s_slot_max_size_shift + 3), size >> s_slot_max_size_shift)
+	_allocator(size, s_slot_max_size_shift + 3, s_slot_max_size_shift)
 {
-	size = std::bit_ceil(size);
-	assert(size >= 1024 and size <= 16384);
+	assert(_allocator.size() >= 1024 and _allocator.size() <= 16384);
 
 	_shadow_slots_info_ssbo.bindAt(SSBO_BIND_SHADOW_SLOTS_INFO);
 
-	_distribution.reserve(4);
-	generate_slots({ 24 + 1, 64 + 1, 256 + 1 });  // +1 for directional/sun light
+	_id_to_allocated.reserve(64);
 
+	init_slots(24, 64, 256, true);
+}
+
+void ShadowAtlas::init_slots(size_t count0, size_t count1, size_t count2, bool reserve_sun)
+{
+	clear();
+
+	_distribution.reserve(4);
+	if(reserve_sun)
+	{
+		++count0;
+		++count1;
+		++count2;
+	}
+	generate_slots({ count0, count1, count2 });  // +1 for sun light
+
+
+	// define minimum render interval for each slot size
+	//                    { skip frames, interval }
 	// TODO: these sohould be configurable
-	_render_intervals.push_back({ 0, 0ms });
-	_render_intervals.push_back({ 1, 25ms });
-	_render_intervals.push_back({ 2, 50ms });
+	_render_intervals.push_back({ 0,   0ms });
+	_render_intervals.push_back({ 1,  25ms });
+	_render_intervals.push_back({ 2,  50ms });
 	_render_intervals.push_back({ 4, 100ms });
 
-	// set aside 3 sots to sun light (uses CSM)
-	// will be used by the (strongest) directional light
-	// TODO: try to avoid hard-coding this allocation
-	//   seem slike a waste if there's actually no sun light present.
 	_allocated_sun.uuid = NO_LIGHT_ID;
-	_allocated_sun.num_slots = 3;
-	static constexpr bool LastSlot = false;
-	const auto start_size = size >> s_slot_max_size_shift;
-	for(auto idx = 0u; idx < _allocated_sun.num_slots; ++idx)
+
+	if(reserve_sun)
 	{
-		const auto slot_size = start_size >> idx;
-		const auto node_index = alloc_slot(slot_size, LastSlot);
+		// set aside 3 slots to sun light (uses CSM)
+		// will be used by the (strongest) directional light
+		// TODO: try to avoid hard-coding this allocation
+		//   seem slike a waste if there's actually no sun light present.
+		_allocated_sun.num_slots = 3;
+		static constexpr bool LastSlot = false;
+		const auto start_size = _allocator.max_size();
+		for(auto idx = 0u; idx < _allocated_sun.num_slots; ++idx)
+		{
+			const auto slot_size = start_size >> idx;
+			const auto node_index = alloc_slot(slot_size, LastSlot);
 
-		_allocated_sun.slots[idx].size = slot_size;
-		_allocated_sun.slots[idx].node_index = node_index;
-		_allocated_sun.slots[idx].rect = to_uvec4(_allocator.rect(node_index));
+			_allocated_sun.slots[idx].size = slot_size;
+			_allocated_sun.slots[idx].node_index = node_index;
+			_allocated_sun.slots[idx].rect = to_uvec4(_allocator.rect(node_index));
 
-		// remove the slot from "public" availability
-		--_distribution[_allocator.level_from_size(slot_size) - _allocator.largest_level()];
+				   // remove the slot from "public" availability
+			--_distribution[_allocator.level_from_size(slot_size) - _allocator.largest_level()];
+		}
+		_allocated_sun._dirty = true;
 	}
-	_allocated_sun._dirty = true;
+	else
+		_allocated_sun.num_slots = 0;
 }
 
 ShadowAtlas::~ShadowAtlas()
@@ -858,7 +881,7 @@ float ShadowAtlas::light_value(const GPULight &light, const glm::vec3 &view_pos,
 	return value;
 }
 
-void ShadowAtlas::generate_slots(std::initializer_list<uint32_t> distribution)
+void ShadowAtlas::generate_slots(std::initializer_list<size_t> distribution)
 {
 	const auto T0 = steady_clock::now();
 
