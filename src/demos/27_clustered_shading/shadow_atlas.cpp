@@ -524,7 +524,7 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const std::vector<AtlasLi
 	// size changes must be done in two phases; remember which they were
 	small_vec<uint32_t, 120> changed_size;
 
-	std::array<size_t, 6> size_promised = { 0, 0, 0, 0, 0, 0 };  // max to min level slot sizes promised (used for pro/demotions)
+	std::array<size_t, 4> size_promised = { 0, 0, 0, 0 };  // max to min level slot sizes promised (used for pro/demotions)
 
 	// deallocate for pro/demotions first, then new allocations and allocations for pro/demotions
 
@@ -618,7 +618,7 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const std::vector<AtlasLi
 	}
 
 	// no more promises!  (we already did those above)
-	size_promised = { 0, 0, 0, 0, 0, 0 };
+	size_promised = { 0, 0, 0, 0 };
 
 	// finally, allocate totally NEW slots
 	for(const auto &desired: desired_slots)
@@ -637,6 +637,11 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const std::vector<AtlasLi
 				if(remove_allocation(light_id))
 					++counters.dropped;
 				std::print("  [{}] OUT OF SLOTS size {}\n", light_id, desired.slots[0].size);
+				debug_dump_allocated(true);
+				std::print("size_promised: 1024:{} 512:{} 256:{} 128:{}\n",
+						   size_promised[0], size_promised[1], size_promised[2],
+						   size_promised[3], size_promised[4], size_promised[5]);
+				debug_dump_desired(desired_slots);
 				assert(false);
 				continue;
 			}
@@ -663,7 +668,7 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const std::vector<AtlasLi
 	return counters;
 }
 
-bool ShadowAtlas::has_slots_available(const AtlasLight &atlas_light, const std::array<size_t, 6> &size_promised) const
+bool ShadowAtlas::has_slots_available(const AtlasLight &atlas_light, const std::array<size_t, 4> &size_promised) const
 {
 	struct SizeCount
 	{
