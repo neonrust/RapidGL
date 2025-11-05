@@ -107,7 +107,7 @@ public:
 
 	std::vector<std::pair<SlotSize, size_t>> allocated_counts() const;
 
-	inline size_t slot_size_idx(SlotSize size) const { return _allocator.level_from_size(size) - _allocator.min_size_level(); }
+	inline size_t slot_size_idx(SlotSize size) const { return _allocator.level_from_size(size) - _allocator.largest_level(); }
 
 	bool remove_allocation(LightID light_id);
 
