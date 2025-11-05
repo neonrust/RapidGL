@@ -924,9 +924,13 @@ void ClusteredShading::update(double delta_time)
 
 			if(adjust_angle  != 0 and IS_SPOT_LIGHT(Lmut))
 			{
-				float new_angle = std::max(Lmut.outer_angle + adjust_angle, glm::radians(5.f));  // noise becomes apparent at smaller degrees
+				float new_angle = std::max(Lmut.outer_angle + adjust_angle, glm::radians(3.f));  // noise becomes apparent at smaller degrees
 				_light_mgr.set_spot_angle(Lmut, new_angle);
-				std::print("  [{}] spot angle: {:.1f}\n", light_id, glm::degrees(Lmut.outer_angle));
+				std::print("  [{}] spot angle: {:.1f}  {:.1f}   P:{:.0f}   R:{:.0f}\n", light_id,
+						   glm::degrees(Lmut.outer_angle),
+						   glm::degrees(Lmut.inner_angle),
+						   Lmut.intensity,
+						   Lmut.affect_radius);
 			}
 
 			_light_mgr.set(light_id, Lmut);
