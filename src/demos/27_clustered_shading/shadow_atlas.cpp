@@ -870,35 +870,34 @@ void ShadowAtlas::generate_slots(std::initializer_list<uint32_t> distribution)
 	_max_shadow_slots = 0;
 
 	// use the allocator to calculate how many slots are possible
-	//  e.g. allocate the first four levels of the distribution,
-	//  than ask the allocator to count how many of the last size there is room for
-	auto size = _allocator.max_size();
+	//  e.g. allocate the first N-1 levels of the distribution,
+	//  than ask the allocator to count how many of the last size there is room left for
+	auto slot_size = _allocator.max_size();
 
 	for(const auto count: _distribution)
 	{
-		auto &free_slots = _slot_sets[size];
+		auto &free_slots = _slot_sets[slot_size];
 		free_slots.reserve(count);
 
 		for(auto idx = 0u; idx < count; ++idx)
 		{
-			const auto index = _allocator.allocate(size);
+			const auto index = _allocator.allocate(slot_size);
 			assert(index != _allocator.end());
 			// prepend so they're allocated in "correct" order (uses pop_back())
 			free_slots.insert(free_slots.begin(), index);
 		}
 		_max_shadow_slots += free_slots.size();
 
-		size >>= 1;
+		slot_size >>= 1;
 	}
 
 	// then the remaining space is allocated using the smallest size
-	auto &free_slots = _slot_sets[size];
-	// unfortunately we don't know how many there will be,
-	//   but at least twice as many as the previous size
+	auto &free_slots = _slot_sets[slot_size];
+	// unfortunately we don't know how many there will be, but guessing plenty :)
 	free_slots.reserve(_distribution[_distribution.size() - 2] << 1);
 	do
 	{
-		const auto index = _allocator.allocate(size);
+		const auto index = _allocator.allocate(slot_size);
 		if(index != _allocator.end())
 			free_slots.push_back(index);
 		else
@@ -912,10 +911,14 @@ void ShadowAtlas::generate_slots(std::initializer_list<uint32_t> distribution)
 
 	const auto Td = steady_clock::now() - T0;
 
-	std::print("ShadowAltas: {} shadow map slots defined, in {}\n", _max_shadow_slots, duration_cast<microseconds>(Td));
+	std::print("\x1b[32;1mShadowAtlas\x1b[m {} shadow map slots defined, in {}\n", _max_shadow_slots, duration_cast<microseconds>(Td));
+	slot_size = _allocator.max_size();
+	for(const auto count: _distribution)
+	{
+		std::print("  {:>4}: {} slots\n", slot_size, count);
+		slot_size >>= 1;
+	}
 }
-
-#include <cmath> // std::signbit
 
 template <>
 struct std::formatter<glm::mat4> {
