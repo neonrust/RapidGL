@@ -13,8 +13,8 @@ suite<fixed_string("SpatialAllocator")> sa_suite([]{
 		expect(a.num_allocated().empty()) << "nothing allocated";
 		expect(a.max_size() == 1024);
 		expect(a.min_size() == 128);
-		expect(a.max_size_level() == 6);
-		expect(a.min_size_level() == 3);
+		expect(a.smallest_level() == 6);
+		expect(a.largest_level() == 3);
 		expect(a.num_allocatable_levels() == 4);
 		expect(a.level_from_size(256) == 5) << a.level_from_size(256);
 	};

@@ -78,8 +78,8 @@ public:
 
 	inline SizeT max_size() const { return _max_size; };
 	inline SizeT min_size() const { return _min_size; };
-	inline uint32_t max_size_level() const { return level_from_size(_min_size); }
-	inline uint32_t min_size_level() const { return level_from_size(_max_size); }
+	inline uint32_t smallest_level() const { return level_from_size(_min_size); }
+	inline uint32_t largest_level() const { return level_from_size(_max_size); }
 
 	size_t num_allocatable_levels() const;
 
