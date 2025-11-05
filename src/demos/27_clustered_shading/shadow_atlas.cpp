@@ -108,6 +108,9 @@ ShadowAtlas::ShadowAtlas(uint32_t size, LightManager &lights) :
 		_allocated_sun.slots[idx].size = slot_size;
 		_allocated_sun.slots[idx].node_index = node_index;
 		_allocated_sun.slots[idx].rect = to_uvec4(_allocator.rect(node_index));
+
+		// remove the slot from "public" availability
+		--_distribution[_allocator.level_from_size(slot_size) - _allocator.largest_level()];
 	}
 	_allocated_sun._dirty = true;
 }
