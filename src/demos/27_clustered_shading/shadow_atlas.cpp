@@ -181,6 +181,8 @@ size_t ShadowAtlas::eval_lights(const std::vector<LightIndex> &relevant_lights, 
 
 			desired_slots.push_back(atlas_light);
 			distribution[size_idx] -= atlas_light.num_slots;
+			// std::print("  [{:>2}] desired {} {:>4} slots  -> {:>3} remaining\n",
+			// 		   atlas_light.uuid, atlas_light.num_slots, slot_size, distribution[size_idx]);
 		}
 		else
 		{
