@@ -39,8 +39,8 @@ uniform float u_froxel_zexp;
 uniform float u_fog_density; // TODO: noise texture?
 uniform float u_fog_anisotropy;
 uniform bool  u_fog_noise;
-uniform float u_fog_noise_offset;
-uniform float u_fog_noise_frequency;
+uniform vec3 u_fog_noise_offset;
+uniform vec3 u_fog_noise_frequency;
 uniform float u_light_max_distance;
 uniform float u_volumetric_max_distance;
 uniform bool  u_froxel_z_noise;
@@ -54,7 +54,6 @@ uniform mat4  u_projection;
 uniform mat4  u_inv_view_projection;
 uniform mat4  u_prev_view;
 uniform float u_falloff_power;
-
 
 vec3 pointLightVisibility(GPULight light, vec3 world_pos);
 vec3 spotLightVisibility(GPULight light, vec3 world_pos);
@@ -203,11 +202,7 @@ void main()
 	if(u_fog_noise)
 	{
 		float noise_density = perlinNoise((world_pos + u_fog_noise_offset) * u_fog_noise_frequency);
-
-		// Transform noise from [-1,1] range to [0,1] range:
-		noise_density = noise_density * 0.5 + 0.5;
-
-		// Calculate scattering and absorption for this froxel:
+		noise_density = noise_density * 0.5 + 0.5;  // -> [ 0, 1 ]
 		total_scattered *= noise_density;
 		// absorption *= density;
 	}
@@ -219,11 +214,10 @@ void main()
 
 		// find the corresponding UV in the previous froxel grid
 		vec3 prev_uv = worldToUV(world_pos, u_prev_view);
-		// NOTE: relying on "camp to edge" here
+		// reject UV outside the froxel grid (looks better with temporal blending)
 		if(all(greaterThanEqual(prev_uv, vec3(0))) && all(lessThanEqual(prev_uv, vec3(1))))
 		{
 			// sample previous froxel
-			prev_uv.y += u_debug_prev_uv_offset;
 			vec3 prev_scattered = textureLod(u_prev_scatter, prev_uv, 0).rgb;
 			total_scattered = mix(total_scattered, prev_scattered, u_froxel_blend_weight);
 		}

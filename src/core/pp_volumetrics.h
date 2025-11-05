@@ -40,8 +40,8 @@ public:
 	inline void setAnisotropy(float anisotropy) { _anisotropy = anisotropy; }
 
 	inline void setNoiseEnabled(bool enabled) { _noise_enabled = enabled; }
-	inline void setNoiseOffset(float offset) { _noise_offset = offset; }
-	inline void setNoiseFrequency(float freq) { _noise_freq = freq; }
+	inline void setNoiseOffset(glm::vec3 offset) { _noise_offset = offset; }
+	inline void setNoiseFrequency(glm::vec3 freq) { _noise_freq = freq; }
 	inline void setTemporalBlending(bool enable=true) { _blend_previous = enable; }
 	inline void setTemporalBlendWeight(float weight) { _blend_weight = weight; }
 	// inline void setFalloffMix(float mix) { _falloff_mix = mix; }
@@ -86,7 +86,6 @@ private:
 	bool _blend_previous { true };
 	float _blend_weight { 0.8f };
 	// float _falloff_mix { 0 };
-	float _debug_uv_offset { 0.f };
 	float _falloff_power { 0.2f };
 	bool _z_noise_enabled { true };
 	bool _3dblur_enabled { true };
@@ -94,8 +93,8 @@ private:
 
 	GLuint _dummy_vao_id;
 	bool _noise_enabled { true };
-	float _noise_freq { 1.f };
-	float _noise_offset { 0.f };
+	glm::vec3 _noise_freq { 0.2f };
+	glm::vec3 _noise_offset { 0.f };
 };
 
 } // RGL::PP

@@ -157,9 +157,9 @@ void Volumetrics::inject()
 	_inject_shader.setUniform("u_fog_density"sv, _density);
 	// _inject_shader.setUniform("u_falloff_mix"sv, _falloff_mix);
 	_inject_shader.setUniform("u_froxel_z_noise"sv, _z_noise_enabled);
-	_inject_shader.setUniform("u_fog_noise"sv, true);
-	_inject_shader.setUniform("u_fog_noise_offset"sv, 0.f);
-	_inject_shader.setUniform("u_fog_noise_frequency"sv, 1.f);
+	_inject_shader.setUniform("u_fog_noise"sv, _noise_enabled);
+	_inject_shader.setUniform("u_fog_noise_offset"sv, _noise_offset);
+	_inject_shader.setUniform("u_fog_noise_frequency"sv, _noise_freq);
 	_inject_shader.setUniform("u_froxel_blend_previous"sv, _blend_previous);
 	_inject_shader.setUniform("u_froxel_blend_weight"sv, _blend_weight);
 

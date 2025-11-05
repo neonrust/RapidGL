@@ -208,14 +208,28 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 				if(ImGui::SliderFloat("Anisotropy", &anisotropy, -1.f, 1.f))
 					m_volumetrics_pp.setAnisotropy(anisotropy);
 				static float falloff_power { 0.2f };
-				if(ImGui::SliderFloat("Falloff power", &falloff_power, 0.2f, 2.f))
+				if(ImGui::SliderFloat("Falloff power", &falloff_power, 0.1f, 2.f))
 					m_volumetrics_pp.setFalloffPower(falloff_power);
-				static float noise_offset { 0.f };
-				if(ImGui::SliderFloat("Noise offset", &noise_offset, 0.f, 100.f))
-					m_volumetrics_pp.setNoiseOffset(noise_offset);
-				static float noise_freq{ 1.f };
-				if(ImGui::SliderFloat("Noise frequency", &noise_freq, 0.f, 100.f))
-					m_volumetrics_pp.setNoiseFrequency(noise_freq);
+				static bool fog_noise { true };
+				if(ImGui::Checkbox("Fog noise", &fog_noise))
+					m_volumetrics_pp.setNoiseEnabled(fog_noise);
+				if(fog_noise)
+				{
+					static glm::vec3 noise_offset(0);
+					if(ImGui::SliderFloat("Noise offset X", &noise_offset.x, 0.f, 100.f))
+						m_volumetrics_pp.setNoiseOffset(noise_offset);
+					if(ImGui::SliderFloat("Noise offset Y", &noise_offset.y, 0.f, 100.f))
+						m_volumetrics_pp.setNoiseOffset(noise_offset);
+					if(ImGui::SliderFloat("Noise offset Z", &noise_offset.z, 0.f, 100.f))
+						m_volumetrics_pp.setNoiseOffset(noise_offset);
+					static glm::vec3 noise_freq{ 0.2f };
+					if(ImGui::SliderFloat("Noise frequency X", &noise_freq.x, 0.f, 5.f))
+						m_volumetrics_pp.setNoiseFrequency(noise_freq);
+					if(ImGui::SliderFloat("Noise frequency Y", &noise_freq.y, 0.f, 5.f))
+						m_volumetrics_pp.setNoiseFrequency(noise_freq);
+					if(ImGui::SliderFloat("Noise frequency Z", &noise_freq.z, 0.f, 5.f))
+						m_volumetrics_pp.setNoiseFrequency(noise_freq);
+				}
 				static bool z_noise_enabled { true };
 				if(ImGui::Checkbox("Z-Noise", &z_noise_enabled))
 					m_volumetrics_pp.setFroxelNoiseEnabled(z_noise_enabled);
