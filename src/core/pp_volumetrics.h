@@ -89,7 +89,7 @@ private:
 	float _debug_uv_offset { 0.f };
 	float _falloff_power { 0.2f };
 	bool _z_noise_enabled { true };
-	bool _3dblur_enabled { false };
+	bool _3dblur_enabled { true };
 	bool _2dblur_enabled { false };
 
 	GLuint _dummy_vao_id;

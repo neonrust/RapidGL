@@ -224,7 +224,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 					m_volumetrics_pp.setTemporalBlending(blend_enabled);
 				if(blend_enabled)
 					ImGui::SliderFloat("Temporal blend", &_fog_blend_weight, 0.f, 0.95f, "%.2f");  // lerp: <current> - <previous>
-				static bool blur3_enabled { false };
+				static bool blur3_enabled { true };
 				if(ImGui::Checkbox("3D Blur", &blur3_enabled))
 					m_volumetrics_pp.setFroxelBlurEnabled(blur3_enabled);
 				static bool blur2_enabled { false };
