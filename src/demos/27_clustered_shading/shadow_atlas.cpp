@@ -10,6 +10,7 @@
 #include <string_view>
 #include <print>
 #include <cstdio>
+#include <cmath> // std::signbit
 
 #include "buffer_binds.h"
 #include "glm/ext/matrix_clip_space.hpp"
