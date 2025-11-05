@@ -362,7 +362,7 @@ void ShadowAtlas::debug_dump_allocated(bool details) const
 			std::print("  - {:3}  {:2} slots; shadow idx: [{}]\n", light_id, atlas_light.num_slots, _lights.shadow_index(light_id));
 			std::array<size_t, 4> alloc_counts = { 0, 0, 0, 0 };
 			for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
-				++alloc_counts[_allocator.level_from_size(atlas_light.slots[idx].size) - _allocator.largest_level()];
+				++alloc_counts[slot_size_idx(atlas_light.slots[idx].size)];
 			std::print("        sizes:");
 			for(const auto &[level, count]: std::views::enumerate(alloc_counts))
 			{
@@ -402,7 +402,7 @@ void ShadowAtlas::debug_dump_desired(const std::vector<AtlasLight> &desired_slot
 		std::print("  - {:3}  {:2} slots\n", atlas_light.uuid, atlas_light.num_slots);
 		std::array<size_t, 4> alloc_counts = { 0, 0, 0, 0 };
 		for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
-			++alloc_counts[_allocator.level_from_size(atlas_light.slots[idx].size) - _allocator.largest_level()];
+			++alloc_counts[slot_size_idx(atlas_light.slots[idx].size)];
 		std::print("        sizes:");
 		for(const auto &[level, count]: std::views::enumerate(alloc_counts))
 		{
