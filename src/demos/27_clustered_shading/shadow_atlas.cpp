@@ -300,15 +300,6 @@ bool ShadowAtlas::remove_allocation(LightID light_id)
 	return true;
 }
 
-void ShadowAtlas::_dump_desired(const small_vec<ShadowAtlas::AtlasLight, 120> &desired_slots)
-{
-	std::print("--- Desired slots ({}):\n", desired_slots.size());
-	for(const auto &desired: desired_slots)
-	{
-		std::print("  [{}] size: {}  x{}\n", desired.uuid, desired.slots[0].size, desired.num_slots);
-	}
-}
-
 std::vector<std::pair<ShadowAtlas::SlotSize, size_t>> ShadowAtlas::allocated_counts() const
 {
 	static dense_map<SlotSize, size_t> size_counts_map;
@@ -338,7 +329,7 @@ std::vector<std::pair<ShadowAtlas::SlotSize, size_t>> ShadowAtlas::allocated_cou
 	return size_counts;
 }
 
-void ShadowAtlas::debug_dump_allocated(bool details)
+void ShadowAtlas::debug_dump_allocated(bool details) const
 {
 	static dense_map<SlotSize, size_t> size_counts;
 	if(size_counts.empty())
@@ -366,18 +357,17 @@ void ShadowAtlas::debug_dump_allocated(bool details)
 
 		if(details)
 		{
-			std::print("  - {:3}  {:2} slots:  [{}]\n", light_id, atlas_light.num_slots, _lights.shadow_index(light_id));
-			auto slots = atlas_light.slots;
-			std::sort(slots.begin(), slots.begin() + atlas_light.num_slots, [](const auto &A, const auto &B){
-				return A.rect.x < B.rect.x or A.rect.y < B.rect.y;
-			});
+			std::print("  - {:3}  {:2} slots; shadow idx: [{}]\n", light_id, atlas_light.num_slots, _lights.shadow_index(light_id));
+			std::array<size_t, 4> alloc_counts = { 0, 0, 0, 0 };
 			for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
+				++alloc_counts[_allocator.level_from_size(atlas_light.slots[idx].size) - _allocator.largest_level()];
+			std::print("        sizes:");
+			for(const auto &[level, count]: std::views::enumerate(alloc_counts))
 			{
-				const auto &slot = slots[idx];
-				std::print("      {:3}: {:4},{:4}   {:4}  \n", slot.node_index, slot.rect.x, slot.rect.y, slot.size);
-				assert(slot.rect.z == slot.size);
-				assert(slot.rect.w == slot.size);
+				if(count)
+					std::print(" {:>4} {}", 1024 >> level, count);
 			}
+			std::puts("");
 		}
 	}
 	if(not sizes.empty())
@@ -392,7 +382,7 @@ void ShadowAtlas::debug_dump_allocated(bool details)
 			first = false;
 			std::print("{}:{}", slot_size, size_counts[slot_size]);
 		}
-		std::print(" }}");
+		std::print(" }}\n");
 
 		auto num_available = 0u;
 		for(const auto &[size, slot_set]: _slot_sets)
@@ -401,6 +391,26 @@ void ShadowAtlas::debug_dump_allocated(bool details)
 		assert(num_available + num_used + 3 == _max_shadow_slots);  // 3 = CSM slots for directional light
 	}
 }
+
+void ShadowAtlas::debug_dump_desired(const std::vector<AtlasLight> &desired_slots) const
+{
+	std::print("=== Desired slots ({}):\n", desired_slots.size());
+	for(const auto &atlas_light: desired_slots)
+	{
+		std::print("  - {:3}  {:2} slots\n", atlas_light.uuid, atlas_light.num_slots);
+		std::array<size_t, 4> alloc_counts = { 0, 0, 0, 0 };
+		for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
+			++alloc_counts[_allocator.level_from_size(atlas_light.slots[idx].size) - _allocator.largest_level()];
+		std::print("        sizes:");
+		for(const auto &[level, count]: std::views::enumerate(alloc_counts))
+		{
+			if(count)
+				std::print(" {:>4} {}", 1024 >> level, count);
+		}
+		std::puts("");
+	}
+}
+
 
 static glm::mat4 light_view_projection(const GPULight &light, size_t idx=0);
 

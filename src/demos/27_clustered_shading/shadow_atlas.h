@@ -102,7 +102,8 @@ public:
 
 	void clear();
 
-	void debug_dump_allocated(bool details=false);
+	void debug_dump_allocated(bool details=false) const;
+	void debug_dump_desired(const std::vector<AtlasLight> &desired_slots) const;
 
 	std::vector<std::pair<SlotSize, size_t>> allocated_counts() const;
 
@@ -160,8 +161,6 @@ private:
 	bool has_slots_available(const AtlasLight &atlas_light, const std::array<size_t, 6> &num_promised) const;
 	SlotID alloc_slot(SlotSize size, bool first=true);
 	void free_slot(SlotSize size, SlotID node_index);
-
-	void _dump_desired(const small_vec<AtlasLight, 120> &desired_slots);
 
 private:
 	LightManager &_lights;  // one could argue that the association should be the other way around...
