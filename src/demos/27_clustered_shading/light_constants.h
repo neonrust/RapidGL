@@ -60,11 +60,11 @@
 #ifdef __cplusplus
 void SET_SHADOW_IDX(auto &light, auto idx)
 {
-	assert(idx != LIGHT_NO_SHADOW and idx < LIGHT_SHADOW_MASK);
+	assert(idx <= LIGHT_NO_SHADOW);
 	light.type_flags = (light.type_flags & ~LIGHT_SHADOW_MASK) | uint32_t(idx << LIGHT_SHADOW_SHIFT);
 }
 #endif
-#define CLR_SHADOW_IDX(light)      SET_SHADOW_IDX(light, 0xffu)
+#define CLR_SHADOW_IDX(light)      SET_SHADOW_IDX(light, LIGHT_NO_SHADOW)
 
 #define IS_SHADOW_CASTER(light)    (((light).type_flags & LIGHT_SHADOW_CASTER) > 0)
 #define IS_VOLUMETRIC(light)       (((light).type_flags & LIGHT_VOLUMETRIC) > 0)
