@@ -284,7 +284,7 @@ GPULight LightManager::to_gpu_light(const LT &l)
 	}
 	else if constexpr (std::same_as<LT, AreaLight> or std::same_as<LT, AreaLightParams>)
 	{
-		L.type_flags      = LIGHT_TYPE_AREA | LIGHT_TWO_SIDED;
+		L.type_flags      = LIGHT_TYPE_AREA | (l.double_sided? LIGHT_TWO_SIDED: 0);
 		glm::vec3 right   = l.orientation * glm::vec3(l.size.x * 0.5f, 0,               0);
 		glm::vec3 up      = l.orientation * glm::vec3(0,               l.size.y * 0.5f, 0);
 		L.position        = l.position;
@@ -313,7 +313,7 @@ GPULight LightManager::to_gpu_light(const LT &l)
 	}
 	else if constexpr (std::same_as<LT, DiscLight> or std::same_as<LT, DiscLightParams>)
 	{
-		L.type_flags        = LIGHT_TYPE_DISC;
+		L.type_flags        = LIGHT_TYPE_DISC | (l.double_sided? LIGHT_TWO_SIDED: 0);
 		L.position          = l.position;
 		L.direction         = l.direction;
 		L.shape_points[0].x = l.radius;
