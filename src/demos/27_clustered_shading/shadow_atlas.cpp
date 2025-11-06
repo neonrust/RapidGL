@@ -250,7 +250,6 @@ size_t ShadowAtlas::eval_lights(const std::vector<LightIndex> &relevant_lights, 
 #if defined(DEBUG)
 		debug_dump_allocated(false);
 #endif
-		std::puts("");
 	}
 
 	// return how many shadow maps changed  (new, dropped, promoted, demoted)
