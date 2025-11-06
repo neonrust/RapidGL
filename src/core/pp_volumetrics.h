@@ -93,7 +93,7 @@ private:
 
 	GLuint _dummy_vao_id;
 	bool _noise_enabled { true };
-	glm::vec3 _noise_freq { 0.2f };
+	glm::vec3 _noise_freq { 0.1f, 1.5f, 0.1f };
 	glm::vec3 _noise_offset { 0.f };
 };
 
