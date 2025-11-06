@@ -411,12 +411,13 @@ void ShadowAtlas::debug_dump_allocated(bool details) const
 			std::print("{}:{}", slot_size, size_counts[slot_size]);
 		}
 		std::print(" }}\n");
-
+#if defined(DEBUG)
 		auto num_available = 0u;
 		for(const auto &[size, slot_set]: _slot_sets)
 			num_available += slot_set.size();
 
-		assert(num_available + num_used + 3 == _max_shadow_slots);  // 3 = CSM slots for directional light
+		assert(num_available + num_used + _allocated_sun.num_slots == _max_shadow_slots);
+#endif
 	}
 }
 
