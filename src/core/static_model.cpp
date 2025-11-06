@@ -205,8 +205,7 @@ bool StaticModel::ParseScene(const aiScene* scene, const std::filesystem::path& 
 
 	m_unit_scale = 1.0f / glm::compMax(_aabb.max() - _aabb.min());
 
-	/* Load materials. */
-	if (!LoadMaterials(scene, filepath))
+	if(not LoadMaterials(scene, filepath))
 	{
 		std::print(stderr, "\x1b[97;41;1mError\x1b[m loading mesh failed: {}: Could not load the materials\n", filepath.generic_string());
 		return false;
@@ -254,7 +253,7 @@ void StaticModel::LoadMeshPart(const aiMesh* mesh, VertexData& vertex_data)
 bool StaticModel::LoadMaterials(const aiScene* scene, const std::filesystem::path& filepath)
 {
 	// Extract the directory part from the file name
-	std::string::size_type last_slash_index = filepath.generic_string().rfind("/");
+	auto last_slash_index = filepath.generic_string().rfind("/");
 	std::string dir;
 
 	if (last_slash_index == std::string::npos)
@@ -295,6 +294,10 @@ bool StaticModel::LoadMaterials(const aiScene* scene, const std::filesystem::pat
 		if (AI_SUCCESS == material->Get(AI_MATKEY_COLOR_EMISSIVE, color_rgb))
 		{
 			m_materials[idx].set("u_emission"sv, glm::vec3(color_rgb.r, color_rgb.g, color_rgb.b));
+		}
+		if (AI_SUCCESS == material->Get(AI_MATKEY_EMISSIVE_INTENSITY, value))
+		{
+			m_materials[idx].set("u_emission_strength"sv, value);
 		}
 		if (AI_SUCCESS == material->Get(AI_MATKEY_COLOR_AMBIENT, color_rgb))
 		{

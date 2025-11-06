@@ -13,6 +13,7 @@ namespace RGL
 
 		set("u_albedo"sv,            glm::vec3(1.0f));
 		set("u_emission"sv,          glm::vec3(0.0f));
+		set("u_emission_strength"sv, 1.f);
 		set("u_ao"sv,                1.0f);
 		set("u_roughness"sv,         0.0f);
 		set("u_metallic"sv,          0.0f);

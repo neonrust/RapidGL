@@ -37,6 +37,7 @@ uniform float u_metallic;
 uniform float u_roughness;
 uniform float u_ao;
 uniform vec3  u_emission;
+uniform float u_emission_strength;
 
 uniform vec3  u_cam_pos;
 
@@ -74,7 +75,7 @@ MaterialProperties getMaterialProperties(vec3 normal)
 
     vec4 albedo_opacity = texture(u_albedo_map, in_texcoord);
     material.albedo    = u_has_albedo_map    ? albedo_opacity.rgb                       : u_albedo;
-    material.emission  = u_has_emissive_map  ? texture(u_emissive_map, in_texcoord).rgb : u_emission;
+    material.emission  = (u_has_emissive_map  ? texture(u_emissive_map, in_texcoord).rgb : u_emission) * u_emission_strength;
     material.normal    = u_has_normal_map    ? getNormalFromMap()                       : normal;
     material.metallic  = u_has_metallic_map  ? texture(u_metallic_map, in_texcoord).b   : u_metallic;
     material.roughness = u_has_roughness_map ? texture(u_roughness_map, in_texcoord).g  : u_roughness;

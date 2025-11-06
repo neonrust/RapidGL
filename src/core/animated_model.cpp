@@ -375,8 +375,7 @@ bool AnimatedModel::ParseScene(const aiScene* scene, const std::filesystem::path
 
 	m_unit_scale = 1.0f / glm::compMax(max - min);
 
-	/* Load materials. */
-	if (!LoadMaterials(scene, filepath))
+	if(not LoadMaterials(scene, filepath))
 	{
 		std::print(stderr, "\x1b[97;41;1mError\x1b[m Loading mesh failed {}: Could not load the materials.\n", filepath.generic_string());
 		return false;
