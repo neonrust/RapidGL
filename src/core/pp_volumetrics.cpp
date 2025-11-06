@@ -19,9 +19,9 @@ static constexpr glm::uvec3 s_froxels { FROXEL_GRID_W, FROXEL_GRID_H, FROXEL_GRI
 static constexpr glm::uvec3 s_local_size { FROXEL_THREADS_X, FROXEL_THREADS_Y, FROXEL_THREADS_Z };
 
 Volumetrics::Volumetrics() :
-	_all_volumetric_lights("volumetric-lights"sv),
-	_all_tile_lights("volumetric-all-tile-lights"sv),
-	_tile_lights_ranges("volumetric-tile-light-ranges"sv)
+	_all_volumetric_lights("volumetric-lights"sv),  // list subset of all position-relevant lights that affect volumetrics
+	_all_tile_lights("volumetric-all-tile-lights"sv),  // index list of all lights assigned to affect 2d tiles
+	_tile_lights_ranges("volumetric-tile-light-ranges"sv)  // index list per 2d tile of lights that affect them
 {
 	_all_volumetric_lights.bindAt(SSBO_BIND_ALL_VOLUMETRIC_LIGHTS_INDEX);
 	_all_tile_lights.bindAt(SSBO_BIND_VOLUMETRIC_ALL_TILE_LIGHTS_INDEX);
