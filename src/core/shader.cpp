@@ -132,18 +132,10 @@ bool Shader::addShader(const std::filesystem::path & filepath, ShaderType type, 
 
 bool Shader::loadShader(GLuint shaderObject, ShaderType type, const std::filesystem::path &filepath, const string_set &conditionals)
 {
-	const auto  dir = FileSystem::rootPath() / filepath.parent_path();
-	const auto &[file_content, okf] = Util::LoadFile(filepath);
-	if(not okf)
+	auto [code, ok] = Util::LoadShaderFile(filepath);
+	if(not ok)
 	{
 		std::print(stderr, "Load shader failed: {}\n", filepath.string());
-		m_failed_shaders++;
-		return false;
-	}
-	auto [code, okp] = Util::PreprocessShaderSource(file_content, dir);
-	if(not okp)
-	{
-		std::print(stderr, "Preprocessing shader failed: {}\n", filepath.string());
 		m_failed_shaders++;
 		return false;
 	}

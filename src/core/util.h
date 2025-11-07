@@ -30,6 +30,9 @@ namespace RGL
     class Util
     {
     public:
+
+		static bool FileExist(const std::filesystem::path &filepath);
+
         /**
         * @brief   Loads a file in a text mode.
         * @param   std::filesystem::path Relative path, with file name
@@ -39,8 +42,10 @@ namespace RGL
         */
 		static std::tuple<std::string, bool> LoadFile(const std::filesystem::path & filename, bool fail_ok=false);
 
+		static std::tuple<std::string, bool> LoadShaderFile(const std::filesystem::path &filepath);
+
 		// same as LoadFile, but if 'filename' is relative, it attempts open in given search paths, in order.
-		static std::tuple<std::string, std::filesystem::path> LoadFileInPaths(const std::filesystem::path &filename, const small_vec<std::filesystem::path, 16> &search_paths);
+		static std::optional<std::filesystem::path> FindFileInPaths(const std::filesystem::path &filename, const std::vector<std::filesystem::path> &search_paths);
 
 		static std::streamsize GetFileSize(std::ifstream &strm);
 
@@ -54,8 +59,7 @@ namespace RGL
         static std::vector<uint8_t> LoadFileBinary(const std::filesystem::path& filename);
 		
 		static void AddShaderSearchPath(const std::filesystem::path &path);
-		static std::tuple<std::string, bool> PreprocessShaderSource(const std::string & shader_code, const std::filesystem::path& dir="shaders");
-        /**
+		/**
         * @brief   Loads a file that contains an image data.
         * @param   std::string Relative path, with file name
         *          and extension, to the file that needs to be
@@ -113,5 +117,8 @@ namespace RGL
 			// Returns a random vec3 inside the box defined by [min, max).
 			return glm::vec3(RandomDouble(min.x, max.x), RandomDouble(min.y, max.y), RandomDouble(min.z, max.z));
 		}
+
+	private:
+		static std::tuple<std::string, bool> PreprocessShaderSource(const std::filesystem::path &filepath, const std::string &shader_source, dense_set<std::filesystem::path> &visited_files);
 	};
 }
