@@ -1020,11 +1020,11 @@ void ClusteredShading::createLights()
 				.color = rand_color,
 				.intensity = rand_intensity,
 				.fog = 1.f,
-				.shadow_caster = false,
+				.shadow_caster = false,   // probably never
 				.position = rand_pos,
-				.size = glm::vec2(2, 2),
+				.size = glm::vec2(1.f, 1.f),
 				.orientation = glm::quat{},
-				.double_sided = false,
+				.double_sided = true,
 			});
 			type_name = _light_mgr.type_name<decltype(l)>();
 			l_id = l.id();
