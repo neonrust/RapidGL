@@ -258,10 +258,14 @@ GPULight LightManager::to_gpu_light(const LT &l)
 	L.intensity     = l.intensity;
 	L.fog_intensity = l.fog;
 
+	if constexpr (not std::same_as<LT, DirectionalLight> or std::same_as<LT, DirectionalLightParams>)
+	{
+		L.position      = l.position;
+	}
+
 	if constexpr (std::same_as<LT, PointLight> or std::same_as<LT, PointLightParams>)
 	{
 		L.type_flags    = LIGHT_TYPE_POINT;
-		L.position      = l.position;
 		L.affect_radius = std::pow(l.intensity, 0.6f);
 	}
 	else if constexpr (std::same_as<LT, DirectionalLight> or std::same_as<LT, DirectionalLightParams>)
@@ -272,7 +276,6 @@ GPULight LightManager::to_gpu_light(const LT &l)
 	else if constexpr (std::same_as<LT, SpotLight> or std::same_as<LT, SpotLightParams>)
 	{
 		L.type_flags     = LIGHT_TYPE_SPOT;
-		L.position       = l.position;
 		L.direction      = l.direction;
 		L.outer_angle    = _private::s_spot_reference_angle;
 		assert(l.outer_angle >= l.inner_angle);
@@ -287,7 +290,6 @@ GPULight LightManager::to_gpu_light(const LT &l)
 		L.type_flags      = LIGHT_TYPE_AREA | (l.double_sided? LIGHT_TWO_SIDED: 0);
 		glm::vec3 right   = l.orientation * glm::vec3(l.size.x * 0.5f, 0,               0);
 		glm::vec3 up      = l.orientation * glm::vec3(0,               l.size.y * 0.5f, 0);
-		L.position        = l.position;
 		L.shape_points[0] = glm::vec4(l.position + right - up, 1);
 		L.shape_points[1] = glm::vec4(l.position - right - up, 1);
 		L.shape_points[2] = glm::vec4(l.position + right + up, 1);
@@ -298,7 +300,6 @@ GPULight LightManager::to_gpu_light(const LT &l)
 	else if constexpr (std::same_as<LT, TubeLight> or std::same_as<LT, TubeLightParams>)
 	{
 		L.type_flags        = LIGHT_TYPE_TUBE;
-		L.position          = l.position;
 		L.shape_points[0]   = glm::vec4(l.end_points[0], 1);
 		L.shape_points[1]   = glm::vec4(l.end_points[1], 1);
 		L.shape_points[2].x = l.thickness;
@@ -307,14 +308,12 @@ GPULight LightManager::to_gpu_light(const LT &l)
 	else if constexpr (std::same_as<LT, SphereLight> or std::same_as<LT, SphereLightParams>)
 	{
 		L.type_flags        = LIGHT_TYPE_SPHERE;
-		L.position          = l.position;
 		L.shape_points[0].x = l.radius;
 		// L.affect_radius     =       TODO
 	}
 	else if constexpr (std::same_as<LT, DiscLight> or std::same_as<LT, DiscLightParams>)
 	{
 		L.type_flags        = LIGHT_TYPE_DISC | (l.double_sided? LIGHT_TWO_SIDED: 0);
-		L.position          = l.position;
 		L.direction         = l.direction;
 		L.shape_points[0].x = l.radius;
 		// L.affect_radius     =       TODO
