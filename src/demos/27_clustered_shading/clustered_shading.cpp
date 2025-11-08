@@ -1007,8 +1007,8 @@ void ClusteredShading::createLights()
 				.shadow_caster = true,
 				.position = rand_pos,
 				.direction = -AXIS_Z, //glm::normalize(Util::RandomVec3(0, 1)),
-				.outer_angle = glm::radians(5.f),
-				.inner_angle = glm::radians(3.f),
+				.outer_angle = glm::radians(25.f),
+				.inner_angle = glm::radians(15.f),
 			});
 			type_name = _light_mgr.type_name<decltype(l)>();
 			l_id = l.id();
