@@ -277,7 +277,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 				"prefiltered_env_map_rt  [cube]",
 
 				// 2d
-				"depth_pass_rt",
+				"depth_pass_rt",   // 4
 				"rt",
 				"pp_low_rt",
 				"pp_full_rt",
@@ -285,7 +285,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 				"shadow_atlas",
 
 				// 3d
-				"volumetric froxels [3d]",
+				"volumetric froxels [3d]",  // 10
 				"volumetric froxels back [3d]",
 				"volumetric froxels acc [3d]",
 			};
