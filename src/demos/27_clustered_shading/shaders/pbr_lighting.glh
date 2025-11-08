@@ -262,7 +262,7 @@ vec3 calcAreaLight(GPULight light, vec3 world_pos, MaterialProperties material)
     vec3  V         = normalize(u_cam_pos - world_pos);
     float cos_theta = max(dot(N, V), 0.0);
 
-	bool two_sided = (light.type_flags & LIGHT_TWO_SIDED) > 0;
+	bool two_sided = IS_DOUBLE_SIDED(light);
 
     // diffuse term
     vec3 diff  = ltcEvaluate(N, V, world_pos, mat3(1), light.shape_points, two_sided);

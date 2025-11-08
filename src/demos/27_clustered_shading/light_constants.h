@@ -47,7 +47,7 @@
 #define IS_SPHERE_LIGHT(light)     (IS_LIGHT_TYPE(light, LIGHT_TYPE_SPHERE))
 #define IS_DISC_LIGHT(light)       (IS_LIGHT_TYPE(light, LIGHT_TYPE_DISC))
 
-#define LIGHT_TWO_SIDED          0x10u   // area & disc lights
+#define LIGHT_DOUBLE_SIDED          0x10u   // area & disc lights
 
 #define LIGHT_SHADOW_CASTER      0x00000080u
 #define LIGHT_SHADOW_MASK        0x000fff00u  // max 1023 shadw-casting lights
@@ -68,6 +68,7 @@ void SET_SHADOW_IDX(auto &light, auto idx)
 
 #define IS_SHADOW_CASTER(light)    (((light).type_flags & LIGHT_SHADOW_CASTER) > 0)
 #define IS_VOLUMETRIC(light)       (((light).type_flags & LIGHT_VOLUMETRIC) > 0)
+#define IS_DOUBLE_SIDED(light)     (((light).type_flags & LIGHT_DOUBLE_SIDED) > 0)
 
 #define FROXEL_GRID_W      160
 #define FROXEL_GRID_H      90
