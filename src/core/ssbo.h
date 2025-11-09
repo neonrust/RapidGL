@@ -49,6 +49,7 @@ public:
 	template<IteratorOf<T> Iter> // TODO: must be contiguous!
 	void set(Iter begin, Iter end, size_t start_index=0);
 
+	std::vector<T> download(size_t offset=0, size_t count=0);
 	bool download(std::vector<T> &destination, size_t offset=0, size_t count=0);
 
 	inline size_t size() const { return _size; }
@@ -108,6 +109,14 @@ bool Storage<T>::set(size_t index, const T &item)
 		upload(&item, elem_size, index * elem_size);
 
 	return index < _size;
+}
+
+template<typename T>
+std::vector<T> Storage<T>::download(size_t offset, size_t count)
+{
+	std::vector<T> items;
+	download(items, offset, count);
+	return items;
 }
 
 template<typename T>
