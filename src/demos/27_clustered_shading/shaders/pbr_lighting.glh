@@ -284,16 +284,23 @@ vec3 calcAreaLight(GPULight light, vec3 world_pos, MaterialProperties material)
 
 vec3 calcTubeLight(GPULight light, vec3 world_pos, MaterialProperties material)
 {
-	// TODO: this is nowhere close to resemblence of correct
-	// maybe see this: https://alextardif.com/arealights.html
+	// simulate using a fragment-facing area light, thick as tube diameter
 
-	vec3 middle = (light.shape_points[0].xyz + light.shape_points[1].xyz) / 2;
-    vec3 pos_to_light = middle - world_pos;
+	vec3 point_a = light.shape_points[0].xyz;
+	vec3 point_b = light.shape_points[1].xyz;
+	float thickness = light.shape_points[2].x * 0.5;
 
-	float radius = pow(light.intensity, 0.6) * distance(light.shape_points[0], light.shape_points[1]);
-	float attenuation = getSquareFalloffAttenuation(pos_to_light, 1.0 / radius);
+	vec3 binormal = normalize(cross(point_a - point_b, world_pos - light.position));
+	vec3 corner_offset = binormal * thickness;
 
-	return light.color*light.intensity * attenuation;
+	GPULight faux_area = light;
+	faux_area.type_flags = LIGHT_TYPE_AREA;
+	faux_area.shape_points[0] = vec4(point_b + corner_offset, 1);
+	faux_area.shape_points[1] = vec4(point_a + corner_offset, 1);
+	faux_area.shape_points[2] = vec4(point_b - corner_offset, 1);
+	faux_area.shape_points[3] = vec4(point_a - corner_offset, 1);
+
+	return calcAreaLight(faux_area, world_pos, material);
 }
 
 vec3 calcSphereLight(GPULight light, vec3 world_pos, MaterialProperties material)

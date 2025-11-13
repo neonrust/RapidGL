@@ -1030,6 +1030,22 @@ void ClusteredShading::createLights()
 			l_id = l.id();
 		}
 		break;
+		case LIGHT_TYPE_TUBE:
+		{
+			auto l = _light_mgr.add(TubeLightParams{
+				.color = rand_color,
+				.intensity = rand_intensity,
+				.fog = 1.f,
+				.shadow_caster = false,   // probably never
+				.position = rand_pos,
+				.end_points = { { -2.f, 0.f, 0.f }, { 2.f, 0.f, 0.f } },
+				.thickness = 0.05f,
+			});
+			type_name = _light_mgr.type_name<decltype(l)>();
+			l_id = l.id();
+		}
+		break;
+
 		}
 
 		std::print("light[{:2}] {:5} @ {:5.1f}; {:3.1f}; {:5.1f}  {:3},{:3},{:3}  {:4.0f}\n",

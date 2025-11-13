@@ -86,8 +86,6 @@ void main()
 
 			case LIGHT_TYPE_AREA:
 			{
-				// center from average of two diagonal points
-	            sphere_center = (light.shape_points[1].xyz + light.shape_points[2].xyz) / 2;
 	            // approximation of the light radius
 	            sphere_radius = 50 * light.intensity * distance(sphere_center, light.shape_points[1].xyz);
 			}
@@ -95,11 +93,8 @@ void main()
 
 			case LIGHT_TYPE_TUBE:
 			{
-				// TODO
-				// center of line segment
-	            sphere_center = (light.shape_points[0].xyz + light.shape_points[1].xyz) / 2;
-	            // approximation of the light radius
-	            // sphere_radius = 50 * light.intensity * distance(sphere_center, light.shape_points[1].xyz);
+			   // approximation of the light radius
+			   sphere_radius = 50 * light.intensity * distance(sphere_center, light.shape_points[1].xyz);
 			}
 			break;
 

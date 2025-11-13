@@ -85,6 +85,7 @@ uint computeSpotNumSamples(vec3 world_pos, GPULight spot, float maxWidth, uint  
 float samplePointLight(GPULight light, vec3 world_pos, float distance_sq);
 float sampleSpotLight(GPULight light, vec3 world_pos, float distance_sq, float slice_thickness);
 float sampleAreaLight(GPULight light, vec3 world_pos, float distance_sq);
+float sampleTubeLight(GPULight light, vec3 world_pos, float distance_sq);
 
 
 const float s_min_visibility = 1e-3;
@@ -173,7 +174,7 @@ void main()
 					break;
 
 				case LIGHT_TYPE_TUBE:
-					// TODO: calculate the amount of energy at 'world_pos'
+					contribution *= sampleTubeLight(light, world_pos, distance_sq);
 					break;
 
 				case LIGHT_TYPE_SPHERE:
@@ -365,6 +366,43 @@ float sampleAreaLight(GPULight light, vec3 sample_pos, float distance_sq)
 	float falloff = fogDistanceFalloff(dist, light.affect_radius);
 
 	return n_dot_l * falloff * area_scale / 100;
+}
+
+vec3 closest_point(vec3 test_point, vec3 line1, vec3 line2)
+{
+	vec3 ba = test_point - line1;
+	vec3 bc = line2 - line1;
+	float d = dot(ba, bc);
+	float len = length(bc);
+	float param = 0;
+	if (len != 0)
+		param = clamp(d / (len * len), 0, 1);
+	return line1 + bc * param;
+}
+
+float sampleTubeLight(GPULight light, vec3 world_pos, float distance_sq)
+{
+	// simulate using a froxel-facing area light, thick as tube diameter
+
+	vec3 point_a = light.shape_points[0].xyz;
+	vec3 point_b = light.shape_points[1].xyz;
+	float thickness = light.shape_points[2].x * 0.5;
+
+	vec3 closest = closest_point(world_pos, point_a, point_b);
+	float distance = distance(world_pos, closest) - thickness;
+	return fogDistanceFalloff(distance, light.affect_radius);
+
+	// vec3 binormal = normalize(cross(point_a - point_b, world_pos - light.position));
+	// vec3 corner_offset = binormal * thickness;
+
+	// GPULight faux_area = light;
+	// faux_area.type_flags = LIGHT_TYPE_AREA;
+	// faux_area.shape_points[0] = vec4(point_b + corner_offset, 1);
+	// faux_area.shape_points[1] = vec4(point_a + corner_offset, 1);
+	// faux_area.shape_points[2] = vec4(point_b - corner_offset, 1);
+	// faux_area.shape_points[3] = vec4(point_a - corner_offset, 1);
+
+	// return sampleAreaLight(faux_area, world_pos, distance_sq)*4;
 }
 
 float froxelThickness(int z)
