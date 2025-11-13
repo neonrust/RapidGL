@@ -119,6 +119,7 @@ void ClusteredShading::debugDrawLightMarkers()
 		PointLight = 0,
 		SpotLight  = 1,
 		AreaLight  = 2,
+		TubeLight  = 3,
 	};
 
 	struct IconData
@@ -184,6 +185,8 @@ void ClusteredShading::debugDrawLightMarkers()
 			icon = Icon::SpotLight;
 		else if(IS_AREA_LIGHT(L))
 			icon = Icon::AreaLight;
+		else if(IS_TUBE_LIGHT(L))
+			icon  = Icon::TubeLight;
 
 		icons.push_back({
 			.world_pos   = L.position,
