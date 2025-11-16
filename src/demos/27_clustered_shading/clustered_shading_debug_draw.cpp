@@ -120,6 +120,7 @@ void ClusteredShading::debugDrawLightMarkers()
 		SpotLight  = 1,
 		AreaLight  = 2,
 		TubeLight  = 3,
+		DiscLight  = 4,
 	};
 
 	struct IconData
@@ -179,14 +180,16 @@ void ClusteredShading::debugDrawLightMarkers()
 
 		const auto to_light = L.position - m_camera.position();
 		float distance_sq = glm::dot(to_light, to_light);
-		auto icon = Icon::PointLight;
 
+		auto icon = Icon::PointLight;
 		if(IS_SPOT_LIGHT(L))
 			icon = Icon::SpotLight;
 		else if(IS_AREA_LIGHT(L))
 			icon = Icon::AreaLight;
 		else if(IS_TUBE_LIGHT(L))
 			icon  = Icon::TubeLight;
+		else if(IS_DISC_LIGHT(L))
+			icon  = Icon::DiscLight;
 
 		icons.push_back({
 			.world_pos   = L.position,
