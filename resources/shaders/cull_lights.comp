@@ -84,7 +84,7 @@ void main()
 			}
 			break;
 
-			case LIGHT_TYPE_AREA:
+			case LIGHT_TYPE_RECT:
 			{
 	            // approximation of the light radius
 	            sphere_radius = 50 * light.intensity * distance(sphere_center, light.shape_points[1].xyz);

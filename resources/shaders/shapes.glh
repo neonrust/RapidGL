@@ -26,3 +26,21 @@ bool plane_facing(Plane plane, Sphere sphere)
     float dist = plane_distance(plane, sphere);
     return dist + sphere.radius > 0;
 }
+
+struct Ray
+{
+	vec3 start;
+	vec3 direction;
+	float max_length; // 0: infinite
+};
+
+vec3 rayPoint(Ray ray, float t)
+{
+	return ray.start + ray.direction*t;
+}
+
+struct Segment
+{
+	vec3 a;
+	vec3 b;
+};

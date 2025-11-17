@@ -12,23 +12,23 @@ namespace RGL::PP
 
 bool Bloom::create()
 {
-	static const std::filesystem::path dir = "src/demos/27_clustered_shading/"s;
+	static const std::filesystem::path dir = FileSystem::getResourcesPath() / "shaders";
 
 	// load shaders and dirt texture
 
 	// TODO: slightly less ugly syntax ;)
 
-	new (&_downscale_shader) Shader(dir / "shaders/downscale.comp");
+	new (&_downscale_shader) Shader(dir / "downscale.comp");
 	_downscale_shader.link();
 	assert(_downscale_shader);
 	_downscale_shader.setPostBarrier(Shader::Barrier::Image | Shader::Barrier::Texture);
 
-	new (&_upscale_shader) Shader(dir / "shaders/upscale.comp");
+	new (&_upscale_shader) Shader(dir / "upscale.comp");
 	_upscale_shader.link();
 	assert(_upscale_shader);
 	_upscale_shader.setPostBarrier(Shader::Barrier::Image | Shader::Barrier::Texture);
 
-	_dirt_texture.Load(FileSystem::getResourcesPath() / "textures/bloom_dirt_mask.jxl");
+	_dirt_texture.Load(FileSystem::getResourcesPath() / "textures" / "bloom_dirt_mask.jxl");
 	assert(_dirt_texture);
 
 	return *this;

@@ -1,5 +1,6 @@
 #include "pp_tonemapping.h"
 
+#include "filesystem.h"
 #include "rendertarget_2d.h"
 
 using namespace std::literals;
@@ -13,7 +14,9 @@ Tonemapping::Tonemapping()//uint32_t width, uint32_t height)
 
 void Tonemapping::create()
 {
-	_shader = std::make_shared<RGL::Shader>("src/demos/27_clustered_shading/shaders/FSQ.vert", "src/demos/27_clustered_shading/shaders/tmo.frag");
+	static const std::filesystem::path dir = FileSystem::getResourcesPath() / "shaders";
+
+	_shader = std::make_shared<RGL::Shader>(dir / "FSQ.vert", dir / "tmo.frag");
 	_shader->link();
 	assert(*_shader.get());
 

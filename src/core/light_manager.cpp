@@ -15,7 +15,7 @@ static const std::string_view s_light_type_names[] {
 	"point"sv,
 	"directional"sv,
 	"spot"sv,
-	"area"sv,
+	"rect"sv,
 	"tube"sv,
 	"sphere"sv,
 	"disc"sv,
@@ -55,7 +55,7 @@ void LightManager::clear()
 	_num_point_lights = 0;
 	_num_dir_lights = 0;
 	_num_spot_lights = 0;
-	_num_area_lights = 0;
+	_num_rect_lights = 0;
 	_num_tube_lights = 0;
 	_num_sphere_lights = 0;
 	_num_disc_lights = 0;
@@ -228,8 +228,8 @@ void LightManager::add(const GPULight &L, LightID light_id)
 		++_num_dir_lights;
 	else if(IS_SPOT_LIGHT(L))
 		++_num_spot_lights;
-	else if(IS_AREA_LIGHT(L))
-		++_num_area_lights;
+	else if(IS_RECT_LIGHT(L))
+		++_num_rect_lights;
 	else if(IS_TUBE_LIGHT(L))
 		++_num_tube_lights;
 	else if(IS_SPHERE_LIGHT(L))

@@ -6,7 +6,7 @@
 #include "shader.h"
 #include "texture.h"
 
-#include "../demos/27_clustered_shading/generated//shared-structs.h"
+#include "generated/shared-structs.h"
 
 namespace RGL
 {

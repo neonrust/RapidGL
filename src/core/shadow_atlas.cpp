@@ -271,7 +271,7 @@ size_t ShadowAtlas::hash_light(const GPULight &L) const
 		return vH(L.position)
 			^ fH(L.spot_bounds_radius)  // i.e. affect_radius and outer_angle
 			^ vH(L.direction);
-	case LIGHT_TYPE_AREA:
+	case LIGHT_TYPE_RECT:
 	case LIGHT_TYPE_DISC:
 	case LIGHT_TYPE_TUBE:
 	case LIGHT_TYPE_SPHERE:

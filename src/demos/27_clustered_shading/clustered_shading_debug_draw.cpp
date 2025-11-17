@@ -118,7 +118,7 @@ void ClusteredShading::debugDrawLightMarkers()
 	{
 		PointLight = 0,
 		SpotLight  = 1,
-		AreaLight  = 2,
+		RectLight  = 2,
 		TubeLight  = 3,
 		DiscLight  = 4,
 	};
@@ -184,8 +184,8 @@ void ClusteredShading::debugDrawLightMarkers()
 		auto icon = Icon::PointLight;
 		if(IS_SPOT_LIGHT(L))
 			icon = Icon::SpotLight;
-		else if(IS_AREA_LIGHT(L))
-			icon = Icon::AreaLight;
+		else if(IS_RECT_LIGHT(L))
+			icon = Icon::RectLight;
 		else if(IS_TUBE_LIGHT(L))
 			icon  = Icon::TubeLight;
 		else if(IS_DISC_LIGHT(L))
@@ -583,7 +583,7 @@ void ClusteredShading::debugDrawClusterGrid()
 		debugDrawRect(top_left, size, cluster_color, 0.f);
 	};
 
-	auto c_lights_view = m_cluster_lights_range_ssbo.view();
+	auto c_lights_view = m_cluster_light_ranges_ssbo.view();
 	auto clusters_view = m_cluster_aabb_ssbo.view();
 	// auto points_view = m_point_lights_ssbo.view();
 	// auto points_idx_view = m_point_lights_index_ssbo.view();

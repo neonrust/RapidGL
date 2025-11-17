@@ -1,6 +1,6 @@
 #version 460 core
 
-#include "../../src/demos/27_clustered_shading/shaders/shared-structs.glh"
+#include "shared-structs.glh"
 #include "shapes.glh"
 
 #define THREADS_COUNT 128

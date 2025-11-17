@@ -19,6 +19,7 @@ set(SOURCE_FILES_CORE
 	input.cpp
 	input_bind.cpp
 	ktx_loader.cpp
+	light_manager.cpp
 	material.cpp
 	plane.cpp
 	postprocess.cpp
@@ -33,6 +34,7 @@ set(SOURCE_FILES_CORE
 	rendertarget_common.cpp
 	rendertarget_cube.cpp
 	shader.cpp
+	shadow_atlas.cpp
 	static_model.cpp
 	texture.cpp
 	util.cpp
@@ -62,6 +64,9 @@ set(HEADER_FILES_CORE
 	input.h
 	input_bind.h
 	ktx_loader.h
+	light_constants.h
+	light_manager.h
+	lights.h
 	material.h
 	mesh_part.h
 	plane.h
@@ -79,6 +84,7 @@ set(HEADER_FILES_CORE
 	ringbuffer.h
 	sample_window.h
 	shader.h
+	shadow_atlas.h
 	spatial_allocator.h
 	ssbo.h
 	static_model.h
@@ -183,5 +189,63 @@ add_custom_command(
 add_custom_target(generate_GL_LOOKUP DEPENDS ${GL_LOOKUP_OUTPUT})
 # Make sure the build depends on this output
 add_dependencies(${CORE_LIB_NAME} generate_GL_LOOKUP)
+
+# Read the file contents
+# set(LIMITS_HEADER "${CMAKE_CURRENT_LIST_DIR}/light_constants.h")
+# file(READ "${LIMITS_HEADER}" LIMITS_HEADER_CONTENTS)
+
+# Helper macro to extract #define value
+# macro(extract_define NAME)
+# 	set(_pattern "#define[ \t]+${NAME}[ \t]+([0-9]+)")
+# 	string(REGEX MATCH ${_pattern} _match "${LIMITS_HEADER_CONTENTS}")
+# 	if(NOT ${CMAKE_MATCH_1})
+# 		    message(FATAL_ERROR "Constant ${NAME} not found")
+# 	endif()
+# 	set(${NAME} "${CMAKE_MATCH_1}" CACHE INTERNAL "Extracted constant")
+# 	message(STATUS "SET ${NAME} = ${CMAKE_MATCH_1}")
+# endmacro()
+
+# Extract constants (repeat for each)
+# extract_define(MAX_POINT_LIGHTS)
+# extract_define(MAX_SPOT_LIGHTS)
+# extract_define(MAX_RECT_LIGHTS)
+# extract_define(MAX_TUBE_LIGHTS)
+# extract_define(MAX_SPHERE_LIGHTS)
+# extract_define(MAX_DISC_LIGHTS)
+# extract_define(CLUSTER_MAX_COUNT)
+# extract_define(CLUSTER_MAX_LIGHTS)
+
+
+set(GLSL_STRUCT_SCRIPT ${CMAKE_SOURCE_DIR}/scripts/glsl_struct_to_cpp)
+set(GLSL_STRUCT_INPUT  ${CMAKE_SOURCE_DIR}/resources/shaders/shared-structs.glh)
+set(GLSL_STRUCT_OUTPUT ${CMAKE_CURRENT_LIST_DIR}/generated/shared-structs.h)
+
+add_custom_command(
+	OUTPUT ${GLSL_STRUCT_OUTPUT}
+	COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=$ENV{PYTHONPATH}
+	        ${Python3_EXECUTABLE} ${GLSL_STRUCT_SCRIPT} ${GLSL_STRUCT_INPUT}
+			# -DMAX_POINT_LIGHTS=${MAX_POINT_LIGHTS}
+			# -DMAX_SPOT_LIGHTS=${MAX_SPOT_LIGHTS}
+			# -DMAX_RECT_LIGHTS=${MAX_RECT_LIGHTS}
+			# -DMAX_TUBE_LIGHTS=${MAX_TUBE_LIGHTS}
+			# -DMAX_SPHERE_LIGHTS=${MAX_SPHERE_LIGHTS}
+			# -DMAX_DISC_LIGHTS=${MAX_DISC_LIGHTS}
+			# -DCLUSTER_MAX_COUNT=${CLUSTER_MAX_COUNT}
+			# -DCLUSTER_MAX_LIGHTS=${CLUSTER_MAX_LIGHTS}
+			> ${GLSL_STRUCT_OUTPUT}
+			DEPENDS ${GLSL_STRUCT_SCRIPT} ${GLSL_STRUCT_INPUT} ${LIMITS_HEADER}
+	COMMENT "Generating C++ structs from GLSL"
+	VERBATIM
+)
+
+configure_file(${CMAKE_CURRENT_LIST_DIR}/light_constants.h ${CMAKE_SOURCE_DIR}/resources/shaders/ COPYONLY)
+configure_file(${CMAKE_CURRENT_LIST_DIR}/buffer_binds.h ${CMAKE_SOURCE_DIR}/resources/shaders/ COPYONLY)
+
+add_custom_target(generate_glsl_structs DEPENDS ${GLSL_STRUCT_OUTPUT})
+
+# Make sure the main build depends on this output
+add_dependencies(${CORE_LIB_NAME} generate_glsl_structs)
+# Or, if you add the generated directory to your include paths:
+#target_include_directories(${CORE_LIB_NAME} PRIVATE ${CMAKE_BINARY_DIR}/generated)
 
 target_sources(${CORE_LIB_NAME} PRIVATE ${GL_LOOKUP_OUTPUT})

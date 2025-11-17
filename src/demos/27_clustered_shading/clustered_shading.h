@@ -8,7 +8,7 @@
 #include "static_model.h"
 #include "shader.h"
 #include "lights.h"
-#include "shared.h"
+#include "buffer_binds.h"
 #include "rendertarget_2d.h"
 #include "rendertarget_cube.h"
 #include "GLTimer.h"
@@ -24,21 +24,8 @@
 
 using seconds_f = std::chrono::duration<float, std::ratio<1>>;
 
-
 namespace
 {
-	[[maybe_unused]] void setLightDirection(glm::vec3& direction, float azimuth, float elevation)
-    {
-        float az = glm::radians(azimuth);
-        float el = glm::radians(elevation);
-
-        direction.x = glm::sin(el) * glm::cos(az);
-        direction.y = glm::cos(el);
-        direction.z = glm::sin(el) * glm::sin(az);
-
-        direction = glm::normalize(-direction);
-    }
-
     // Convert HSV to RGB:
     // Source: https://en.wikipedia.org/wiki/HSL_and_HSV#From_HSV
     // Retrieved: 28/04/2016
@@ -144,6 +131,7 @@ private:
 	void debugDrawNumber(uint32_t number, const glm::uvec2 &bottom_left, float height=20.f, const glm::vec4 &color=glm::vec4(1), float thickness=1.f);
 	void debugDrawSphere(const glm::vec3 &center, float radius, const glm::vec4 &color={1,1,1,1});
 	void debugDrawSphere(const glm::vec3 &center, float radius, size_t stacks, size_t slices, const glm::vec4 &color={1,1,1,1});
+	void debugDrawIcon(const glm::vec3 &position, const RGL::Texture2D &icon, float size=20.f, const glm::vec4 &color={1,1,1,1});
 	void debugDrawSpotLight(const GPULight &light, const glm::vec4 &color={1,1,1,1});
 	void debugDrawSceneBounds();
 	void debugDrawLightMarkers();
@@ -174,7 +162,7 @@ private:
     std::shared_ptr<RGL::Shader> m_clustered_pbr_shader;
 	std::shared_ptr<RGL::Shader> m_shadow_depth_shader;
 
-    std::shared_ptr<RGL::Shader> m_draw_area_lights_geometry_shader;
+	std::shared_ptr<RGL::Shader> m_draw_rect_lights_geometry_shader;
 	std::shared_ptr<RGL::Shader> m_line_draw_shader;
 	std::shared_ptr<RGL::Shader> m_2d_line_shader;
 	std::shared_ptr<RGL::Shader> m_2d_rect_shader;
@@ -210,8 +198,8 @@ private:
 
 	bool      m_animate_lights             = false;
 	float     m_animation_speed            = 0.4f;
-	bool      m_area_lights_two_sided      = true;
-	bool      m_draw_area_lights_geometry  = true;
+	bool      m_rect_lights_two_sided      = true;
+	bool      m_draw_surface_lights_geometry  = true;
 
 	bool      m_debug_draw_aabb            = false;
 	bool      m_debug_draw_light_markers   = false;
@@ -226,15 +214,15 @@ private:
 	RGL::buffer::Storage<AABB>       m_cluster_aabb_ssbo;
 	RGL::buffer::Storage<uint>       m_cluster_discovery_ssbo;
 	RGL::buffer::Storage<glm::uvec3> m_cull_lights_args_ssbo;
-	RGL::buffer::Storage<IndexRange> m_cluster_lights_range_ssbo;
+	RGL::buffer::Storage<IndexRange> m_cluster_light_ranges_ssbo;
 	RGL::buffer::Storage<uint>       m_cluster_all_lights_index_ssbo;
 	RGL::buffer::Storage<uint>       m_affecting_lights_bitfield_ssbo;
 	dense_set<uint>                  _affecting_lights;
 	RGL::buffer::Storage<uint>       _relevant_lights_index_ssbo;
-	RGL::buffer::Mapped<ShadowSlotInfo, MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS + MAX_AREA_LIGHTS> m_shadow_map_slots_ssbo;
+	RGL::buffer::Mapped<ShadowSlotInfo, MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS + MAX_RECT_LIGHTS> m_shadow_map_slots_ssbo;
 	LightManager _light_mgr;
 
-    /// Area lights variables
+    /// Rect lights variables
     std::shared_ptr<RGL::Texture2D> m_ltc_amp_lut;
     std::shared_ptr<RGL::Texture2D> m_ltc_mat_lut;
 

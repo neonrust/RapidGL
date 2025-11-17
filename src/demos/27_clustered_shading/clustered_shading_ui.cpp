@@ -152,6 +152,8 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			if (m_debug_cluster_geom or m_debug_clusters_occupancy or m_debug_draw_cluster_grid or m_debug_tile_occupancy)
 				ImGui::SliderFloat("Debug overlay blend", &m_debug_coverlay_blend, 0.0f, 1.0f);
 
+			ImGui::Checkbox("Draw surface light geometry", &m_draw_surface_lights_geometry);
+
 			ImGui::Checkbox   ("Animate Lights",    &m_animate_lights);
 			ImGui::SliderFloat("Animation Speed",   &m_animation_speed, 0.0f, 15.0f, "%.1f");
 
@@ -377,6 +379,12 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			{
 				float aspect = float(rt->width()) / float(rt->height());
 
+				// static float brightness { 4 };
+				// ImGui::SliderFloat("Brightness", &brightness, 0, 10, "%.1f");
+
+				// static float alpha_boost { 5 };
+				// ImGui::SliderFloat("Alpha boost", &alpha_boost, 1, 10, "%.1f");
+
 				const ImVec2 img_size { win_width, float(win_width)/aspect };
 
 				static ImVec2 center { 0.5f, 0.5f };
@@ -398,6 +406,8 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 
 					top_left.y = 1 - top_left.y;
 					bottom_right.y = 1 - bottom_right.y;
+
+					// TODO: use custom shader to enable brightness and alpha boost controls
 
 					ImGui_ImageEx(texture.texture_id(), img_size, top_left, bottom_right, 0);
 

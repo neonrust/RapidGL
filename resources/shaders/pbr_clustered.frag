@@ -63,7 +63,7 @@ uvec3 computeClusterCoord(vec2 screen_pos, float view_z);
 vec3 pointLightVisibility(GPULight light, vec3 world_pos);
 vec3 dirLightVisibility(GPULight light);
 vec3 spotLightVisibility(GPULight light, vec3 world_pos);
-vec3 areaLightVisibility(GPULight light);
+vec3 rectLightVisibility(GPULight light);
 vec3 tubeLightVisibility(GPULight light);
 vec3 sphereLightVisibility(GPULight light);
 vec3 discLightVisibility(GPULight light);
@@ -71,8 +71,7 @@ vec3 discLightVisibility(GPULight light);
 
 void main()
 {
-    vec3 radiance = vec3(0);
-    vec3 normal = normalize(in_normal);
+	vec3 normal = normalize(in_normal);
 
 	shadow_atlas_texel_size = 1.0 / vec2(textureSize(u_shadow_atlas, 0));
 
@@ -88,9 +87,12 @@ void main()
 
     // Calculate the point lights contribution
     uint num_lights = min(lights_range.count, CLUSTER_MAX_LIGHTS);
+
+    vec3 radiance = vec3(0);
+
     // too many lights?
     if(lights_range.count > CLUSTER_MAX_LIGHTS)
-		radiance += vec3(1, 0, 0);
+		radiance += vec3(1, 0, 1);
 
     for (uint idx = 0; idx < num_lights; ++idx)
     {
@@ -127,11 +129,11 @@ void main()
         	}
          	break;
 
-          	case LIGHT_TYPE_AREA:
+          	case LIGHT_TYPE_RECT:
            	{
-	           	visibility = areaLightVisibility(light);
+	           	visibility = rectLightVisibility(light);
 		        if(visibility.x + visibility.y + visibility.z > s_min_visibility)
-		        	contribution = calcAreaLight(light, in_world_pos, material);
+		        	contribution = calcRectLight(light, in_world_pos, material);
             }
             break;
 
@@ -161,7 +163,7 @@ void main()
 
             default:
             	// unexpected light type, set an "error" color
-	            frag_color = vec4(10, 0, 2, 1);
+	            contribution = vec3(5, 0, 5);
 				return;
 		}
 
@@ -411,7 +413,7 @@ vec3 spotLightVisibility(GPULight light, vec3 world_pos)
 	return vec3(visible);
 }
 
-vec3 areaLightVisibility(GPULight light)
+vec3 rectLightVisibility(GPULight light)
 {
 	return vec3(1); // TODO will probably never cast shadows
 }

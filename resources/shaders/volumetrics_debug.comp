@@ -1,0 +1,21 @@
+#version 460 core
+
+#include "shared-structs.glh"
+
+
+layout(local_size_x = FROXEL_THREADS_X, local_size_y = FROXEL_THREADS_Y, local_size_z = FROXEL_THREADS_Z) in;
+
+layout(rgba32f, binding = 5) uniform writeonly image3D   u_out_image;
+
+void main()
+{
+	ivec3 froxel = ivec3(gl_GlobalInvocationID.xyz);
+	if(froxel.x >= FROXEL_GRID_W ||froxel.y >= FROXEL_GRID_H || froxel.z >= FROXEL_GRID_D)
+		return;
+
+	vec4 out_color = vec4(0);
+	if(froxel.x % 2 == 0 || froxel.y % 2 == 0)
+		out_color = vec4(1, 1, 0, 1 );
+
+	imageStore(u_out_image, froxel, out_color);
+}

@@ -104,12 +104,12 @@ struct SpotLight
 	bool double_sided { false }
 
 
-struct AreaLightParams
+struct RectLightParams
 {
 	AREA_LIGHT;
 };
 
-struct AreaLight
+struct RectLight
 {
 	AREA_LIGHT;
 	INTERNAL;
@@ -139,7 +139,8 @@ struct TubeLight
 #define SPHERE_LIGHT      \
 	COMMON;               \
 	POINT;                \
-	float radius // stored in GPULight::shape_points[0].x
+	float radius
+// 'radius' stored in GPULight::shape_points[0].x
 
 struct SphereLightParams
 {
@@ -158,7 +159,9 @@ struct SphereLight
 	COMMON;              \
 	POINT;               \
 	glm::vec3 direction; \
-	float radius  // stored in GPULight::shape_points[0].x
+	float radius;        \
+	bool double_sided { false }
+// 'radius' stored in GPULight::shape_points[0].x
 
 struct DiscLightParams
 {

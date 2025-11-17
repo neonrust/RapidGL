@@ -29,7 +29,8 @@ static constexpr auto s_relevant_lights_update_min_interval = 250ms;
 
 // light/shadow distances as fraction of camera far plane (OR of furthest shading cluster? should be the same though...)
 //  must be in this order
-static constexpr auto s_light_relevant_fraction      = 0.6f;  // input to cluster light culling
+static constexpr auto s_light_relevant_fraction      = 0.6f;  // input to cluster light culling (and by extension, everything else)
+// TODO: "relevant" per light type?  (ordered by computational cost)
 static constexpr auto s_light_affect_fraction        = 0.5f;  // fade shading by distance
 static constexpr auto s_light_volumetric_fraction    = 0.2f;  // fade volumetric/scattering by distance
 static constexpr auto s_light_shadow_max_fraction    = 0.4f;  // may allocated  sdhadow map
@@ -81,7 +82,7 @@ ClusteredShading::ClusteredShading() :
 	m_cluster_aabb_ssbo("cluster-aabb"sv),
 	m_cluster_discovery_ssbo("cluster-discovery"sv),
 	m_cull_lights_args_ssbo("cull-lights"sv),
-	m_cluster_lights_range_ssbo("cluster-lights"sv),
+	m_cluster_light_ranges_ssbo("cluster-lights"sv),
 	m_cluster_all_lights_index_ssbo("cluster-all-lights"sv),
 	m_affecting_lights_bitfield_ssbo("affecting-lights-bitfield"sv),
 	_relevant_lights_index_ssbo("relevant-lights-index"sv),
@@ -96,7 +97,7 @@ ClusteredShading::ClusteredShading() :
 	m_bloom_intensity     (0.5f),
 	m_bloom_dirt_intensity(0),
 	m_bloom_enabled       (true),
-	_fog_enabled          (true),
+	_fog_enabled          (false),
 	_fog_strength         (0.4f),
 	_fog_density          (0.1f),    // [ 0, 1 ]
 	_fog_blend_weight     (0.9f)     // [ 0, 1 ]
@@ -104,7 +105,7 @@ ClusteredShading::ClusteredShading() :
 	m_cluster_aabb_ssbo.bindAt(SSBO_BIND_CLUSTER_AABB);
 	m_shadow_map_slots_ssbo.bindAt(SSBO_BIND_SHADOW_SLOTS_INFO);
 	m_cluster_discovery_ssbo.bindAt(SSBO_BIND_CLUSTER_DISCOVERY);
-	m_cluster_lights_range_ssbo.bindAt(SSBO_BIND_CLUSTER_LIGHT_RANGE);
+	m_cluster_light_ranges_ssbo.bindAt(SSBO_BIND_CLUSTER_LIGHT_RANGE);
 	m_cluster_all_lights_index_ssbo.bindAt(SSBO_BIND_CLUSTER_ALL_LIGHTS);
 	m_affecting_lights_bitfield_ssbo.bindAt(SSBO_BIND_AFFECTING_LIGHTS_BITFIELD);
 	m_cull_lights_args_ssbo.bindAt(SSBO_BIND_CULL_LIGHTS_ARGS);
@@ -159,10 +160,21 @@ void ClusteredShading::init_app()
 	// Create camera
 	m_camera = Camera(m_camera_fov, 0.1f, 200);
 	m_camera.setSize(Window::width(), Window::height());
-	m_camera.setPosition({ -8.5f, 3.2f, -2.f });
+	m_camera.setPosition({ -17.f, 3.2f, -0.5f });
 	m_camera.setOrientationEuler({ 7, 90, 0 });
-	// m_camera.setPosition({ 0, 3.2f, 25.5f });
-	// m_camera.setOrientationEuler({ 0, 90, 0 });
+	// spot light apex study:
+	// m_camera.setPosition({ 33.1f, 3.3f, -0.7f });
+	// m_camera.setOrientationEuler({ 22.8f, 69.4f, 0 });
+	// rect light fog stuff:
+	m_camera.setPosition({ 37.5f, 1.7f, 12.4f });
+	m_camera.setOrientationEuler({ 2.5f, 139.8f, 0 });
+	// shadow bias study:
+	// m_camera.setPosition({ 5.f, 1.0f, 9.8f });
+	// m_camera.setOrientationEuler({ 37.f, 60.f, 0 });
+	// spot light shadow study
+	// m_camera.setPosition({ 10.3f, 2.1f, -3.6f });
+	// m_camera.setOrientationEuler({ 1.6f, -30.4f, 0 });
+
 	std::print("Horizontal FOV: {}\n", m_camera.horizontalFov());
 
 	/// Randomly initialize lights (predictably)
@@ -210,7 +222,7 @@ void ClusteredShading::init_app()
 	// step 1: gather all these ssbo into a struct; clusterRendering.cluster_ssbo
 
 
-    /// Load LTC look-up-tables for area lights rendering
+	/// Load LTC look-up-tables for rect lights rendering
 	const auto ltc_lut_path     = FileSystem::getResourcesPath() / "lut";
 	const auto ltc_lut_mat_path = ltc_lut_path / "ltc_mat.dds";
 	const auto ltc_lut_amp_path = ltc_lut_path / "ltc_amp.dds";
@@ -245,40 +257,40 @@ void ClusteredShading::init_app()
 
 	const auto T0 = steady_clock::now();
 
-	m_depth_prepass_shader = std::make_shared<Shader>(shaders/"depth_pass.vert", shaders/"depth_pass.frag");
+	m_depth_prepass_shader = std::make_shared<Shader>(core_shaders/"depth_pass.vert", core_shaders/"depth_pass.frag");
     m_depth_prepass_shader->link();
 	assert(*m_depth_prepass_shader);
 
-	m_shadow_depth_shader = std::make_shared<Shader>(shaders/"shadow_depth.vert", shaders/"shadow_depth.frag");
+	m_shadow_depth_shader = std::make_shared<Shader>(core_shaders/"shadow_depth.vert", core_shaders/"shadow_depth.frag");
 	m_shadow_depth_shader->link();
 	assert(*m_shadow_depth_shader);
 
-	m_generate_clusters_shader = std::make_shared<Shader>(shaders/"generate_clusters.comp");
+	m_generate_clusters_shader = std::make_shared<Shader>(core_shaders/"generate_clusters.comp");
     m_generate_clusters_shader->link();
 	assert(*m_generate_clusters_shader);
 
-	m_find_nonempty_clusters_shader = std::make_shared<Shader>(shaders/"find_nonempty_clusters.comp");
+	m_find_nonempty_clusters_shader = std::make_shared<Shader>(core_shaders/"find_nonempty_clusters.comp");
 	m_find_nonempty_clusters_shader->link();
 	assert(*m_find_nonempty_clusters_shader);
 	m_find_nonempty_clusters_shader->setPostBarrier(Shader::Barrier::SSBO);  // config, only once
 
-	m_collect_nonempty_clusters_shader = std::make_shared<Shader>(shaders/"collect_nonempty_clusters.comp");
+	m_collect_nonempty_clusters_shader = std::make_shared<Shader>(core_shaders/"collect_nonempty_clusters.comp");
 	m_collect_nonempty_clusters_shader->link();
 	assert(*m_collect_nonempty_clusters_shader);
 	m_collect_nonempty_clusters_shader->setPostBarrier(Shader::Barrier::SSBO);  // config, only once
 
-	m_cull_lights_shader = std::make_shared<Shader>(shaders/"cull_lights.comp");
+	m_cull_lights_shader = std::make_shared<Shader>(core_shaders/"cull_lights.comp");
     m_cull_lights_shader->link();
 	assert(*m_cull_lights_shader);
 	m_cull_lights_shader->setPostBarrier(Shader::Barrier::SSBO);  // config, only once
 
-	m_clustered_pbr_shader = std::make_shared<Shader>(shaders/"pbr_lighting.vert", shaders/"pbr_clustered.frag");
+	m_clustered_pbr_shader = std::make_shared<Shader>(core_shaders/"pbr_lighting.vert", core_shaders/"pbr_clustered.frag");
     m_clustered_pbr_shader->link();
 	assert(*m_clustered_pbr_shader);
 
-	m_draw_area_lights_geometry_shader = std::make_shared<Shader>(shaders/"area_light_geom.vert", shaders/"area_light_geom.frag");
-    m_draw_area_lights_geometry_shader->link();
-	assert(*m_draw_area_lights_geometry_shader);
+	m_draw_rect_lights_geometry_shader = std::make_shared<Shader>(core_shaders/"rect_light_geom.vert", core_shaders/"rect_light_geom.frag");
+	m_draw_rect_lights_geometry_shader->link();
+	assert(*m_draw_rect_lights_geometry_shader);
 
 	m_equirectangular_to_cubemap_shader = std::make_shared<Shader>(shaders/"cubemap.vert", shaders/"equirectangular_to_cubemap.frag");
     m_equirectangular_to_cubemap_shader->link();
@@ -292,11 +304,11 @@ void ClusteredShading::init_app()
     m_prefilter_env_map_shader->link();
 	assert(*m_prefilter_env_map_shader);
 
-	m_precompute_brdf = std::make_shared<Shader>(shaders/"FSQ.vert", shaders/"precompute_brdf.frag");
+	m_precompute_brdf = std::make_shared<Shader>(core_shaders/"FSQ.vert", shaders/"precompute_brdf.frag");
     m_precompute_brdf->link();
 	assert(*m_precompute_brdf);
 
-	m_background_shader = std::make_shared<Shader>(shaders/"background.vert", shaders/"background.frag");
+	m_background_shader = std::make_shared<Shader>(core_shaders/"background.vert", core_shaders/"background.frag");
     m_background_shader->link();
 	assert(*m_background_shader);
 
@@ -313,25 +325,25 @@ void ClusteredShading::init_app()
 	m_blur3_pp.create(Window::width(), Window::height());
 	assert(m_blur3_pp);
 
-	m_line_draw_shader = std::make_shared<Shader>(shaders/"line_draw.vert", shaders/"line_draw.frag");
+	m_line_draw_shader = std::make_shared<Shader>(core_shaders/"line_draw.vert", core_shaders/"line_draw.frag");
 	m_line_draw_shader->link();
 	assert(*m_line_draw_shader);
 
-	m_2d_line_shader = std::make_shared<Shader>(shaders/"FSQ.vert", shaders/"draw2d_line.frag");
+	m_2d_line_shader = std::make_shared<Shader>(core_shaders/"FSQ.vert", core_shaders/"draw2d_line.frag");
 	m_2d_line_shader->link();
 	assert(*m_2d_line_shader);
 	m_2d_line_shader->setUniform("u_screen_size"sv, glm::uvec2{ Window::width(), Window::height() });
 	m_2d_line_shader->setUniform("u_line_color"sv, glm::vec4(1));
 	m_2d_line_shader->setUniform("u_thickness"sv, float(Window::height())/720.f);
 
-	m_2d_rect_shader = std::make_shared<Shader>(shaders/"FSQ.vert", shaders/"draw2d_rectangle.frag");
+	m_2d_rect_shader = std::make_shared<Shader>(core_shaders/"FSQ.vert", core_shaders/"draw2d_rectangle.frag");
 	m_2d_rect_shader->link();
 	assert(*m_2d_rect_shader);
 	m_2d_rect_shader->setUniform("u_screen_size"sv, glm::uvec2{ Window::width(), Window::height() });
 	m_2d_rect_shader->setUniform("u_line_color"sv, glm::vec4(1));
 	m_2d_rect_shader->setUniform("u_thickness"sv, float(Window::height())/720.f);
 
-	m_2d_7segment_shader = std::make_shared<Shader>(shaders/"FSQ.vert", shaders/"seven_segment_number.frag");
+	m_2d_7segment_shader = std::make_shared<Shader>(core_shaders/"FSQ.vert", core_shaders/"seven_segment_number.frag");
 	m_2d_7segment_shader->link();
 	assert(*m_2d_7segment_shader);
 	m_2d_7segment_shader->setUniform("u_screen_size"sv, glm::uvec2{ Window::width(), Window::height() });
@@ -350,7 +362,7 @@ void ClusteredShading::init_app()
 	m_imgui_3d_texture_shader->link();
 	assert(*m_imgui_3d_texture_shader);
 
-	m_fsq_shader = std::make_shared<Shader>(shaders/"FSQ.vert", shaders/"FSQ.frag");
+	m_fsq_shader = std::make_shared<Shader>(core_shaders/"FSQ.vert", core_shaders/"FSQ.frag");
 	m_fsq_shader->link();
 	assert(*m_fsq_shader);
 
@@ -813,7 +825,7 @@ void ClusteredShading::prepareClusterBuffers()
 {
 	m_cluster_aabb_ssbo.resize(m_cluster_count);
 	m_cluster_discovery_ssbo.resize(1 + m_cluster_count*2);  // num_active, nonempty[N], active[N]
-	m_cluster_lights_range_ssbo.resize(m_cluster_count);
+	m_cluster_light_ranges_ssbo.resize(m_cluster_count);
 	m_cluster_all_lights_index_ssbo.resize(1 + m_cluster_count * CLUSTER_AVERAGE_LIGHTS); // all_lights_start_index, all_lights_index[]
 	m_affecting_lights_bitfield_ssbo.resize(32); // 32x32 = 1024 lights
 	m_cull_lights_args_ssbo.resize(1);
@@ -968,21 +980,21 @@ void ClusteredShading::update(double delta_time)
 void ClusteredShading::createLights()
 {
 	// point lights
-	for(auto idx = 0u; idx < 4; ++idx)
+	for(auto idx = 4u; idx < 5; ++idx)
 	{
 		const auto rand_color= hsv2rgb(
 			float(Util::RandomDouble(1, 360)),       // hue
-			float(Util::RandomDouble(0.1f, 0.7f)),   // saturation
+			float(Util::RandomDouble(0.4f, 0.8f)),   // saturation
 			1.f                                      // value (brightness)
 		);
-		// const auto rand_pos = Util::RandomVec3({ -18, 0.5f, -18 }, { 178, 3.5f, 18 });
-		const auto rand_pos = glm::vec3(-5.f + float(idx)*20, 2.5f, 0 );
+		const auto rand_pos = Util::RandomVec3({ -18, 0.5f, -18 }, { 178, 3.5f, 18 });
+		// const auto rand_pos = glm::vec3(-5.f + float(idx)*20, 2.5f, 0 );
 
-		const auto rand_intensity = 30.f;//float(Util::RandomDouble(1, 100))*2;
+		const auto rand_intensity = float(Util::RandomDouble(10, 100));
 
 		LightID l_id;
 		std::string_view type_name;
-		switch(idx % 4)
+		switch(idx % 5)
 		{
 		case LIGHT_TYPE_POINT:
 		case LIGHT_TYPE_DIRECTIONAL:
@@ -1014,9 +1026,9 @@ void ClusteredShading::createLights()
 			l_id = l.id();
 		}
 		break;
-		case LIGHT_TYPE_AREA:
+		case LIGHT_TYPE_RECT:
 		{
-			auto l = _light_mgr.add(AreaLightParams{
+			auto l = _light_mgr.add(RectLightParams{
 				.color = rand_color,
 				.intensity = rand_intensity,
 				.fog = 1.f,
@@ -1040,6 +1052,22 @@ void ClusteredShading::createLights()
 				.position = rand_pos,
 				.end_points = { { -2.f, 0.f, 0.f }, { 2.f, 0.f, 0.f } },
 				.thickness = 0.05f,
+			});
+			type_name = _light_mgr.type_name<decltype(l)>();
+			l_id = l.id();
+		}
+		break;
+		case LIGHT_TYPE_DISC:
+		{
+			auto l = _light_mgr.add(DiscLightParams{
+				.color = rand_color,
+				.intensity = rand_intensity,
+				.fog = 1.f,
+				.shadow_caster = false,   // probably never
+				.position = rand_pos,
+				.direction = AXIS_Z,
+				.radius = 2.f,
+				.double_sided = true,
 			});
 			type_name = _light_mgr.type_name<decltype(l)>();
 			l_id = l.id();
@@ -1335,7 +1363,7 @@ void ClusteredShading::render()
 	// ------------------------------------------------------------------
 
 	// Assign lights to clusters (cull lights)
-	m_cluster_lights_range_ssbo.clear();
+	m_cluster_light_ranges_ssbo.clear();
 	m_cluster_all_lights_index_ssbo.clear();
 	m_affecting_lights_bitfield_ssbo.clear();
 	m_cull_lights_shader->setUniform("u_cam_pos"sv, m_camera.position());
@@ -1353,12 +1381,12 @@ void ClusteredShading::render()
 	renderSceneShading(m_camera);
 	m_shading_time.add(_gl_timer.elapsed<microseconds>(true));
 
-	// Render area lights geometry, to '_rt'
-	if(m_draw_area_lights_geometry and _light_mgr.num_lights<AreaLight>() > 0)
+	// Render ect lights geometry, to '_rt'
+	if(m_draw_surface_lights_geometry and _light_mgr.num_lights<RectLight>() > 0)
 	{
-		m_draw_area_lights_geometry_shader->bind();
-		m_draw_area_lights_geometry_shader->setUniform("u_view_projection"sv, m_camera.projectionTransform() * m_camera.viewTransform());
-		glDrawArrays(GL_TRIANGLES, 0, GLsizei(6 * _light_mgr.num_lights<AreaLight>()));
+		m_draw_rect_lights_geometry_shader->bind();
+		m_draw_rect_lights_geometry_shader->setUniform("u_view_projection"sv, m_camera.projectionTransform() * m_camera.viewTransform());
+		glDrawArrays(GL_TRIANGLES, 0, GLsizei(6 * _light_mgr.num_lights<RectLight>()));
 	}
 
 	renderSkybox(); // to '_rt'

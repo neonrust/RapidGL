@@ -1,5 +1,6 @@
 #include "shared-structs.glh"
-#include "area_light_ltc.glh"
+#include "rect_light_ltc.glh"
+#include "shapes.glh"
 
 #ifndef PI
     #define PI 3.141592653589793238462643
@@ -111,10 +112,10 @@ float distributionGGX(vec3 n, vec3 h, float roughness)
     float NdotH2 = NdotH * NdotH;
 
     float num = a2;
-    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
-    denom = PI * denom * denom;
+    float denominator = (NdotH2 * (a2 - 1.0) + 1.0);
+    denominator = PI * denominator * denominator;
 
-    return num / max(denom, 1e-5);
+    return num / max(denominator, 1e-5);
 }
 
 float geometrySchlickGGX(float NdotV, float roughness)
@@ -123,9 +124,9 @@ float geometrySchlickGGX(float NdotV, float roughness)
     float k = (r * r) / 8.0;
 
     float num   = NdotV;
-    float denom = NdotV * (1.0 - k) + k;
+    float denominator = NdotV * (1.0 - k) + k;
 
-    return num / max(denom, 1e-5);
+    return num / max(denominator, 1e-5);
 }
 
 float geometrySmith(vec3 n, vec3 wo, vec3 wi, float roughness)
@@ -188,8 +189,8 @@ vec3 pbr(GPULight light, vec3 direction, vec3 world_pos, float attenuation, Mate
 
         float NdotL    = max(dot(material.normal, wi), 0.0);
         vec3  num      = NDF * G * F;
-        float denom    = 4.0 * max(dot(material.normal, wo), 0.0) * NdotL;
-        vec3  specular = num / max(denom, 1e-5);
+        float denominator    = 4.0 * max(dot(material.normal, wo), 0.0) * NdotL;
+        vec3  specular = num / max(denominator, 1e-5);
 
         vec3 ks = F;
         vec3 kd = 1.0 - ks;
@@ -250,9 +251,11 @@ vec3 calcSpotLight(GPULight light, vec3 world_pos, MaterialProperties material)
     return pbr(light, light_direction, world_pos, attenuation, material);
 }
 
-vec3 calcAreaLight(GPULight light, vec3 world_pos, MaterialProperties material)
+vec3 calcRectLight(GPULight light, vec3 world_pos, MaterialProperties material)
 {
 	// NOTE: this is not full PBR
+
+	// TODO: degenerate to simpler (e.g. nearest-point) at larger distance
 
     vec3 F0         = vec3(0.04); // base reflectance
     vec3 diff_color = material.albedo * (1.0 - material.metallic);
@@ -282,25 +285,117 @@ vec3 calcAreaLight(GPULight light, vec3 world_pos, MaterialProperties material)
     return radiance;
 }
 
+vec3 closest_point(Segment segment, vec3 p)
+{
+	vec3 ba = p - segment.a;
+	vec3 bc = segment.b - segment.a;
+	float d = dot(ba, bc);
+	float len = length(bc);
+	float param = 0;
+	if (len != 0)
+		param = clamp(d / (len * len), 0, 1);
+	return segment.a + bc * param;
+}
+
+vec3 closest_point(Segment segment, Ray ray)
+{
+    const float EPSILON = 1e-5;
+
+	// returns the point on segment [segment.a,segment.b] closest to ray (ray.start + t*d, t>=0)
+    vec3 v = segment.b - segment.a;
+    vec3 w0 = ray.start - segment.a;
+
+    float A = dot(ray.direction, ray.direction);
+    float B = dot(ray.direction, v);
+    float C = dot(v, v);
+    float D = dot(ray.direction, w0);
+    float E = dot(v, w0);
+
+    // degenerate segment -> return segment.a
+    if(C < EPSILON)
+    	return segment.a;
+
+    float denominator = A*C - B*B;
+    float t, u;
+
+    if(denominator > EPSILON)
+    {
+        t = (B*E - C*D) / denominator;
+        u = (A*E - B*D) / denominator;
+    }
+    else
+    {
+        // parallel: choose a stable default (project segment start onto ray)
+        // this will be fixed by clamping below
+        t = 0;
+        u = E / C;
+    }
+
+    // clamp t and u with recomputation if needed
+    if(t < 0)
+    {
+        t = 0;
+        u = E / C;
+        u = clamp(u, 0, 1);
+    }
+    else
+    {
+        if(u < 0)
+        {
+            u = 0;
+            if (A > EPSILON)
+           		t = max(0, dot(ray.direction, segment.a - ray.start) / A);
+            else
+            	t = 0;
+        }
+        else if (u > 1)
+        {
+            u = 1;
+            if (A > EPSILON)
+            	t = max(0, dot(ray.direction, segment.b - ray.start) / A);
+            else
+           		t = 0;
+        }
+    }
+
+    // final closest point on segment
+	return segment.a + v * u;
+}
+
 vec3 calcTubeLight(GPULight light, vec3 world_pos, MaterialProperties material)
 {
 	// simulate using a fragment-facing area light, thick as tube diameter
 
-	vec3 point_a = light.shape_points[0].xyz;
-	vec3 point_b = light.shape_points[1].xyz;
+	Segment segment = Segment(light.shape_points[0].xyz,
+								light.shape_points[1].xyz);
 	float thickness = light.shape_points[2].x * 0.5;
 
-	vec3 binormal = normalize(cross(point_a - point_b, world_pos - light.position));
+	vec3 binormal = normalize(cross(segment.a - segment.b, world_pos - light.position));
 	vec3 corner_offset = binormal * thickness;
 
-	GPULight faux_area = light;
-	faux_area.type_flags = LIGHT_TYPE_AREA;
-	faux_area.shape_points[0] = vec4(point_b + corner_offset, 1);
-	faux_area.shape_points[1] = vec4(point_a + corner_offset, 1);
-	faux_area.shape_points[2] = vec4(point_b - corner_offset, 1);
-	faux_area.shape_points[3] = vec4(point_a - corner_offset, 1);
+	GPULight faux_rect = light;
+	faux_rect.type_flags = LIGHT_TYPE_RECT;
+	faux_rect.shape_points[0] = vec4(segment.b + corner_offset, 1);
+	faux_rect.shape_points[1] = vec4(segment.a + corner_offset, 1);
+	faux_rect.shape_points[2] = vec4(segment.b - corner_offset, 1);
+	faux_rect.shape_points[3] = vec4(segment.a - corner_offset, 1);
 
-	return calcAreaLight(faux_area, world_pos, material);
+	return calcRectLight(faux_rect, world_pos, material);
+
+	// // https://wickedengine.net/2017/09/area-lights/
+	// //  1. reflect eye vector by material.normal
+	// vec3 specular = vec3(0);
+	// vec3 eye_vec = world_pos - u_cam_pos;
+	// vec3 refl_vec = reflect(eye_vec, material.normal);
+	// Ray reflection = Ray(u_cam_pos, normalize(refl_vec), 0);
+	// //  2. use closest point on light geometry to 'world_pos'
+	// Segment tube_segment = Segment(light.shape_points[0].xyz, light.shape_points[1].xyz);
+	// vec3 representative_point = closest_point(tube_segment, reflection);
+	// float dist = distance(representative_point, world_pos);
+	// // TODO: call pbr() as if a point light at representative point ?
+	// specular = falloff(dist, light.affect_radius) * light.color * light.intensity;
+	//
+	// return diffuse + specular;
 }
 
 vec3 calcSphereLight(GPULight light, vec3 world_pos, MaterialProperties material)

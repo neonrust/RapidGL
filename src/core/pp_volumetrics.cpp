@@ -6,8 +6,8 @@
 #include "texture.h"
 #include "filesystem.h"
 
-#include "../demos/27_clustered_shading/light_constants.h"
-#include "../demos/27_clustered_shading/buffer_binds.h"
+#include "light_constants.h"
+#include "buffer_binds.h"
 #include <glm/vec3.hpp>
 
 using namespace std::literals;

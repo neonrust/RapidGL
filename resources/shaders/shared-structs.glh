@@ -1,5 +1,6 @@
-#include "../light_constants.h"  // IWYU pragma: keep
-#include "../buffer_binds.h"
+// these includes should be done in a different way...
+#include "light_constants.h"  // IWYU pragma: keep
+#include "buffer_binds.h"
 
 #ifdef __cplusplus
 // simply to make it look nicer in the IDE ;)

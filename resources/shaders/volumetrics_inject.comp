@@ -2,7 +2,7 @@
 
 const float PI = 3.14159265359;
 
-#include "../../src/demos/27_clustered_shading/shaders/shared-structs.glh"
+#include "shared-structs.glh"
 #include "shadows.glh"
 #include "volumetrics.glh"
 #include "noise.glh"
@@ -84,7 +84,7 @@ uint computeSpotNumSamples(vec3 world_pos, GPULight spot, float maxWidth, uint  
 
 float samplePointLight(GPULight light, vec3 world_pos, float distance_sq);
 float sampleSpotLight(GPULight light, vec3 world_pos, float distance_sq, float slice_thickness);
-float sampleAreaLight(GPULight light, vec3 world_pos, float distance_sq);
+float sampleRectLight(GPULight light, vec3 world_pos, float distance_sq);
 float sampleTubeLight(GPULight light, vec3 world_pos, float distance_sq);
 
 
@@ -169,8 +169,8 @@ void main()
 					contribution *= sampleSpotLight(light, world_pos, distance_sq, thickness);
 					break;
 
-				case LIGHT_TYPE_AREA:
-					contribution *= sampleAreaLight(light, world_pos, distance_sq);
+				case LIGHT_TYPE_RECT:
+					contribution *= sampleRectLight(light, world_pos, distance_sq);
 					break;
 
 				case LIGHT_TYPE_TUBE:
@@ -333,7 +333,7 @@ float sampleSpotLight(GPULight light, vec3 world_pos, float distance_sq, float s
 	return energy;
 }
 
-float sampleAreaLight(GPULight light, vec3 sample_pos, float distance_sq)
+float sampleRectLight(GPULight light, vec3 sample_pos, float distance_sq)
 {
 	vec3 shape_cross = cross(light.shape_points[1].xyz - light.shape_points[0].xyz,
                  			 light.shape_points[3].xyz - light.shape_points[0].xyz);
@@ -395,14 +395,15 @@ float sampleTubeLight(GPULight light, vec3 world_pos, float distance_sq)
 	// vec3 binormal = normalize(cross(point_a - point_b, world_pos - light.position));
 	// vec3 corner_offset = binormal * thickness;
 
-	// GPULight faux_area = light;
-	// faux_area.type_flags = LIGHT_TYPE_AREA;
-	// faux_area.shape_points[0] = vec4(point_b + corner_offset, 1);
-	// faux_area.shape_points[1] = vec4(point_a + corner_offset, 1);
-	// faux_area.shape_points[2] = vec4(point_b - corner_offset, 1);
-	// faux_area.shape_points[3] = vec4(point_a - corner_offset, 1);
+	// GPULight faux_rect = light;
+	// faux_rect.type_flags = LIGHT_TYPE_RECT;
+	// faux_rect.shape_points[0] = vec4(point_b + corner_offset, 1);
+	// faux_rect.shape_points[1] = vec4(point_a + corner_offset, 1);
+	// faux_rect.shape_points[2] = vec4(point_b - corner_offset, 1);
+	// faux_rect.shape_points[3] = vec4(point_a - corner_offset, 1);
 
-	// return sampleAreaLight(faux_area, world_pos, distance_sq)*4;
+	// return sampleRectLight(faux_rect, world_pos, distance_sq)*4;
+
 }
 
 float froxelThickness(int z)

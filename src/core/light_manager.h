@@ -18,7 +18,7 @@ template<typename T>
 concept LightType = std::is_same_v<PointLight, T>
 	or std::is_same_v<DirectionalLight, T>
 	or std::is_same_v<SpotLight, T>
-	or std::is_same_v<AreaLight, T>
+	or std::is_same_v<RectLight, T>
 	or std::is_same_v<TubeLight, T>
 	or std::is_same_v<SphereLight, T>
 	or std::is_same_v<DiscLight, T>
@@ -28,7 +28,7 @@ template<typename T>
 concept LightParamsType = std::is_same_v<PointLightParams, T>
 	or std::is_same_v<DirectionalLightParams, T>
 	or std::is_same_v<SpotLightParams, T>
-	or std::is_same_v<AreaLightParams, T>
+	or std::is_same_v<RectLightParams, T>
 	or std::is_same_v<TubeLightParams, T>
 	or std::is_same_v<SphereLightParams, T>
 	or std::is_same_v<DiscLightParams, T>
@@ -41,7 +41,7 @@ struct light_map;
 MAP_PARAMS_TYPE(PointLight);
 MAP_PARAMS_TYPE(DirectionalLight);
 MAP_PARAMS_TYPE(SpotLight);
-MAP_PARAMS_TYPE(AreaLight);
+MAP_PARAMS_TYPE(RectLight);
 MAP_PARAMS_TYPE(TubeLight);
 MAP_PARAMS_TYPE(SphereLight);
 MAP_PARAMS_TYPE(DiscLight);
@@ -77,7 +77,7 @@ public:
 	// PointLight    add(const PointLightParams &p);
 	// DirectionalLight add(const DirectionalLightParams &d);
 	// SpotLight     add(const SpotLightParams &s);
-	// AreaLight     add(const AreaLightParams &a);
+	// RectLight     add(const RectLightParams &a);
 	// TubeLight     add(const TubeLightParams &t);
 	// SphereLight   add(const SphereLightParams &s);
 	// DiscLight     add(const DiscLightParams &d);
@@ -160,7 +160,7 @@ private:
 	size_t _num_point_lights  { 0 };
 	size_t _num_dir_lights    { 0 };
 	size_t _num_spot_lights   { 0 };
-	size_t _num_area_lights   { 0 };
+	size_t _num_rect_lights   { 0 };
 	size_t _num_tube_lights   { 0 };
 	size_t _num_sphere_lights { 0 };
 	size_t _num_disc_lights   { 0 };
@@ -195,8 +195,8 @@ size_t LightManager::num_lights() const
 		return _num_dir_lights;
 	else if constexpr (std::same_as<LT, SpotLight>)
 		return _num_spot_lights;
-	else if constexpr (std::same_as<LT, AreaLight>)
-		return _num_area_lights;
+	else if constexpr (std::same_as<LT, RectLight>)
+		return _num_rect_lights;
 	else if constexpr (std::same_as<LT, TubeLight>)
 		return _num_tube_lights;
 	else if constexpr (std::same_as<LT, SphereLight>)
@@ -285,16 +285,16 @@ GPULight LightManager::to_gpu_light(const LT &l)
 		set_spot_angle(L, l.outer_angle);
 		compute_spot_bounds(L);
 	}
-	else if constexpr (std::same_as<LT, AreaLight> or std::same_as<LT, AreaLightParams>)
+	else if constexpr (std::same_as<LT, RectLight> or std::same_as<LT, RectLightParams>)
 	{
-		L.type_flags      = LIGHT_TYPE_AREA | (l.double_sided? LIGHT_DOUBLE_SIDED: 0);
+		L.type_flags      = LIGHT_TYPE_RECT | (l.double_sided? LIGHT_DOUBLE_SIDED: 0);
 		glm::vec3 right   = l.orientation * glm::vec3(l.size.x * 0.5f, 0,               0);
 		glm::vec3 up      = l.orientation * glm::vec3(0,               l.size.y * 0.5f, 0);
 		L.shape_points[0] = glm::vec4(l.position + right - up, 1);
 		L.shape_points[1] = glm::vec4(l.position - right - up, 1);
 		L.shape_points[2] = glm::vec4(l.position + right + up, 1);
 		L.shape_points[3] = glm::vec4(l.position - right + up, 1);
-		L.affect_radius   = 50 * l.intensity * glm::distance(l.position, glm::vec3(L.shape_points[1]));
+		L.affect_radius   = 50.f;//50 * l.intensity * glm::distance(l.position, glm::vec3(L.shape_points[1]));
 	}
 	else if constexpr (std::same_as<LT, TubeLight> or std::same_as<LT, TubeLightParams>)
 	{
@@ -315,7 +315,7 @@ GPULight LightManager::to_gpu_light(const LT &l)
 		L.type_flags        = LIGHT_TYPE_DISC | (l.double_sided? LIGHT_DOUBLE_SIDED: 0);
 		L.direction         = l.direction;
 		L.shape_points[0].x = l.radius;
-		// L.affect_radius     =       TODO
+		L.affect_radius     = std::pow(l.intensity, 0.6)*2;
 	}
 
 	if(l.shadow_caster)
@@ -354,7 +354,7 @@ auto LightManager::to_typed(const LTP &ltp, LightID light_id) const -> _private:
 		lt.outer_angle = ltp.outer_angle;
 		lt.inner_angle = ltp.inner_angle;
 	}
-	else if constexpr (std::same_as<LTP, AreaLightParams>)
+	else if constexpr (std::same_as<LTP, RectLightParams>)
 	{
 		lt.position     = ltp.position;
 		lt.orientation  = ltp.orientation;
@@ -390,8 +390,8 @@ std::string_view LightManager::type_name()
 		return type_name(LIGHT_TYPE_DIRECTIONAL);
 	if constexpr (std::is_same_v<LT, SpotLight>)
 		return type_name(LIGHT_TYPE_SPOT);
-	if constexpr (std::is_same_v<LT, AreaLight>)
-		return type_name(LIGHT_TYPE_AREA);
+	if constexpr (std::is_same_v<LT, RectLight>)
+		return type_name(LIGHT_TYPE_RECT);
 	if constexpr (std::is_same_v<LT, TubeLight>)
 		return type_name(LIGHT_TYPE_TUBE);
 	if constexpr (std::is_same_v<LT, SphereLight>)
