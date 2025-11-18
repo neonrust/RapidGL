@@ -30,7 +30,7 @@ bool Util::FileExist(const std::filesystem::path &filepath)
 std::tuple<std::string, bool> Util::LoadFile(const fs::path & filename, bool fail_ok)
 {
 	if (filename.empty())
-		return { {}, false };
+		return { std::string(), false };
 
 	std::string filetext;
 
@@ -43,7 +43,7 @@ std::tuple<std::string, bool> Util::LoadFile(const fs::path & filename, bool fai
 			std::print(stderr, "Could not open file {}\n", filepath.string());
 		inFile.close();
 
-		return { {}, false };
+		return { std::string(), false };
 	}
 
 	const auto file_size = GetFileSize(inFile);
@@ -66,7 +66,7 @@ std::tuple<std::string, bool> Util::LoadShaderFile(const std::filesystem::path &
 	if(not okf)
 	{
 		std::print(stderr, "Load shader failed: {}\n", filepath.string());
-		return { {}, false };
+		return { std::string(), false };
 	}
 
 	// std::print(" >> {}\n", filepath.string());
@@ -79,7 +79,7 @@ std::tuple<std::string, bool> Util::LoadShaderFile(const std::filesystem::path &
 	if(not okp)
 	{
 		std::print(stderr, "Preprocessing shader failed: {}\n", filepath.string());
-		return { {}, false };
+		return { std::string(), false };
 	}
 
 	return { code, true };
@@ -184,7 +184,7 @@ std::tuple<std::string, bool> Util::PreprocessShaderSource(const fs::path &filep
 				if(not found_path_)
 				{
 					std::print(stderr, "[{}:{}] \x1b[31;1minclude not found\x1b[m: {}\n", filepath.string(), line_num, preproc_instruction);
-					return { {}, false };
+					return { std::string(), false };
 				}
 				const auto found_path = found_path_.value();
 				if(not visited_files.contains(found_path))
@@ -194,7 +194,7 @@ std::tuple<std::string, bool> Util::PreprocessShaderSource(const fs::path &filep
 					if(not ok)
 					{
 						std::print(stderr, "[{}:{}] \x1b[31;1minclude failed\x1b[m: {}\n", filepath.string(), line_num, preproc_instruction);
-						return { {}, false };
+						return { std::string(), false };
 					}
 
 					// std::print(" -> \x1b[34;1m{}\x1b[m\n", found_path.string());
@@ -210,7 +210,7 @@ std::tuple<std::string, bool> Util::PreprocessShaderSource(const fs::path &filep
 
 						const auto &[include_data_p, ok] = PreprocessShaderSource(found_path, include_data, visited_files);
 						if(not ok)
-							return { {}, false }; // error message already output
+							return { std::string(), false }; // error message already output
 						new_source.append("#line 1\n");
 						new_source.append(include_data_p);
 						new_source.append("\n"sv);
