@@ -238,6 +238,7 @@ add_custom_command(
 	VERBATIM
 )
 
+# copy some header files also used by shaders#
 configure_file(${CMAKE_CURRENT_LIST_DIR}/light_constants.h ${CMAKE_SOURCE_DIR}/resources/shaders/ COPYONLY)
 configure_file(${CMAKE_CURRENT_LIST_DIR}/buffer_binds.h ${CMAKE_SOURCE_DIR}/resources/shaders/ COPYONLY)
 
