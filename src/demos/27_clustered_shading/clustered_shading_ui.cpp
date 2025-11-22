@@ -251,11 +251,11 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 
 		if(ImGui::CollapsingHeader("Shadows"))//, ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			ImGui::SliderFloat("Bias constant",    &m_shadow_bias_constant,       -0.03f,  0.02f, "%.3f");
-			ImGui::SliderFloat("Bias slope scale", &m_shadow_bias_slope_scale,     0.f,    5.f,   "%.1f");
-			ImGui::SliderFloat("Bias slope power", &m_shadow_bias_slope_power,     0.01f,  5.f,   "%.2f");
-			ImGui::SliderFloat("Bias dist. scale", &m_shadow_bias_distance_scale, -0.01f,  0.01f, "%.3f");
-			ImGui::SliderFloat("Bias scale",       &m_shadow_bias_scale,          -2.f,    2.f,   "%.1f");
+			_shadow_parameters_changed |= ImGui::SliderFloat("Bias constant",    &m_shadow_bias_constant,       -0.03f,  0.02f, "%.3f");
+			_shadow_parameters_changed |= ImGui::SliderFloat("Bias slope scale", &m_shadow_bias_slope_scale,     0.f,    5.f,   "%.1f");
+			_shadow_parameters_changed |= ImGui::SliderFloat("Bias slope power", &m_shadow_bias_slope_power,     0.01f,  5.f,   "%.2f");
+			_shadow_parameters_changed |= ImGui::SliderFloat("Bias dist. scale", &m_shadow_bias_distance_scale, -0.01f,  0.01f, "%.3f");
+			_shadow_parameters_changed |= ImGui::SliderFloat("Bias scale",       &m_shadow_bias_scale,          -2.f,    2.f,   "%.1f");
 
 			static std::string size_line(64, ' ');
 			size_line.clear();
@@ -266,7 +266,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			else
 				ImGui::Text("  %s", size_line.c_str());
 
-			ImGui::Text("Lights rendered: %lu  slots: %lu", _light_shadow_maps_rendered, _shadow_atlas_slots_rendered);
+			ImGui::Text("Lights rendered: %3lu  slots: %lu", _light_shadow_maps_rendered, _shadow_atlas_slots_rendered);
 		}
 
 		if(ImGui::CollapsingHeader("Images", ImGuiTreeNodeFlags_DefaultOpen))

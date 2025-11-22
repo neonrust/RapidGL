@@ -1513,6 +1513,8 @@ void ClusteredShading::render()
 		debugDrawClusterGrid();
 
 	m_debug_draw_time.add(_gl_timer.elapsed<microseconds>(true));
+
+	_shadow_parameters_changed = false;
 }
 
 void ClusteredShading::renderShadowMaps()
@@ -1580,7 +1582,7 @@ void ClusteredShading::renderShadowMaps()
 		//   this should also be per slot (cube face for point lights)
 		const auto has_dynamic = false; //_scene_culler.pvs(light_id).has(SceneObjectType::Dynamic);
 
-		if(_shadow_atlas.should_render(atlas_light, now, light_hash, has_dynamic))
+		if(_shadow_parameters_changed or _shadow_atlas.should_render(atlas_light, now, light_hash, has_dynamic))
 		{
 			// render shadow map(s) for this light
 
@@ -1597,7 +1599,7 @@ void ClusteredShading::renderShadowMaps()
 
 				// TODO: if dirty or hash changed  or dynamic object _within this face's frustum_, render it
 
-				if(atlas_light.is_dirty() or light_hash != atlas_light.hash)//_scene_culler.pvs(light_id, idx).has(SceneObjectType::Dynamic))
+				if(_shadow_parameters_changed or atlas_light.is_dirty() or light_hash != atlas_light.hash)//_scene_culler.pvs(light_id, idx).has(SceneObjectType::Dynamic))
 				{
 					_shadow_atlas.bindRenderTarget(slot_rect);
 					if(not did_barrier)
@@ -1857,10 +1859,15 @@ void ClusteredShading::renderSceneShadow(const glm::vec3 &pos, float far_z, uint
 
 	m_shadow_depth_shader->bind();
 
-	m_shadow_depth_shader->setUniform("u_cam_pos"sv, pos);
+	m_shadow_depth_shader->setUniform("u_cam_pos"sv, pos); // well, light position :)
 	m_shadow_depth_shader->setUniform("u_far_z"sv, far_z);
 	m_shadow_depth_shader->setUniform("u_shadow_slot_index"sv, uint32_t(shadow_slot_index)); // for 'mvp'
 	m_shadow_depth_shader->setUniform("u_shadow_map_index"sv, shadow_map_index);
+	m_shadow_depth_shader->setUniform("u_shadow_bias_constant"sv,       m_shadow_bias_constant);
+	m_shadow_depth_shader->setUniform("u_shadow_bias_slope_scale"sv,    m_shadow_bias_slope_scale);
+	m_shadow_depth_shader->setUniform("u_shadow_bias_slope_power"sv,    m_shadow_bias_slope_power);
+	m_shadow_depth_shader->setUniform("u_shadow_bias_distance_scale"sv, m_shadow_bias_distance_scale);
+	m_shadow_depth_shader->setUniform("u_shadow_bias_scale"sv,          m_shadow_bias_scale);
 
 	for(const auto &obj: _scenePvs)
 	{

@@ -194,6 +194,7 @@ private:
 	float m_shadow_bias_slope_power      = 2.f;
 	float m_shadow_bias_distance_scale   = 0.f;
 	float m_shadow_bias_scale            = -0.2f;
+	bool  _shadow_parameters_changed     = false;
 
 
 	bool      m_animate_lights             = false;
