@@ -64,7 +64,7 @@ public:
 	using const_iterator = LightList::const_iterator;
 
 public:
-	LightManager(/* entt registry */);
+	LightManager(/* ecs registry */);
 
 	void reserve(size_t count);
 
