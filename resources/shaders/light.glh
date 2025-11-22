@@ -1,0 +1,34 @@
+
+uniform float u_falloff_power;
+
+float lightFalloff(float distance_sq, float light_radius_sq)
+{
+// https://www.desmos.com/calculator/5eaerimi8q
+	// s = distance^2 / light_radius^2
+	// F > 0
+	//     (1 - s)^2
+	// E = -----------
+	//       1 - Fs
+
+	float s = min(distance_sq / light_radius_sq, 1);
+	float nom = pow(1 - s, 2);
+	const float F = u_falloff_power;
+	float denom = 1 + F * s;
+	return nom / denom;
+
+	// return 1 - pow(distance / light_radius, u_falloff_power);
+}
+
+// source: https://google.github.io/filament/Filament.md.html
+float spotRadialFalloff(vec3 frag_dir, vec3 direction, float inner_angle, float outer_angle)
+{
+    // the scale and offset computations can be done CPU-side
+    float cos_outer   = cos(outer_angle);
+    float spot_scale  = 1.0 / max(cos(inner_angle) - cos_outer, 1e-5);
+    float spot_offset = -cos_outer * spot_scale;
+
+    float cd          = dot(-direction, frag_dir);
+    float attenuation = clamp(cd * spot_scale + spot_offset, 0.0, 1.0);
+
+    return attenuation * attenuation;
+}
