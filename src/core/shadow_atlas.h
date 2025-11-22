@@ -81,7 +81,7 @@ public:
 
 	// lights smaller than 'min radius' will never cast a shadow
 	inline void set_min_radius(float radius) { _min_light_radius = radius; }
-	// lights further away than 'max distance' will never cast a shadw
+	// lights further away than 'max distance' will never cast a shadow
 	inline void set_max_distance(float max_distance)
 	{
 		assert(max_distance > 0);
