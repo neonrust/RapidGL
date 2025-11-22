@@ -181,9 +181,35 @@ void LightManager::clear_shadow_index(LightID light_id)
 void LightManager::set_spot_angle(GPULight &L, float new_outer_angle)
 {
 	L.intensity *= spot_intensity_multiplier(new_outer_angle) / spot_intensity_multiplier(L.outer_angle);
-	L.affect_radius  = std::pow(L.intensity, 0.6f);
+	set_intensity(L, L.intensity);
 	L.inner_angle *= new_outer_angle / L.outer_angle;
 	L.outer_angle = new_outer_angle;
+}
+
+void LightManager::set_intensity(GPULight &L, float new_intensity)
+{
+	L.intensity = new_intensity;
+
+	switch(GET_LIGHT_TYPE(L))
+	{
+	case LIGHT_TYPE_POINT:
+	case LIGHT_TYPE_DIRECTIONAL:
+	case LIGHT_TYPE_SPOT:
+		L.affect_radius  = std::pow(L.intensity, 0.6f);
+		break;
+	case LIGHT_TYPE_RECT:
+	case LIGHT_TYPE_TUBE:
+		L.affect_radius = 50.f;
+		break;
+	case LIGHT_TYPE_SPHERE:
+		// complete bollox
+		L.affect_radius = std::pow(L.intensity, 0.6f) + L.shape_points[0].x*1.5f;
+		break;
+	case LIGHT_TYPE_DISC:
+		L.affect_radius = std::pow(L.intensity, 0.6f)*2;
+		break;
+	}
+	static_assert(LIGHT_TYPE__COUNT == 7);
 }
 
 bounds::Sphere LightManager::light_bounds(const GPULight &L) const

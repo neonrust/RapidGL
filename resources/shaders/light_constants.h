@@ -39,6 +39,7 @@
 #define LIGHT_TYPE_TUBE          0x04u
 #define LIGHT_TYPE_SPHERE        0x05u
 #define LIGHT_TYPE_DISC          0x06u
+#define LIGHT_TYPE__COUNT        (1 + LIGHT_TYPE_DISC)
 
 #define GET_LIGHT_TYPE(light)      ((light).type_flags & LIGHT_TYPE_MASK)
 #define IS_LIGHT_TYPE(light, type) (GET_LIGHT_TYPE(light) == (type))

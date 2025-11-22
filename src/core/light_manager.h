@@ -123,6 +123,7 @@ public:
 	inline size_t num_lights() const;
 
 	static void set_spot_angle(GPULight &L, float new_outer_angle);
+	static void set_intensity(GPULight &L, float new_intensity);
 
 	bounds::Sphere light_bounds(const GPULight &L) const;
 
@@ -258,10 +259,9 @@ GPULight LightManager::to_gpu_light(const LT &l)
 	L.intensity     = l.intensity;
 	L.fog_intensity = l.fog;
 
+	// all lights, except directional, has a position
 	if constexpr (not std::same_as<LT, DirectionalLight> or std::same_as<LT, DirectionalLightParams>)
-	{
 		L.position      = l.position;
-	}
 
 	if constexpr (std::same_as<LT, PointLight> or std::same_as<LT, PointLightParams>)
 	{
@@ -317,6 +317,7 @@ GPULight LightManager::to_gpu_light(const LT &l)
 		L.shape_points[0].x = l.radius;
 		L.affect_radius     = std::pow(l.intensity, 0.6)*2;
 	}
+	static_assert(LIGHT_TYPE__COUNT == 7);
 
 	if(l.shadow_caster)
 		L.type_flags |= LIGHT_SHADOW_CASTER;
