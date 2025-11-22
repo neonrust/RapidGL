@@ -45,7 +45,6 @@ public:
 	inline void setNoiseFrequency(glm::vec3 freq) { _noise_freq = freq; }
 	inline void setTemporalBlending(bool enable=true) { _blend_previous = enable; }
 	inline void setTemporalBlendWeight(float weight) { _blend_weight = weight; }
-	// inline void setFalloffMix(float mix) { _falloff_mix = mix; }
 
 	inline void setDensity(float density) { _density = density; }
 
@@ -81,19 +80,18 @@ private:
 	buffer::Storage<IndexRange> _tile_lights_ranges;
 	RGL::PP::BlurFixed<3.f> _blur3x3;
 
-	float _strength { 0.4f };
+	float _strength { 0.15f };
 	float _anisotropy { 0.2f };  // ~0.7 Thin haze / atmospheric fog
 	float _density { 0.1f };    // small values, less than ~0.2
 	bool _blend_previous { true };
-	float _blend_weight { 0.9f };
-	// float _falloff_mix { 0 };
-	float _falloff_power { 0.2f };
+	float _blend_weight { 0.95f };
+	float _falloff_power { 6.f };
 	bool _z_noise_enabled { true };
 	bool _3dblur_enabled { true };
 	bool _2dblur_enabled { false };
 
 	GLuint _dummy_vao_id;
-	bool _noise_enabled { true };
+	bool _noise_enabled { false };
 	glm::vec3 _noise_freq { 0.1f, 1.5f, 0.1f };
 	glm::vec3 _noise_offset { 0.f };
 };
