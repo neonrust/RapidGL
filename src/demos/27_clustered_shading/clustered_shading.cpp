@@ -1808,6 +1808,7 @@ void ClusteredShading::renderScene(const glm::mat4 &view_projection, Shader &sha
 		shader.setUniform("u_mvp"sv,   view_projection * obj.transform);
 		shader.setUniform("u_model"sv, obj.transform);
 		shader.setUniform("u_normal_matrix"sv, glm::transpose(glm::inverse(glm::mat3(obj.transform))));
+		shader.setUniform("u_falloff_power"sv, m_volumetrics_pp.falloffPower());
 
 		if(materialCtrl == UseMaterials)
 			obj.model->Render(shader);

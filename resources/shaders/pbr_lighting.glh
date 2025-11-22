@@ -212,19 +212,6 @@ float getSquareFalloffAttenuation(vec3 pos_to_light, float light_inv_radius)
     return (smooth_factor * smooth_factor) / max(distance_square, 1e-5);
 }
 
-// source: https://google.github.io/filament/Filament.md.html
-float getSpotAngleAttenuation(vec3 l, vec3 light_dir, float inner_angle, float outer_angle)
-{
-    // the scale and offset computations can be done CPU-side
-    float cos_outer   = cos(outer_angle);
-    float spot_scale  = 1.0 / max(cos(inner_angle) - cos_outer, 1e-5);
-    float spot_offset = -cos_outer * spot_scale;
-
-    float cd          = dot(normalize(-light_dir), l);
-    float attenuation = clamp(cd * spot_scale + spot_offset, 0.0, 1.0);
-
-    return attenuation * attenuation;
-}
 
 vec3 calcDirectionalLight(GPULight light, vec3 world_pos, MaterialProperties material)
 {
@@ -234,7 +221,9 @@ vec3 calcDirectionalLight(GPULight light, vec3 world_pos, MaterialProperties mat
 vec3 calcPointLight(GPULight light, vec3 world_pos, MaterialProperties material)
 {
     vec3  light_direction = light.position - world_pos;
-	float attenuation     = getSquareFalloffAttenuation(light_direction, 1.f / light.affect_radius);
+	// float attenuation     = getSquareFalloffAttenuation(light_direction, 1.f / light.affect_radius);
+    float distance_sq = dot(light_direction, light_direction);
+	float attenuation = lightFalloff(distance_sq, light.affect_radius*light.affect_radius);
 
     return pbr(light, light_direction, world_pos, attenuation, material);
 }
@@ -244,8 +233,10 @@ vec3 calcSpotLight(GPULight light, vec3 world_pos, MaterialProperties material)
     vec3  L            = normalize(world_pos - light.position);
     vec3  pos_to_light = light.position - world_pos;
 
-	float attenuation     = getSquareFalloffAttenuation(pos_to_light, 1.f / light.affect_radius);
-          attenuation    *= getSpotAngleAttenuation(L, -light.direction, light.inner_angle, light.outer_angle);
+	float distance_sq = dot(pos_to_light, pos_to_light);
+
+	float attenuation     = lightFalloff(distance_sq, light.affect_radius*light.affect_radius);
+          attenuation    *= spotRadialFalloff(L, -light.direction, light.inner_angle, light.outer_angle);
     vec3  light_direction = pos_to_light;
 
     return pbr(light, light_direction, world_pos, attenuation, material);

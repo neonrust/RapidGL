@@ -1,4 +1,3 @@
-// these includes should be done in a different way...
 #include "light_constants.h"  // IWYU pragma: keep
 #include "buffer_binds.h"
 

@@ -1,4 +1,5 @@
 #version 460 core
+#include "light.glh"
 #include "pbr_lighting.glh"
 #include "shadows.glh"
 #include "volumetrics.glh"

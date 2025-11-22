@@ -1,10 +1,12 @@
 #version 460 core
 
+
 const float PI = 3.14159265359;
 
 #include "shared-structs.glh"
 #include "shadows.glh"
 #include "volumetrics.glh"
+#include "light.glh"
 #include "noise.glh"
 
 layout(local_size_x = FROXEL_THREADS_X, local_size_y = FROXEL_THREADS_Y, local_size_z = FROXEL_THREADS_Z) in;
@@ -55,13 +57,10 @@ uniform float u_far_z;
 uniform mat4  u_projection;
 uniform mat4  u_inv_view_projection;
 uniform mat4  u_prev_view;
-uniform float u_falloff_power;
 
 vec3 pointLightVisibility(GPULight light, vec3 world_pos);
 vec3 spotLightVisibility(GPULight light, vec3 world_pos);
 
-float getSquareFalloffAttenuation(float distance_sq, float light_radius_sq);
-float getSpotSquareFalloffAttenuation(float distance_sq, float light_radius_sq);
 float getSpotAngleAttenuation(vec3 to_light, vec3 spot_axis, float outer_angle, float inner_angle);
 
 float fadeByDistance(float distance, float hard_limit);
@@ -79,7 +78,6 @@ float phaseFunction(vec3 Wo, vec3 Wi, float g);
 vec3 worldToUV(vec3 world_pos, mat4 view_proj);
 vec3 worldToFroxelUV(vec3 world_pos, mat4 view);
 
-float fogDistanceFalloff(float distance, float light_radius);
 uint computeSpotNumSamples(vec3 world_pos, GPULight spot, float maxWidth, uint  maxSamples);
 
 float samplePointLight(GPULight light, vec3 world_pos, float distance_sq);
@@ -230,104 +228,35 @@ void main()
 	imageStore(u_out_scatter, froxel, vec4(total_scattered, density));
 }
 
+float fogLightFalloff(float distance_sq, float light_radius_sq)
+{
+	// separate function, if maybe some special falloff is needed,
+	//   otherwise, the regular lightFalloff() could be used directly
+	return lightFalloff(distance_sq, light_radius_sq);
+}
+
 float samplePointLight(GPULight light, vec3 world_pos, float distance_sq)
 {
-	return fogDistanceFalloff(sqrt(distance_sq), light.affect_radius);
+	return fogLightFalloff(distance_sq, light.affect_radius*light.affect_radius);
 }
 
 float coneDistanceWithDiameter(GPULight spot, float diameter);
 
 float sampleSpotLight(GPULight light, vec3 world_pos, float distance_sq, float slice_thickness)
 {
-	float center_distance = sqrt(distance_sq);
+	float radius_sq = light.affect_radius*light.affect_radius;
 
-	float energy;
-
-	/*
-	NOTE: this is an attempt at sub-sampling near the spot light apex.
-	      it's not correct.
-
-	const float sub_sample_below_width = 0.5f;  // in world-space units
-	const uint sub_sample_max = 3;   // on either side of the center sample
-
-	uint num_samples = 0;
-	float multiSampleDistance = coneDistanceWithDiameter(light, sub_sample_below_width);
-	if(distance_sq < multiSampleDistance*multiSampleDistance)
-		num_samples = computeSpotNumSamples(world_pos, light, sub_sample_below_width, sub_sample_max);
-	if(num_samples > 0)
-	{
-		num_samples = 3;
-		// weights: depending on the number of samples, all weight should total = 1
-		const float weights[3 + 5 + 7] = {
-			// num_samples == 1
-			0.25,
-			0.50,   // center
-			0.25,
-			// num_samples == 2
-			0.12007838424321347,
-			0.2338807565853503,
-			0.29208171834287244,  // center
-			0.2338807565853503,
-			0.12007838424321347,
-			// num_samples == 3
-		 	0.07015932695902607,
-			0.131074878967366,
-			0.19071282356963737,
-			0.21610594100794114,  // center
-			0.19071282356963737,
-			0.131074878967366,
-		 	0.07015932695902607,
-		};
-		const uint sample_offset[3] = { 0, 3, 8 };
-
-		// linear spacing... could also use exponential
-		vec3 to_froxel = world_pos - u_cam_pos;
-		vec3 sample_stride = normalize(to_froxel) * (slice_thickness / 2) / float(num_samples + 1);
-		float center_distance = sqrt(distance_sq);
-		float stride_distance = 0;//(slice_thickness / 2) / float(num_samples + 1);
-
-		float distance = center_distance - float(num_samples)*stride_distance;
-
-		uint weight_idx = sample_offset[num_samples - 1];
-
-		if(num_samples >= 1)
-		{
-			distance += stride_distance;
-			energy += fogDistanceFalloff(distance, light.affect_radius) * weights[weight_idx++];
-			distance += stride_distance;
-			energy += fogDistanceFalloff(distance, light.affect_radius) * weights[weight_idx++];
-			distance += stride_distance;
-			energy += fogDistanceFalloff(distance, light.affect_radius) * weights[weight_idx++];
-		}
-		if(num_samples >= 2)
-		{
-			distance += stride_distance;
-			energy += fogDistanceFalloff(distance, light.affect_radius) * weights[weight_idx++];
-			distance += stride_distance;
-			energy += fogDistanceFalloff(distance, light.affect_radius) * weights[weight_idx++];
-		}
-		if(num_samples >= 3)
-		{
-			distance += stride_distance;
-			energy += fogDistanceFalloff(distance, light.affect_radius) * weights[weight_idx++];
-			distance += stride_distance;
-			energy += fogDistanceFalloff(distance, light.affect_radius) * weights[weight_idx++];
-		}
-	}
-	else
-	*/
-	// just the center sample
-	energy = fogDistanceFalloff(center_distance, light.affect_radius);
+	float energy = fogLightFalloff(distance_sq, radius_sq);
 
 	vec3 light_to_froxel = world_pos - light.position;
-	energy *= getSpotAngleAttenuation(normalize(light_to_froxel), light.direction, light.outer_angle, light.inner_angle);
-	energy *= sin(light.outer_angle); // or something like it
+	energy *= spotRadialFalloff(normalize(light_to_froxel), -light.direction, light.outer_angle, light.inner_angle);
+	energy *= pow(sin(light.outer_angle), 2); // or something like it
 
- 	float dist_fraction = distance_sq / (light.affect_radius*light.affect_radius);
-	// TODO: cut off at a specific diameter
+	// cut off apex where narrower than a specific cone diameter
+ 	float dist_fraction = distance_sq / radius_sq;
 	float cutoff_point = coneDistanceWithDiameter(light, 0.5);
 	cutoff_point *= cutoff_point;
-	cutoff_point /= light.affect_radius*light.affect_radius;
+	cutoff_point /= radius_sq;
    	energy *= smoothstep(0.f, cutoff_point, dist_fraction);
 
 	return energy;
@@ -350,7 +279,9 @@ float sampleRectLight(GPULight light, vec3 sample_pos, float distance_sq)
 	    avg_d += length(light.shape_points[i].xyz - sample_pos);
 	avg_d *= 0.25;
 
-	float area_scale = (light.affect_radius * light.affect_radius) / (avg_d * avg_d + 1e-6);
+	float radius_sq = light.affect_radius * light.affect_radius;
+
+	float area_scale = radius_sq / (avg_d * avg_d + 1e-6);
 
 	// simple Lambert term to fade off-axis contributions
 	float n_dot_l = dot(normal, dir);
@@ -363,7 +294,7 @@ float sampleRectLight(GPULight light, vec3 sample_pos, float distance_sq)
 	n_dot_l = max(n_dot_l, 0);
 
 	// Basic distance attenuation with controllable falloff
-	float falloff = fogDistanceFalloff(dist, light.affect_radius);
+	float falloff = fogLightFalloff(distance_sq, radius_sq);
 
 	return n_dot_l * falloff * area_scale / 100;
 }
@@ -390,7 +321,7 @@ float sampleTubeLight(GPULight light, vec3 world_pos, float distance_sq)
 
 	vec3 closest = closest_point(world_pos, point_a, point_b);
 	float distance = distance(world_pos, closest) - thickness;
-	return fogDistanceFalloff(distance, light.affect_radius);
+	return fogLightFalloff(distance*distance, light.affect_radius*light.affect_radius);
 
 	// vec3 binormal = normalize(cross(point_a - point_b, world_pos - light.position));
 	// vec3 corner_offset = binormal * thickness;
@@ -555,37 +486,6 @@ vec3 worldToFroxelUV(vec3 world_pos, mat4 view)
     float w = log(view_z / u_near_z) / log(u_far_z / u_near_z);
 
     return vec3(uv, clamp(w, 0, 1));
-}
-
-float fogDistanceFalloff(float distance, float light_radius)
-{
-	return 1 - pow(distance / light_radius, u_falloff_power);
-	// TODO: try:  seems worse?
-	// return 1 / (1 + pow(distance / light_radius, u_falloff_power));
-}
-
-// from pbr_scatter_contrib.glh (slightly modified)
-float getSquareFalloffAttenuation(float distance_sq, float light_radius_squared)
-{
-    // float distance_square = dot(pos_to_light, pos_to_light);
-    float factor          = distance_sq / light_radius_squared;
-    float smooth_factor   = max(1.0 - factor * factor, 0.0);
-
-    return (smooth_factor * smooth_factor) / max(distance_sq, 1e-5);
-}
-
-// TODO: combine these two functions?
-float getSpotSquareFalloffAttenuation(float distance_sq, float light_radius_sq)
-{
-    // float distance_square = dot(pos_to_light, pos_to_light);
-    float factor          = distance_sq / light_radius_sq;
-    float smooth_factor   = max(1.0 - factor * factor, 0.0);
-
-    // minimize the "warbling wasp stinger" by fading out near the apex
-    float dist_fraction = distance_sq / light_radius_sq;
-   	smooth_factor *= smoothstep(0.f, 0.01f, dist_fraction);
-
-    return (smooth_factor * smooth_factor) / max(distance_sq, 1e-5);
 }
 
 float getSpotAngleAttenuation(vec3 to_light, vec3 spot_dir, float outer_angle, float inner_angle)
