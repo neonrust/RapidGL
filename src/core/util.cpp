@@ -213,12 +213,13 @@ std::tuple<std::string, bool> Util::PreprocessShaderSource(const fs::path &filep
 							return { std::string(), false }; // error message already output
 						// NOTE: don't write #line, so we can show the context lines
 						//   maybe use a custom #pragma instead
-						// new_source.append("#line 1\n");
+						new_source.append(std::format("#pragma include start {}\n", found_path.string()));
 						new_source.append(include_data_p);
 						new_source.append("\n"sv);
 
 						// NOTE: don't write #line, so we can show the context lines
 						//   maybe use a custom #pragma instead
+						new_source.append(std::format("#pragma include end {}\n", found_path.string()));
 						// new_source.append("#line ");
 						// new_source.append(std::to_string(line_num + 1));
 						new_source.append("\n");
