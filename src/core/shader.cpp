@@ -186,7 +186,7 @@ bool Shader::loadShader(GLuint shaderObject, ShaderType type, const std::filesys
 		{
 			std::print(stderr, "{} Compilation failed!\n", filepath.string());
 			if(not log.empty())
-				logLineErrors(filepath, log, 10);
+				logLineErrors(filepath, log, { macros, code }, 10);
 		}
 		return false;
 	}
@@ -249,8 +249,10 @@ bool Shader::link()
 	return m_is_linked;
 }
 
-void Shader::logLineErrors(const std::filesystem::path & filepath, const std::string &log, size_t max_errors) const
+void Shader::logLineErrors(const std::filesystem::path & filepath, const std::string &log, const std::array<std::string_view, 2> &sources, size_t max_errors) const
 {
+	auto errors_with_context = 2;
+
 	std::istringstream strm(log);
 	std::string line;
 	auto num_errors = 0u;
@@ -263,28 +265,140 @@ void Shader::logLineErrors(const std::filesystem::path & filepath, const std::st
 
 		if(not capped)
 		{
-			auto start_bracket = line.find_first_of("0(");
-			if(line.size() < 10 or start_bracket == std::string::npos)
+			if(line.size() < 10)
+			{
+				std::print(stderr, "{}\n", line);
+				continue;
+			}
+			auto start_source_line = line.find("0(");
+			if(start_source_line == std::string::npos)
 			{
 				std::print(stderr, "{}\n", line);
 				continue;
 			}
 
-			const auto end_bracket = line.find(')', 2);
-			if(end_bracket == std::string::npos)
-			{
-				std::print(stderr, "{}\n", line);
-				continue;
-			}
+			auto file_line = line;
+			file_line.replace(start_source_line, start_source_line + 1, filepath);
+			std::print(stderr, "{}\n", file_line);
 
-			line = line.replace(0, 1, filepath);
-			std::print(stderr, "{}\n", line);
+			if(errors_with_context)
+			{
+				--errors_with_context;
+				const auto start_line_num = start_source_line + 2;
+				auto line_v = std::string_view(line).substr(start_line_num);
+				int line_num { -1 };
+				const auto parse_result = std::from_chars(line_v.data(), line_v.data() + line_v.size(), line_num);
+				if(parse_result.ec == std::errc{} and line_num > -1)
+				{
+					const size_t context = 1;
+					size_t pre_context = context;
+					auto lines = get_source_lines(sources, size_t(line_num) - 1, context, pre_context);
+					if(not lines.empty())
+					{
+						using u32 = uint32_t;
+
+							   // line number width; for alignment
+						const auto width = 1 + u32(std::floor(std::log10(lines.size() - 1 + u32(line_num) - pre_context)));
+
+						for(auto idx = 0u; idx < pre_context; ++idx)
+							std::print("{:{}}>{}\n", idx + u32(line_num) - pre_context, width, lines[idx]);
+						std::print("\x1b[1m{:{}}>{}\x1b[m\n", line_num, width, lines[pre_context]);
+						for(auto idx = 0u; idx < context; ++idx)
+							std::print("{:{}}>{}\n", idx + u32(line_num) + context, width, lines[pre_context + 1 + idx]);
+					}
+				}
+			}
 		}
 	}
 
 	if(capped)
 		std::print("(+{} errors)\n", num_errors - max_errors);
+}
 
+static size_t num_source_lines(std::string_view source)
+{
+	const auto trailing_line = not source.empty() and source[source.size() - 1] != '\n'? 1u: 0u;
+	return size_t(std::count(source.begin(), source.end(), '\n')) + trailing_line;
+}
+
+class string_reader
+{
+public:
+	explicit string_reader(std::string_view s) : _str(s) {}
+
+	std::string_view next_line()
+	{
+		if(is_end()) // already end of string
+			return {};  // empty, not even lf -> end of string
+
+		auto lf = _str.find('\n', _pos);
+		if(lf == std::string_view::npos)
+			lf = _str.size(); // i.e. the rest of the string
+
+		auto line = _str.substr(_pos, lf + 1 - _pos); // including LF
+		_pos = lf + 1; // start of next line (after lf), might be outside string (i.e. end state)
+
+		return line;
+	}
+	inline bool is_end() const { return _pos >= _str.size(); }
+
+private:
+	std::string_view _str;
+	size_t _pos = 0;
+};
+
+std::vector<std::string_view> Shader::get_source_lines(const std::array<std::string_view, 2> &sources, size_t line_num, size_t context_lines, size_t &before_context)
+{
+	const auto lines_source0 = num_source_lines(sources[0]);
+	const auto lines_source1 = num_source_lines(sources[1]);
+
+	// number of context lines before the desired line (might be less than 'context_lines')
+	before_context = context_lines >= line_num? 0: context_lines;
+	auto first_line = line_num - before_context;
+	auto last_line  = std::min(line_num + context_lines, lines_source1 - 1);
+	auto lines_remaining = last_line - first_line + 1;
+
+	std::vector<std::string_view> lines;
+	lines.reserve(lines_remaining);
+
+	auto lines0 = string_reader(sources[0]);
+	auto lines1 = string_reader(sources[1]);
+
+	// skip leading lines
+	auto skipped = 0ul;
+	if(first_line >= lines_source0)
+		skipped = lines_source0; // skip all of sources[0]; no need to read it
+	else
+	{
+		for(; skipped < first_line and not lines0.is_end(); ++skipped)
+			if(lines0.next_line().empty())
+				return {}; // unexpected eod of string
+	}
+	if(skipped < first_line)
+	{
+		for(; skipped < first_line and not lines1.is_end(); ++skipped)
+			if(lines1.next_line().empty())
+				return {}; // unexpected eod of string
+	}
+	assert(skipped == first_line);
+
+	// lines from sources[0] (likely none)
+	for(auto idx = first_line; idx < first_line + before_context and idx <= lines_source0 and lines_remaining; ++idx, --lines_remaining)
+	{
+		const auto line = lines0.next_line();
+		assert(not line.empty());
+		lines.push_back(line.substr(0, line.size() - 1));
+	}
+
+	// lines from sources[1]
+	while(lines_remaining--)
+	{
+		const auto line = lines1.next_line();
+		assert(not line.empty());
+		lines.push_back(line.substr(0, line.size() - 1));
+	}
+
+	return lines;
 }
 
 void Shader::setTransformFeedbackVaryings(const std::vector<const char*>& output_names, GLenum buffer_mode) const
