@@ -74,14 +74,6 @@ public:
 	template<_private::LightParamsType LTP>
 	auto add(const LTP &ltp) -> _private::return_type<LTP>;
 
-	// PointLight    add(const PointLightParams &p);
-	// DirectionalLight add(const DirectionalLightParams &d);
-	// SpotLight     add(const SpotLightParams &s);
-	// RectLight     add(const RectLightParams &a);
-	// TubeLight     add(const TubeLightParams &t);
-	// SphereLight   add(const SphereLightParams &s);
-	// DiscLight     add(const DiscLightParams &d);
-
 	void clear();
 
 	template<_private::LightType LT>
@@ -99,7 +91,6 @@ public:
 
 	template<_private::LightType LT>
 	void set(const LT &l); // needs to have uuid set; sets dirty flag
-	// TODO: set() for other light types
 
 	// update dirty lights in the SSBO
 	void flush();
