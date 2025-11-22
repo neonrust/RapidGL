@@ -11,6 +11,7 @@ set(SOURCE_FILES_CORE
 	animated_model.cpp
 	bounds.cpp
 	buffer.cpp
+	buffer_binds.h
 	camera.cpp
 	core_app.cpp
 	filesystem.cpp
