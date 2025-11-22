@@ -29,6 +29,7 @@ public:
 
 	// multiplier for the volumetrics effect
 	inline void setStrength(float strength) { _strength = strength; }
+	inline float falloffPower() const { return _falloff_power; }
 	inline void setFalloffPower(float power) { _falloff_power = power; }
 	inline void setFroxelNoiseEnabled(bool enabled) { _z_noise_enabled = enabled; }
 	inline void setFroxelBlurEnabled(bool enabled) { _3dblur_enabled = enabled; }
