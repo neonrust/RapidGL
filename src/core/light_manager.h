@@ -79,7 +79,7 @@ public:
 	template<_private::LightType LT>
 	std::optional<LT> get(LightID uuid);
 
-	const GPULight &get_by_id(LightID light_id) const ;
+	const GPULight &get_by_id(LightID light_id) const;
 
 	std::tuple<LightID, const GPULight &> at(LightIndex light_index) const;
 	template<_private::LightType LT>
