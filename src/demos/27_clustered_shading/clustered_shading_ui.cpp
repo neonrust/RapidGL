@@ -209,10 +209,10 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 				static float anisotropy { 0.7f };
 				if(ImGui::SliderFloat("Anisotropy", &anisotropy, -1.f, 1.f))
 					m_volumetrics_pp.setAnisotropy(anisotropy);
-				static float falloff_power { 0.2f };
-				if(ImGui::SliderFloat("Falloff power", &falloff_power, 0.1f, 2.f))
+				static float falloff_power { m_volumetrics_pp.falloffPower() };
+				if(ImGui::SliderFloat("Falloff power", &falloff_power, 0.1f, 30.f, "%.1f"))
 					m_volumetrics_pp.setFalloffPower(falloff_power);
-				static bool fog_noise { true };
+				static bool fog_noise { false };
 				if(ImGui::Checkbox("Fog noise", &fog_noise))
 					m_volumetrics_pp.setNoiseEnabled(fog_noise);
 				if(fog_noise)
