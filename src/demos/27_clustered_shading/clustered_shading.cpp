@@ -909,6 +909,13 @@ void ClusteredShading::update(double delta_time)
 
 	m_camera.update(delta_time);
 
+	const float energy_multiplier = 1.01f;
+	float adjust_energy = 0.f;
+	if(Input::isKeyDown(KeyCode::UpArrow))
+		adjust_energy = energy_multiplier;
+	else if(Input::isKeyDown(KeyCode::DownArrow))
+		adjust_energy  = -energy_multiplier;
+
 	const float move_amount = float(1.0f * delta_time);
 	float adjust_position = 0.f;
 	if(Input::isKeyDown(KeyCode::LeftArrow))
@@ -923,9 +930,10 @@ void ClusteredShading::update(double delta_time)
 	else if(Input::isKeyDown(KeyCode::LeftBracket))
 		adjust_angle  = -angle_amount;
 
+
 	const auto spin_mat = glm::angleAxis(glm::radians(float(15*delta_time)), AXIS_Y);
 
-	if(adjust_position != 0 or adjust_angle  != 0)
+	if(adjust_position != 0 or adjust_angle  != 0 or adjust_energy != 0)
 	{
 		for(LightIndex light_index = 0; light_index <  _light_mgr.size(); ++light_index)
 		{
@@ -943,6 +951,14 @@ void ClusteredShading::update(double delta_time)
 						   glm::degrees(Lmut.inner_angle),
 						   Lmut.intensity,
 						   Lmut.affect_radius);
+			}
+
+			if(adjust_energy != 0)
+			{
+				if(adjust_energy > 0)
+					_light_mgr.set_intensity(Lmut, Lmut.intensity * adjust_energy);
+				else
+					_light_mgr.set_intensity(Lmut, Lmut.intensity / -adjust_energy);
 			}
 
 			_light_mgr.set(light_id, Lmut);
