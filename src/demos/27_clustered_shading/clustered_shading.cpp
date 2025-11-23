@@ -1024,6 +1024,10 @@ void ClusteredShading::update(double delta_time)
 
 void ClusteredShading::createLights()
 {
+	static const glm::vec3 room_min { -18, 0.5f, -18 };
+	// static const glm::vec3 room_max { 178, 3.5f, 18 };
+	static const glm::vec3 room_max {  18, 3.5f,  18 };
+
 	// point lights
 	for(auto idx = 4u; idx < 5; ++idx)
 	{
@@ -1032,8 +1036,8 @@ void ClusteredShading::createLights()
 			float(Util::RandomDouble(0.4f, 0.8f)),   // saturation
 			1.f                                      // value (brightness)
 		);
-		const auto rand_pos = Util::RandomVec3({ -18, 0.5f, -18 }, { 178, 3.5f, 18 });
-		// const auto rand_pos = glm::vec3(-5.f + float(idx)*20, 2.5f, 0 );
+		const auto rand_pos = Util::RandomVec3(room_min, room_max);
+		// const auto rand_pos = glm::vec3(-5.f + float(idx)*10, 2.5f, 0 );
 
 		const auto rand_intensity = float(Util::RandomDouble(10, 100));
 
