@@ -49,12 +49,12 @@ struct Texture2d
 	Texture &depth_texture();
 	const Texture &depth_texture() const;
 	inline GLenum depth_format() const { return _depth_format; }
-	void enableHardwarePCF();
 
 	//! bind color (if any) for use in shader as a texture
 	void bindTextureSampler(GLuint unit=0) const;
 	//! bind depth (if any) for use in shader as a texture
 	void bindDepthTextureSampler(GLuint unit=0) const;
+	void bindShadowSampler(GLuint unit=0) const;
 
 	//! bind for rendering into using regular draw calls (and clear specified aspects of the RT)
 	inline void bindRenderTarget() { bindRenderTarget(FullScreen, ColorBuffer | DepthBuffer); }
@@ -88,8 +88,12 @@ struct Texture2d
 	void SetDepthFiltering(TextureFiltering type, TextureFilteringParam filtering);
 	void SetDepthWrapping(TextureWrappingAxis axis, TextureWrappingParam wrapping);
 
+
 private:
 	void attach(GLenum attachment, GLenum internal_format, GLuint texture_id, GLuint &rbo_id);
+
+	bool create_shadow_view();
+	Texture2D &shadow_view() { return _shadow_view; }
 
 private:
 	GLuint _fbo_id { 0 };
@@ -103,6 +107,7 @@ private:
 	GLenum _depth_format { 0 };
 	RGL::Texture2D _depth_texture;
 	GLuint _depth_rbo_id { 0 };
+	RGL::Texture2D _shadow_view;
 
 	uint_fast8_t _mip_levels { 1 };
 	ImageMeta m_metadata;

@@ -226,20 +226,33 @@ const Texture &Texture2d::depth_texture() const
 	return _depth_texture;
 }
 
-void Texture2d::enableHardwarePCF()
-{
-	assert(_has_depth and _depth_texture);
-	glTextureParameteri(_depth_texture.texture_id(), GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-	glTextureParameteri(_depth_texture.texture_id(), GL_TEXTURE_COMPARE_FUNC, GL_LESS); // or GL_LEQUAL
-
-	_depth_texture.SetFiltering(TextureFiltering::Minify,  TextureFilteringParam::Linear);
-	_depth_texture.SetFiltering(TextureFiltering::Magnify, TextureFilteringParam::Linear);
-}
-
 void Texture2d::bindDepthTextureSampler(GLuint unit) const
 {
 	assert(_depth_texture);
 	_depth_texture.Bind(unit);
+}
+
+void Texture2d::bindShadowSampler(GLuint unit) const
+{
+	assert(_depth_texture);
+	if(not _shadow_view)
+		const_cast<Texture2d *>(this)->create_shadow_view();
+	_shadow_view.Bind(unit);
+}
+
+bool Texture2d::create_shadow_view()
+{
+	auto descr = _depth_texture.CreateView();
+	if(not descr)
+		return false;
+
+	_shadow_view.set(descr);
+	_shadow_view.SetCompareMode(TextureCompareMode::Ref);
+	_shadow_view.SetCompareFunc(TextureCompareFunc::Less);
+	_shadow_view.SetFiltering(TextureFiltering::Minify,  TextureFilteringParam::Linear);
+	_shadow_view.SetFiltering(TextureFiltering::Magnify, TextureFilteringParam::Linear);
+
+	return true;
 }
 
 void Texture2d::bindRenderTarget(BufferMask clear_mask)
