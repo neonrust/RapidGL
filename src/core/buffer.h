@@ -8,19 +8,20 @@ namespace RGL::buffer
 {
 
 
-enum BufferUsage : GLenum
+enum class BufferUsage : GLenum
 {
 	DefaultUsage = 0,
 	DynamicDraw = GL_DYNAMIC_DRAW,
 	StaticRead  = GL_STATIC_READ,
 	StaticDraw  = GL_STATIC_DRAW,
+	ReadBack    = GL_MAP_READ_BIT,
 };
 
 
 class Buffer
 {
 public:
-	inline Buffer(std::string_view name, GLenum buffer_type, BufferUsage default_usage=DynamicDraw) :
+	inline Buffer(std::string_view name, GLenum buffer_type, BufferUsage default_usage=BufferUsage::DynamicDraw) :
 		_buffer_type(buffer_type),
 		_default_usage(default_usage),
 		_name(name)
@@ -43,6 +44,7 @@ protected:
 	bool ensureCreated() const;    // returns true if it was created
 	void upload(const void *ptr, size_t size);
 	void upload(const void *ptr, size_t size, size_t start_offset);
+	void download(void *ptr, size_t size, size_t start_offset=0);
 	virtual void onCreate() {};
 
 protected:

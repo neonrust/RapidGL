@@ -36,7 +36,7 @@ public:
 	static constexpr size_t elem_size = type_size();
 
 public:
-	Storage(std::string_view name, BufferUsage default_usage=DynamicDraw) :
+	Storage(std::string_view name, BufferUsage default_usage=BufferUsage::DynamicDraw) :
 		Buffer(name, GL_SHADER_STORAGE_BUFFER, default_usage)
 	{
 	}
@@ -127,7 +127,8 @@ inline bool Storage<T>::download(std::vector<T> &destination, size_t offset, siz
 	else if(offset + count > _size)
 		count = _size - offset;
 	destination.resize(count);
-	glGetNamedBufferSubData(id(), sizeof(T)*offset, sizeof(T)*count, destination.data());
+
+	Buffer::download(destination.data(), sizeof(T)*count, sizeof(T)*offset);
 	return true;
 }
 
@@ -241,7 +242,7 @@ template<size_t count=1> requires (count <= 32)
 class AtomicCounters : protected Storage<uint32_t>
 {
 public:
-	AtomicCounters(std::string_view name, BufferUsage usage=DefaultUsage);
+	AtomicCounters(std::string_view name, BufferUsage usage=BufferUsage::DefaultUsage);
 
 	void clear();
 
@@ -296,7 +297,7 @@ class Mapped : protected Storage<T> // T must be @interop struct
 {
 public:
 	// TODO: add control over GL_MAP_COHERENT_BIT / GL_MAP_FLUSH_EXPLICIT_BIT use?
-	inline Mapped(std::string_view name, BufferUsage default_usage=DynamicDraw) :
+	inline Mapped(std::string_view name, BufferUsage default_usage=BufferUsage::DynamicDraw) :
 		Storage<T>(name, default_usage)
 	{};
 
