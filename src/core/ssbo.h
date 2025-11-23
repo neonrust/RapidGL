@@ -324,6 +324,7 @@ public:
 
 private:
 	void onCreate() override;
+	using Buffer::usage;
 
 private:
 	T *_data { nullptr };
@@ -341,12 +342,43 @@ void Mapped<T, N>::flush()
 template<typename T, size_t N> requires (N > 0 && sizeof(T) >= 4)
 void Mapped<T, N>::onCreate()
 {
-	static constexpr auto flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT;
-	static constexpr auto map_flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_FLUSH_EXPLICIT_BIT;
+	GLbitfield flags { 0 };
+	GLbitfield map_flags { 0 };
+
+	if(usage() == BufferUsage::ReadBack)
+	{
+		flags     = GL_MAP_READ_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
+		map_flags = GL_MAP_READ_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
+	}
+	else
+	{
+		flags     = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT;
+		map_flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_FLUSH_EXPLICIT_BIT;
+	}
 
 	glNamedBufferStorage(this->id(), N*sizeof(T), nullptr, flags);
 	_data = static_cast<T *>(glMapNamedBufferRange(this->id(), 0, N*elem_size, map_flags));
+	assert(_data != nullptr);
 }
+
+// ============================================================================
+// ============================================================================
+
+template<typename T, size_t size>
+class ReadBack : protected Mapped<T, size>
+{
+public:
+	ReadBack(std::string_view name) :
+		Mapped<T, size>(name, BufferUsage::ReadBack)
+	{
+	}
+
+	using Mapped<T, size>::bindAt;
+	using Mapped<T, size>::clear;
+
+	using Mapped<T, size>::begin;
+	using Mapped<T, size>::end;
+};
 
 // ============================================================================
 // ============================================================================
