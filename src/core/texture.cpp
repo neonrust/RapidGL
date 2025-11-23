@@ -404,6 +404,30 @@ bool Texture2D::Create(size_t width, size_t height, GLenum internalFormat, size_
 	return Texture::Create(width, height, 0, internalFormat, num_mipmaps);
 }
 
+TextureDescriptor Texture2D::CreateView() const
+{
+	GLuint viewId;
+	glGenTextures(1, &viewId);
+
+	GLuint num_levels = 0;
+	glGetTextureParameteriv(_texture_id, GL_TEXTURE_IMMUTABLE_LEVELS, reinterpret_cast<GLint *>(&num_levels));
+	GLenum internalFormat { 0 };
+	glGetTextureLevelParameteriv(_texture_id, 0, GL_TEXTURE_INTERNAL_FORMAT, reinterpret_cast<GLint *>(&internalFormat));
+
+	glTextureView(viewId,
+				  GL_TEXTURE_2D,     // target of the *view*
+				  _texture_id,       // source texture
+				  internalFormat,
+				  0, num_levels,     // mip range
+				  0, 1);             // layer range
+
+	return {
+		.meta       = m_metadata,
+		.texture_id = viewId,
+		.type       = TextureType::Texture2D,
+	};
+}
+
 bool Texture3D::Create(size_t width, size_t height, size_t depth, GLenum internalFormat, size_t num_mipmaps)
 {
 	return Texture::Create(width, height, depth, internalFormat, num_mipmaps);

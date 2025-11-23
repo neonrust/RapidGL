@@ -239,6 +239,7 @@ public:
 	Texture2D() = default;
 
 	bool Create(size_t width, size_t height, GLenum internalFormat, size_t num_mipmaps=DefaultMipmaps);
+	TextureDescriptor CreateView() const;
 
 	// TODO: convert to factory function
 	//   also, these should access a shared storage,
