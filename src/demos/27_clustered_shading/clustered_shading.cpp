@@ -827,7 +827,6 @@ void ClusteredShading::prepareClusterBuffers()
 	m_cluster_discovery_ssbo.resize(1 + m_cluster_count*2);  // num_active, nonempty[N], active[N]
 	m_cluster_light_ranges_ssbo.resize(m_cluster_count);
 	m_cluster_all_lights_index_ssbo.resize(1 + m_cluster_count * CLUSTER_AVERAGE_LIGHTS); // all_lights_start_index, all_lights_index[]
-	m_affecting_lights_bitfield_ssbo.resize(32); // 32x32 = 1024 lights
 	m_cull_lights_args_ssbo.resize(1);
 
 	/// Generate AABBs for clusters
@@ -1276,21 +1275,18 @@ void ClusteredShading::GenSkyboxGeometry()
 
 void ClusteredShading::downloadAffectingLightSet()
 {
-	static std::vector<uint> unique_lights_bits;
-	m_affecting_lights_bitfield_ssbo.download(unique_lights_bits);
-
 	_affecting_lights.clear();
 
 	// std::print("  affecting lights:");
 
 	// "decode" the bitfield into actual light indices
-	for(auto bucket = 0u; bucket < unique_lights_bits.size(); ++bucket)
+	for(const auto &[bucket, bucket_bits]: std::views::enumerate(m_affecting_lights_bitfield_ssbo))
 	{
-		auto bits = unique_lights_bits[bucket];
+		auto bits = bucket_bits;
 		while(bits)
 		{
 			const auto bit_index = uint_fast32_t(std::countr_zero(bits));
-			const auto light_index = (bucket << 5u) + bit_index;
+			const auto light_index = (uint32_t(bucket) << 5u) + bit_index;
 
 			_affecting_lights.insert(light_index);
 			bits &= bits - 1u; // clear lowest set bit

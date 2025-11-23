@@ -217,7 +217,7 @@ private:
 	RGL::buffer::Storage<glm::uvec3> m_cull_lights_args_ssbo;
 	RGL::buffer::Storage<IndexRange> m_cluster_light_ranges_ssbo;
 	RGL::buffer::Storage<uint>       m_cluster_all_lights_index_ssbo;
-	RGL::buffer::Storage<uint>       m_affecting_lights_bitfield_ssbo;
+	RGL::buffer::ReadBack<uint, 32>  m_affecting_lights_bitfield_ssbo;
 	dense_set<uint>                  _affecting_lights;
 	RGL::buffer::Storage<uint>       _relevant_lights_index_ssbo;
 	RGL::buffer::Mapped<ShadowSlotInfo, MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS + MAX_RECT_LIGHTS> m_shadow_map_slots_ssbo;
