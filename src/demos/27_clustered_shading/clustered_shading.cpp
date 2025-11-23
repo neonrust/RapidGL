@@ -30,7 +30,8 @@ static constexpr auto s_relevant_lights_update_min_interval = 250ms;
 // light/shadow distances as fraction of camera far plane (OR of furthest shading cluster? should be the same though...)
 //  must be in this order
 static constexpr auto s_light_relevant_fraction      = 0.6f;  // input to cluster light culling (and by extension, everything else)
-// TODO: "relevant" per light type?  (ordered by computational cost)
+// TODO: "relevant" per light type?  ordered by computational cost:
+//   point, spot, disc, { sphere, rect, tube }
 static constexpr auto s_light_affect_fraction        = 0.5f;  // fade shading by distance
 static constexpr auto s_light_volumetric_fraction    = 0.2f;  // fade volumetric/scattering by distance
 static constexpr auto s_light_shadow_max_fraction    = 0.4f;  // may allocated  sdhadow map
