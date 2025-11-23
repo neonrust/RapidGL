@@ -60,18 +60,47 @@ glm::mat3 make_common_space_from_direction(const glm::vec3 &direction)
 	return glm::mat3{ space_x, space_y, space_z };
 }
 
-void opengl_message_callback([[maybe_unused]] GLenum source,
+void opengl_message_callback(GLenum,       // source
 							 GLenum type,
-							 [[maybe_unused]] GLuint id,
+							 GLuint,       // id
 							 GLenum severity,
-							 [[maybe_unused]] GLsizei length,
+							 GLsizei,      // length
 							 const GLchar *message,
-							 [[maybe_unused]] const void *userParam)
+							 const void *) // userParam
 {
-	if(type == GL_DEBUG_TYPE_ERROR)
-		std::print(stderr, "GL ERROR: severity {}: {}\n",
-				   gl_lookup::enum_name(severity).substr(18),  // GL_DEBUG_SEVERITY_
-				   message);
+	// TODO: also include 'source' (GL_DEBUG_SOURCE_*) ?
+
+	if(severity == GL_DEBUG_SEVERITY_LOW
+		or severity == GL_DEBUG_SEVERITY_NOTIFICATION)
+		return;
+
+	switch(type)
+	{
+	case GL_DEBUG_TYPE_ERROR:
+		std::print(stderr, "\x1b[1mGL \x1b[31mERROR\x1b[m severity {}: {}\n",
+				   gl_lookup::enum_name(severity).substr(18), message);
+		break;
+	case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR:
+		std::print(stderr, "\x1b[1mGL \x1b[31mDEPRECATED\x1b[m severity {}: {}\n",
+				   gl_lookup::enum_name(severity).substr(18), message);
+		break;
+	case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:
+		std::print(stderr, "\x1b[1mGL \x1b[33mUNDEFINED\x1b[m severity {}: {}\n",
+				   gl_lookup::enum_name(severity).substr(18), message);
+		break;
+	case GL_DEBUG_TYPE_PORTABILITY:
+		std::print(stderr, "\x1b[1mGL \x1b[34mPORTABILITY\x1b[m severity {}: {}\n",
+				   gl_lookup::enum_name(severity).substr(18), message);
+		break;
+	case GL_DEBUG_TYPE_PERFORMANCE:
+		std::print(stderr, "\x1b[1mGL \x1b[33mPERFORMANCE\x1b[m severity {}: {}\n",
+				   gl_lookup::enum_name(severity).substr(18), message);
+		break;
+	case GL_DEBUG_TYPE_OTHER:
+		std::print(stderr, "\x1b[1mGL \x1b[33mOTHER\x1b[m severity {}: {}\n",
+				   gl_lookup::enum_name(severity).substr(18), message);
+		break;
+	}
 }
 
 
