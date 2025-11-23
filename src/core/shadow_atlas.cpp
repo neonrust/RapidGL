@@ -154,9 +154,6 @@ bool ShadowAtlas::create()
 	// TODO: if we only use the color attachment (i.e. the normals) for slope comparison,
 	//   we really only need a single-channel float (basically the cos(light_to_fragment_angle)).
 
-	// enable usage of sampler2DShadow in GLSL
-	enableHardwarePCF();
-
 	return bool(this);
 }
 
