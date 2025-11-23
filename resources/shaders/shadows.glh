@@ -5,12 +5,6 @@ layout (binding = 22) uniform sampler2D       u_shadow_atlas_normals;
 
 uniform float u_shadow_max_distance;
 
-uniform float u_shadow_bias_constant;
-uniform float u_shadow_bias_slope_scale;
-uniform float u_shadow_bias_distance_scale;
-uniform float u_shadow_bias_slope_power;
-uniform float u_shadow_bias_scale;
-
 vec2 shadow_atlas_texel_size;
 
 uint detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 view_proj, out vec4 rect)
@@ -147,9 +141,6 @@ float shadowVisibility(vec3 light_to_frag, vec3 world_pos, vec3 cam_pos, GPULigh
 	float camera_distance = distance(world_pos, cam_pos);
 	float light_distance = length(light_to_frag);
 	float normalized_depth = light_distance / light.affect_radius;
-
-	// float bias = computeBias(normalized_depth, light_to_frag, atlas_uv);
-	// normalized_depth -= bias;
 
 	vec2 uv_min = rect_uv.xy;
 	vec2 uv_max = rect_uv.xy + rect_uv.zw - shadow_atlas_texel_size;
