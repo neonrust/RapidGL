@@ -1578,6 +1578,7 @@ void ClusteredShading::renderShadowMaps()
 		_shadow_atlas.eval_lights(_lightsPvs, m_camera.position(), m_camera.forwardVector());
 		m_shadow_alloc_time.add(duration_cast<microseconds>(steady_clock::now() - T0));
 	}
+	m_shadow_alloc_time.add(microseconds(0));
 
 	// light projections needs to be updated more often than the allocation
 	//   needs to updated every time it's rendered, but for simplicity,
