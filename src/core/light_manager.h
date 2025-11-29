@@ -251,7 +251,7 @@ GPULight LightManager::to_gpu_light(const LT &l)
 	L.fog_intensity = l.fog;
 
 	// all lights, except directional, has a position
-	if constexpr (not std::same_as<LT, DirectionalLight> or std::same_as<LT, DirectionalLightParams>)
+	if constexpr (not (std::same_as<LT, DirectionalLight> or std::same_as<LT, DirectionalLightParams>))
 		L.position      = l.position;
 
 	if constexpr (std::same_as<LT, PointLight> or std::same_as<LT, PointLightParams>)
