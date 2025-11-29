@@ -17,19 +17,24 @@ Buffer::~Buffer()
 	}
 }
 
+bool Buffer::create()
+{
+	glCreateBuffers(1, &_id);
+	assert(_id > 0);
+	std::print("Buffer[{}]: created {} -> {}\n", _name, gl_lookup::enum_name(_buffer_type), _id);
+
+	if(_bind_index != GLuint(-1))
+		glBindBufferBase(_buffer_type, _bind_index, _id);
+
+	onCreate();
+	return true;
+}
+
 void Buffer::bindCurrent()
 {
 	ensureCreated();
 
 	glBindBuffer(_buffer_type, _id);
-}
-
-void Buffer::clear()
-{
-	ensureCreated();
-
-	static constexpr uint32_t clear_val = 0;
-	glClearNamedBufferData(id(), GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &clear_val);
 }
 
 void Buffer::bindAt(GLuint index)
@@ -42,19 +47,16 @@ void Buffer::bindAt(GLuint index)
 bool Buffer::ensureCreated() const
 {
 	if(_id == 0)
-	{
-		glCreateBuffers(1, &_id);
-		assert(_id > 0);
-		std::print("Buffer[{}]: created {} -> {}\n", _name, gl_lookup::enum_name(_buffer_type), _id);
-
-		if(_bind_index != GLuint(-1))
-			glBindBufferBase(_buffer_type, _bind_index, _id);
-
-		const_cast<Buffer *>(this)->onCreate();
-		return true;
-	}
-
+		return const_cast<Buffer *>(this)->create();
 	return false;
+}
+
+void Buffer::clear()
+{
+	ensureCreated();
+
+	static constexpr uint32_t clear_val = 0;
+	glClearNamedBufferData(id(), GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &clear_val);
 }
 
 void Buffer::upload(const void *ptr, size_t size)

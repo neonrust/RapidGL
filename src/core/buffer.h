@@ -30,7 +30,7 @@ enum class BufferUsage : GLenum
 class Buffer
 {
 public:
-	inline Buffer(std::string_view name, GLenum buffer_type, BufferUsage default_usage=BufferUsage::DynamicDraw) :
+	inline Buffer(std::string_view name, GLenum buffer_type=GL_BUFFER, BufferUsage default_usage=BufferUsage::DynamicDraw) :
 		_buffer_type(buffer_type),
 		_default_usage(default_usage),
 		_name(name)
@@ -38,6 +38,8 @@ public:
 	}
 
 	virtual ~Buffer();
+
+	bool create();
 	
 	void bindAt(GLuint index);
 	void bindCurrent();
@@ -49,18 +51,19 @@ public:
 
 	inline operator bool () const { return _id >= 0; }
 
-protected:
-	bool ensureCreated() const;    // returns true if it was created
 	void upload(const void *ptr, size_t size);
 	void upload(const void *ptr, size_t size, size_t start_offset);
 	void download(void *ptr, size_t size, size_t start_offset=0);
+
+protected:
+	bool ensureCreated() const;    // returns true if it was created
 	virtual void onCreate() {};
 
 protected:
 	GLenum _buffer_type;
 
 private:
-	mutable GLuint _id { 0 };
+	GLuint _id { 0 };
 	BufferUsage _default_usage;
 	std::string_view _name;
 	GLuint _bind_index { GLuint(-1) };
