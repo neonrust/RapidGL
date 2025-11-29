@@ -76,14 +76,14 @@ public:
 
 	void clear();
 
-	template<_private::LightType LT>
-	std::optional<LT> get(LightID uuid);
+	// template<_private::LightType LT>
+	// std::optional<LT> get(LightID uuid);
 
 	const GPULight &get_by_id(LightID light_id) const;
 
 	std::tuple<LightID, const GPULight &> at(LightIndex light_index) const;
-	template<_private::LightType LT>
-	LT at(LightIndex list_index) const;
+	// template<_private::LightType LT>
+	// LT typed_at(LightIndex list_index) const;
 
 	inline const GPULight &operator [] (LightIndex light_index) const noexcept { return _lights[light_index]; }
 
@@ -197,31 +197,31 @@ size_t LightManager::num_lights() const
 		return _num_disc_lights;
 }
 
-template<_private::LightType LT>
-LT LightManager::at(LightIndex light_index) const
-{
-	const auto &light = _lights[light_index];
-	const auto found_id = _index_to_id.find(light_index);
-	assert(found_id != _index_to_id.end());
+// template<_private::LightType LT>
+// LT LightManager::typed_at(LightIndex light_index) const
+// {
+// 	const auto &light = _lights[light_index];
+// 	const auto found_id = _index_to_id.find(light_index);
+// 	assert(found_id != _index_to_id.end());
 
-	const auto uuid = found_id->second;
+// 	const auto uuid = found_id->second;
 
-	return to_typed<LT>(light, uuid);
-}
+// 	return to_typed<LT>(light, uuid);
+// }
 
-template<_private::LightType LT>
-std::optional<LT> LightManager::get(LightID light_id)
-{
-	const auto found = _id_to_index.find(light_id);
-	assert(found != _id_to_index.end());
+// template<_private::LightType LT>
+// std::optional<LT> LightManager::get(LightID light_id)
+// {
+// 	const auto found = _id_to_index.find(light_id);
+// 	assert(found != _id_to_index.end());
 
-	const auto index = found->second;
-	assert(index < _lights.size());
+// 	const auto index = found->second;
+// 	assert(index < _lights.size());
 
-	const auto &L = _lights[index];
+// 	const auto &L = _lights[index];
 
-	return to_typed<LT>(L, light_id);
-}
+// 	return to_typed<LT>(L, light_id);
+// }
 
 namespace
 {
