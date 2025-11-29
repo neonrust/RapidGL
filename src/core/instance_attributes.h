@@ -117,11 +117,18 @@ uint32_t InstanceAttributes<T>::add(std::string_view name)
 
 		glEnableVertexArrayAttrib(  _vao, _attrib_location);
 		if constexpr (std::is_same_v<ItemT, uint32_t>)
+		{
 			glVertexArrayAttribIFormat(_vao, _attrib_location, num_components, GL_UNSIGNED_INT,    _offset);
+			std::print(" inst attr[{}] {:<14} size:{} uint x{}\n", _attrib_location, name, sizeof(ItemT), num_components);
+		}
 		else
+		{
 			glVertexArrayAttribFormat( _vao, _attrib_location, num_components, GL_FLOAT, GL_FALSE, _offset);
+			std::print(" inst attr[{}] {:<14} size:{} float x{}\n", _attrib_location, name, sizeof(ItemT), num_components);
+		}
 		glVertexArrayAttribBinding( _vao, _attrib_location, _buf_bind);
 		glVertexArrayBindingDivisor(_vao, _buf_bind, 1);
+
 
 		_offset += sizeof(ItemT);
 		return _attrib_location++;
