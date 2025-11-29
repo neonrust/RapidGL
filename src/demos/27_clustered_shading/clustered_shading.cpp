@@ -1043,7 +1043,7 @@ void ClusteredShading::createLights()
 
 		LightID l_id;
 		std::string_view type_name;
-		switch(idx % 5)
+		switch(idx % LIGHT_TYPE__COUNT)
 		{
 		case LIGHT_TYPE_POINT:
 		case LIGHT_TYPE_DIRECTIONAL:
@@ -1108,6 +1108,21 @@ void ClusteredShading::createLights()
 			l_id = l.id();
 		}
 		break;
+		case LIGHT_TYPE_SPHERE:
+		{
+			auto l = _light_mgr.add(SphereLightParams{
+				.color = rand_color,
+				.intensity = rand_intensity,
+				.fog = 1.f,
+				.shadow_caster = false,  // probably never
+				.position = rand_pos,
+				.radius = 0.7f,
+				.visible_surface = true,
+			});
+			type_name = _light_mgr.type_name<decltype(l)>();
+			l_id = l.id();
+		}
+		break;
 		case LIGHT_TYPE_DISC:
 		{
 			auto l = _light_mgr.add(DiscLightParams{
@@ -1125,7 +1140,8 @@ void ClusteredShading::createLights()
 			l_id = l.id();
 		}
 		break;
-
+		default:
+			assert(false);
 		}
 
 		std::print("light[{:2}] {:5} @ {:5.1f}; {:3.1f}; {:5.1f}  {:3},{:3},{:3}  {:4.0f}\n",
