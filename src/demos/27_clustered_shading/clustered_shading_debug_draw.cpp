@@ -142,8 +142,6 @@ void ClusteredShading::debugDrawLightMarkers()
 	{
 		const auto &L = _light_mgr[light_index];
 
-		const glm::vec4 color_blend(L.color, 1.f);
-
 		const auto to_light = L.position - m_camera.position();
 		float distance_sq = glm::dot(to_light, to_light);
 
