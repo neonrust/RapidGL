@@ -156,6 +156,7 @@ void ClusteredShading::debugDrawLightMarkers()
 			icon  = Icon::SphereLight;
 		else if(IS_DISC_LIGHT(L))
 			icon  = Icon::DiscLight;
+		static_assert(LIGHT_TYPE__COUNT == 7);
 
 		icons.push_back({
 			.world_pos   = L.position,

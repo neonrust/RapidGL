@@ -20,6 +20,7 @@ static const std::string_view s_light_type_names[] {
 	"sphere"sv,
 	"disc"sv,
 };
+static_assert(LIGHT_TYPE__COUNT == 7);
 
 
 LightManager::LightManager(/* entt registry */) :
