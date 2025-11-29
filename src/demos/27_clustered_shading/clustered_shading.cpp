@@ -1086,6 +1086,7 @@ void ClusteredShading::createLights()
 				.size = glm::vec2(1.f, 1.f),
 				.orientation = glm::quat{},
 				.double_sided = true,
+				.visible_surface = true,
 			});
 			type_name = _light_mgr.type_name<decltype(l)>();
 			l_id = l.id();
@@ -1101,6 +1102,7 @@ void ClusteredShading::createLights()
 				.position = rand_pos,
 				.end_points = { { -2.f, 0.f, 0.f }, { 2.f, 0.f, 0.f } },
 				.thickness = 0.05f,
+				.visible_surface = true,
 			});
 			type_name = _light_mgr.type_name<decltype(l)>();
 			l_id = l.id();
@@ -1117,6 +1119,7 @@ void ClusteredShading::createLights()
 				.direction = AXIS_Z,
 				.radius = 2.f,
 				.double_sided = true,
+				.visible_surface = true,
 			});
 			type_name = _light_mgr.type_name<decltype(l)>();
 			l_id = l.id();

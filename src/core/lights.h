@@ -33,7 +33,10 @@ private:                                        \
 	LightID uuid        { NO_LIGHT_ID }
 
 #define POINT                        \
-	glm::vec3 position  { 0, 0, 0 }  \
+	glm::vec3 position  { 0, 0, 0 }
+
+#define SURFACE           \
+	bool visible_surface
 
 // ------------------------------------------------------------------
 
@@ -96,22 +99,23 @@ struct SpotLight
 
 // ------------------------------------------------------------------
 
-#define AREA_LIGHT                      \
+#define RECT_LIGHT                      \
 	COMMON;                             \
 	POINT;                              \
 	glm::vec2 size        { 1, 1 };     \
 	glm::quat orientation;              \
-	bool double_sided { false }
+	bool double_sided { false };        \
+	SURFACE
 
 
 struct RectLightParams
 {
-	AREA_LIGHT;
+	RECT_LIGHT;
 };
 
 struct RectLight
 {
-	AREA_LIGHT;
+	RECT_LIGHT;
 	INTERNAL;
 };
 
@@ -121,7 +125,8 @@ struct RectLight
 	COMMON;              \
 	POINT;               \
 	glm::vec3 end_points[2];  /* relative 'position' stored in GPULight shape_points[0-1] */ \
-	float thickness           // stored in GPULight shape_points[2].x
+	float thickness;          /* stored in GPULight shape_points[2].x */ \
+	SURFACE
 
 struct TubeLightParams
 {
@@ -139,7 +144,8 @@ struct TubeLight
 #define SPHERE_LIGHT      \
 	COMMON;               \
 	POINT;                \
-	float radius
+	float radius;         \
+	SURFACE
 // 'radius' stored in GPULight::shape_points[0].x
 
 struct SphereLightParams
@@ -160,7 +166,8 @@ struct SphereLight
 	POINT;               \
 	glm::vec3 direction; \
 	float radius;        \
-	bool double_sided { false }
+	bool double_sided { false }; \
+	SURFACE
 // 'radius' stored in GPULight::shape_points[0].x
 
 struct DiscLightParams
@@ -184,6 +191,6 @@ struct DiscLight
 #undef POINT_LIGHT
 #undef DIR_LIGHT
 #undef SPOT_LIGHT
-#undef AREA_LIGHT
+#undef RECT_LIGHT
 #undef SPHERE_LIGHT
 #undef DISC_LIGHT
