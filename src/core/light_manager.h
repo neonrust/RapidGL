@@ -278,9 +278,10 @@ GPULight LightManager::to_gpu_light(const LT &l)
 	}
 	else if constexpr (std::same_as<LT, RectLight> or std::same_as<LT, RectLightParams>)
 	{
-		L.type_flags      = LIGHT_TYPE_RECT | (l.double_sided? LIGHT_DOUBLE_SIDED: 0);
-		glm::vec3 right   = l.orientation * glm::vec3(l.size.x * 0.5f, 0,               0);
-		glm::vec3 up      = l.orientation * glm::vec3(0,               l.size.y * 0.5f, 0);
+		L.type_flags      = LIGHT_TYPE_RECT | (l.double_sided? LIGHT_DOUBLE_SIDED: 0) \
+			| (l.visible_surface? LIGHT_VISIBLE_SURFACE : 0);
+		const glm::vec3 right   = l.orientation * glm::vec3(l.size.x * 0.5f, 0,               0);
+		const glm::vec3 up      = l.orientation * glm::vec3(0,               l.size.y * 0.5f, 0);
 		L.shape_points[0] = glm::vec4(l.position + right - up, 1);
 		L.shape_points[1] = glm::vec4(l.position - right - up, 1);
 		L.shape_points[2] = glm::vec4(l.position + right + up, 1);
@@ -289,7 +290,8 @@ GPULight LightManager::to_gpu_light(const LT &l)
 	}
 	else if constexpr (std::same_as<LT, TubeLight> or std::same_as<LT, TubeLightParams>)
 	{
-		L.type_flags        = LIGHT_TYPE_TUBE;
+		L.type_flags        = LIGHT_TYPE_TUBE \
+			| (l.visible_surface? LIGHT_VISIBLE_SURFACE : 0);
 		L.shape_points[0]   = glm::vec4(l.end_points[0] + l.position, 1);
 		L.shape_points[1]   = glm::vec4(l.end_points[1] + l.position, 1);
 		L.shape_points[2].x = l.thickness;
@@ -297,13 +299,15 @@ GPULight LightManager::to_gpu_light(const LT &l)
 	}
 	else if constexpr (std::same_as<LT, SphereLight> or std::same_as<LT, SphereLightParams>)
 	{
-		L.type_flags        = LIGHT_TYPE_SPHERE;
+		L.type_flags        = LIGHT_TYPE_SPHERE \
+			| (l.visible_surface? LIGHT_VISIBLE_SURFACE : 0);
 		L.shape_points[0].x = l.radius;
 		// L.affect_radius     =       TODO
 	}
 	else if constexpr (std::same_as<LT, DiscLight> or std::same_as<LT, DiscLightParams>)
 	{
-		L.type_flags        = LIGHT_TYPE_DISC | (l.double_sided? LIGHT_DOUBLE_SIDED: 0);
+		L.type_flags        = LIGHT_TYPE_DISC | (l.double_sided? LIGHT_DOUBLE_SIDED: 0) \
+			| (l.visible_surface? LIGHT_VISIBLE_SURFACE : 0);
 		L.direction         = l.direction;
 		L.shape_points[0].x = l.radius;
 		L.affect_radius     = std::pow(l.intensity, 0.6)*2;
@@ -314,6 +318,7 @@ GPULight LightManager::to_gpu_light(const LT &l)
 		L.type_flags |= LIGHT_SHADOW_CASTER;
 	if(l.fog > 0)
 		L.type_flags |= LIGHT_VOLUMETRIC;
+
 
 	CLR_SHADOW_IDX(L);
 
