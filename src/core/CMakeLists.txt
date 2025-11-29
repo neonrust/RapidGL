@@ -64,6 +64,7 @@ set(HEADER_FILES_CORE
 	GLTimer.h
 	input.h
 	input_bind.h
+	instance_attributes.h
 	ktx_loader.h
 	light_constants.h
 	light_manager.h
