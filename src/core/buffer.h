@@ -7,6 +7,15 @@
 namespace RGL::buffer
 {
 
+template<typename Iter, typename T>
+concept IteratorOf = std::contiguous_iterator<Iter> &&
+	std::same_as<std::remove_cvref_t<decltype(*std::declval<Iter>())>, T>;
+
+template<typename R, typename T>
+concept ContiguousRangeOf =
+	std::ranges::contiguous_range<R> &&
+	std::same_as<std::ranges::range_value_t<R>, T>;
+
 
 enum class BufferUsage : GLenum
 {
