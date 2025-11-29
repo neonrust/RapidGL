@@ -114,7 +114,6 @@ uint32_t InstanceAttributes<T>::add(std::string_view name)
 		static_assert(num_components >= 1 and num_components <= 4);
 
 		assert(_offset + sizeof(ItemT) <= sizeof(T));
-		std::print("VAObuf  added {}: {:<14} {:>2} bytes ({} comps)  offset = {}\n", _attrib_location, name, sizeof(ItemT), num_components, _offset);
 
 		glEnableVertexArrayAttrib(  _vao, _attrib_location);
 		if constexpr (std::is_same_v<ItemT, uint32_t>)
