@@ -118,7 +118,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			ImGui::Text("Lights PVS size : %lu", _lightsPvs.size());
 
 			ImGui::Checkbox("Draw AABB", &m_debug_draw_aabb);
-			ImGui::Checkbox("Draw Lights", &m_debug_draw_light_markers);
+			ImGui::Checkbox("Draw light icons", &m_debug_draw_light_markers);
 
 			if(ImGui::SliderFloat("FOV", &m_camera_fov, 25.f, 150.f))
 				calculateShadingClusterGrid();
