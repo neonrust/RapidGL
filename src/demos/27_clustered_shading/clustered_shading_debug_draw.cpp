@@ -120,8 +120,8 @@ void ClusteredShading::debugDrawLightMarkers()
 		SpotLight   = 1,
 		RectLight   = 2,
 		TubeLight   = 3,
-		DiscLight   = 4,
-		SphereLight = 5,
+		SphereLight = 4,
+		DiscLight   = 5,
 	};
 
 	struct IconData
