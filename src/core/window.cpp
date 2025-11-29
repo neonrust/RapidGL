@@ -3,6 +3,8 @@
 #include "input.h"
 #include "gui/gui.h"
 
+#include <print>
+
 namespace RGL
 {
     GLFWwindow * Window::m_window          = nullptr;
@@ -29,7 +31,7 @@ namespace RGL
 
         if (!glfwInit())
         {
-			std::fprintf(stderr, "ERROR: Could not initialize GLFW.\n");
+			std::print(stderr, "ERROR: Could not initialize GLFW.\n");
             exit(EXIT_FAILURE);
         }
 
@@ -49,7 +51,7 @@ namespace RGL
 
         if (!m_window)
         {
-			std::fprintf(stderr,"ERROR: Could not create window and OpenGL context.\n");
+			std::print(stderr,"ERROR: Could not create window and OpenGL context.\n");
 
             glfwTerminate();
             exit(EXIT_FAILURE);
@@ -60,7 +62,7 @@ namespace RGL
         /* Initialize GLAD */
         if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
         {
-			std::fprintf(stderr,"ERROR: Could not initialize GLAD.\n");
+			std::print(stderr,"ERROR: Could not initialize GLAD.\n");
             exit(EXIT_FAILURE);
         }
 
@@ -85,7 +87,9 @@ namespace RGL
         const GLubyte* driver_version = glGetString(GL_VERSION);
         const GLubyte* glsl_version   = glGetString(GL_SHADING_LANGUAGE_VERSION);
 
-		std::printf("%s %s\nDriver: %s\nGLSL Version: %s\n", vendor_name, renderer_name, driver_version, glsl_version);
+		std::print("{} {}\n", (const char *)vendor_name, (const char *)renderer_name);
+		std::print("Driver: {}\n", (const char *)driver_version);
+		std::print("GLSL Version: {}\n", (const char *)glsl_version);
 
 		{
 			int groupCounts[3];
@@ -97,10 +101,10 @@ namespace RGL
 			int invocations;
 			glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, &invocations);
 
-			std::printf("Compute shader work group limits:\n");
-			std::printf("   Counts:      %d x %d x %d\n", groupCounts[0], groupCounts[1], groupCounts[2]);
-			std::printf("   Sizes:       %d x %d x %d\n", groupSizes[0], groupSizes[1], groupSizes[2]);
-			std::printf("   Invocations: %d\n", invocations);
+			std::print("Compute shader work group limits:\n");
+			std::print("   Counts:      {} x {} x {}\n", groupCounts[0], groupCounts[1], groupCounts[2]);
+			std::print("   Sizes:       {} x {} x {}\n", groupSizes[0], groupSizes[1], groupSizes[2]);
+			std::print("   Invocations: {}\n", invocations);
 
 		}
 		{
@@ -108,7 +112,12 @@ namespace RGL
 			glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_size);
 			GLint max_size3d = 0;
 			glGetIntegerv(GL_MAX_3D_TEXTURE_SIZE, &max_size3d);
-			std::printf("Max texture size: %d  3D: %d\n", max_size, max_size3d);
+			std::print("Max texture size: {}  3D: {}\n", max_size, max_size3d);
+		}
+		{
+			GLint max_attrs;
+			glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &max_attrs);
+			std::print("Max vertex shader attributes: {}\n", max_attrs);
 		}
 
 
@@ -126,7 +135,7 @@ namespace RGL
         Input::init(m_window);
         GUI::init(m_window);
 
-		std::printf("--------------------------------------------------\n\n");
+		std::print("--------------------------------------------------\n\n");
     }
 
     void Window::endFrame()
