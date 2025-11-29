@@ -22,7 +22,7 @@ public:
 	template<typename ItemT>
 	uint32_t add(std::string_view name);
 
-	void skip(uint32_t loc, uint32_t offset);
+	void skip(uint32_t loc=1, uint32_t offset=0);
 
 	template<buffer::ContiguousRangeOf<T> R>
 	void load(const R &data);
