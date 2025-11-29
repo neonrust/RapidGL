@@ -20,15 +20,16 @@
 
 
 // 'type_flags' bits:
-//
-//     31                                     0
-//      .... .... .... SSSS SSSS SSSS CV.2 TTTT
+//                       16 15
+//     31                 | |                 0
+//      .... .... .... SSSS SSSS SSSS CVs2 TTTT
 //
 //   . = unused
 //   T = light type (4 bits)
 //   2 = two-sided (1 bit); rect & disc lights
-//   C = shadow caster (1 bit); point, dir & spot (likely)
+//   s = Visible surface geometry (rect, tube, sphere, disc)
 //   V = volunetric fog (1 bit)
+//   C = shadow caster (1 bit); point, dir & spot (likely)
 //   S = shadw slots info index (12 bits; 4095 values, 0xfff = no slot) - index into SSBO_BIND_SHADOW_SLOTS_INFO)
 //
 #define LIGHT_TYPE_MASK          0x0fu
@@ -52,7 +53,7 @@
 #define IS_DISC_LIGHT(light)       (IS_LIGHT_TYPE(light, LIGHT_TYPE_DISC))
 
 #define LIGHT_DOUBLE_SIDED          0x10u   // rect & disc lights
-
+#define LIGHT_VISIBLE_SURFACE       0x20u   // rect, tube, sphere & disc lights
 #define LIGHT_SHADOW_CASTER      0x00000080u
 #define LIGHT_SHADOW_MASK        0x000fff00u  // max 1023 shadw-casting lights
 #define LIGHT_SHADOW_SHIFT       8u
@@ -73,6 +74,7 @@ void SET_SHADOW_IDX(auto &light, auto idx)
 #define IS_SHADOW_CASTER(light)    (((light).type_flags & LIGHT_SHADOW_CASTER) > 0)
 #define IS_VOLUMETRIC(light)       (((light).type_flags & LIGHT_VOLUMETRIC) > 0)
 #define IS_DOUBLE_SIDED(light)     (((light).type_flags & LIGHT_DOUBLE_SIDED) > 0)
+#define IS_VISIBLE_SURFACE(light)  (((light).type_flags & LIGHT_VISIBLE_SURFACE) > 0)
 
 #define FROXEL_GRID_W      160
 #define FROXEL_GRID_H      90
