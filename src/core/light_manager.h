@@ -121,6 +121,7 @@ public:
 	template<_private::LightType LT>
 	static std::string_view type_name();
 	static std::string_view type_name(const GPULight &L);
+	static std::string_view type_name(uint_fast8_t light_type);
 
 private:
 	void add(const GPULight &L, LightID light_id);
@@ -135,7 +136,6 @@ private:
 	template<_private::LightParamsType LTP>
 	auto to_typed(const LTP &lpt, LightID light_id) const -> _private::return_type<LTP>;
 
-	static std::string_view type_name(uint_fast8_t light_type);
 
 private:
 	dense_map<LightID, LightIndex> _id_to_index;
