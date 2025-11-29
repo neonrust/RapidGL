@@ -80,12 +80,12 @@ private:
 	buffer::Storage<IndexRange> _tile_lights_ranges;
 	RGL::PP::BlurFixed<3.f> _blur3x3;
 
-	float _strength { 0.15f };
+	float _strength { 0.3f };
 	float _anisotropy { 0.2f };  // ~0.7 Thin haze / atmospheric fog
 	float _density { 0.1f };    // small values, less than ~0.2
 	bool _blend_previous { true };
 	float _blend_weight { 0.95f };
-	float _falloff_power { 10.f };
+	float _falloff_power { 20.f };
 	bool _z_noise_enabled { true };
 	bool _3dblur_enabled { true };
 	bool _2dblur_enabled { false };
