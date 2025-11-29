@@ -116,57 +116,23 @@ void ClusteredShading::debugDrawLightMarkers()
 {
 	enum class Icon : uint32_t
 	{
-		PointLight = 0,
-		SpotLight  = 1,
-		RectLight  = 2,
-		TubeLight  = 3,
-		DiscLight  = 4,
+		PointLight  = 0,
+		SpotLight   = 1,
+		RectLight   = 2,
+		TubeLight   = 3,
+		DiscLight   = 4,
+		SphereLight = 5,
 	};
 
 	struct IconData
 	{
 		glm::vec3 world_pos;
-		glm::vec3 color_tint;
 		uint32_t  icon;
+		glm::vec3 color;
 		float     distance_sq;
 
 		inline bool operator > (const IconData &that) const { return distance_sq > that.distance_sq; }
 	};
-
-	static GLuint icon_vao { 0 };
-	static GLuint instance_buf { 0 };
-
-	if(not icon_vao) // this stuff needs only be done once; configuring the VAO
-	{
-		glCreateVertexArrays(1, &icon_vao);
-		glCreateBuffers(1, &instance_buf);
-
-		glVertexArrayVertexBuffer(
-			icon_vao,
-			1,                  // binding index
-			instance_buf,       // buffer
-			0,                  // offset
-			sizeof(IconData)    // stride
-			);
-		// attrib 0: in_position
-		glEnableVertexArrayAttrib(icon_vao,   0);
-		glVertexArrayAttribFormat(icon_vao,   0, 3, GL_FLOAT, GL_FALSE, offsetof(IconData, world_pos));
-		glVertexArrayAttribBinding(icon_vao,  0, 1);
-		glVertexArrayBindingDivisor(icon_vao, 0, 1); // instanced
-
-		// attrib 1: in_icon_index
-		glEnableVertexArrayAttrib(icon_vao,   1);
-		glVertexArrayAttribIFormat(icon_vao,  1, 1, GL_UNSIGNED_INT, offsetof(IconData, icon));
-		glVertexArrayAttribBinding(icon_vao,  1, 1);
-		glVertexArrayBindingDivisor(icon_vao, 1, 1);
-
-		// attrib 2: in_color_tint
-		glEnableVertexArrayAttrib(icon_vao,   2);
-		glVertexArrayAttribFormat(icon_vao,   2, 3, GL_FLOAT, GL_FALSE, offsetof(IconData, color_tint));
-		glVertexArrayAttribBinding(icon_vao,  2, 1);
-		glVertexArrayBindingDivisor(icon_vao, 2, 1);
-	}
-
 
 	static std::vector<IconData> icons;
 	icons.reserve(_lightsPvs.size());
@@ -188,6 +154,8 @@ void ClusteredShading::debugDrawLightMarkers()
 			icon = Icon::RectLight;
 		else if(IS_TUBE_LIGHT(L))
 			icon  = Icon::TubeLight;
+		else if(IS_SPHERE_LIGHT(L))
+			icon  = Icon::SphereLight;
 		else if(IS_DISC_LIGHT(L))
 			icon  = Icon::DiscLight;
 
