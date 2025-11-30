@@ -30,7 +30,7 @@ enum class BufferUsage : GLenum
 class Buffer
 {
 public:
-	inline Buffer(std::string_view name, GLenum buffer_type=GL_BUFFER, BufferUsage default_usage=BufferUsage::DynamicDraw) :
+	inline Buffer(std::string_view name, GLenum buffer_type=GL_ARRAY_BUFFER, BufferUsage default_usage=BufferUsage::DynamicDraw) :
 		_buffer_type(buffer_type),
 		_default_usage(default_usage),
 		_name(name)
