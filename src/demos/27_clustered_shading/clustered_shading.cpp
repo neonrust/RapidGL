@@ -123,13 +123,13 @@ ClusteredShading::ClusteredShading() :
 	m_background_lod_level(1.2f),
 	m_skybox_vao          (0),
 	m_skybox_vbo          (0),
-	m_bloom_threshold     (0.1f),
+	m_bloom_threshold     (1.5f),
 	m_bloom_knee          (0.1f),
-	m_bloom_intensity     (0.5f),
+	m_bloom_intensity     (0.9f),
 	m_bloom_dirt_intensity(0),
 	m_bloom_enabled       (true),
-	_fog_enabled          (true),
-	_fog_strength         (0.15f),
+	_fog_enabled          (false),
+	_fog_strength         (0.3f),
 	_fog_density          (0.1f),    // [ 0, 1 ]
 	_fog_blend_weight     (0.95f)     // [ 0, 1 ]
 {
