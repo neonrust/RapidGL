@@ -1066,7 +1066,7 @@ void ClusteredShading::createLights()
 		// const auto rand_pos = Util::RandomVec3(room_min, room_max);
 		const auto rand_pos = glm::vec3(-10.f, 2.5f, 14.f - float(idx - 3)*15 );
 
-		const auto rand_intensity = float(Util::RandomDouble(10, 100));
+		const auto rand_intensity = 80.f;//float(Util::RandomDouble(10, 100));
 
 		LightID l_id;
 		std::string_view type_name;
