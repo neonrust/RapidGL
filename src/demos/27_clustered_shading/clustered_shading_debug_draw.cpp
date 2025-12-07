@@ -93,7 +93,9 @@ void ClusteredShading::debugDrawSceneBounds()
 	{
 		const auto &L = _light_mgr[light_index];
 
-		if(IS_POINT_LIGHT(L))
+		if(IS_SPOT_LIGHT(L))
+			debugDrawSpotLight(L, glm::vec4(L.color, 1));
+		else
 		{
 			const auto light_id = _light_mgr.light_id(LightIndex(light_index));
 
@@ -106,11 +108,6 @@ void ClusteredShading::debugDrawSceneBounds()
 			}
 			else
 				debugDrawSphere(L.position, L.affect_radius, glm::vec4(no_shadow_color, 0.5f));
-		}
-		else if(IS_SPOT_LIGHT(L))
-		{
-			// TODO: take shadow map (size) into account?
-			debugDrawSpotLight(L, glm::vec4(L.color, 1));
 		}
 	}
 }
