@@ -1052,15 +1052,15 @@ void ClusteredShading::createLights()
 	static constexpr auto ident_quat = glm::quat_identity<float, glm::defaultp>();
 
 	// point lights
-	for(auto idx = 3u; idx < 4; ++idx)
+	for(auto idx = 3u; idx < 7; ++idx)
 	{
 		const auto rand_color= hsv2rgb(
 			float(Util::RandomDouble(1, 360)),       // hue
-			float(Util::RandomDouble(0.2f, 0.9f)),   // saturation
+			float(Util::RandomDouble(0.8f, 1.f)),   // saturation
 			1.f                                      // value (brightness)
 		);
-		const auto rand_pos = Util::RandomVec3(room_min, room_max);
-		// const auto rand_pos = glm::vec3(-5.f + float(idx)*10, 2.5f, 0 );
+		// const auto rand_pos = Util::RandomVec3(room_min, room_max);
+		const auto rand_pos = glm::vec3(-10.f, 2.5f, 14.f - float(idx - 3)*15 );
 
 		const auto rand_intensity = float(Util::RandomDouble(10, 100));
 
@@ -1107,7 +1107,7 @@ void ClusteredShading::createLights()
 				.shadow_caster = false,   // probably never
 				.position = rand_pos,
 				.size = glm::vec2(0.8f, 0.8f),
-				.orientation = ident_quat,// glm::rotate(ident_quat, glm::radians(20.f), glm::vec3(1, 1, 1)),
+				.orientation = glm::rotate(ident_quat, glm::radians(-90.f), glm::vec3(0, 1, 0)),
 				.double_sided = false,
 				.visible_surface = true,
 			});
@@ -1123,7 +1123,7 @@ void ClusteredShading::createLights()
 				.fog = 1.f,
 				.shadow_caster = false,   // probably never
 				.position = rand_pos,
-				.half_extent = { 1.f, 0.f, 0.f },
+				.half_extent = { 0.f, 0.f, 1.f },
 				.thickness = 0.05f,
 				.visible_surface = true,
 			});
@@ -1154,7 +1154,7 @@ void ClusteredShading::createLights()
 				.fog = 1.f,
 				.shadow_caster = false,   // probably never
 				.position = rand_pos,
-				.direction = -AXIS_Z,
+				.direction = AXIS_X,
 				.radius = 0.45f,
 				.double_sided = false,
 				.visible_surface = true,

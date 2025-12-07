@@ -238,6 +238,8 @@ vec3 calcRectLight(GPULight light, vec3 world_pos, MaterialProperties material)
 
 	// TODO: degenerate to simpler (e.g. nearest-point) at larger distance, or even point light (only double-sided!)
 
+	light.intensity *= RECT_INTENSITY_SCALE;
+
     vec3 F0         = vec3(0.04); // base reflectance
     vec3 diff_color = material.albedo * (1.0 - material.metallic);
     vec3 spec_color = mix(F0, material.albedo, material.metallic);
@@ -255,7 +257,7 @@ vec3 calcRectLight(GPULight light, vec3 world_pos, MaterialProperties material)
     shape_data[2] = light.shape_data[2];
     shape_data[3] = light.shape_data[3];
     vec3 diff  = ltcEvaluate(N, V, world_pos, mat3(1), shape_data, two_sided);
-         diff *= diff_color * light.color;
+         diff *= diff_color;
 
     // specular term
     vec2 coords  = ltcCoords(cos_theta, material.roughness);
@@ -288,7 +290,7 @@ vec3 calcRectLight(GPULight light, vec3 world_pos, MaterialProperties material)
 
     float dist_sq = dot(world_pos - closest, world_pos - closest);
     float att = lightFalloff(dist_sq, light.affect_radius * light.affect_radius);
-    return radiance * att;
+    return radiance * att * light.color;
 }
 
 vec3 closest_point(Segment segment, vec3 p)
