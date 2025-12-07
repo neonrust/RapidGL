@@ -71,47 +71,11 @@ void main()
 		float sphere_radius = light.affect_radius;
 		uint light_type = light.type_flags & LIGHT_TYPE_MASK;
 
-     	switch(light_type)
+     	if(IS_SPOT_LIGHT(light) && light.spot_bounds_radius > 0)
       	{
-			case LIGHT_TYPE_SPOT:
-			{
-				// use minimal sphere bounds, if set
-	        	if(light.spot_bounds_radius > 0)
-				{
-					sphere_radius = light.spot_bounds_radius;
-					sphere_center += light.direction*sphere_radius;
-				}
-			}
-			break;
-
-			case LIGHT_TYPE_RECT:
-			{
-	            // approximation of the light radius
-	            sphere_radius = 50 * light.intensity * distance(sphere_center, light.shape_points[1].xyz);
-			}
-			break;
-
-			case LIGHT_TYPE_TUBE:
-			{
-			   // approximation of the light radius
-			   sphere_radius = 50 * light.intensity * distance(sphere_center, light.shape_points[1].xyz);
-			}
-			break;
-
-			case LIGHT_TYPE_SPHERE:
-			{
-				// TODO
-			}
-			break;
-
-			case LIGHT_TYPE_DISC:
-			{
-				// TODO
-				// center from average of two diagonal points
-	            // approximation of the light radius
-	            // sphere_radius = 50 * light.intensity * light.disc_radius;
-			}
-			break;
+			// minimal sphere bounds is set, use it
+			sphere_radius = light.spot_bounds_radius;
+			sphere_center += light.direction*sphere_radius;
 		}
 
 		bool affecting = light_type == LIGHT_TYPE_DIRECTIONAL \
