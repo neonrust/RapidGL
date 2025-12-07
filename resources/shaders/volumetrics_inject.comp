@@ -244,6 +244,7 @@ float samplePointLight(GPULight light, vec3 world_pos, float distance_sq)
 }
 
 float coneDistanceWithDiameter(GPULight spot, float diameter);
+vec3 closest_point(vec3 test_point, vec3 line1, vec3 line2);
 
 float sampleSpotLight(GPULight light, vec3 world_pos, float distance_sq, float slice_thickness)
 {
@@ -323,18 +324,6 @@ float sampleRectLight(GPULight light, vec3 sample_pos, float distance_sq)
 	return n_dot_l * falloff;// * area_scale / 100;
 }
 
-vec3 closest_point(vec3 test_point, vec3 line1, vec3 line2)
-{
-	vec3 ba = test_point - line1;
-	vec3 bc = line2 - line1;
-	float d = dot(ba, bc);
-	float len = length(bc);
-	float param = 0;
-	if (len != 0)
-		param = clamp(d / (len * len), 0, 1);
-	return line1 + bc * param;
-}
-
 float sampleTubeLight(GPULight light, vec3 world_pos, float distance_sq)
 {
 	// TODO: degenerate into point light at large distance
@@ -396,6 +385,18 @@ float sampleDiscLight(GPULight light, vec3 world_pos, float distance_sq)
 	faux_rect.shape_data[3] = vec4(light.position - offset_h + offset_v, 1);
 
 	return sampleRectLight(faux_rect, world_pos, distance_sq);
+}
+
+vec3 closest_point(vec3 test_point, vec3 line1, vec3 line2)
+{
+	vec3 ba = test_point - line1;
+	vec3 bc = line2 - line1;
+	float d = dot(ba, bc);
+	float len = length(bc);
+	float param = 0;
+	if (len != 0)
+		param = clamp(d / (len * len), 0, 1);
+	return line1 + bc * param;
 }
 
 }
