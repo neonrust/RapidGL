@@ -132,6 +132,7 @@ void main()
 
           	case LIGHT_TYPE_RECT:
            	{
+            	light.intensity *= RECT_INTENSITY_SCALE;
 	           	visibility = rectLightVisibility(light);
 		        if(visibility.x + visibility.y + visibility.z > s_min_visibility)
 		        	contribution = calcRectLight(light, in_world_pos, material);

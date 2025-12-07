@@ -1,6 +1,8 @@
 
 uniform float u_falloff_power;
 
+const float RECT_INTENSITY_SCALE = 4;
+
 float lightFalloff(float distance_sq, float light_radius_sq)
 {
 	// https://www.desmos.com/calculator/5eaerimi8q

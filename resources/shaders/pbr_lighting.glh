@@ -202,17 +202,6 @@ vec3 pbr(GPULight light, vec3 direction, vec3 world_pos, float attenuation, Mate
     return radiance;
 }
 
-// source: https://google.github.io/filament/Filament.md.html
-float getSquareFalloffAttenuation(vec3 pos_to_light, float light_inv_radius)
-{
-    float distance_square = dot(pos_to_light, pos_to_light);
-    float factor          = distance_square * light_inv_radius * light_inv_radius;
-    float smooth_factor   = max(1.0 - factor * factor, 0.0);
-
-    return (smooth_factor * smooth_factor) / max(distance_square, 1e-5);
-}
-
-
 vec3 calcDirectionalLight(GPULight light, vec3 world_pos, MaterialProperties material)
 {
     return pbr(light, -light.direction, world_pos, 1.0, material);
@@ -221,7 +210,6 @@ vec3 calcDirectionalLight(GPULight light, vec3 world_pos, MaterialProperties mat
 vec3 calcPointLight(GPULight light, vec3 world_pos, MaterialProperties material)
 {
     vec3  light_direction = light.position - world_pos;
-	// float attenuation     = getSquareFalloffAttenuation(light_direction, 1.f / light.affect_radius);
     float distance_sq = dot(light_direction, light_direction);
 	float attenuation = lightFalloff(distance_sq, light.affect_radius*light.affect_radius);
 
@@ -278,9 +266,29 @@ vec3 calcRectLight(GPULight light, vec3 world_pos, MaterialProperties material)
          spec *= spec_color * schlick.x + (1.0 - spec_color) * schlick.y;
 
     vec3 radiance  = light.intensity * (diff + spec);
-         radiance /= 2.0 * PI;
+        radiance /= 2.0 * PI;
 
-    return radiance;
+    // limit LTC range using closest-point distance to the rectangle and the
+    // shared lightFalloff() function (distance_sq, radius_sq).
+    vec3 corner0 = shape_data[0].xyz;
+    vec3 edgeU = shape_data[1].xyz - corner0;
+    vec3 edgeV = shape_data[3].xyz - corner0;
+    vec3 center = corner0 + 0.5 * (edgeU + edgeV);
+    float halfU = length(edgeU) * 0.5;
+    float halfV = length(edgeV) * 0.5;
+    vec3 dirU = (halfU > 1e-6) ? normalize(edgeU) : vec3(1,0,0);
+    vec3 dirV = (halfV > 1e-6) ? normalize(edgeV) : vec3(0,1,0);
+
+    vec3 local = world_pos - center;
+    float u = dot(local, dirU);
+    float v = dot(local, dirV);
+    float cu = clamp(u, -halfU, halfU);
+    float cv = clamp(v, -halfV, halfV);
+    vec3 closest = center + dirU * cu + dirV * cv;
+
+    float dist_sq = dot(world_pos - closest, world_pos - closest);
+    float att = lightFalloff(dist_sq, light.affect_radius * light.affect_radius);
+    return radiance * att;
 }
 
 vec3 closest_point(Segment segment, vec3 p)
