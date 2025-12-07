@@ -961,6 +961,10 @@ void ClusteredShading::update(double delta_time)
 
 
 	const auto spin_mat = glm::angleAxis(glm::radians(float(15*delta_time)), AXIS_Y);
+	if(Input::wasKeyPressed(KeyCode::F))
+		_fog_enabled = not _fog_enabled;
+	if(Input::wasKeyPressed(KeyCode::B))
+		m_bloom_enabled = not m_bloom_enabled;
 
 	if(adjust_position != 0 or adjust_angle  != 0 or adjust_energy != 0)
 	{

@@ -126,7 +126,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 				m_frame_time = 1.f / target_fps;
 		}
 
-		if (ImGui::CollapsingHeader("Lights"))//, ImGuiTreeNodeFlags_DefaultOpen))
+		if (ImGui::CollapsingHeader("Lights", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.5f);
 
@@ -190,7 +190,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 
 		if (ImGui::CollapsingHeader("Bloom"))
 		{
-			ImGui::Checkbox("Bloom enabled",        &m_bloom_enabled);
+			ImGui::Checkbox("Bloom enabled (B)",        &m_bloom_enabled);
 			if(m_bloom_enabled)
 			{
 				ImGui::SliderFloat("Bloom threshold",      &m_bloom_threshold,      0, 15.f, "%.1f");
@@ -199,9 +199,9 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 				ImGui::SliderFloat("Bloom dirt intensity", &m_bloom_dirt_intensity, 0, 10.f, "%.1f");
 			}
 		}
-		if(ImGui::CollapsingHeader("Fog / Volumetrics", ImGuiTreeNodeFlags_DefaultOpen))
+		if(ImGui::CollapsingHeader("Fog / Volumetrics"))//, ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			ImGui::Checkbox("Enabled",    &_fog_enabled);
+			ImGui::Checkbox("Enabled (F)",    &_fog_enabled);
 			if(_fog_enabled)
 			{
 				ImGui::SliderFloat("Strength", &_fog_strength, 0.f, 4.f);
