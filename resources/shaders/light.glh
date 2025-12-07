@@ -1,7 +1,7 @@
 
 uniform float u_falloff_power;
 
-const float RECT_INTENSITY_SCALE = 6;
+const float RECT_INTENSITY_POWER = 1.9;
 
 float lightFalloff(float distance_sq, float light_radius_sq)
 {

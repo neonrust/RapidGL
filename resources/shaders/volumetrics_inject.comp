@@ -171,7 +171,7 @@ void main()
 
 				case LIGHT_TYPE_RECT:
 					contribution *= sampleRectLight(light, world_pos, distance_sq);
-					light.intensity *= RECT_INTENSITY_SCALE;
+					light.intensity = pow(light.intensity, RECT_INTENSITY_POWER);
 					break;
 
 				case LIGHT_TYPE_TUBE:
@@ -184,6 +184,7 @@ void main()
 
 				case LIGHT_TYPE_DISC:
 					contribution *= sampleDiscLight(light, world_pos, distance_sq);
+					light.intensity = pow(light.intensity, RECT_INTENSITY_POWER);
 					break;
 				}
 

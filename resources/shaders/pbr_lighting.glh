@@ -238,7 +238,7 @@ vec3 calcRectLight(GPULight light, vec3 world_pos, MaterialProperties material)
 
 	// TODO: degenerate to simpler (e.g. nearest-point) at larger distance, or even point light (only double-sided!)
 
-	light.intensity *= RECT_INTENSITY_SCALE;
+	light.intensity = pow(light.intensity, RECT_INTENSITY_POWER);
 
     vec3 F0         = vec3(0.04); // base reflectance
     vec3 diff_color = material.albedo * (1.0 - material.metallic);
