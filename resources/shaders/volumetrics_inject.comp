@@ -67,7 +67,6 @@ float fadeByDistance(float distance, float hard_limit);
 
 float froxelThickness(int z);
 float linear_01_to_exp_01_depth(float z);
-//vec3 uvToNDC(vec3 uv, float depth_exp);
 vec3 ndcToWorldPos(vec3 ndc, mat4 inv_vp);
 vec3 froxelUV(ivec3 froxel, float noise);
 vec3 froxelUV(ivec3 froxel);
@@ -414,17 +413,6 @@ float linear_01_to_exp_01_depth(float z)
     return (1 / z - z_buffer_params_y) / z_buffer_params_x;
 }
 
-vec3 uvToNDC(vec3 uv, float depth_exp)
-{
-    vec3 ndc;
-
-    ndc.x = 2 * uv.x - 1;
-    ndc.y = 2 * uv.y - 1;
-    ndc.z = 2 * linear_01_to_exp_01_depth(uv.z) - 1;
-
-    return ndc;
-}
-
 vec3 ndcToWorldPos(vec3 ndc, mat4 inv_vp)
 {
     vec4 p = inv_vp * vec4(ndc, 1);
@@ -441,9 +429,6 @@ vec3 froxelUV(ivec3 froxel, float noise)
     // Exponential View-Z
     float view_z = u_near_z * pow(u_far_z / u_near_z, (float(froxel.z) + 0.5 + noise) / float(FROXEL_GRID_D));
 
-    // float z_norm = log(view_z / u_near_z) /
-    //                log(u_far_z / u_near_z);
-
     return vec3((float(froxel.x) + 0.5) / float(FROXEL_GRID_W),
                 (float(froxel.y) + 0.5) / float(FROXEL_GRID_H),
                 view_z / u_far_z);
@@ -452,6 +437,17 @@ vec3 froxelUV(ivec3 froxel, float noise)
 vec3 froxelUV(ivec3 froxel)
 {
 	return froxelUV(froxel, 0);
+}
+
+vec3 uvToNDC(vec3 uv, float depth_exp)
+{
+    vec3 ndc;
+
+    ndc.x = 2 * uv.x - 1;
+    ndc.y = 2 * uv.y - 1;
+    ndc.z = 2 * linear_01_to_exp_01_depth(uv.z) - 1;
+
+    return ndc;
 }
 
 vec3 froxelWorldPos(ivec3 froxel, float depth_exp, mat4 inv_view_proj, vec3 noise)
