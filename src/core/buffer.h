@@ -49,7 +49,7 @@ public:
 
 	void clear();
 
-	inline operator bool () const { return _id >= 0; }
+	inline operator bool () const { return _id > 0; }
 
 	void upload(const void *ptr, size_t size);
 	void upload(const void *ptr, size_t size, size_t start_offset);
