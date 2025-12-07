@@ -15,26 +15,18 @@
 	"nodes":[
 		{
 			"mesh":0,
-			"name":"Cylinder.001",
-			"rotation":[
-				0,
-				0,
-				-0.7071068286895752,
-				0.7071068286895752
-			]
+			"name":"tube"
 		}
 	],
 	"meshes":[
 		{
-			"name":"Cylinder.001",
+			"name":"tube",
 			"primitives":[
 				{
 					"attributes":{
-						"POSITION":0,
-						"NORMAL":1,
-						"TEXCOORD_0":2
+						"POSITION":0
 					},
-					"indices":3
+					"indices":1
 				}
 			]
 		}
@@ -43,67 +35,43 @@
 		{
 			"bufferView":0,
 			"componentType":5126,
-			"count":260,
+			"count":26,
 			"max":[
-				0.9510565996170044,
-				1.499972939491272,
-				1
+				1,
+				1,
+				0.5000000596046448
 			],
 			"min":[
-				-0.9510565996170044,
-				-1.5,
-				-1
+				-1,
+				-1,
+				-0.5000000596046448
 			],
 			"type":"VEC3"
 		},
 		{
 			"bufferView":1,
-			"componentType":5126,
-			"count":260,
-			"type":"VEC3"
-		},
-		{
-			"bufferView":2,
-			"componentType":5126,
-			"count":260,
-			"type":"VEC2"
-		},
-		{
-			"bufferView":3,
 			"componentType":5123,
-			"count":360,
+			"count":144,
 			"type":"SCALAR"
 		}
 	],
 	"bufferViews":[
 		{
 			"buffer":0,
-			"byteLength":3120,
+			"byteLength":312,
 			"byteOffset":0,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":3120,
-			"byteOffset":3120,
-			"target":34962
-		},
-		{
-			"buffer":0,
-			"byteLength":2080,
-			"byteOffset":6240,
-			"target":34962
-		},
-		{
-			"buffer":0,
-			"byteLength":720,
-			"byteOffset":8320,
+			"byteLength":288,
+			"byteOffset":312,
 			"target":34963
 		}
 	],
 	"buffers":[
 		{
-			"byteLength":9040,
+			"byteLength":600,
 			"uri":"tube.bin"
 		}
 	]

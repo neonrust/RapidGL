@@ -11,6 +11,7 @@
 #include <assimp/scene.h>
 
 #include "bounds.h"
+#include "instance_attributes.h"
 #include "mesh_part.h"
 #include "material.h"
 #include "shader.h"
@@ -96,6 +97,9 @@ public:
 	// TODO: convert to factory function
 	virtual bool Load(const std::filesystem::path& filepath);
 
+	void BindVAO();
+	inline GLuint VAO() const { return m_vao_name; }
+
 	// TODO: move to a Renderer-thingy class
 	//   _renderer->submit(mesh);
 	virtual void Render(uint32_t num_instances = 0);
@@ -111,12 +115,14 @@ public:
 	virtual void GenSphere     (float    radius      = 1.5f, uint32_t slices      = 12);
 	virtual void GenTorus      (float    innerRadius = 1.0f, float    outerRadius = 2.0f, uint32_t slices = 10, uint32_t stacks = 10);
 	virtual void GenTrefoilKnot(uint32_t slices      = 100,  uint32_t stacks      = 20);
-	virtual void GenPQTorusKnot(uint32_t slices      = 256,  uint32_t stacks      = 16,   int p = 2, int q = 3, float knot_r = 0.75, float tube_r = 0.15);
+	virtual void GenPQTorusKnot(uint32_t slices      = 256,  uint32_t stacks      = 16,   int p = 2, int q = 3, float knot_r = 0.75, float tube_r = 0.15f);
 	virtual void GenQuad       (float    width       = 1.0f, float    height      = 1.0f);
 
 	inline const bounds::AABB &aabb() const { return _aabb; }
 
 	inline operator bool () const { return _ok; }
+
+	InstanceAttributes &instance_attributes(size_t stride=0);  // 'stride' must be specified the first call
 
 protected:
 	// For converting between ASSIMP and glm
@@ -145,6 +151,7 @@ protected:
 	GLuint   m_vbo_name;
 	GLuint   m_ibo_name;
 	DrawMode m_draw_mode;
+	InstanceAttributes m_inst_attrs;
 	bounds::AABB _aabb;
 	bool _ok;
 };

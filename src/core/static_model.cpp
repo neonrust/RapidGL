@@ -19,9 +19,14 @@ using namespace std::chrono;
 namespace RGL
 {
 
-void StaticModel::Render(uint32_t num_instances)
+void StaticModel::BindVAO()
 {
 	glBindVertexArray(m_vao_name);
+}
+
+void StaticModel::Render(uint32_t num_instances)
+{
+	BindVAO();
 
 	for (unsigned int idx = 0; idx < m_mesh_parts.size(); idx++)
 	{
@@ -61,7 +66,7 @@ void StaticModel::Render(uint32_t num_instances)
 
 void StaticModel::Render(Shader& shader, uint32_t num_instances)
 {
-	glBindVertexArray(m_vao_name);
+	BindVAO();
 
 	for (unsigned int idx = 0 ; idx < m_mesh_parts.size() ; idx++)
 	{
@@ -76,21 +81,15 @@ void StaticModel::Render(Shader& shader, uint32_t num_instances)
 				texture->Bind(uint32_t(texture_type));
 			}
 
-				   // Set uniforms based on the data in the material
+			// Set uniforms based on the data in the material
 			for (auto& [uniform_name, value] : m_materials[material_index].m_bool_map)
-			{
 				shader.setUniform(uniform_name, value);
-			}
 
 			for (auto& [uniform_name, value] : m_materials[material_index].m_float_map)
-			{
 				shader.setUniform(uniform_name, value);
-			}
 
 			for (auto& [uniform_name, value] : m_materials[material_index].m_vec3_map)
-			{
 				shader.setUniform(uniform_name, value);
-			}
 		}
 
 		if(num_instances == 0 )
@@ -1304,6 +1303,18 @@ void StaticModel::GenQuad(float width, float height)
 	vertex_data.indices.push_back(3);
 
 	GenPrimitive(vertex_data, false);
+}
+
+InstanceAttributes &StaticModel::instance_attributes(size_t stride)
+{
+	if(not m_inst_attrs)
+	{
+		assert(stride);
+		m_inst_attrs.config_with_vao(m_vao_name, stride);
+		// caller is expected to do the apropriate add() calls
+	}
+
+	return m_inst_attrs;
 }
 
 }

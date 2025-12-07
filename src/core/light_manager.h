@@ -8,6 +8,8 @@
 #include "ssbo.h"
 
 #include "generated/shared-structs.h"
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/quaternion.hpp>
 
 #include <cstddef>
 
@@ -113,8 +115,9 @@ public:
 	template<typename LT=GPULight> requires (std::same_as<LT, GPULight> || _private::LightType<LT>)
 	inline size_t num_lights() const;
 
-	static void set_spot_angle(GPULight &L, float new_outer_angle);
-	static void set_intensity(GPULight &L, float new_intensity);
+	static void set_spot_angle(GPULight &L, float new_outer_angle); // also sets intensity and affect_radius
+	static void set_intensity(GPULight &L, float new_intensity);  // sets intensity and affect_radius
+	static void set_direction(GPULight &L, const glm::vec3 &direction);  // spot & disc lights
 
 	bounds::Sphere light_bounds(const GPULight &L) const;
 
@@ -247,8 +250,9 @@ GPULight LightManager::to_gpu_light(const LT &l)
 {
 	GPULight L;
 	L.color         = l.color;
-	L.intensity     = l.intensity;
 	L.fog_intensity = l.fog;
+
+	static_assert(LIGHT_TYPE__COUNT == 7);
 
 	// all lights, except directional, has a position
 	if constexpr (not (std::same_as<LT, DirectionalLight> or std::same_as<LT, DirectionalLightParams>))
@@ -257,7 +261,6 @@ GPULight LightManager::to_gpu_light(const LT &l)
 	if constexpr (std::same_as<LT, PointLight> or std::same_as<LT, PointLightParams>)
 	{
 		L.type_flags    = LIGHT_TYPE_POINT;
-		L.affect_radius = std::pow(l.intensity, 0.6f);
 	}
 	else if constexpr (std::same_as<LT, DirectionalLight> or std::same_as<LT, DirectionalLightParams>)
 	{
@@ -266,61 +269,79 @@ GPULight LightManager::to_gpu_light(const LT &l)
 	}
 	else if constexpr (std::same_as<LT, SpotLight> or std::same_as<LT, SpotLightParams>)
 	{
-		L.type_flags     = LIGHT_TYPE_SPOT;
-		L.direction      = l.direction;
-		L.outer_angle    = _private::s_spot_reference_angle;
+		L.type_flags    = LIGHT_TYPE_SPOT;
+		set_direction(L, l.direction);
+		L.outer_angle   = _private::s_spot_reference_angle;
 		assert(l.outer_angle >= l.inner_angle);
 		const auto inner_angle = std::min(l.inner_angle, l.outer_angle);
-		L.inner_angle    = (inner_angle / l.outer_angle) * L.outer_angle;
+		L.inner_angle   = (inner_angle / l.outer_angle) * L.outer_angle;
 
 		set_spot_angle(L, l.outer_angle);
 		compute_spot_bounds(L);
 	}
 	else if constexpr (std::same_as<LT, RectLight> or std::same_as<LT, RectLightParams>)
 	{
-		L.type_flags      = LIGHT_TYPE_RECT | (l.double_sided? LIGHT_DOUBLE_SIDED: 0) \
+		L.type_flags    = LIGHT_TYPE_RECT | (l.double_sided? LIGHT_DOUBLE_SIDED: 0) \
 			| (l.visible_surface? LIGHT_VISIBLE_SURFACE : 0);
 		const glm::vec3 right   = l.orientation * glm::vec3(l.size.x * 0.5f, 0,               0);
 		const glm::vec3 up      = l.orientation * glm::vec3(0,               l.size.y * 0.5f, 0);
-		L.shape_points[0] = glm::vec4(l.position + right - up, 1);
-		L.shape_points[1] = glm::vec4(l.position - right - up, 1);
-		L.shape_points[2] = glm::vec4(l.position + right + up, 1);
-		L.shape_points[3] = glm::vec4(l.position - right + up, 1);
-		L.affect_radius   = 50.f;//50 * l.intensity * glm::distance(l.position, glm::vec3(L.shape_points[1]));
+		L.shape_data[0] = glm::vec4(l.position + right - up, 1);
+		L.shape_data[1] = glm::vec4(l.position - right - up, 1);
+		L.shape_data[2] = glm::vec4(l.position + right + up, 1);
+		L.shape_data[3] = glm::vec4(l.position - right + up, 1);
+
+		L.shape_data[4] = glm::vec4(l.orientation.x, l.orientation.y, l.orientation.z, l.orientation.w);
+		L.outer_angle   = l.size.x;
+		L.inner_angle   = l.size.y;
 	}
 	else if constexpr (std::same_as<LT, TubeLight> or std::same_as<LT, TubeLightParams>)
 	{
-		L.type_flags        = LIGHT_TYPE_TUBE \
+		assert(l.thickness < glm::length(l.half_extent)/2);
+
+		L.type_flags      = LIGHT_TYPE_TUBE \
 			| (l.visible_surface? LIGHT_VISIBLE_SURFACE : 0);
-		L.shape_points[0]   = glm::vec4(l.end_points[0] + l.position, 1);
-		L.shape_points[1]   = glm::vec4(l.end_points[1] + l.position, 1);
-		L.shape_points[2].x = l.thickness;
-		L.affect_radius   = 50.f;//50 * l.intensity * glm::distance(l.position, glm::vec3(L.shape_points[1]));
+		L.shape_data[0]   = glm::vec4( l.half_extent, 1);
+		L.shape_data[1]   = glm::vec4(-l.half_extent, 1);
+		L.shape_data[2].x = l.thickness;
+
+		const auto extent_dir = glm::normalize(l.half_extent);
+		auto orientation = glm::rotation(glm::vec3(0, 0, 1), extent_dir);//ident_quat;
+		// const auto cos_angle = glm::dot(glm::vec3(0, 0, 1), extent_dir);
+		// if(cos_angle < 0.999f and cos_angle > -0.999f) // not parallel
+		// 	orientation = glm::rotation(glm::vec3(0, 0, 1), extent_dir);
+		L.shape_data[4] = glm::vec4(orientation.x, orientation.y, orientation.z, orientation.w);
+		L.outer_angle = glm::length(l.half_extent)*2;  // size
 	}
 	else if constexpr (std::same_as<LT, SphereLight> or std::same_as<LT, SphereLightParams>)
 	{
-		L.type_flags        = LIGHT_TYPE_SPHERE \
+		L.type_flags      = LIGHT_TYPE_SPHERE \
 			| (l.visible_surface? LIGHT_VISIBLE_SURFACE : 0);
-		L.shape_points[0].x = l.radius;
-		// L.affect_radius     =       TODO
+		L.shape_data[0].x = l.radius;
 	}
 	else if constexpr (std::same_as<LT, DiscLight> or std::same_as<LT, DiscLightParams>)
 	{
-		L.type_flags        = LIGHT_TYPE_DISC | (l.double_sided? LIGHT_DOUBLE_SIDED: 0) \
+		L.type_flags      = LIGHT_TYPE_DISC | (l.double_sided? LIGHT_DOUBLE_SIDED: 0) \
 			| (l.visible_surface? LIGHT_VISIBLE_SURFACE : 0);
-		L.direction         = l.direction;
-		L.shape_points[0].x = l.radius;
-		L.affect_radius     = std::pow(l.intensity, 0.6)*2;
+		set_direction(L, l.direction);
+		L.shape_data[0].x = l.radius;
 	}
-	static_assert(LIGHT_TYPE__COUNT == 7);
 
 	if(l.shadow_caster)
 		L.type_flags |= LIGHT_SHADOW_CASTER;
 	if(l.fog > 0)
 		L.type_flags |= LIGHT_VOLUMETRIC;
 
-
 	CLR_SHADOW_IDX(L);
+
+	set_intensity(L, l.intensity);  // also sets affect_range
+
+	// some verifications
+	assert(L.position != glm::vec3(0));  // arguable...
+	assert(L.color != glm::vec3(0));
+	assert(L.intensity > 0);
+	assert(L.affect_radius > 0);
+	assert(L.fog_intensity <= 1 and L.fog_intensity >= 0);
+	assert(not IS_SPOT_LIGHT(L) or L.spot_bounds_radius > 0);
 
 	return L;
 }
@@ -360,9 +381,8 @@ auto LightManager::to_typed(const LTP &ltp, LightID light_id) const -> _private:
 	}
 	else if constexpr (std::same_as<LTP, TubeLightParams>)
 	{
-		lt.end_points[0] = ltp.end_points[0];
-		lt.end_points[1] = ltp.end_points[1];
-		lt.thickness     = ltp.thickness;
+		lt.half_extent = ltp.half_extent;
+		lt.thickness   = ltp.thickness;
 	}
 	else if constexpr (std::same_as<LTP, SphereLightParams>)
 	{

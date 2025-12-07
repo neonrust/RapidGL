@@ -2,6 +2,7 @@
 #include "filesystem.h"
 #include "gl_lookup.h"
 #include "input.h"
+#include "instance_attributes.h"
 #include "postprocess.h"
 #include "util.h"
 #include "gui/gui.h"   // IWYU pragma: keep
@@ -212,10 +213,10 @@ void ClusteredShading::init_app()
 	// m_light_counts_ubo.clear();
 	createLights();
 
-	/// Create scene objects
-	{
-		const auto models_path = FileSystem::getResourcesPath() / "models";
+	const auto models_path = FileSystem::getResourcesPath() / "models";
 
+   /// Create scene objects
+	{
 		const auto origin = glm::mat4(1);
 
 		// auto sponza_model = std::make_shared<StaticModel>();
@@ -235,6 +236,22 @@ void ClusteredShading::init_app()
 		// auto floor = std::make_shared<StaticModel>();
 		// floor->Load(models_path / "floor.gltf");
 		// _scene.emplace_back(floor, glm::mat4(1));
+	}
+
+	{
+		const auto origin = glm::mat4(1);
+
+		auto surface_lights = models_path / "surface_lights";
+
+		for(const auto &light_type: { LIGHT_TYPE_RECT, LIGHT_TYPE_TUBE, LIGHT_TYPE_SPHERE, LIGHT_TYPE_DISC })
+		{
+			auto filename = std::format("{}.gltf", _light_mgr.type_name(uint_fast8_t(light_type)));
+			auto model = std::make_shared<StaticModel>();
+			model->Load(surface_lights / filename);
+			assert(*model);
+			_surfaceLightModels.emplace_back(model, origin);
+		}
+		std::print("Loaded {} surface geometries\n", _surfaceLightModels.size());
 	}
 
     /// Prepare lights' SSBOs.
@@ -318,9 +335,9 @@ void ClusteredShading::init_app()
     m_clustered_pbr_shader->link();
 	assert(*m_clustered_pbr_shader);
 
-	m_draw_rect_lights_geometry_shader = std::make_shared<Shader>(core_shaders/"rect_light_geom.vert", core_shaders/"rect_light_geom.frag");
-	m_draw_rect_lights_geometry_shader->link();
-	assert(*m_draw_rect_lights_geometry_shader);
+	m_surface_lights_shader = std::make_shared<Shader>(core_shaders/"surface_light_geom.vert", core_shaders/"surface_light_geom.frag");
+	m_surface_lights_shader->link();
+	assert(*m_surface_lights_shader);
 
 	m_equirectangular_to_cubemap_shader = std::make_shared<Shader>(shaders/"cubemap.vert", shaders/"equirectangular_to_cubemap.frag");
     m_equirectangular_to_cubemap_shader->link();
@@ -1032,12 +1049,14 @@ void ClusteredShading::createLights()
 	// static const glm::vec3 room_max { 178, 3.5f, 18 };
 	static const glm::vec3 room_max {  18, 3.5f,  18 };
 
+	static constexpr auto ident_quat = glm::quat_identity<float, glm::defaultp>();
+
 	// point lights
-	for(auto idx = 4u; idx < 5; ++idx)
+	for(auto idx = 3u; idx < 4; ++idx)
 	{
 		const auto rand_color= hsv2rgb(
 			float(Util::RandomDouble(1, 360)),       // hue
-			float(Util::RandomDouble(0.4f, 0.8f)),   // saturation
+			float(Util::RandomDouble(0.2f, 0.9f)),   // saturation
 			1.f                                      // value (brightness)
 		);
 		const auto rand_pos = Util::RandomVec3(room_min, room_max);
@@ -1087,9 +1106,9 @@ void ClusteredShading::createLights()
 				.fog = 1.f,
 				.shadow_caster = false,   // probably never
 				.position = rand_pos,
-				.size = glm::vec2(1.f, 1.f),
-				.orientation = glm::quat{},
-				.double_sided = true,
+				.size = glm::vec2(0.8f, 0.8f),
+				.orientation = ident_quat,// glm::rotate(ident_quat, glm::radians(20.f), glm::vec3(1, 1, 1)),
+				.double_sided = false,
 				.visible_surface = true,
 			});
 			type_name = _light_mgr.type_name<decltype(l)>();
@@ -1104,7 +1123,7 @@ void ClusteredShading::createLights()
 				.fog = 1.f,
 				.shadow_caster = false,   // probably never
 				.position = rand_pos,
-				.end_points = { { -2.f, 0.f, 0.f }, { 2.f, 0.f, 0.f } },
+				.half_extent = { 1.f, 0.f, 0.f },
 				.thickness = 0.05f,
 				.visible_surface = true,
 			});
@@ -1120,7 +1139,7 @@ void ClusteredShading::createLights()
 				.fog = 1.f,
 				.shadow_caster = false,  // probably never
 				.position = rand_pos,
-				.radius = 0.7f,
+				.radius = 0.3f,
 				.visible_surface = true,
 			});
 			type_name = _light_mgr.type_name<decltype(l)>();
@@ -1135,9 +1154,9 @@ void ClusteredShading::createLights()
 				.fog = 1.f,
 				.shadow_caster = false,   // probably never
 				.position = rand_pos,
-				.direction = AXIS_Z,
-				.radius = 2.f,
-				.double_sided = true,
+				.direction = -AXIS_Z,
+				.radius = 0.45f,
+				.double_sided = false,
 				.visible_surface = true,
 			});
 			type_name = _light_mgr.type_name<decltype(l)>();
@@ -1148,12 +1167,15 @@ void ClusteredShading::createLights()
 			assert(false);
 		}
 
-		std::print("light[{:2}] {:5} @ {:5.1f}; {:3.1f}; {:5.1f}  {:3},{:3},{:3}  {:4.0f}\n",
+		const auto &L = _light_mgr.get_by_id(l_id);
+
+		std::print("light[{:2}] {:5} @ {:5.1f}; {:3.1f}; {:5.1f}  {:3},{:3},{:3}  {:4.0f} (R:{:.1f})\n",
 				   l_id,
 				   type_name,
 				   rand_pos.x, rand_pos.y, rand_pos.z,
 				   uint(rand_color.r*255), uint(rand_color.g*255), uint(rand_color.b*255),
-				   rand_intensity);
+				   rand_intensity,
+				   L.affect_radius);
 	}
 }
 
@@ -1450,13 +1472,8 @@ void ClusteredShading::render()
 	renderSceneShading(m_camera);
 	m_shading_time.add(_gl_timer.elapsed<microseconds>(true));
 
-	// Render ect lights geometry, to '_rt'
-	if(m_draw_surface_lights_geometry and _light_mgr.num_lights<RectLight>() > 0)
-	{
-		m_draw_rect_lights_geometry_shader->bind();
-		m_draw_rect_lights_geometry_shader->setUniform("u_view_projection"sv, m_camera.projectionTransform() * m_camera.viewTransform());
-		glDrawArrays(GL_TRIANGLES, 0, GLsizei(6 * _light_mgr.num_lights<RectLight>()));
-	}
+	if(m_draw_surface_lights_geometry)
+		renderSurfaceLightGeometry(); // to '_rt'
 
 	renderSkybox(); // to '_rt'
 
@@ -1690,6 +1707,114 @@ void ClusteredShading::renderSkybox()
 	glBindVertexArray(m_skybox_vao);
 	glDrawArrays     (GL_TRIANGLES, 0, 36);
 }
+
+void ClusteredShading::renderSurfaceLightGeometry()
+{
+	m_surface_lights_shader->bind();
+	m_surface_lights_shader->setUniform("u_view_projection"sv, m_camera.projectionTransform() * m_camera.viewTransform());
+
+	struct SurfaceLightAttrs
+	{
+		glm::mat4 transform;
+		glm::vec3 color_intensity;
+		uint32_t double_sided;
+	};
+
+	// auto num_rendered = 0u;
+
+	static std::vector<SurfaceLightAttrs> surf_attrs;
+	surf_attrs.reserve(_lightsPvs.size());
+	surf_attrs.clear();
+
+	static_assert(LIGHT_TYPE__COUNT == 7);
+	for(const auto &light_type: { LIGHT_TYPE_RECT, LIGHT_TYPE_TUBE, LIGHT_TYPE_SPHERE, LIGHT_TYPE_DISC })
+	{
+		// collect surface lights
+		surf_attrs.clear();
+		for(auto light_index: _lightsPvs)
+		{
+			const auto &L = _light_mgr[light_index];
+			if(IS_VISIBLE_SURFACE(L) and IS_LIGHT_TYPE(L, light_type))
+			{
+				switch(GET_LIGHT_TYPE(L))
+				{
+				case LIGHT_TYPE_RECT:
+				{
+					// reconstruct the orientation from direction + outer_angle
+					const auto orientation = glm::mat4_cast(glm::quat{ L.shape_data[4].w, L.shape_data[4].x, L.shape_data[4].y, L.shape_data[4].z });
+					const auto size = glm::vec3{ L.outer_angle, L.inner_angle, 1.f };
+
+					auto tfm = glm::translate(glm::mat4(1), L.position);
+					tfm *= orientation;
+					tfm = glm::scale(tfm, size);
+
+					surf_attrs.emplace_back(tfm, L.color*L.intensity, IS_DOUBLE_SIDED(L));
+				}
+				break;
+				case LIGHT_TYPE_TUBE:
+				{
+					const auto orientation = glm::mat4_cast(glm::quat{ L.shape_data[4].w, L.shape_data[4].x, L.shape_data[4].y, L.shape_data[4].z });
+					const auto thickness = L.shape_data[2].x;
+					const auto size = glm::vec3(thickness, thickness, L.outer_angle);
+
+					auto tfm = glm::translate(glm::mat4(1), L.position);
+					tfm *= orientation;
+					tfm = glm::scale(tfm, size);
+
+					surf_attrs.emplace_back(tfm, L.color*L.intensity, true);
+				}
+				break;
+				case LIGHT_TYPE_SPHERE:
+				{
+					auto tfm = glm::translate(glm::mat4(1), L.position);
+					const auto radius = L.shape_data[0].x;
+					const auto size = glm::vec3(radius);
+					tfm = glm::scale(tfm, size);
+
+					surf_attrs.emplace_back(tfm, L.color*L.intensity, true);
+				}
+				break;
+				case LIGHT_TYPE_DISC:
+				{
+					const auto orientation = glm::mat4_cast(glm::quat{ L.shape_data[4].w, L.shape_data[4].x, L.shape_data[4].y, L.shape_data[4].z });
+					const auto radius = L.shape_data[0].x;
+					const auto size = glm::vec3(1, radius, radius);
+
+					auto tfm = glm::translate(glm::mat4(1), L.position);
+					tfm *= orientation;
+					tfm = glm::scale(tfm, size);
+
+					surf_attrs.emplace_back(tfm, L.color*L.intensity, false);
+				}
+				break;
+				}
+			}
+		}
+		if(surf_attrs.empty())
+			continue;
+
+		auto model_index = light_type - LIGHT_TYPE_RECT;
+
+		auto &model = _surfaceLightModels[model_index].model;
+
+		auto &inst_attrs = model->instance_attributes(sizeof(SurfaceLightAttrs));
+		if(not inst_attrs)
+		{
+			inst_attrs.skip(4);  // TODO: query the mesh to find how many locations are used. Also, this must match the shader
+			inst_attrs.add<glm::mat4>("transform"sv);
+			inst_attrs.add<glm::vec3>("color-intensity"sv);
+			inst_attrs.add<uint32_t>("double-sided");
+		}
+
+		inst_attrs.load<SurfaceLightAttrs>(surf_attrs);
+
+		model->Render(*m_surface_lights_shader, uint32_t(surf_attrs.size()));
+
+		// ++num_rendered;
+	}
+	// std::print("   surface lights rendered: {}\n", num_rendered);
+}
+
 
 
 void ClusteredShading::draw2d(const Texture &texture, BlendMode blend)

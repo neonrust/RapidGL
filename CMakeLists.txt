@@ -56,8 +56,6 @@ set(SHADER_FILES
 	${SHADER_PATH}/pbr_clustered.frag
 	${SHADER_PATH}/pbr_lighting.glh
 	${SHADER_PATH}/pbr_lighting.vert
-	${SHADER_PATH}/rect_light_geom.frag
-	${SHADER_PATH}/rect_light_geom.vert
 	${SHADER_PATH}/rect_light_ltc.glh
 	${SHADER_PATH}/seven_segment_number.frag
 	${SHADER_PATH}/shadow_depth.frag
@@ -65,6 +63,8 @@ set(SHADER_FILES
 	${SHADER_PATH}/shadows.glh
 	${SHADER_PATH}/shapes.glh
 	${SHADER_PATH}/shared-structs.glh
+	${SHADER_PATH}/surface_light_geom.frag
+	${SHADER_PATH}/surface_light_geom.vert
 	${SHADER_PATH}/tmo.frag
 	${SHADER_PATH}/upscale.comp
 	${SHADER_PATH}/volumetrics.glh

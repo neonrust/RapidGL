@@ -15,26 +15,18 @@
 	"nodes":[
 		{
 			"mesh":0,
-			"name":"Cylinder.001",
-			"rotation":[
-				0,
-				0,
-				-0.7071068286895752,
-				0.7071068286895752
-			]
+			"name":"rect"
 		}
 	],
 	"meshes":[
 		{
-			"name":"Cylinder.001",
+			"name":"rect",
 			"primitives":[
 				{
 					"attributes":{
-						"POSITION":0,
-						"NORMAL":1,
-						"TEXCOORD_0":2
+						"POSITION":0
 					},
-					"indices":3
+					"indices":1
 				}
 			]
 		}
@@ -45,31 +37,19 @@
 			"componentType":5126,
 			"count":4,
 			"max":[
+				0.49992382526397705,
 				0.5,
-				5.960464477539063e-08,
-				0.4999999701976776
+				0.008726065047085285
 			],
 			"min":[
+				-0.49992382526397705,
 				-0.5,
-				-5.960464477539063e-08,
-				-0.4999999701976776
+				-0.008726065047085285
 			],
 			"type":"VEC3"
 		},
 		{
 			"bufferView":1,
-			"componentType":5126,
-			"count":4,
-			"type":"VEC3"
-		},
-		{
-			"bufferView":2,
-			"componentType":5126,
-			"count":4,
-			"type":"VEC2"
-		},
-		{
-			"bufferView":3,
 			"componentType":5123,
 			"count":6,
 			"type":"SCALAR"
@@ -84,26 +64,14 @@
 		},
 		{
 			"buffer":0,
-			"byteLength":48,
-			"byteOffset":48,
-			"target":34962
-		},
-		{
-			"buffer":0,
-			"byteLength":32,
-			"byteOffset":96,
-			"target":34962
-		},
-		{
-			"buffer":0,
 			"byteLength":12,
-			"byteOffset":128,
+			"byteOffset":48,
 			"target":34963
 		}
 	],
 	"buffers":[
 		{
-			"byteLength":140,
+			"byteLength":60,
 			"uri":"rect.bin"
 		}
 	]

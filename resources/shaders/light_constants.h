@@ -27,7 +27,7 @@
 //   . = unused
 //   T = light type (4 bits)
 //   2 = two-sided (1 bit); rect & disc lights
-//   s = Visible surface geometry (rect, tube, sphere, disc)
+//   s = visible surface geometry; rect, tube, sphere & disc
 //   V = volunetric fog (1 bit)
 //   C = shadow caster (1 bit); point, dir & spot (likely)
 //   S = shadw slots info index (12 bits; 4095 values, 0xfff = no slot) - index into SSBO_BIND_SHADOW_SLOTS_INFO)

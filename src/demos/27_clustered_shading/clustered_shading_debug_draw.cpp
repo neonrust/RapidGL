@@ -1,6 +1,9 @@
 #include "clustered_shading.h"
 
+#include "instance_attributes.h"
 #include "window.h"
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/string_cast.hpp>
 #include <ranges>
 
 using namespace std::literals;
@@ -160,30 +163,35 @@ void ClusteredShading::debugDrawLightMarkers()
 
 		icons.push_back({
 			.world_pos   = L.position,
-			.color_tint  = L.color,
 			.icon        = uint32_t(icon),
+			.color       = L.color,
 			.distance_sq = distance_sq,
 		});
 	}
 
 	std::ranges::sort(icons, std::greater{});
 
+	static InstanceAttributes inst_attrs;
+	if(not inst_attrs) // only needs to be done once
+	{
+		inst_attrs.config(sizeof(IconData));
+		// TODO: with reflection (c++26) could this be done completely without the explicit add() calls?
+		inst_attrs.add<glm::vec3>("world-pos"sv);
+		inst_attrs.add<uint32_t>("icon"sv);
+		inst_attrs.add<glm::vec3>("color"sv);
+	}
 
-	m_icon_shader->bind();
-	m_camera.setUniforms(*m_icon_shader);
+	inst_attrs.load<IconData>(icons);
+	inst_attrs.bind_vao();
 
-	_light_icons.Bind(1);
-
-	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_DEPTH_TEST);  // draw "on top of" everything else
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-	glNamedBufferData(instance_buf,
-					  GLsizeiptr(icons.size() * sizeof(IconData)),
-					  icons.data(),
-					  GL_DYNAMIC_DRAW);
+	_light_icons.Bind(1);
+	m_icon_shader->bind();
+	m_camera.setUniforms(*m_icon_shader);
 
-	glBindVertexArray(icon_vao);
 	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, GLsizei(icons.size()));
 
 	glEnable(GL_DEPTH_TEST);

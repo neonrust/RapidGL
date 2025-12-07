@@ -84,6 +84,8 @@ float samplePointLight(GPULight light, vec3 world_pos, float distance_sq);
 float sampleSpotLight(GPULight light, vec3 world_pos, float distance_sq, float slice_thickness);
 float sampleRectLight(GPULight light, vec3 world_pos, float distance_sq);
 float sampleTubeLight(GPULight light, vec3 world_pos, float distance_sq);
+float sampleSphereLight(GPULight light, vec3 world_pos, float distance_sq);
+float sampleDiscLight(GPULight light, vec3 world_pos, float distance_sq);
 
 
 const float s_min_visibility = 1e-3;
@@ -176,11 +178,11 @@ void main()
 					break;
 
 				case LIGHT_TYPE_SPHERE:
-					// TODO: calculate the amount of energy at 'world_pos'
+					contribution *= sampleSphereLight(light, world_pos, distance_sq);
 					break;
 
 				case LIGHT_TYPE_DISC:
-					// TODO: calculate the amount of energy at 'world_pos'
+					contribution *= sampleDiscLight(light, world_pos, distance_sq);
 					break;
 				}
 
@@ -264,8 +266,10 @@ float sampleSpotLight(GPULight light, vec3 world_pos, float distance_sq, float s
 
 float sampleRectLight(GPULight light, vec3 sample_pos, float distance_sq)
 {
-	vec3 shape_cross = cross(light.shape_points[1].xyz - light.shape_points[0].xyz,
-                 			 light.shape_points[3].xyz - light.shape_points[0].xyz);
+	// TODO: degenerate into point light at large distance
+
+	vec3 shape_cross = cross(light.shape_data[1].xyz - light.shape_data[0].xyz,
+                 			 light.shape_data[3].xyz - light.shape_data[0].xyz);
 	vec3 normal = normalize(shape_cross);
 
 	vec3 to_sample = sample_pos - light.position;
@@ -276,7 +280,7 @@ float sampleRectLight(GPULight light, vec3 sample_pos, float distance_sq)
 	// average distance from sample to four corners
 	float avg_d = 0;
 	for(int i = 0; i < 4; ++i)
-	    avg_d += length(light.shape_points[i].xyz - sample_pos);
+	    avg_d += length(light.shape_data[i].xyz - sample_pos);
 	avg_d *= 0.25;
 
 	float radius_sq = light.affect_radius * light.affect_radius;
@@ -313,11 +317,13 @@ vec3 closest_point(vec3 test_point, vec3 line1, vec3 line2)
 
 float sampleTubeLight(GPULight light, vec3 world_pos, float distance_sq)
 {
+	// TODO: degenerate into point light at large distance
+
 	// simulate using a froxel-facing area light, thick as tube diameter
 
-	vec3 point_a = light.shape_points[0].xyz;
-	vec3 point_b = light.shape_points[1].xyz;
-	float thickness = light.shape_points[2].x * 0.5;
+	vec3 point_a = light.position + light.shape_data[0].xyz;
+	vec3 point_b = light.position + light.shape_data[1].xyz;
+	float thickness = light.shape_data[2].x * 0.5;
 
 	vec3 closest = closest_point(world_pos, point_a, point_b);
 	float distance = distance(world_pos, closest) - thickness;
@@ -328,12 +334,49 @@ float sampleTubeLight(GPULight light, vec3 world_pos, float distance_sq)
 
 	// GPULight faux_rect = light;
 	// faux_rect.type_flags = LIGHT_TYPE_RECT;
-	// faux_rect.shape_points[0] = vec4(point_b + corner_offset, 1);
-	// faux_rect.shape_points[1] = vec4(point_a + corner_offset, 1);
-	// faux_rect.shape_points[2] = vec4(point_b - corner_offset, 1);
-	// faux_rect.shape_points[3] = vec4(point_a - corner_offset, 1);
+	// faux_rect.shape_data[0] = vec4(point_b + corner_offset, 1);
+	// faux_rect.shape_data[1] = vec4(point_a + corner_offset, 1);
+	// faux_rect.shape_data[2] = vec4(point_b - corner_offset, 1);
+	// faux_rect.shape_data[3] = vec4(point_a - corner_offset, 1);
 
 	// return sampleRectLight(faux_rect, world_pos, distance_sq)*4;
+}
+
+float sampleSphereLight(GPULight light, vec3 world_pos, float distance_sq)
+{
+	// simulate using a point light
+	// TODO: degenerate into point light at large distance
+
+	float radius = light.shape_data[0].x;
+	light.affect_radius += radius;
+	return samplePointLight(light, world_pos, distance_sq);
+}
+
+float sampleDiscLight(GPULight light, vec3 world_pos, float distance_sq)
+{
+	// simulate using a rect light of the same size
+	// TODO: degenerate into point light at large distance
+
+	vec3 orthogonal = vec3(0, 1, 0);
+	if(orthogonal == light.direction)
+		orthogonal = vec3(0, 0, 1);
+
+	vec3 right = cross(light.direction, orthogonal);
+	vec3 up    = cross(right, light.direction);
+
+	float radius = light.shape_data[0].x;
+	vec3 offset_h = right * radius;
+	vec3 offset_v = up    * radius;
+
+	GPULight faux_rect = light;
+	faux_rect.type_flags = LIGHT_TYPE_RECT;
+	faux_rect.shape_data[0] = vec4(light.position + offset_h - offset_v, 1);
+	faux_rect.shape_data[1] = vec4(light.position - offset_h - offset_v, 1);
+	faux_rect.shape_data[2] = vec4(light.position + offset_h + offset_v, 1);
+	faux_rect.shape_data[3] = vec4(light.position - offset_h + offset_v, 1);
+
+	return sampleRectLight(faux_rect, world_pos, distance_sq);
+}
 
 }
 

@@ -120,6 +120,7 @@ private:
 	void renderSceneShadow(const glm::vec3 &pos, float far_z, uint_fast16_t shadow_slot_index, uint32_t shadow_map_inde);
 	void renderSceneShading(const RGL::Camera &camera);
 	void renderSkybox();
+	void renderSurfaceLightGeometry();
 	void downloadAffectingLightSet();
 	void draw2d(const RGL::Texture &texture, BlendMode mode=BlendMode::Replace); // TODO: move to CoreApp
 	void draw2d(const RGL::Texture &source, RGL::RenderTarget::Texture2d &target, BlendMode blend=BlendMode::Replace); // TODO: move to CoreApp
@@ -162,7 +163,7 @@ private:
     std::shared_ptr<RGL::Shader> m_clustered_pbr_shader;
 	std::shared_ptr<RGL::Shader> m_shadow_depth_shader;
 
-	std::shared_ptr<RGL::Shader> m_draw_rect_lights_geometry_shader;
+	std::shared_ptr<RGL::Shader> m_surface_lights_shader;
 	std::shared_ptr<RGL::Shader> m_line_draw_shader;
 	std::shared_ptr<RGL::Shader> m_2d_line_shader;
 	std::shared_ptr<RGL::Shader> m_2d_rect_shader;
@@ -211,6 +212,7 @@ private:
 	std::vector<StaticObject> _scene;  // TODO: Scene _scene;
 	std::vector<StaticObject> _scenePvs;  // potentially visible set
 	std::vector<LightIndex>   _lightsPvs;  // basically all lights within theoretical range
+	std::vector<StaticObject> _surfaceLightModels;
 
 	RGL::buffer::Storage<AABB>       m_cluster_aabb_ssbo;
 	RGL::buffer::Storage<uint>       m_cluster_discovery_ssbo;

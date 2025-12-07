@@ -13,126 +13,153 @@
 namespace RGL
 {
 
-template<typename T>
 class InstanceAttributes
 {
 public:
-	InstanceAttributes(GLuint binding=1);
+	InstanceAttributes();
+	~InstanceAttributes();
+
+	void config(size_t stride, GLuint bindingIndex=5);
+	void config_with_vao(GLuint vao, size_t stride, GLuint bindingIndex=5);
 
 	template<typename ItemT>
 	uint32_t add(std::string_view name);
 
 	void skip(uint32_t loc=1, uint32_t offset=0);
 
-	template<buffer::ContiguousRangeOf<T> R>
+	template<typename T, buffer::ContiguousRangeOf<T> R>
 	void load(const R &data);
-	void bind();
+	void bind_vao();
 
-	inline operator bool () const { return _vao > 0; }
+	inline operator bool () const { return _buf and _vao > 0 and _stride > 0 and _attrib_location > 0; }
 
 private:
+	template<typename T, size_t N> requires (N >= 1 and N <= 4)
+	uint32_t _add(std::string_view name);
 	void ensureCreated();
 
 private:
-	// dense_map<std::string_view, GLint> _attribute_binds;
-
-	GLuint _buf_bind { 0 };
+	GLsizei _stride { 0 };
+	GLuint _bind_index { 0 };
+	bool _vao_owner { true }; // whether '_vao' is created by us
 	GLuint _vao { 0 };
 	buffer::Buffer _buf;
 	uint32_t _offset { 0 };
 	uint32_t _attrib_location { 0 };
 };
 
-template<typename T>
-InstanceAttributes<T>::InstanceAttributes(GLuint binding) :
-	_buf_bind(binding),
-	_buf(std::string_view("inst-attrs-buf"))
-{
-}
-
-template<typename T>
-inline void InstanceAttributes<T>::skip(uint32_t loc, uint32_t offset)
-{
-	_attrib_location += loc;
-	assert(_offset + offset <= sizeof(T));
-	_offset += offset;
-}
-
-template<typename T>
-template<buffer::ContiguousRangeOf<T> R>
-inline void InstanceAttributes<T>::load(const R &data)
+template<typename T, buffer::ContiguousRangeOf<T> R>
+inline void InstanceAttributes::load(const R &data)
 {
 	ensureCreated();
 
 	_buf.upload(data.data(), data.size() * sizeof(T));
 }
 
-template<typename T>
-void InstanceAttributes<T>::bind()
+namespace _private
 {
-	assert(_attrib_location > 0);
-
-	glBindVertexArray(_vao);
-}
 
 template<typename T>
-void InstanceAttributes<T>::ensureCreated()
+struct glm_vec_traits
 {
-	if(not _vao)
+	static constexpr bool is_vec = false;
+};
+
+template<glm::length_t N, typename T, glm::qualifier Q>
+struct glm_vec_traits<glm::vec<N, T, Q>>
+{
+	static constexpr bool is_vec = true;
+	static constexpr glm::length_t length = N;
+	using value_type = T;
+	static constexpr glm::qualifier qualifier = Q;
+};
+
+template<typename T>
+struct glm_mat_traits
+{
+	static constexpr bool is_mat = false;
+};
+
+template<glm::length_t C, glm::length_t R, typename T, glm::qualifier Q>
+struct glm_mat_traits<glm::mat<C, R, T, Q>>
+{
+	static constexpr bool is_mat = true;
+	static constexpr glm::length_t columns = C;
+	static constexpr glm::length_t rows = R;
+	using value_type = T;
+	static constexpr glm::qualifier qualifier = Q;
+};
+
+} // _private
+
+
+template<typename T>
+uint32_t InstanceAttributes::add(std::string_view name)
+{
+	using vec_traits = typename _private::glm_vec_traits<T>;
+	using mat_traits = typename _private::glm_mat_traits<T>;
+
+	if constexpr (mat_traits::is_mat)
 	{
-		_buf.create();
+		static_assert(std::is_same_v<typename mat_traits::value_type, float>);
+		static constexpr auto C = mat_traits::columns;
+		static constexpr auto R = mat_traits::rows;
 
-		glCreateVertexArrays(1, &_vao);
-		glVertexArrayVertexBuffer(
-			_vao,
-			_buf_bind,
-			_buf.id(),
-			0,               // offset
-			sizeof(T)
-		);
-	}
-}
-
-template<typename T>
-template<typename ItemT>
-uint32_t InstanceAttributes<T>::add(std::string_view name)
-{
-	if constexpr (std::is_same_v<ItemT, glm::mat4>)
-	{
-		auto loc = add<glm::vec4>(name);
-		add<glm::vec4>(name);
-		add<glm::vec4>(name);
-		add<glm::vec4>(name);
-
+		const auto loc = add<glm::vec<R, float, mat_traits::qualifier>>(name);
+		add<glm::vec<R, float, mat_traits::qualifier>>(name);
+		if constexpr (C >= 3)
+			add<glm::vec<R, float, mat_traits::qualifier>>(name);
+		if constexpr (C >= 4)
+			add<glm::vec<R, float, mat_traits::qualifier>>(name);
 		return loc;
 	}
-	else
+	else if constexpr (vec_traits::is_vec)
 	{
-		ensureCreated();
-
-		constexpr auto num_components = std::max<size_t>(1, sizeof(ItemT) / sizeof(float));
-		static_assert(num_components >= 1 and num_components <= 4);
-
-		assert(_offset + sizeof(ItemT) <= sizeof(T));
-
-		glEnableVertexArrayAttrib(  _vao, _attrib_location);
-		if constexpr (std::is_same_v<ItemT, uint32_t>)
-		{
-			glVertexArrayAttribIFormat(_vao, _attrib_location, num_components, GL_UNSIGNED_INT,    _offset);
-			std::print(" inst attr[{}] {:<14} size:{} uint x{}\n", _attrib_location, name, sizeof(ItemT), num_components);
-		}
-		else
-		{
-			glVertexArrayAttribFormat( _vao, _attrib_location, num_components, GL_FLOAT, GL_FALSE, _offset);
-			std::print(" inst attr[{}] {:<14} size:{} float x{}\n", _attrib_location, name, sizeof(ItemT), num_components);
-		}
-		glVertexArrayAttribBinding( _vao, _attrib_location, _buf_bind);
-		glVertexArrayBindingDivisor(_vao, _buf_bind, 1);
-
-
-		_offset += sizeof(ItemT);
-		return _attrib_location++;
+		return _add<typename vec_traits::value_type, vec_traits::length>(name);
 	}
+	else
+		return _add<T, 1>(name);
+}
+
+template<typename T, size_t N> requires (N >= 1 and N <= 4)
+uint32_t InstanceAttributes::_add(std::string_view name)
+{
+	ensureCreated();
+
+	assert(_offset + sizeof(T)*N <= _stride);
+
+	const auto loc = _attrib_location++;
+
+	bind_vao();
+	_buf.bindCurrent();  // bind buffer to associate it to the attribute (association stored in VAO)
+	glEnableVertexArrayAttrib(_vao, loc);
+
+	std::print(" inst attr[{}] {:<14} @ {:<2}  size:{:>2}; {}x", loc, name, _offset, sizeof(T)*N, N);
+	if constexpr (std::is_same_v<T, float>)
+	{
+		// T assumed to be float or vecN
+		glVertexArrayAttribFormat( _vao, loc, N, GL_FLOAT, GL_FALSE, _offset);
+		std::print(" float\n");
+	}
+	else if constexpr (std::is_same_v<T, uint32_t>)
+	{
+		glVertexArrayAttribIFormat(_vao, loc, N, GL_UNSIGNED_INT,    _offset);
+		std::print(" uint\n");
+	}
+	else if constexpr (std::is_same_v<T, double>)
+	{
+		// T assumed to be float or vecN
+		glVertexArrayAttribLFormat( _vao, loc, N, GL_DOUBLE,         _offset);
+		std::print(" double\n");
+	}
+	else
+		static_assert(false); // unsupported component type
+
+	glVertexArrayAttribBinding( _vao, loc, _bind_index);
+	glVertexArrayBindingDivisor(_vao, _bind_index, 1);
+
+	_offset += sizeof(T)*N;
+	return loc;
 }
 
 } // RGL

@@ -19,7 +19,7 @@ struct GPULight
 	//  - can then use a single array (dynamic size, w/ offsets by type)
 	//     -> MUCH faster shader compilation
 
-	// TODO: by reusing 'shape_points' (obviously renamed to something better)
+	// TODO: by reusing 'shape_data' (obviously renamed to something better)
 	//   the struct could be trimmed to 112 bytes (from 128) - worth it?
 	//   obviously adding some obfuscation.
 
@@ -35,7 +35,7 @@ struct GPULight
 	vec3 color;
 	float fog_intensity;  // might be separate SSBO ? e.g. together w/ other fog/scattering stuff
 
-	vec4 shape_points[4];  // area: 4 points, tube: 2 end points + radius, sphere: radius, disc: radius
+	vec4 shape_data[5];  // ect: 4 points, tube: 2 end points + radius, sphere: radius, disc: radius
 };
 
 // @interop

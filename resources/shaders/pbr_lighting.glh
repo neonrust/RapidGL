@@ -246,7 +246,9 @@ vec3 calcRectLight(GPULight light, vec3 world_pos, MaterialProperties material)
 {
 	// NOTE: this is not full PBR
 
-	// TODO: degenerate to simpler (e.g. nearest-point) at larger distance
+	// https://blog.selfshadow.com/publications/s2017-shading-course/
+
+	// TODO: degenerate to simpler (e.g. nearest-point) at larger distance, or even point light (only double-sided!)
 
     vec3 F0         = vec3(0.04); // base reflectance
     vec3 diff_color = material.albedo * (1.0 - material.metallic);
@@ -259,7 +261,12 @@ vec3 calcRectLight(GPULight light, vec3 world_pos, MaterialProperties material)
 	bool two_sided = IS_DOUBLE_SIDED(light);
 
     // diffuse term
-    vec3 diff  = ltcEvaluate(N, V, world_pos, mat3(1), light.shape_points, two_sided);
+    vec4 shape_data[4];
+    shape_data[0] = light.shape_data[0];
+    shape_data[1] = light.shape_data[1];
+    shape_data[2] = light.shape_data[2];
+    shape_data[3] = light.shape_data[3];
+    vec3 diff  = ltcEvaluate(N, V, world_pos, mat3(1), shape_data, two_sided);
          diff *= diff_color * light.color;
 
     // specular term
@@ -267,7 +274,7 @@ vec3 calcRectLight(GPULight light, vec3 world_pos, MaterialProperties material)
     mat3 Minv    = ltcMatrix(s_ltc_mat, coords);
     vec2 schlick = texture2D(s_ltc_amp, coords).xy;
 
-    vec3 spec  = ltcEvaluate(N, V, world_pos, Minv, light.shape_points, two_sided);
+    vec3 spec  = ltcEvaluate(N, V, world_pos, Minv, shape_data, two_sided);
          spec *= spec_color * schlick.x + (1.0 - spec_color) * schlick.y;
 
     vec3 radiance  = light.intensity * (diff + spec);
@@ -355,48 +362,64 @@ vec3 closest_point(Segment segment, Ray ray)
 
 vec3 calcTubeLight(GPULight light, vec3 world_pos, MaterialProperties material)
 {
-	// simulate using a fragment-facing area light, thick as tube diameter
+	// simulate using a fragment-facing rect light, thick as tube diameter
 
-	Segment segment = Segment(light.shape_points[0].xyz,
-								light.shape_points[1].xyz);
-	float thickness = light.shape_points[2].x * 0.5;
+	// https://blog.selfshadow.com/publications/s2017-shading-course/
+	// https://wickedengine.net/2017/09/area-lights/
+
+	// TODO: degenerate to simpler (e.g. nearest-point) at larger distance, or even point light
+
+	Segment segment = Segment(light.position + light.shape_data[0].xyz, light.position + light.shape_data[1].xyz);
+	float thickness = light.shape_data[2].x * 0.5;
 
 	vec3 binormal = normalize(cross(segment.a - segment.b, world_pos - light.position));
 	vec3 corner_offset = binormal * thickness;
 
 	GPULight faux_rect = light;
-	faux_rect.type_flags = LIGHT_TYPE_RECT;
-	faux_rect.shape_points[0] = vec4(segment.b + corner_offset, 1);
-	faux_rect.shape_points[1] = vec4(segment.a + corner_offset, 1);
-	faux_rect.shape_points[2] = vec4(segment.b - corner_offset, 1);
-	faux_rect.shape_points[3] = vec4(segment.a - corner_offset, 1);
+	faux_rect.shape_data[0] = vec4(segment.b + corner_offset, 1);
+	faux_rect.shape_data[1] = vec4(segment.a + corner_offset, 1);
+	faux_rect.shape_data[2] = vec4(segment.b - corner_offset, 1);
+	faux_rect.shape_data[3] = vec4(segment.a - corner_offset, 1);
 
 	return calcRectLight(faux_rect, world_pos, material);
-
-	// // https://wickedengine.net/2017/09/area-lights/
-	// //  1. reflect eye vector by material.normal
-	// vec3 specular = vec3(0);
-	// vec3 eye_vec = world_pos - u_cam_pos;
-	// vec3 refl_vec = reflect(eye_vec, material.normal);
-	// Ray reflection = Ray(u_cam_pos, normalize(refl_vec), 0);
-	// //  2. use closest point on light geometry to 'world_pos'
-	// Segment tube_segment = Segment(light.shape_points[0].xyz, light.shape_points[1].xyz);
-	// vec3 representative_point = closest_point(tube_segment, reflection);
-	// float dist = distance(representative_point, world_pos);
-	// // TODO: call pbr() as if a point light at representative point ?
-	// specular = falloff(dist, light.affect_radius) * light.color * light.intensity;
-	//
-	// return diffuse + specular;
 }
 
 vec3 calcSphereLight(GPULight light, vec3 world_pos, MaterialProperties material)
 {
 	// TODO
+
+	//  https://blog.selfshadow.com/publications/s2017-shading-course/
+
+	// TODO: degenerate to point light at larger distance,
+
 	return calcPointLight(light, world_pos, material);
 }
 
 vec3 calcDiscLight(GPULight light, vec3 world_pos, MaterialProperties material)
 {
-	// TODO
-	return calcPointLight(light, world_pos, material);
+	// TODO: simulate as area light of same size
+	// see: https://blog.selfshadow.com/publications/s2017-shading-course/
+
+	// TODO: degenerate to point light at larger distance )pm;t dpin;e-soded!)
+	// if(edge_distance > half_max_distance)
+	//    return calcPointLight(light, world_pos, material);
+
+	vec3 orthogonal = vec3(0, 1, 0);
+	if(orthogonal == light.direction)
+		orthogonal = vec3(0, 0, 1);
+
+	vec3 right = cross(light.direction, orthogonal);
+	vec3 up    = cross(right, light.direction);
+
+	float radius = light.shape_data[0].x;
+	vec3 offset_h = right * radius;
+	vec3 offset_v = up    * radius;
+
+	GPULight faux_rect = light;
+	faux_rect.shape_data[0] = vec4(light.position + offset_h - offset_v, 1);
+	faux_rect.shape_data[1] = vec4(light.position - offset_h - offset_v, 1);
+	faux_rect.shape_data[2] = vec4(light.position + offset_h + offset_v, 1);
+	faux_rect.shape_data[3] = vec4(light.position - offset_h + offset_v, 1);
+
+	return calcRectLight(faux_rect, world_pos, material);
 }

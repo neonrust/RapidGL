@@ -23,6 +23,8 @@ static const std::string_view s_light_type_names[] {
 static_assert(LIGHT_TYPE__COUNT == 7);
 
 
+static constexpr auto ident_quat = glm::quat_identity<float, glm::defaultp>();
+
 LightManager::LightManager(/* entt registry */) :
 	_lights_ssbo("lights"sv)
 {
@@ -66,7 +68,7 @@ const GPULight &LightManager::get_by_id(LightID light_id) const
 {
 	auto found = _id_to_index.find(light_id);
 	if(found == _id_to_index.end())
-		throw std::out_of_range("id not found");
+		throw std::out_of_range("light id not found");
 
 	return _lights[found->second];
 }
@@ -199,18 +201,43 @@ void LightManager::set_intensity(GPULight &L, float new_intensity)
 		L.affect_radius  = std::pow(L.intensity, 0.6f);
 		break;
 	case LIGHT_TYPE_RECT:
+	{
+		const auto area = glm::distance(L.shape_data[0], L.shape_data[1]) * glm::distance(L.shape_data[2], L.shape_data[3]);
+		L.affect_radius = std::pow(L.intensity, 0.6f) * (1 + area);
+	}
+	break;
 	case LIGHT_TYPE_TUBE:
-		L.affect_radius = 50.f;
-		break;
+	{
+		const auto area = glm::distance(L.shape_data[0], L.shape_data[1]) * L.shape_data[2].x;
+		L.affect_radius = std::pow(L.intensity, 0.6f) * (1 + area);
+	}
+	break;
 	case LIGHT_TYPE_SPHERE:
 		// complete bollox
-		L.affect_radius = std::pow(L.intensity, 0.6f) + L.shape_points[0].x*1.5f;
+		L.affect_radius = std::pow(L.intensity, 0.6f) + L.shape_data[0].x*1.5f;
 		break;
 	case LIGHT_TYPE_DISC:
-		L.affect_radius = std::pow(L.intensity, 0.6f)*2;
-		break;
+	{
+		const float radius = L.shape_data[0].x;
+		const auto area = radius * radius * std::numbers::pi_v<float>;
+		L.affect_radius = std::pow(L.intensity, 0.6f) * (1 + area);
+	}
+	break;
 	}
 	static_assert(LIGHT_TYPE__COUNT == 7);
+}
+
+void LightManager::set_direction(GPULight &L, const glm::vec3 &direction)
+{
+	assert(IS_SPOT_LIGHT(L) or IS_DISC_LIGHT(L));
+
+	L.direction = direction;
+
+	if(IS_DISC_LIGHT(L))
+	{
+		const auto orientation = glm::rotation(glm::vec3(1, 0, 0), direction);
+		L.shape_data[4] = glm::vec4(orientation.x, orientation.y, orientation.z, orientation.w);
+	}
 }
 
 bounds::Sphere LightManager::light_bounds(const GPULight &L) const

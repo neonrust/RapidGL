@@ -124,8 +124,8 @@ struct RectLight
 #define TUBE_LIGHT       \
 	COMMON;              \
 	POINT;               \
-	glm::vec3 end_points[2];  /* relative 'position' stored in GPULight shape_points[0-1] */ \
-	float thickness;          /* stored in GPULight shape_points[2].x */ \
+	glm::vec3 half_extent;    /* relative 'position' stored in GPULight shape_data[0] */ \
+	float thickness;          /* diameter; stored in GPULight shape_data[2].x */ \
 	SURFACE
 
 struct TubeLightParams
@@ -146,7 +146,7 @@ struct TubeLight
 	POINT;                \
 	float radius;         \
 	SURFACE
-// 'radius' stored in GPULight::shape_points[0].x
+// 'radius' stored in GPULight::shape_data[0].x
 
 struct SphereLightParams
 {
@@ -168,7 +168,7 @@ struct SphereLight
 	float radius;        \
 	bool double_sided { false }; \
 	SURFACE
-// 'radius' stored in GPULight::shape_points[0].x
+// 'radius' stored in GPULight::shape_data[0].x
 
 struct DiscLightParams
 {
