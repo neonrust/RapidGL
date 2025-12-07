@@ -205,6 +205,10 @@ void ClusteredShading::init_app()
 	// spot light shadow study
 	// m_camera.setPosition({ 10.3f, 2.1f, -3.6f });
 	// m_camera.setOrientationEuler({ 1.6f, -30.4f, 0 });
+	// light falloff study
+	m_camera.setPosition({ 18.f, 3.4f, -12.4f });
+	m_camera.setOrientationEuler({ 3.f, -90.f, 0 });
+
 
 	std::print("Horizontal FOV: {}\n", m_camera.horizontalFov());
 
@@ -224,7 +228,7 @@ void ClusteredShading::init_app()
 		// _scene.emplace_back(sponza_model, glm::scale(origin, glm::vec3(sponza_model->GetUnitScaleFactor() * 30.0f)));
 
 		auto testroom_model = std::make_shared<StaticModel>();
-		testroom_model->Load(models_path / "testroom" / "white-room.gltf");
+		testroom_model->Load(models_path / "testroom" / "testroom.gltf");
 		assert(*testroom_model);
 		_scene.emplace_back(testroom_model, origin);
 
