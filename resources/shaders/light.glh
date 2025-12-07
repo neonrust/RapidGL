@@ -3,20 +3,14 @@ uniform float u_falloff_power;
 
 float lightFalloff(float distance_sq, float light_radius_sq)
 {
-// https://www.desmos.com/calculator/5eaerimi8q
-	// s = distance^2 / light_radius^2
-	// F > 0
-	//     (1 - s)^2
-	// E = -----------
-	//       1 - Fs
+	// https://www.desmos.com/calculator/5eaerimi8q
 
 	float s = min(distance_sq / light_radius_sq, 1);
-	float nom = pow(1 - s, 2);
+	float s2 = s*s;
+	float nom = 1 - s; //pow(1 - s2, 2);
 	const float F = u_falloff_power;
-	float denom = 1 + F * s;
+	float denom = 1 + F * s2;
 	return nom / denom;
-
-	// return 1 - pow(distance / light_radius, u_falloff_power);
 }
 
 // source: https://google.github.io/filament/Filament.md.html
