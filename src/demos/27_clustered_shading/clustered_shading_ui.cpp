@@ -118,7 +118,6 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			ImGui::Text("Lights PVS size : %lu", _lightsPvs.size());
 
 			ImGui::Checkbox("Draw AABB", &m_debug_draw_aabb);
-			ImGui::Checkbox("Draw light icons", &m_debug_draw_light_markers);
 
 			if(ImGui::SliderFloat("FOV", &m_camera_fov, 25.f, 150.f))
 				calculateShadingClusterGrid();
@@ -152,6 +151,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			if (m_debug_cluster_geom or m_debug_clusters_occupancy or m_debug_draw_cluster_grid or m_debug_tile_occupancy)
 				ImGui::SliderFloat("Debug overlay blend", &m_debug_coverlay_blend, 0.0f, 1.0f);
 
+			ImGui::Checkbox("Draw light icons", &m_debug_draw_light_markers);
 			ImGui::Checkbox("Draw surface light geometry", &m_draw_surface_lights_geometry);
 
 			ImGui::Checkbox   ("Animate Lights",    &m_animate_lights);
