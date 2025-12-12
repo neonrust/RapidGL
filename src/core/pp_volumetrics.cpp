@@ -278,27 +278,6 @@ Texture3D &Volumetrics::blur_froxels(Texture3D &input)
 	_3dblur_shader.invoke(num_groups);
 
 	return _3dblur[0];
-
-	// // 2nd pass
-	// // blur[0] -> blur[1]
-	// _3dblur[0].BindImage(0, ImageAccess::Write);
-	// _3dblur[1].BindImage(1, ImageAccess::Write);
-	// _3dblur_shader.setUniform("u_axis"sv, 0u);  // X axis
-	// _3dblur_shader.invoke(num_groups);
-
-	// // blur[1] -> blur[0]
-	// _3dblur[1].BindImage(0, ImageAccess::Read);
-	// _3dblur[0].BindImage(1, ImageAccess::Write);
-	// _3dblur_shader.setUniform("u_axis"sv, 1u);  // Z axis
-	// _3dblur_shader.invoke(num_groups);
-
-	// // blur[0] -> blur[1]
-	// _3dblur[0].BindImage(0, ImageAccess::Read);
-	// _3dblur[1].BindImage(1, ImageAccess::Write);
-	// _3dblur_shader.setUniform("u_axis"sv, 2u);  // Y axis
-	// _3dblur_shader.invoke(num_groups);
-
-	// return _3dblur[1];
 }
 
 } // RGL
