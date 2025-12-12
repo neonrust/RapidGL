@@ -343,7 +343,9 @@ float sampleTubeLight(GPULight light, vec3 world_pos, float distance_sq)
 
 	vec3 closest = closest_point(world_pos, point_a, point_b);
 	float distance = distance(world_pos, closest) - thickness;
-	return fogLightFalloff(distance*distance, light.affect_radius*light.affect_radius);
+	// scale radius down slightly
+	float radius_sq = pow(light.affect_radius * light.affect_radius, 0.8);
+	return fogLightFalloff(distance*distance, radius_sq);
 }
 
 float sampleSphereLight(GPULight light, vec3 world_pos, float distance_sq)
