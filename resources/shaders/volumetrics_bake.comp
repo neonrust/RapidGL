@@ -46,11 +46,11 @@ void main()
 
 	vec4 accumulated_transmittance = texture_tricubic(u_in_accumulation, froxel_uv);
 	vec3 accumulated = accumulated_transmittance.rgb;
-	// float transmittance = accumulated_transmittance.a;
+	float transmittance = 1;//accumulated_transmittance.a;
 
 	accumulated *= u_effect_scale;
 
-	imageStore(u_out_volumetrics, pixel, vec4(accumulated, 1));
+	imageStore(u_out_volumetrics, pixel, vec4(accumulated, transmittance));
 }
 
 float froxel_distance(int z)
