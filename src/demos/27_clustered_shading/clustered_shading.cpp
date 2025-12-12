@@ -1826,6 +1826,10 @@ void ClusteredShading::draw2d(const Texture &texture, BlendMode blend)
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+	// completely ignore the depth buffer
+	glDisable(GL_DEPTH_TEST);
+	glDepthMask(GL_FALSE);
+
 	if(blend == BlendMode::Replace)
 		glDisable(GL_BLEND);
 	else
@@ -1855,6 +1859,9 @@ void ClusteredShading::draw2d(const Texture &texture, BlendMode blend)
 		if(blend == BlendMode::Subtract)
 			glBlendEquation(GL_FUNC_ADD);
 	}
+
+	glEnable(GL_DEPTH_TEST);
+	glDepthMask(GL_TRUE);
 }
 
 void ClusteredShading::draw2d(const Texture &source, RenderTarget::Texture2d &target, BlendMode blend)
@@ -1869,6 +1876,10 @@ void ClusteredShading::draw2d(const Texture &source, RenderTarget::Texture2d &ta
 		if(blend != BlendMode::Subtract)
 			glBlendEquation(GL_FUNC_ADD);
 	}
+
+	// completely ignore the depth buffer
+	glDisable(GL_DEPTH_TEST);
+	glDepthMask(GL_FALSE);
 
 	switch(blend)
 	{
@@ -1892,6 +1903,9 @@ void ClusteredShading::draw2d(const Texture &source, RenderTarget::Texture2d &ta
 		if(blend == BlendMode::Subtract)
 			glBlendEquation(GL_FUNC_ADD);
 	}
+
+	glEnable(GL_DEPTH_TEST);
+	glDepthMask(GL_TRUE);
 }
 
 void ClusteredShading::draw2d(const Texture &texture, const glm::uvec2 &top_left, const glm::uvec2 &bottom_right)
