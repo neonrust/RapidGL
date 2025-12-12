@@ -118,6 +118,9 @@ public:
 	static void set_spot_angle(GPULight &L, float new_outer_angle); // also sets intensity and affect_radius
 	static void set_intensity(GPULight &L, float new_intensity);  // sets intensity and affect_radius
 	static void set_direction(GPULight &L, const glm::vec3 &direction);  // spot & disc lights
+	static void transform(GPULight &L, const glm::mat4 &tfm);
+	static void transform(GPULight &L, const glm::mat3 &rotate);
+	static void transform(GPULight &L, const glm::quat &rotate);
 
 	bounds::Sphere light_bounds(const GPULight &L) const;
 

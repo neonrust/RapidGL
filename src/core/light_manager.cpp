@@ -229,7 +229,7 @@ void LightManager::set_intensity(GPULight &L, float new_intensity)
 
 void LightManager::set_direction(GPULight &L, const glm::vec3 &direction)
 {
-	assert(IS_SPOT_LIGHT(L) or IS_DISC_LIGHT(L));
+	assert(IS_DIR_LIGHT(L) or IS_SPOT_LIGHT(L) or IS_DISC_LIGHT(L));
 
 	L.direction = direction;
 
@@ -237,6 +237,43 @@ void LightManager::set_direction(GPULight &L, const glm::vec3 &direction)
 	{
 		const auto orientation = glm::rotation(glm::vec3(1, 0, 0), direction);
 		L.shape_data[4] = glm::vec4(orientation.x, orientation.y, orientation.z, orientation.w);
+	}
+}
+
+void LightManager::transform(GPULight &L, const glm::quat &rotate)
+{
+	switch(GET_LIGHT_TYPE(L))
+	{
+	case LIGHT_TYPE_DIRECTIONAL:
+	case LIGHT_TYPE_SPOT:
+	case LIGHT_TYPE_DISC:
+		set_direction(L, rotate * L.direction);
+		break;
+	case LIGHT_TYPE_RECT:
+	{
+		L.shape_data[0] = rotate * L.shape_data[0];
+		L.shape_data[1] = rotate * L.shape_data[1];
+		L.shape_data[2] = rotate * L.shape_data[2];
+		L.shape_data[3] = rotate * L.shape_data[3];
+		// also update shape_data[4] (orientation)
+		const auto &qvec = L.shape_data[4];
+		const auto orientation = rotate * glm::quat(qvec.w, qvec.x, qvec.y, qvec.z);
+		L.shape_data[4] = glm::vec4(orientation.x, orientation.y, orientation.z, orientation.w);
+	}
+	break;
+	case LIGHT_TYPE_TUBE:
+	{
+		L.shape_data[0] = rotate * L.shape_data[0];
+		L.shape_data[1] = rotate * L.shape_data[1];
+		// also update shape_data[4] (orientation)
+		const auto &qvec = L.shape_data[4];
+		const auto orientation = rotate * glm::quat(qvec.w, qvec.x, qvec.y, qvec.z);
+		L.shape_data[4] = glm::vec4(orientation.x, orientation.y, orientation.z, orientation.w);
+	}
+	break;
+	default:
+		// other light types makes little sense?
+		assert(false);
 	}
 }
 
