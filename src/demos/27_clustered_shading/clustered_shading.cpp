@@ -1021,7 +1021,8 @@ void ClusteredShading::update(double delta_time)
 	else if (m_animate_lights)
     {
 		// time_accum  += float(delta_time * m_animation_speed);
-		auto orbit_mat = glm::rotate(glm::mat4(1), glm::radians(-23.f * float(delta_time)) * 2.f * m_animation_speed, AXIS_Y);
+		const auto orbit_mat = glm::rotate(glm::mat4(1), glm::radians(-23.f * float(delta_time)) * 2.f * m_animation_speed, AXIS_Y);
+		const auto spin_mat = glm::angleAxis(glm::radians(float(15*delta_time * m_animation_speed)), AXIS_Y);
 
 		// auto spin_mat  = glm::rotate(glm::mat4(1), glm::radians(60.f * float(delta_time)) * 2.f * m_animation_speed, AXIS_Y);
 
@@ -1032,10 +1033,10 @@ void ClusteredShading::update(double delta_time)
 			const auto &[light_id, L] =_light_mgr.at(light_index);
 			auto Lmut = L;
 
-			if(IS_SPOT_LIGHT(Lmut))
-				Lmut.direction = spin_mat * glm::vec4(Lmut.direction, 0);
-			else
+			if(IS_POINT_LIGHT(Lmut) or IS_SPHERE_LIGHT(Lmut))
 				Lmut.position = orbit_mat * glm::vec4(L.position, 1); // orbit around the world origin
+			else
+				_light_mgr.transform(Lmut, spin_mat);
 
 			_light_mgr.set(light_id, Lmut);
 		}
