@@ -285,10 +285,10 @@ GPULight LightManager::to_gpu_light(const LT &l)
 			| (l.visible_surface? LIGHT_VISIBLE_SURFACE : 0);
 		const glm::vec3 right   = l.orientation * glm::vec3(l.size.x * 0.5f, 0,               0);
 		const glm::vec3 up      = l.orientation * glm::vec3(0,               l.size.y * 0.5f, 0);
-		L.shape_data[0] = glm::vec4(l.position + right - up, 1);
-		L.shape_data[1] = glm::vec4(l.position - right - up, 1);
-		L.shape_data[2] = glm::vec4(l.position + right + up, 1);
-		L.shape_data[3] = glm::vec4(l.position - right + up, 1);
+		L.shape_data[0] = glm::vec4(+ right - up, 1);
+		L.shape_data[1] = glm::vec4(- right - up, 1);
+		L.shape_data[2] = glm::vec4(+ right + up, 1);
+		L.shape_data[3] = glm::vec4(- right + up, 1);
 
 		L.shape_data[4] = glm::vec4(l.orientation.x, l.orientation.y, l.orientation.z, l.orientation.w);
 		L.outer_angle   = l.size.x;

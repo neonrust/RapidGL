@@ -252,10 +252,10 @@ vec3 calcRectLight(GPULight light, vec3 world_pos, MaterialProperties material)
 
     // diffuse term
     vec4 shape_data[4];
-    shape_data[0] = light.shape_data[0];
-    shape_data[1] = light.shape_data[1];
-    shape_data[2] = light.shape_data[2];
-    shape_data[3] = light.shape_data[3];
+    shape_data[0] = vec4(light.position + light.shape_data[0].xyz, 1);
+    shape_data[1] = vec4(light.position + light.shape_data[1].xyz, 1);
+    shape_data[2] = vec4(light.position + light.shape_data[2].xyz, 1);
+    shape_data[3] = vec4(light.position + light.shape_data[3].xyz, 1);
     vec3 diff  = ltcEvaluate(N, V, world_pos, mat3(1), shape_data, two_sided);
          diff *= diff_color;
 
@@ -386,10 +386,10 @@ vec3 calcTubeLight(GPULight light, vec3 world_pos, MaterialProperties material)
 	vec3 corner_offset = binormal * thickness;
 
 	GPULight faux_rect = light;
-	faux_rect.shape_data[0] = vec4(segment.b + corner_offset, 1);
-	faux_rect.shape_data[1] = vec4(segment.a + corner_offset, 1);
-	faux_rect.shape_data[2] = vec4(segment.b - corner_offset, 1);
-	faux_rect.shape_data[3] = vec4(segment.a - corner_offset, 1);
+	faux_rect.shape_data[0] = vec4(light.shape_data[1].xyz + corner_offset, 1);
+	faux_rect.shape_data[1] = vec4(light.shape_data[0].xyz + corner_offset, 1);
+	faux_rect.shape_data[2] = vec4(light.shape_data[1].xyz - corner_offset, 1);
+	faux_rect.shape_data[3] = vec4(light.shape_data[0].xyz - corner_offset, 1);
 
 	return calcRectLight(faux_rect, world_pos, material);
 }

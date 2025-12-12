@@ -270,14 +270,21 @@ float sampleRectLight(GPULight light, vec3 sample_pos, float distance_sq)
 {
 	// TODO: degenerate into point light at large distance
 
-	vec3 shape_cross = cross(light.shape_data[1].xyz - light.shape_data[0].xyz,
-	                         light.shape_data[3].xyz - light.shape_data[0].xyz);
+	vec4 shape_data[4];
+    shape_data[0] = vec4(light.position + light.shape_data[0].xyz, 1);
+    shape_data[1] = vec4(light.position + light.shape_data[1].xyz, 1);
+    shape_data[2] = vec4(light.position + light.shape_data[2].xyz, 1);
+    shape_data[3] = vec4(light.position + light.shape_data[3].xyz, 1);
+
+
+	vec3 shape_cross = cross(shape_data[1].xyz - shape_data[0].xyz,
+	                         shape_data[3].xyz - shape_data[0].xyz);
 	vec3 normal = normalize(shape_cross);
 
 	// compute closest point on rectangle to sample_pos (same approach as surface shading)
-	vec3 corner0 = light.shape_data[0].xyz;
-	vec3 edgeU = light.shape_data[1].xyz - corner0;
-	vec3 edgeV = light.shape_data[3].xyz - corner0;
+	vec3 corner0 = shape_data[0].xyz;
+	vec3 edgeU = shape_data[1].xyz - corner0;
+	vec3 edgeV = shape_data[3].xyz - corner0;
 	vec3 center = corner0 + 0.5 * (edgeU + edgeV);
 	float halfU = length(edgeU) * 0.5;
 	float halfV = length(edgeV) * 0.5;
