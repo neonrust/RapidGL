@@ -201,7 +201,7 @@ void main()
         total_scattered += scatter_contrib;
 	}
 
-	float density = u_fog_density; // TODO: noise texture?
+	float density = u_fog_density;
 	total_scattered *= density;
 
 	if(u_fog_noise)
