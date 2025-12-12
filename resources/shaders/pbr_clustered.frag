@@ -225,6 +225,7 @@ void main()
     else
     {
         // Total lighting
+        // TODO: apply accumulated fog/scattering here?  (instead of the 'bake' step)
         frag_color = vec4(radiance, 1.0);
     }
 }

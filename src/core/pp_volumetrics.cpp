@@ -215,6 +215,9 @@ void Volumetrics::accumulate()
 
 void Volumetrics::render(const RenderTarget::Texture2d &, RenderTarget::Texture2d &out)
 {
+	// TODO: apply the accumulated fog/scattering in pbr_clustered.frag instead?
+	//   rendering it as a 2d
+
 	_accumulation.Bind(5);  // read the accumulated transmittance
 	//_transmittance[1 - (_frame & 1)].Bind(5);  // read the froxels previously written in inject()
 
