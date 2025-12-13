@@ -56,7 +56,7 @@ void ClusteredShading::render_gui()
 COL(0); ImGui::Text(label); \
 COL(1); ImGui::Text("%4ld µs", (time).count())
 
-	ImGui::BeginTable("Timings", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable);
+	if(ImGui::BeginTable("Timings", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable))
 	{
 		ImGui::TableSetupColumn("Phase",    ImGuiTableColumnFlags_WidthFixed);
 		ImGui::TableSetupColumn("Duration", ImGuiTableColumnFlags_WidthFixed);
@@ -86,8 +86,9 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 		TIMING("Tonemapping", m_tonemap_time.average());
 		TIMING("Debug draw", m_debug_draw_time.average());
 		// TIMING("PP blur", m_pp_blur_time.average());
+
+		ImGui::EndTable();
 	}
-	ImGui::EndTable();
 
 	ImGui::Begin("Settings");
 	{
