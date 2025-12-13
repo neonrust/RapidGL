@@ -14,6 +14,11 @@
 #include <cstddef>
 
 
+// TODO: 'lights' namespace
+//   lights::Manager
+//   lights::set_*(GPULight &L, ...)
+//   lights::transform(GPULight &L, ...)
+
 namespace _private
 {
 template<typename T>
