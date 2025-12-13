@@ -1051,10 +1051,12 @@ void ClusteredShading::createLights()
 
 	static constexpr auto ident_quat = glm::quat_identity<float, glm::defaultp>();
 
-	float offset = 0;
+	auto z_offset = 0.f;
+	static constexpr auto z_step = 12.f;
+	auto x_offset = 0.f;
 
 	// point lights
-	for(auto idx = 0u; idx < 8; ++idx)
+	for(auto idx = 0u; idx < 14; ++idx)
 	{
 		const auto rand_color= hsv2rgb(
 			float(Util::RandomDouble(1, 360)),       // hue
@@ -1062,13 +1064,19 @@ void ClusteredShading::createLights()
 			1.f                                      // value (brightness)
 		);
 		// const auto rand_pos = Util::RandomVec3(room_min, room_max);
-		const auto rand_pos = glm::vec3(-10.f, 2.5f, 14.f - offset );
-		offset += 15.f;
+		const auto rand_pos = glm::vec3(-13.f + x_offset, 2.5f, 12.f - z_offset );
+		z_offset += z_step;
+
+		if(z_offset > z_step*5 + 1)
+		{
+			z_offset = 0;
+			x_offset += 19.f;
+		}
 
 		const auto rand_intensity = 80.f;//float(Util::RandomDouble(10, 100));
 
-		auto light_type = idx % LIGHT_TYPE__COUNT;
-		light_type = LIGHT_TYPE_TUBE;
+		auto light_type = 3 + (idx % 4);
+		// light_type = LIGHT_TYPE_DISC;
 
 		LightID l_id;
 		std::string_view type_name;
