@@ -426,10 +426,10 @@ vec3 calcDiscLight(GPULight light, vec3 world_pos, MaterialProperties material)
 	vec3 offset_v = up    * radius;
 
 	GPULight faux_rect = light;
-	faux_rect.shape_data[0] = vec4(light.position + offset_h - offset_v, 1);
-	faux_rect.shape_data[1] = vec4(light.position - offset_h - offset_v, 1);
-	faux_rect.shape_data[2] = vec4(light.position + offset_h + offset_v, 1);
-	faux_rect.shape_data[3] = vec4(light.position - offset_h + offset_v, 1);
+	faux_rect.shape_data[0] = vec4(+ offset_h - offset_v, 1);
+	faux_rect.shape_data[1] = vec4(- offset_h - offset_v, 1);
+	faux_rect.shape_data[2] = vec4(+ offset_h + offset_v, 1);
+	faux_rect.shape_data[3] = vec4(- offset_h + offset_v, 1);
 
 	return calcRectLight(faux_rect, world_pos, material);
 }
