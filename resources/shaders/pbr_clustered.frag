@@ -417,22 +417,22 @@ vec3 spotLightVisibility(GPULight light, vec3 world_pos)
 
 vec3 rectLightVisibility(GPULight light)
 {
-	return vec3(1); // TODO will probably never cast shadows
+	return vec3(fadeLightByDistance(light));
 }
 
 vec3 tubeLightVisibility(GPULight light)
 {
-	return vec3(1); // TODO will probably never cast shadows
+	return vec3(fadeLightByDistance(light));
 }
 
 vec3 sphereLightVisibility(GPULight light)
 {
-	return vec3(1); // TODO will probably never cast shadows
+	return vec3(fadeLightByDistance(light));
 }
 
 vec3 discLightVisibility(GPULight light)
 {
-	return vec3(1); // TODO will probably never cast shadows
+	return vec3(fadeLightByDistance(light));
 }
 
 
