@@ -288,8 +288,10 @@ vec3 calcRectLight(GPULight light, vec3 world_pos, MaterialProperties material)
     float cv = clamp(v, -halfV, halfV);
     vec3 closest = center + dirU * cu + dirV * cv;
 
+    // apply range limited falloff
     float dist_sq = dot(world_pos - closest, world_pos - closest);
-    float att = lightFalloff(dist_sq, light.affect_radius * light.affect_radius);
+    // float att = lightFalloff(dist_sq, light.affect_radius * light.affect_radius);
+    float att = 1 - min(dist_sq / (light.affect_radius*light.affect_radius), 1);
     return radiance * att * light.color;
 }
 
