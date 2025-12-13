@@ -195,8 +195,9 @@ void LightManager::set_intensity(GPULight &L, float new_intensity)
 
 	switch(GET_LIGHT_TYPE(L))
 	{
-	case LIGHT_TYPE_POINT:
 	case LIGHT_TYPE_DIRECTIONAL:
+		break;
+	case LIGHT_TYPE_POINT:
 	case LIGHT_TYPE_SPOT:
 		L.affect_radius  = std::pow(L.intensity, 0.6f);
 		break;

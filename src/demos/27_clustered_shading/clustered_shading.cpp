@@ -191,14 +191,11 @@ void ClusteredShading::init_app()
 	// Create camera
 	m_camera = Camera(m_camera_fov, 0.1f, 200);
 	m_camera.setSize(Window::width(), Window::height());
-	m_camera.setPosition({ -17.f, 3.2f, -0.5f });
-	m_camera.setOrientationEuler({ 7, 90, 0 });
-	// spot light apex study:
-	// m_camera.setPosition({ 33.1f, 3.3f, -0.7f });
-	// m_camera.setOrientationEuler({ 22.8f, 69.4f, 0 });
+	m_camera.setPosition({ 0.f, 3.2f, -19.5f });
+	m_camera.setOrientationEuler({ 0, 180, 0 });
 	// rect light fog stuff:
-	m_camera.setPosition({ 37.5f, 1.7f, 12.4f });
-	m_camera.setOrientationEuler({ 2.5f, 139.8f, 0 });
+	// m_camera.setPosition({ 37.5f, 1.7f, 12.4f });
+	// m_camera.setOrientationEuler({ 2.5f, 139.8f, 0 });
 	// shadow bias study:
 	// m_camera.setPosition({ 5.f, 1.0f, 9.8f });
 	// m_camera.setOrientationEuler({ 37.f, 60.f, 0 });
@@ -980,8 +977,6 @@ void ClusteredShading::update(double delta_time)
 	else if(Input::isKeyDown(KeyCode::LeftBracket))
 		adjust_angle  = -angle_amount;
 
-
-	const auto spin_mat = glm::angleAxis(glm::radians(float(15*delta_time)), AXIS_Y);
 	if(Input::wasKeyPressed(KeyCode::F))
 		_fog_enabled = not _fog_enabled;
 	if(Input::wasKeyPressed(KeyCode::B))
@@ -1056,22 +1051,28 @@ void ClusteredShading::createLights()
 
 	static constexpr auto ident_quat = glm::quat_identity<float, glm::defaultp>();
 
+	float offset = 0;
+
 	// point lights
-	for(auto idx = 3u; idx < 7; ++idx)
+	for(auto idx = 0u; idx < 8; ++idx)
 	{
 		const auto rand_color= hsv2rgb(
 			float(Util::RandomDouble(1, 360)),       // hue
-			float(Util::RandomDouble(0.8f, 1.f)),   // saturation
+			float(Util::RandomDouble(0.6f, 1.f)),   // saturation
 			1.f                                      // value (brightness)
 		);
 		// const auto rand_pos = Util::RandomVec3(room_min, room_max);
-		const auto rand_pos = glm::vec3(-10.f, 2.5f, 14.f - float(idx - 3)*15 );
+		const auto rand_pos = glm::vec3(-10.f, 2.5f, 14.f - offset );
+		offset += 15.f;
 
 		const auto rand_intensity = 80.f;//float(Util::RandomDouble(10, 100));
 
+		auto light_type = idx % LIGHT_TYPE__COUNT;
+		light_type = LIGHT_TYPE_TUBE;
+
 		LightID l_id;
 		std::string_view type_name;
-		switch(idx % LIGHT_TYPE__COUNT)
+		switch(light_type)
 		{
 		case LIGHT_TYPE_POINT:
 		case LIGHT_TYPE_DIRECTIONAL:
@@ -1530,7 +1531,7 @@ void ClusteredShading::render()
 #endif
 
 		// add the scattering effect on to the final image
-		draw2d(_pp_full_rt.color_texture(), _rt, BlendMode::Add);
+		draw2d(_pp_full_rt.color_texture(), _rt, BlendMode::Add);  // TODO: should be Alpha bland! no scatter should be just sample fog color
 		// m_pp_blur_time.add(_gl_timer.elapsed<microseconds>());
 
 		m_volumetrics_render_time.add(_gl_timer.elapsed<microseconds>(true));
