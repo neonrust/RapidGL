@@ -134,23 +134,23 @@ uint32_t InstanceAttributes::_add(std::string_view name)
 	_buf.bindCurrent();  // bind buffer to associate it to the attribute (association stored in VAO)
 	glEnableVertexArrayAttrib(_vao, loc);
 
-	std::print(" inst attr[{}] {:<14} @ {:<2}  size:{:>2}; {}x", loc, name, _offset, sizeof(T)*N, N);
+	// std::print(" inst attr[{}] {:<14} @ {:<2}  size:{:>2}; {}x", loc, name, _offset, sizeof(T)*N, N);
 	if constexpr (std::is_same_v<T, float>)
 	{
 		// T assumed to be float or vecN
 		glVertexArrayAttribFormat( _vao, loc, N, GL_FLOAT, GL_FALSE, _offset);
-		std::print(" float\n");
+		// std::print(" float\n");
 	}
 	else if constexpr (std::is_same_v<T, uint32_t>)
 	{
 		glVertexArrayAttribIFormat(_vao, loc, N, GL_UNSIGNED_INT,    _offset);
-		std::print(" uint\n");
+		// std::print(" uint\n");
 	}
 	else if constexpr (std::is_same_v<T, double>)
 	{
 		// T assumed to be float or vecN
 		glVertexArrayAttribLFormat( _vao, loc, N, GL_DOUBLE,         _offset);
-		std::print(" double\n");
+		// std::print(" double\n");
 	}
 	else
 		static_assert(false); // unsupported component type
