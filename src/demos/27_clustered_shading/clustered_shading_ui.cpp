@@ -189,20 +189,45 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			ImGui::PopItemWidth();
 		}
 
-		if (ImGui::CollapsingHeader("Bloom"))
+		static std::string bloom_label = "Bloom (b)";
+		static const auto bloom_label_size = 9u;
+		if(m_bloom_enabled and bloom_label.size() != bloom_label_size + 6)
 		{
-			ImGui::Checkbox("Bloom enabled (B)",        &m_bloom_enabled);
+			bloom_label.resize(bloom_label_size);
+			bloom_label.append("  [ON]");
+		}
+		else if(not m_bloom_enabled and bloom_label.size() != bloom_label_size + 7)
+		{
+			bloom_label.resize(bloom_label_size);
+			bloom_label.append("  [off]");
+		}
+		if (ImGui::CollapsingHeader(bloom_label.c_str()))
+		{
+			ImGui::Checkbox("Enabled (b)",        &m_bloom_enabled);
 			if(m_bloom_enabled)
 			{
-				ImGui::SliderFloat("Bloom threshold",      &m_bloom_threshold,      0, 15.f, "%.1f");
-				ImGui::SliderFloat("Bloom knee",           &m_bloom_knee,           0,  1.f, "%.1f");
-				ImGui::SliderFloat("Bloom intensity",      &m_bloom_intensity,      0,  2.f, "%.1f");
-				ImGui::SliderFloat("Bloom dirt intensity", &m_bloom_dirt_intensity, 0, 10.f, "%.1f");
+				ImGui::SliderFloat("Threshold",      &m_bloom_threshold,      0, 15.f, "%.1f");
+				ImGui::SliderFloat("Knee",           &m_bloom_knee,           0,  1.f, "%.1f");
+				ImGui::SliderFloat("Intensity",      &m_bloom_intensity,      0,  2.f, "%.1f");
+				ImGui::SliderFloat("Dirt intensity", &m_bloom_dirt_intensity, 0, 10.f, "%.1f");
 			}
 		}
-		if(ImGui::CollapsingHeader("Fog / Volumetrics"))//, ImGuiTreeNodeFlags_DefaultOpen))
+
+		static std::string fog_label = "Fog / Volumetrics (f)";
+		static const auto fog_label_size = 21u;
+		if(_fog_enabled and fog_label.size() != fog_label_size + 6)
 		{
-			ImGui::Checkbox("Enabled (F)",    &_fog_enabled);
+			fog_label.resize(fog_label_size);
+			fog_label.append("  [ON]");
+		}
+		else if(not _fog_enabled and fog_label.size() != fog_label_size + 7)
+		{
+			fog_label.resize(fog_label_size);
+			fog_label.append("  [off]");
+		}
+		if(ImGui::CollapsingHeader(fog_label.c_str()))//, ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			ImGui::Checkbox("Enabled (f)",    &_fog_enabled);
 			if(_fog_enabled)
 			{
 				ImGui::SliderFloat("Strength", &_fog_strength, 0.f, 4.f);
