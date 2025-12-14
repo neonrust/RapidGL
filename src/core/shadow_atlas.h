@@ -89,6 +89,7 @@ public:
 		_large_light_radius = _max_distance;
 	}
 	inline void set_min_change_interval(std::chrono::milliseconds interval) { _min_change_interval = std::max(interval, std::chrono::milliseconds(100)); }
+	inline void set_sun_slots(size_t num_slots) { _sun_num_slots = num_slots; }
 
 	size_t eval_lights(const std::vector<LightIndex> &relevant_lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward);
 
@@ -172,6 +173,7 @@ private:
 	AtlasLight _allocated_sun;
 
 	size_t _max_shadow_slots;
+	size_t _sun_num_slots { 3 };
 
 	float _min_light_radius { .5f };
 	float _max_distance { 50.f };
