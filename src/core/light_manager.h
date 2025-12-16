@@ -127,6 +127,8 @@ public:
 	static void transform(GPULight &L, const glm::mat3 &rotate);
 	static void transform(GPULight &L, const glm::quat &rotate);
 
+	// calculate a hash of its properties
+	size_t hash(const GPULight &L);
 	bounds::Sphere light_bounds(const GPULight &L) const;
 
 	template<_private::LightType LT>

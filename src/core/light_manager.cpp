@@ -5,6 +5,8 @@
 #include "buffer_binds.h"
 #include "light_constants.h"
 
+#include "hash_combine.h"
+#include "hash_vec3.h"
 
 using namespace std::literals;
 
@@ -374,4 +376,44 @@ std::string_view LightManager::type_name(uint_fast8_t light_type)
 {
 	assert(light_type < std::size(s_light_type_names));
 	return s_light_type_names[light_type];
+}
+
+size_t LightManager::hash(const GPULight &L)
+{
+	size_t h { 0 };
+
+	if(not IS_DIR_LIGHT(L))
+		hash_combine(h, L.position);
+	hash_combine(h, L.affect_radius); // a function of intensity (and shape)
+
+	switch(GET_LIGHT_TYPE(L))
+	{
+	case LIGHT_TYPE_DIRECTIONAL:
+		hash_combine(h, L.direction);
+		break;
+	case LIGHT_TYPE_SPOT:
+		hash_combine(h, L.direction);
+		hash_combine(h, L.spot_bounds_radius);
+		break;
+	case LIGHT_TYPE_RECT:
+		hash_combine(h, L.shape_data[0]);
+		hash_combine(h, L.shape_data[1]);
+		hash_combine(h, L.shape_data[2]);
+		hash_combine(h, L.shape_data[3]);
+		hash_combine(h, L.shape_data[4]);  // orientation (quat)
+		break;
+	case LIGHT_TYPE_DISC:
+		hash_combine(h, L.shape_data[0].x);  // radius
+		break;
+	case LIGHT_TYPE_TUBE:
+		hash_combine(h, L.shape_data[0]);
+		hash_combine(h, L.shape_data[1]);
+		break;
+	case LIGHT_TYPE_SPHERE:
+		hash_combine(h, L.shape_data[0].x);  // radius
+		break;
+	}
+	static_assert(LIGHT_TYPE__COUNT == 7);
+
+	return 0;
 }

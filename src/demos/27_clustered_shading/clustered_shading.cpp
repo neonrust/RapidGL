@@ -1661,7 +1661,7 @@ void ClusteredShading::renderShadowMaps()
 		if(not _affecting_lights.contains(light_index))
 			continue;
 
-		const auto light_hash = _shadow_atlas.hash_light(light);
+		const auto light_hash = _light_mgr.hash(light);
 
 		// TODO: check wether scene objects inside the light's sphere is dynamic (not static)
 		//   this should also be per slot (cube face for point lights)

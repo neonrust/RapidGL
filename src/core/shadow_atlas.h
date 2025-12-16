@@ -95,8 +95,6 @@ public:
 
 	[[nodiscard]] const dense_map<LightID, AtlasLight> &allocated_lights() const { return _id_to_allocated; }
 
-	// calculate a hash that changes if it affects shadow map
-	size_t hash_light(const GPULight &light) const;
 	bool should_render(const AtlasLight &atlas_light, Time now, size_t hash, bool has_dynamic) const;
 
 	void update_shadow_params();

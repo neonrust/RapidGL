@@ -23,19 +23,6 @@ using namespace std::literals;
 static constexpr float s_min_light_value = 1e-2f;
 
 
-namespace std
-{
-template<>
-struct hash<glm::vec3>
-{
-	size_t operator()(const glm::vec3 &v) const
-	{
-	  // -0.0 and 0.0 should return same hash
-		return std::hash<float>()(v.x) ^ std::hash<float>()(v.y) ^ std::hash<float>()(v.z);
-	}
-};
-} // std
-
 [[maybe_unused]] static constexpr glm::vec3 s_cube_face_forward[] = {
 	AXIS_X, -AXIS_X,
 	AXIS_Y, -AXIS_Y,
@@ -251,32 +238,6 @@ size_t ShadowAtlas::eval_lights(const std::vector<LightIndex> &relevant_lights, 
 
 	// return how many shadow maps changed  (new, dropped, promoted, demoted)
 	return num_changes;
-}
-
-size_t ShadowAtlas::hash_light(const GPULight &L) const
-{
-	static std::hash<float> fH;
-	static std::hash<glm::vec3> vH;
-
-	switch(GET_LIGHT_TYPE(L))
-	{
-	case LIGHT_TYPE_POINT:
-		return vH(L.position) ^ fH(L.affect_radius);
-	case LIGHT_TYPE_DIRECTIONAL:
-		return vH(L.direction);
-	case LIGHT_TYPE_SPOT:
-		return vH(L.position)
-			^ fH(L.spot_bounds_radius)  // i.e. affect_radius and outer_angle
-			^ vH(L.direction);
-	case LIGHT_TYPE_RECT:
-	case LIGHT_TYPE_DISC:
-	case LIGHT_TYPE_TUBE:
-	case LIGHT_TYPE_SPHERE:
-		// not shadow casters (currently)
-		return 0;
-	}
-
-	return 0;
 }
 
 bool ShadowAtlas::should_render(const AtlasLight &atlas_light, Time now, size_t light_hash, bool has_dynamic) const
