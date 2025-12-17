@@ -94,8 +94,7 @@ public:
 	size_t eval_lights(const std::vector<LightIndex> &relevant_lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward);
 
 	[[nodiscard]] const dense_map<LightID, AtlasLight> &allocated_lights() const { return _id_to_allocated; }
-
-	bool should_render(const AtlasLight &atlas_light, Time now, size_t hash, bool has_dynamic) const;
+	[[nodiscard]] bool should_render(const AtlasLight &atlas_light, Time now, size_t hash, bool has_dynamic) const;
 
 	void update_shadow_params();
 
@@ -105,9 +104,9 @@ public:
 	void debug_dump_allocated(bool details=false) const;
 	void debug_dump_desired(const std::vector<AtlasLight> &desired_slots) const;
 
-	std::vector<std::pair<SlotSize, size_t>> allocated_counts() const;
+	[[nodiscard]] std::vector<std::pair<SlotSize, size_t>> allocated_counts() const;
 
-	inline size_t slot_size_idx(SlotSize size) const { return _allocator.level_from_size(size) - _allocator.largest_level(); }
+	[[nodiscard]] inline size_t slot_size_idx(SlotSize size) const { return _allocator.level_from_size(size) - _allocator.largest_level(); }
 
 	bool remove_allocation(LightID light_id);
 
