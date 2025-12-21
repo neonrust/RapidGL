@@ -293,12 +293,73 @@ class LayoutComputer:
         {wrapper_name}(const glm::bvec3& v) : x(v.x), y(v.y), z(v.z), _pad(0) {{}}
         operator glm::bvec3() const {{ return glm::bvec3(x, y, z); }}
     }};""")
+            # Padded scalar wrappers for arrays of scalars (float/int/uint/bool)
+            elif typ == 'float':
+                out.append(f"""struct alignas(16) {wrapper_name} {{
+        float v;
+        uint8_t _pad[12];
+        {wrapper_name}() = default;
+        {wrapper_name}(float vv) : v(vv) {{}}
+        operator float() const {{ return v; }}
+    }};""")
+            elif typ == 'int':
+                out.append(f"""struct alignas(16) {wrapper_name} {{
+        int32_t v;
+        uint8_t _pad[12];
+        {wrapper_name}() = default;
+        {wrapper_name}(int32_t vv) : v(vv) {{}}
+        operator int32_t() const {{ return v; }}
+    }};""")
+            elif typ == 'uint':
+                out.append(f"""struct alignas(16) {wrapper_name} {{
+        uint32_t v;
+        uint8_t _pad[12];
+        {wrapper_name}() = default;
+        {wrapper_name}(uint32_t vv) : v(vv) {{}}
+        operator uint32_t() const {{ return v; }}
+    }};""")
+            elif typ == 'bool':
+                out.append(f"""struct alignas(16) {wrapper_name} {{
+        uint32_t v;
+        uint8_t _pad[12];
+        {wrapper_name}() = default;
+        {wrapper_name}(uint32_t vv) : v(vv) {{}}
+        operator uint32_t() const {{ return v; }}
+    }};""")
         if out:
             out.append("")  # spacing
+        # If we emitted padded scalar wrappers, also emit a type-mapping trait and
+        # a helper to convert std::array<Scalar,N> -> std::array<PaddedScalar,N>.
+        scalar_wrappers = [t for t in ('float', 'int', 'uint', 'bool') if t in self.required_wrappers]
+        if scalar_wrappers:
+            out.append("// Helper: map scalar types to their padded wrapper equivalents")
+            out.append("template<typename T> struct PaddedType { using type = T; };")
+            if 'float' in scalar_wrappers:
+                out.append("template<> struct PaddedType<float> { using type = PaddedFloat; };")
+            if 'int' in scalar_wrappers:
+                out.append("template<> struct PaddedType<int> { using type = PaddedInt; };")
+            if 'uint' in scalar_wrappers:
+                out.append("template<> struct PaddedType<uint> { using type = PaddedUint; };")
+            if 'bool' in scalar_wrappers:
+                out.append("template<> struct PaddedType<bool> { using type = PaddedBool; };")
+            out.append("")
+            out.append("template<typename T, size_t N>")
+            out.append("static inline std::array<typename PaddedType<T>::type, N> pad_array(const std::array<T, N>& src) {")
+            out.append("    std::array<typename PaddedType<T>::type, N> dst;")
+            out.append("    for (size_t i = 0; i < N; ++i) dst[i] = src[i];")
+            out.append("    return dst;")
+            out.append("}")
+            out.append("")
+
         return "\n".join(out)
 
     def wrapper_cpp_type(self, typ):
-        return f"Padded{typ.capitalize()}" if typ in VEC3_TYPES else typ
+        # Return a padded wrapper type name for vec3 types and for small scalar types
+        if typ in VEC3_TYPES:
+            return f"Padded{typ.capitalize()}"
+        if typ in ('float', 'int', 'uint', 'bool'):
+            return f"Padded{typ.capitalize()}"
+        return typ
 
     def compute_struct(self, sname):
         """Compute layout for struct sname, store in self.struct_sizes, self.struct_offsets."""
@@ -318,6 +379,12 @@ class LayoutComputer:
                     arr_stride = 16
                     self.required_wrappers.add(field.type)
                 else:
+                    # For arrays of small-sized elements (scalars, mat columns, etc.),
+                    # GLSL std430/std140 use a 16-byte array stride. Emit a padded
+                    # wrapper type so the generated C++ `std::array<...>` has the
+                    # correct per-element size/stride.
+                    if base_size < 16:
+                        self.required_wrappers.add(field.type)
                     arr_stride = self.align(base_size, 16)
                 offset = self.align(offset, align_req)
                 offsets[field.name] = offset
