@@ -189,6 +189,8 @@ std::tuple<std::string, bool> Util::PreprocessShaderSource(const fs::path &filep
 				const auto found_path = found_path_.value();
 				if(not visited_files.contains(found_path))
 				{
+					visited_files.insert(found_path);
+
 					// std::print("  .. {}\n", found_path.string());
 					const auto &[include_data, ok] = LoadFile(found_path);
 					if(not ok)
