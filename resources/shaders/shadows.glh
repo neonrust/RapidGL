@@ -1,4 +1,6 @@
 
+#include "light.glh"
+
 layout (binding = 20) uniform sampler2DShadow u_shadow_atlas;
 layout (binding = 21) uniform sampler2D       u_shadow_atlas_single;
 layout (binding = 22) uniform sampler2D       u_shadow_atlas_normals;
@@ -7,7 +9,7 @@ uniform float u_shadow_max_distance;
 
 vec2 shadow_atlas_texel_size;
 
-uint detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 view_proj, out vec4 rect)
+uint detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 view_proj, out vec4 rect, out float near_z)
 {
 	// figure out which of the 6 cube faces is relevant
 
@@ -43,6 +45,13 @@ uint detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 v
 	vec4 rect_4 = slot_info.atlas_rect[4];
 	vec4 rect_5 = slot_info.atlas_rect[5];
 
+	float near_z_0 = slot_info.near_plane[0];
+	float near_z_1 = slot_info.near_plane[1];
+	float near_z_2 = slot_info.near_plane[2];
+	float near_z_3 = slot_info.near_plane[3];
+	float near_z_4 = slot_info.near_plane[4];
+	float near_z_5 = slot_info.near_plane[5];
+
 	uint face;
 
 	if (major_axis == 0)
@@ -52,12 +61,14 @@ uint detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 v
 			face = 0;
 			view_proj = vp_0;
 			rect = rect_0;
+			near_z = near_z_0;
 		}
 		else  // -X
 		{
 			face = 1;
 			view_proj = vp_1;
 			rect = rect_1;
+			near_z = near_z_1;
 		}
 	}
 	else if (major_axis == 1)
@@ -67,12 +78,14 @@ uint detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 v
 			face = 2;
 			view_proj = vp_2;
 			rect = rect_2;
+			near_z = near_z_2;
 		}
 		else  // -Y
 		{
 			face = 3;
 			view_proj = vp_3;
 			rect = rect_3;
+			near_z = near_z_3;
 		}
 	}
 	else
@@ -82,12 +95,14 @@ uint detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 v
 			face = 4;
 			view_proj = vp_4;
 			rect = rect_4;
+			near_z = near_z_4;
 		}
 		else  // -Z
 		{
 			face = 5;
 			view_proj = vp_5;
 			rect = rect_5;
+			near_z = near_z_5;
 		}
 	}
 	return face;
@@ -133,14 +148,14 @@ float sampleShadow(float distance, float normalized_depth, vec2 atlas_uv, vec2 u
 
 float computeBias(float normalized_depth, vec3 light_to_frag, vec2 normal_uv);
 
-float shadowVisibility(vec3 light_to_frag, vec3 world_pos, vec3 cam_pos, GPULight light, mat4 view_proj, vec4 rect)
+float shadowVisibility(vec3 light_to_frag, vec3 world_pos, vec3 cam_pos, GPULight light, mat4 view_proj, vec4 rect, float near_z)
 {
 	vec4 rect_uv;
 	vec2 atlas_uv = calculateShadowUV(world_pos, view_proj, rect, rect_uv);
 
 	float camera_distance = distance(world_pos, cam_pos);
 	float light_distance = length(light_to_frag);
-	float normalized_depth = light_distance / light.affect_radius;
+	float normalized_depth = linear2normalized(light_distance, near_z, light.affect_radius);
 
 	vec2 uv_min = rect_uv.xy;
 	vec2 uv_max = rect_uv.xy + rect_uv.zw - shadow_atlas_texel_size;

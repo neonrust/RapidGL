@@ -364,9 +364,10 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 
 	mat4 view_proj;
 	vec4 rect; // shadow slot rectangle in atlas, in absolute pixels
-	detectCubeFaceSlot(light_to_frag, slot_info, view_proj, rect);
+	float near_z;
+	detectCubeFaceSlot(light_to_frag, slot_info, view_proj, rect, near_z);
 
-	float shadow_visibility = shadowVisibility(light_to_frag, world_pos, u_cam_pos, light, view_proj, rect);
+	float shadow_visibility = shadowVisibility(light_to_frag, world_pos, u_cam_pos, light, view_proj, rect, near_z);
 
 	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade;
 	float visible = light_fade * shadow_faded;

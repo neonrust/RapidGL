@@ -28,3 +28,8 @@ float spotRadialFalloff(vec3 frag_dir, vec3 direction, float inner_angle, float 
 
     return attenuation * attenuation;
 }
+
+float linear2normalized(float distance, float n, float f)
+{
+	return (distance - n) / (f - n);
+}
