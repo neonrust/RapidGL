@@ -236,14 +236,14 @@ bool Shader::link()
 	{
 		const auto T1 = steady_clock::now();
 		const auto duration = T1 - T0;
-		if(duration >= s_link_log_threshold)
-		{
-			std::print("Shader[{}]: linked, in ", _name);
-			if(duration_cast<milliseconds>(duration).count() > 1)
+		// if(duration >= s_link_log_threshold)
+		// {
+			std::print("Shader[{} / {}]: linked, in ", m_program_id, _name);
+			if(duration > 4ms)
 				std::print("{} ms\n", duration_cast<milliseconds>(duration));
 			else
 				std::print("{} µs\n", duration_cast<microseconds>(duration));
-		}
+		// }
 	}
 
 	return m_is_linked;

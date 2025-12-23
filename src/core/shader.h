@@ -144,7 +144,7 @@ public:
 	template <typename T, size_t N>  // TODO: T should be restricted
 	inline void setUniform(const std::string_view & name, const std::array<T, N> &arr)
 	{
-		setUniform(name, N, &arr[0]);
+		setUniform(name, N, arr.data());
 	}
 
 	void setSubroutine(ShaderType shader_type, const std::string& subroutine_name);
