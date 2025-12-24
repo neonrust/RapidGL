@@ -28,8 +28,11 @@ public:
     float height() const;    // Y-axis
     float depth() const;     // Z-axis
 
-	inline glm::vec3 min() const { return _min; };
-	inline glm::vec3 max() const { return _max; };
+	inline const glm::vec3 &min() const { return _min; };
+	inline const glm::vec3 &max() const { return _max; };
+
+	inline glm::vec3 &min() { return _min; };
+	inline glm::vec3 &max() { return _max; };
 
 	std::array<glm::vec3, 8> corners() const;
 
