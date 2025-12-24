@@ -2,6 +2,9 @@
 
 #include "shader.h" // IWYU pragma: keep
 #include "constants.h"
+#include "hash_combine.h"
+#include "hash_vec3.h"   // IWYU pragma: keep
+#include "hash_mat4.h"   // IWYU pragma: keep
 
 using namespace std::literals;
 
@@ -186,6 +189,15 @@ void Camera::update(double dt)
 
 		m_is_dirty = false;
 	}
+}
+
+size_t Camera::hash() const
+{
+	size_t h { 0 };
+	hash_combine(h, m_position);
+	hash_combine(h, m_view);
+	hash_combine(h, m_projection);
+	return h;
 }
 
 void Camera::updateFrustum()

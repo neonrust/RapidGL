@@ -86,6 +86,8 @@ public:
 
 	inline glm::uvec2 viewportSize() const { return { m_width, m_height }; }
 
+	size_t hash() const;
+
 private:
 	glm::mat4 m_view;
 	glm::mat4 m_projection;
