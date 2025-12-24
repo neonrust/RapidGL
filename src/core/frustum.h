@@ -27,6 +27,7 @@ struct Frustum
 
 	//! world-space corners of frustum volume
 	inline const std::array<glm::vec3, 8> &corners() const { return _corners; }
+	glm::vec3 center() const;
 
 	const std::array<glm::vec4, 6> planes() const;  // left, right, top, bottom, front, back
 

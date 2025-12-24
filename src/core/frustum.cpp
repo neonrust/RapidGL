@@ -2,7 +2,6 @@
 #include <glm/mat4x4.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/norm.hpp>
-#include <print>
 #include "bounds.h"
 
 namespace X
@@ -258,6 +257,18 @@ void Frustum::setFromView(const glm::mat4 &proj, const glm::mat4 &view, const gl
 		const auto l = glm::length(plane.normal());
 		plane.set(plane.normal() / l, plane.offset() / l);
 	}
+}
+
+glm::vec3 Frustum::center() const
+{
+	return (  _corners[0]
+			+ _corners[1]
+			+ _corners[2]
+			+ _corners[3]
+			+ _corners[4]
+			+ _corners[5]
+			+ _corners[6]
+			+ _corners[7]) / 8.f;
 }
 
 const std::array<glm::vec4, 6> Frustum::planes() const
