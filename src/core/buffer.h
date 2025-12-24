@@ -64,7 +64,7 @@ protected:
 
 private:
 	GLuint _id { 0 };
-	BufferUsage _default_usage;
+	const BufferUsage _default_usage;
 	std::string_view _name;
 	GLuint _bind_index { GLuint(-1) };
 };
