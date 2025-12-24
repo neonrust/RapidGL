@@ -2,6 +2,7 @@
 
 #include <glm/mat4x4.hpp>
 #include "hash_combine.h"
+#include "hash_vec4.h"   // IWYU pragma: keep
 
 namespace std
 {
