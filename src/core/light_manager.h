@@ -349,7 +349,7 @@ GPULight LightManager::to_gpu_light(const LT &l)
 	assert(L.position != glm::vec3(0));  // arguable...
 	assert(L.color != glm::vec3(0));
 	assert(L.intensity > 0);
-	assert(L.affect_radius > 0);
+	assert(IS_DIR_LIGHT(L) or L.affect_radius > 0);
 	assert(L.fog_intensity <= 1 and L.fog_intensity >= 0);
 	assert(not IS_SPOT_LIGHT(L) or L.spot_bounds_radius > 0);
 
