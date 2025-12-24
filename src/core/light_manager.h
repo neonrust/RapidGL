@@ -99,6 +99,8 @@ public:
 	template<_private::LightType LT>
 	void set(const LT &l); // needs to have uuid set; sets dirty flag
 
+	inline bool contains(LightID light_id) const { return _id_to_index.contains(light_id); }
+
 	// update dirty lights in the SSBO
 	void flush();
 
@@ -148,7 +150,6 @@ private:
 	// convert an XParams light type to its corresponding "handle" type (includes LightID)
 	template<_private::LightParamsType LTP>
 	auto to_typed(const LTP &lpt, LightID light_id) const -> _private::return_type<LTP>;
-
 
 private:
 	dense_map<LightID, LightIndex> _id_to_index;
