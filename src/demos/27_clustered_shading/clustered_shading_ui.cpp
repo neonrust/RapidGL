@@ -451,7 +451,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 				{
 					const auto &texture = rt->depth_texture();
 
-					static float depth_brightness { 0 };
+					static float depth_brightness { 1.f };
 					if(ImGui::SliderFloat("Brightness", &depth_brightness, 1, 100, "%.1f"))
 						m_imgui_depth_texture_shader->setUniform("u_brightness"sv, depth_brightness);
 					// render with shader to show as gray scale
