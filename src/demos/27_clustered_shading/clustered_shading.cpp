@@ -773,9 +773,9 @@ void ClusteredShading::init_app()
 
 		std::print("spot  : {:.1f}; {:.1f}; {:.1f}  {:.0f}° - {:.0f}°\n", spot_pos.x, spot_pos.y, spot_pos.z, glm::degrees(inner_angle), glm::degrees(outer_angle));
 
-		for(float x = 0.f; x <= 8.f; x += 0.2f)
+		for(auto idx = 0; idx <= 8; ++idx)
 		{
-			point.x = x;
+			point.x = float(idx) * 0.2f;
 			auto to_point = glm::normalize(point - spot_pos);
 			float att = spot_angle_att(to_point, spot_dir, outer_angle, inner_angle);
 			std::print("point : {:.1f}; {:.1f}; {:.1f}  --> {:f}\n", point.x, point.y, point.z, att);
