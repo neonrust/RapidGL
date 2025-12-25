@@ -296,7 +296,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			ImGui::Text("Lights rendered: %3lu  slots: %lu", _light_shadow_maps_rendered, _shadow_atlas_slots_rendered);
 		}
 
-		if(ImGui::CollapsingHeader("Images", ImGuiTreeNodeFlags_DefaultOpen))
+		if(ImGui::CollapsingHeader("Textures", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			static const char *rt_names[] = {
 				"-- No selection",
