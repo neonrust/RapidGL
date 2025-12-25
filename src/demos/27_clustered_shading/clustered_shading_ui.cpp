@@ -189,17 +189,17 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			ImGui::PopItemWidth();
 		}
 
-		static std::string bloom_label = "Bloom (b)";
+		static std::string bloom_label = "Bloom  b:";
 		static const auto bloom_label_size = 9u;
-		if(m_bloom_enabled and bloom_label.size() != bloom_label_size + 6)
+		if(m_bloom_enabled and bloom_label.size() != bloom_label_size + 5)
 		{
 			bloom_label.resize(bloom_label_size);
-			bloom_label.append("  [ON]");
+			bloom_label.append(" [ON]");
 		}
-		else if(not m_bloom_enabled and bloom_label.size() != bloom_label_size + 7)
+		else if(not m_bloom_enabled and bloom_label.size() != bloom_label_size + 6)
 		{
 			bloom_label.resize(bloom_label_size);
-			bloom_label.append("  [off]");
+			bloom_label.append(" [off]");
 		}
 		if (ImGui::CollapsingHeader(bloom_label.c_str()))
 		{
@@ -213,17 +213,17 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			}
 		}
 
-		static std::string fog_label = "Fog / Volumetrics (f)";
+		static std::string fog_label = "Fog / Volumetrics  f:";
 		static const auto fog_label_size = 21u;
-		if(_fog_enabled and fog_label.size() != fog_label_size + 6)
+		if(_fog_enabled and fog_label.size() != fog_label_size + 5)
 		{
 			fog_label.resize(fog_label_size);
-			fog_label.append("  [ON]");
+			fog_label.append(" [ON]");
 		}
-		else if(not _fog_enabled and fog_label.size() != fog_label_size + 7)
+		else if(not _fog_enabled and fog_label.size() != fog_label_size + 6)
 		{
 			fog_label.resize(fog_label_size);
-			fog_label.append("  [off]");
+			fog_label.append(" [off]");
 		}
 		if(ImGui::CollapsingHeader(fog_label.c_str()))//, ImGuiTreeNodeFlags_DefaultOpen))
 		{
