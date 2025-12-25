@@ -1,4 +1,5 @@
 #include "frustum.h"
+#include <functional>  // std::ref
 #include <glm/mat4x4.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/norm.hpp>

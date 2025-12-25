@@ -41,7 +41,7 @@ struct GPULight
 // @interop
 struct ShadowSlotInfo
 {
-	mat4 view_proj[6];  // storing only forward & up saves 192 bytes (480 -> 288)
+	mat4 view_proj[6];
 	uvec4 atlas_rect[6];
 };
 
@@ -99,3 +99,12 @@ layout(std430, binding = SSBO_BIND_RELEVANT_LIGHTS_INDEX) readonly buffer Releva
 { \
 	uint ssbo_relevant_lights_index[]; \
 }
+
+#ifdef __cplusplus
+#undef vec3
+#undef vec4
+#undef uvec3
+#undef uvec4
+#undef uint
+#undef mat4
+#endif
