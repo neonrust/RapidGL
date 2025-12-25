@@ -4,6 +4,7 @@
 const float PI = 3.14159265359;
 
 #include "shared-structs.glh"
+vec3 in_normal; // declared here b/c used in shadowVisibility() in shadows.glh (not used here)
 #include "shadows.glh"
 #include "volumetrics.glh"
 #include "light.glh"
@@ -270,21 +271,21 @@ float sampleRectLight(GPULight light, vec3 sample_pos, float distance_sq)
 {
 	// TODO: degenerate into point light at large distance
 
-	vec4 shape_data[4];
-    shape_data[0] = vec4(light.position + light.shape_data[0].xyz, 1);
-    shape_data[1] = vec4(light.position + light.shape_data[1].xyz, 1);
-    shape_data[2] = vec4(light.position + light.shape_data[2].xyz, 1);
-    shape_data[3] = vec4(light.position + light.shape_data[3].xyz, 1);
+	vec4 points[4];
+    points[0] = vec4(light.position + light.shape_data[0].xyz, 1);
+    points[1] = vec4(light.position + light.shape_data[1].xyz, 1);
+    points[2] = vec4(light.position + light.shape_data[2].xyz, 1);
+    points[3] = vec4(light.position + light.shape_data[3].xyz, 1);
 
 
-	vec3 shape_cross = cross(shape_data[1].xyz - shape_data[0].xyz,
-	                         shape_data[3].xyz - shape_data[0].xyz);
+	vec3 shape_cross = cross(points[1].xyz - points[0].xyz,
+	                         points[0].xyz - points[3].xyz);
 	vec3 normal = normalize(shape_cross);
 
-	// compute closest point on rectangle to sample_pos (same approach as surface shading)
-	vec3 corner0 = shape_data[0].xyz;
-	vec3 edgeU = shape_data[1].xyz - corner0;
-	vec3 edgeV = shape_data[3].xyz - corner0;
+	// compute closest point on rectangle to sample_pos
+	vec3 corner0 = points[0].xyz;
+	vec3 edgeU = points[1].xyz - corner0;
+	vec3 edgeV = points[3].xyz - corner0;
 	vec3 center = corner0 + 0.5 * (edgeU + edgeV);
 	float halfU = length(edgeU) * 0.5;
 	float halfV = length(edgeV) * 0.5;
@@ -573,8 +574,8 @@ float fadeLightByDistance(GPULight light)
 	return fadeByDistance(light_edge_distance, u_light_max_distance);
 }
 
-vec2 calculateShadowUV(vec3 world_pos, mat4 view_proj, vec4 rect, out vec4 rect_uv);
-float shadowVisibility(vec3 light_to_frag, vec3 world_pos, GPULight light, mat4 view_proj, vec4 rect, float near_z);
+//vec2 calculateShadowUV(vec3 world_pos, mat4 view_proj, vec4 rect, out vec4 rect_uv);
+float shadowVisibility(vec3 clip_pos, GPULight light, vec4 rect);
 float sampleShadow(float distance, float normalized_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max);
 
 vec3 pointLightVisibility(GPULight light, vec3 world_pos)
@@ -601,11 +602,13 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 	vec3 light_to_frag = world_pos - light.position;
 
 	mat4 view_proj;
-	vec4 rect; // shadow slot rectangle in atlas, in absolute pixels
+	vec4 slot_rect;
 	float near_z;
-	detectCubeFaceSlot(light_to_frag, slot_info, view_proj, rect, near_z);
+	detectCubeFaceSlot(light_to_frag, slot_info, view_proj, slot_rect);
 
-	float shadow_visibility = shadowVisibility(light_to_frag, world_pos, light, view_proj, rect, near_z);
+	vec4 clip_pos = view_proj * vec4(world_pos, 1);
+	clip_pos /= clip_pos.w;
+	float shadow_visibility = shadowVisibility(clip_pos.xyz, light, slot_rect);
 
 	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade;
 	float visible = light_fade * shadow_faded;
@@ -635,14 +638,11 @@ vec3 spotLightVisibility(GPULight light, vec3 world_pos)
 	ShadowSlotInfo slot_info = ssbo_shadow_slots[shadow_idx];
 
 	mat4 view_proj = slot_info.view_proj[0];
-	vec4 rect = slot_info.atlas_rect[0];
-	float near_z = slot_info.near_plane[0];
+	vec4 slot_rect = slot_info.atlas_rect[0];
 
-	vec4 rect_uv;
-	vec2 atlas_uv = calculateShadowUV(world_pos, view_proj, rect, rect_uv);
-
-	vec3 light_to_frag = world_pos - light.position;
-	float shadow_visibility = shadowVisibility(light_to_frag, world_pos, light, view_proj, rect, near_z);
+	vec4 clip_pos = view_proj * vec4(world_pos, 1);
+	clip_pos /= clip_pos.w;
+	float shadow_visibility = shadowVisibility(clip_pos.xyz, light, slot_rect);
 
 	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade;
 	float visible = light_fade * shadow_faded;
@@ -655,17 +655,22 @@ float sampleShadow(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
 	return texture(u_shadow_atlas_single, atlas_uv).r > current_depth? 1: 0;
 }
 
-float shadowVisibility(vec3 light_to_frag, vec3 world_pos, GPULight light, mat4 view_proj, vec4 rect, float near_z)
+float shadowVisibility(vec3 clip_pos, GPULight light, vec4 slot_rect)
 {
 	vec4 rect_uv;
-	vec2 atlas_uv = calculateShadowUV(world_pos, view_proj, rect, rect_uv);
+	vec2 atlas_uv = calculateShadowUV(clip_pos, slot_rect, rect_uv);
 
-	float light_distance = length(light_to_frag);
-	float normalized_depth = linear2normalized(light_distance, near_z, light.affect_radius);
+	vec2 encoded_normal = textureLod(u_shadow_atlas_normals, atlas_uv, 0).xy;
+	vec3 normal = unpackNormal(encoded_normal);
+
+	float frag_depth = clip_pos.z * 0.5 + 0.5;
+
+	float bias = max(0.001 * (1.0 - dot(normalize(normal), -light.direction)), 1e-5);
+	frag_depth -= bias;
 
 	vec2 uv_min = rect_uv.xy;
 	vec2 uv_max = rect_uv.xy + rect_uv.zw - shadow_atlas_texel_size;
-	return sampleShadow(normalized_depth, atlas_uv, uv_min, uv_max);
+	return sampleShadow(frag_depth, atlas_uv, uv_min, uv_max);
 }
 
 const float SOFT_DISTANCE_LIMIT = 0.8; // fraction of hard limit

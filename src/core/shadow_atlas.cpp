@@ -4,6 +4,11 @@
 
 #include "light_constants.h"
 #include "light_manager.h"
+#include "constants.h"
+#include "glm/ext/matrix_clip_space.hpp"
+#include "glm/ext/matrix_transform.hpp"
+#include "glm/gtc/epsilon.hpp"
+#include "camera.h"
 
 #include <chrono>
 #include <ranges>
@@ -13,28 +18,13 @@
 #include <cmath> // std::signbit
 
 #include "buffer_binds.h"
-#include "glm/ext/matrix_clip_space.hpp"
-#include "glm/ext/matrix_transform.hpp"
-#include "glm/gtc/epsilon.hpp"
-#include "constants.h"
 
 using namespace std::literals;
 
 static constexpr float s_min_light_value = 1e-2f;
 
 
-[[maybe_unused]] static constexpr glm::vec3 s_cube_face_forward[] = {
-	AXIS_X, -AXIS_X,
-	AXIS_Y, -AXIS_Y,
-	AXIS_Z, -AXIS_Z,
-};
-[[maybe_unused]] static constexpr glm::vec3 s_cube_face_up[] = {
-	-AXIS_Y, -AXIS_Y,
-	 AXIS_Z, -AXIS_Z,
-	-AXIS_Y, -AXIS_Y,
-};
-
-#define NUM_SHADOW_SLOTS(light)   (IS_POINT_LIGHT(light)? 6u: (IS_DIR_LIGHT(light)? 3: 1u))
+#define SLOT_CONFIG(light)   (IS_POINT_LIGHT(light)? SlotConfig::Cube: (IS_DIR_LIGHT(light)? SlotConfig::Cascaded: SlotConfig::Single))
 
 
 using namespace std::chrono;
@@ -71,22 +61,15 @@ ShadowAtlas::ShadowAtlas(uint32_t size, LightManager &lights) :
 
 	_id_to_allocated.reserve(64);
 
-	init_slots(24, 64, 256, true);
+	init_slots(24, 64, 256);
 }
 
-void ShadowAtlas::init_slots(size_t count0, size_t count1, size_t count2, bool reserve_sun)
+void ShadowAtlas::init_slots(size_t count0, size_t count1, size_t count2)
 {
 	clear();
 
 	_distribution.reserve(4);
-	if(reserve_sun)
-	{
-		++count0;
-		++count1;
-		++count2;
-	}
 	generate_slots({ count0, count1, count2 });  // +1 for sun light
-
 
 	// define minimum render interval for each slot size
 	//                    { skip frames, interval }
@@ -95,34 +78,6 @@ void ShadowAtlas::init_slots(size_t count0, size_t count1, size_t count2, bool r
 	_render_intervals.push_back({ 1,  25ms });
 	_render_intervals.push_back({ 2,  50ms });
 	_render_intervals.push_back({ 4, 100ms });
-
-	_allocated_sun.uuid = NO_LIGHT_ID;
-
-	if(reserve_sun)
-	{
-		// set aside 3 slots to sun light (uses CSM)
-		// will be used by the (strongest) directional light
-		// TODO: try to avoid hard-coding this allocation
-		//   seem slike a waste if there's actually no sun light present.
-		_allocated_sun.num_slots = 3;
-		static constexpr bool LastSlot = false;
-		const auto start_size = _allocator.max_size();
-		for(auto idx = 0u; idx < _allocated_sun.num_slots; ++idx)
-		{
-			const auto slot_size = start_size >> idx;
-			const auto node_index = alloc_slot(slot_size, LastSlot);
-
-			_allocated_sun.slots[idx].size = slot_size;
-			_allocated_sun.slots[idx].node_index = node_index;
-			_allocated_sun.slots[idx].rect = to_uvec4(_allocator.rect(node_index));
-
-				   // remove the slot from "public" availability
-			--_distribution[_allocator.level_from_size(slot_size) - _allocator.largest_level()];
-		}
-		_allocated_sun._dirty = true;
-	}
-	else
-		_allocated_sun.num_slots = 0;
 }
 
 ShadowAtlas::~ShadowAtlas()
@@ -155,6 +110,18 @@ size_t ShadowAtlas::eval_lights(const std::vector<LightIndex> &relevant_lights, 
 	// 1. assign value to all, shadow-casting, lights
 	auto counters = prioritize_lights(relevant_lights, view_pos, view_forward, prioritized);
 
+	if(prioritized.empty())
+	{
+		size_t num_changes { 0 };
+		for(const auto &[light_id, atlas_light]: _id_to_allocated)
+		{
+			bool deallocaded = remove_allocation(light_id);
+			assert(deallocaded);
+			++num_changes;
+		}
+		return num_changes;
+	}
+
 	// 2. "pour" the valued lights into the sizd -buckets.
 	//    NOTE: this is just a "desire"; not affected by already allocated slots
 
@@ -166,27 +133,63 @@ size_t ShadowAtlas::eval_lights(const std::vector<LightIndex> &relevant_lights, 
 
 	// std::print("  start_size_idx: {}   top value: {}  [{}]\n", size_idx, top_light_value, prioritized.begin()->light_id);
 
-	for(const auto &prio_light: prioritized)
+	auto prio_iter = prioritized.begin();
+
+	// if the first light is a "sun", allocate it separately (different logic, i.e. CSM)
+	//   and there's no need to check for available space since it's the first light
+	if(auto &prio_light = *prio_iter; prio_light.config == SlotConfig::Cascaded)
 	{
+		++prio_iter;
+
 		AtlasLight atlas_light;
-		atlas_light.uuid      = prio_light.light_id;
-		atlas_light.num_slots = prio_light.num_slots;
+		atlas_light.uuid        = prio_light.light_id;
+		atlas_light.num_slots   = _sun_num_cascades;
+		atlas_light.slot_config = SlotConfig::Cascaded;
+
+		// allocate cascaded shadow map for the sun (N largest slot sizes)
+		auto slot_size = _allocator.max_size();
+
+		for(auto cascade = 0u; cascade < _sun_num_cascades; ++cascade)//, slot_size >>= 1)
+		{
+			atlas_light.slots[cascade].size = slot_size;
+			--distribution[cascade];
+		}
+
+		desired_slots.push_back(atlas_light);
+	}
+
+	// handle all "regular" lights
+	for(; prio_iter != prioritized.end(); ++prio_iter)
+	{
+		const auto &prio_light = *prio_iter;
+
+		AtlasLight atlas_light;
+		atlas_light.uuid        = prio_light.light_id;
+		atlas_light.slot_config = prio_light.config;
+
+		if(auto cfg = prio_light.config; cfg != SlotConfig::Cascaded)
+			atlas_light.num_slots = uint_fast8_t(cfg);
+		else
+			assert(false); // should never happen; there can be only one! (see above)
 
 		// based on the light's value, deduce where to start searching for available slots
-		auto size_idx = static_cast<uint32_t>(std::floor(static_cast<float>(distribution.size()) * (1 - prio_light.value)));
+		auto size_idx = static_cast<uint32_t>(std::floor(static_cast<float>(distribution.size()) * (1 - std::min(prio_light.value, 1.f))));
 		// initial position and corresponding slot size
 		auto slot_size = _allocator.max_size() >> size_idx;
 
-		// find a slot size  tier that still has room for required slots
+		// find a slot size tier that still has room for required slots
 		while(distribution[size_idx] < atlas_light.num_slots and size_idx < distribution.size())
 		{
 			// nothing available, next size
 			++size_idx;
 			slot_size >>= 1;
 		}
-		if(size_idx < distribution.size())
+
+		const auto slot_found = size_idx < distribution.size();
+
+		if(slot_found)
 		{
-			// define the desired slot sizes
+			// define the desired slot(s)
 			for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
 				atlas_light.slots[idx].size = slot_size;
 
@@ -203,6 +206,8 @@ size_t ShadowAtlas::eval_lights(const std::vector<LightIndex> &relevant_lights, 
 				++counters.dropped;
 			else
 				++counters.denied;
+			if(atlas_light.num_slots == 1)
+				break;  // not even a sincle-slot could be alllocated
 		}
 	}
 
@@ -230,8 +235,9 @@ size_t ShadowAtlas::eval_lights(const std::vector<LightIndex> &relevant_lights, 
 			std::print(" \x1b[34;1m🡇\x1b[m{}", counters.demoted);
 		if(counters.change_pending)
 			std::print(" \x1b[1m❔\x1b[m{}", counters.change_pending);
-		std::print(", in {} ->", duration_cast<microseconds>(steady_clock::now() - T0));
+		std::print(", in {}", duration_cast<microseconds>(steady_clock::now() - T0));
 #if defined(DEBUG)
+		std::print(" ->");
 		debug_dump_allocated(false);
 #endif
 	}
@@ -242,7 +248,6 @@ size_t ShadowAtlas::eval_lights(const std::vector<LightIndex> &relevant_lights, 
 
 bool ShadowAtlas::should_render(const AtlasLight &atlas_light, Time now, size_t light_hash, bool has_dynamic) const
 {
-
 	if(atlas_light.is_dirty())
 		return true;
 
@@ -274,14 +279,16 @@ bool ShadowAtlas::remove_allocation(LightID light_id)
 
 	const auto &atlas_light = found->second;
 
-	for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
-	{
-		const auto &slot = atlas_light.slots[idx];
-		free_slot(slot.size, slot.node_index);
-	}
+	free_all_slots(atlas_light);
 
 	_id_to_allocated.erase(found);
 	_lights.clear_shadow_index(light_id);
+
+	if(light_id == _sun_id)
+	{
+		_sun_id = NO_LIGHT_ID;
+		_csm_params.clear();
+	}
 
 	return true;
 }
@@ -331,15 +338,19 @@ void ShadowAtlas::debug_dump_allocated(bool details) const
 	for(const auto &[light_id, atlas_light]: _id_to_allocated)
 	{
 		num_used += atlas_light.num_slots;
-		auto slot_size = atlas_light.slots[0].size;
-		auto found = size_counts.find(slot_size);
-		if(found == size_counts.end())
+
+		for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
 		{
-			sizes.push_back(slot_size);
-			size_counts[slot_size] = 1;
+			const auto slot_size = atlas_light.slots[idx].size;
+			auto found = size_counts.find(slot_size);
+			if(found == size_counts.end())
+			{
+				sizes.push_back(slot_size);
+				size_counts[slot_size] = 1;
+			}
+			else
+				++found->second;
 		}
-		else
-			++found->second;
 
 		if(details)
 		{
@@ -359,6 +370,7 @@ void ShadowAtlas::debug_dump_allocated(bool details) const
 	if(not sizes.empty())
 	{
 		std::ranges::sort(sizes, std::greater<SlotSize>());
+
 		std::print(" {{ ");
 		auto first = true;
 		for(const auto &slot_size: sizes)
@@ -374,7 +386,7 @@ void ShadowAtlas::debug_dump_allocated(bool details) const
 		for(const auto &[size, slot_set]: _slot_sets)
 			num_available += slot_set.size();
 
-		assert(num_available + num_used + _allocated_sun.num_slots == _max_shadow_slots);
+		assert(num_available + num_used == _total_num_slots);
 #endif
 	}
 }
@@ -398,15 +410,17 @@ void ShadowAtlas::debug_dump_desired(const std::vector<AtlasLight> &desired_slot
 	}
 }
 
-
-static glm::mat4 light_view_projection(const GPULight &light, size_t idx=0);
-
 void ShadowAtlas::update_shadow_params()
 {
-	static std::vector<decltype(_shadow_slots_info_ssbo)::value_type> shadow_params;
+	// NOTE: for directional lights, this uses the separately-updated CSM params (by calling update_csm_params())
+
+	static std::vector<ShadowSlotInfo> shadow_params;
+	static_assert(std::same_as<decltype(_shadow_slots_info_ssbo)::value_type, decltype(shadow_params)::value_type>);
+
 	shadow_params.reserve(_id_to_allocated.size());
 	shadow_params.clear();
 
+	// if a "sun" light has shadow map allocated (see allocated_sun()), update_csm_params() needs to be called before this
 	for(auto &[light_id, atlas_light]: allocated_lights())
 	{
 		const auto &light = _lights.get_by_id(light_id);
@@ -416,7 +430,13 @@ void ShadowAtlas::update_shadow_params()
 
 		for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
 		{
-			projs[idx] = light_view_projection(light, idx);
+			if(IS_DIR_LIGHT(light))
+				projs[idx] = _csm_params.view_projection[idx];
+			else
+			{
+				const auto &[proj, nz, fz] = light_view_projection(light, idx);
+				projs[idx] = proj;
+			}
 			rects[idx] = atlas_light.slots[idx].rect;
 		}
 
@@ -424,9 +444,203 @@ void ShadowAtlas::update_shadow_params()
 
 		shadow_params.emplace_back(projs, rects);
 	}
-
 	_shadow_slots_info_ssbo.set(shadow_params);
 	_lights.flush();
+}
+
+[[maybe_unused]] static constexpr glm::vec3 s_cube_face_forward[] = {
+	AXIS_X, -AXIS_X,
+	AXIS_Y, -AXIS_Y,
+	AXIS_Z, -AXIS_Z,
+};
+[[maybe_unused]] static constexpr glm::vec3 s_cube_face_up[] = {
+	-AXIS_Y, -AXIS_Y,
+	AXIS_Z, -AXIS_Z,
+	-AXIS_Y, -AXIS_Y,
+};
+
+std::tuple<glm::mat4, float, float> ShadowAtlas::light_view_projection(const GPULight &light, size_t idx)
+{
+	// TODO: this only needs to be done if the light has changed
+	//   cache it where?   move this to LightManager?
+
+	const auto far_z  = light.affect_radius;
+	const auto near_z = std::max(0.1f, far_z / 500.f);
+
+	// std::print("light VP: Z = {} -> {}\n", near_z, far_z);
+
+	if(IS_POINT_LIGHT(light))
+	{
+		assert(idx < 6);
+		static constexpr auto square = 1.f;
+
+		const auto &view_forward   = s_cube_face_forward[idx];
+		const auto &view_up        = s_cube_face_up[idx];
+
+		assert(glm::epsilonEqual(glm::length(view_forward), 1.f, 0.01f));
+		const auto light_view      = glm::lookAt(light.position, light.position + view_forward, view_up);
+		const auto face_projection = glm::perspective(glm::half_pi<float>(), square, near_z, far_z);
+		const auto light_vp        = face_projection * light_view;
+
+		// std::print("  point VP {} ->\n{: .3f}\n", face_names[idx], light_view);
+
+		return { light_vp, near_z, far_z };
+	}
+	else if(IS_SPOT_LIGHT(light))
+	{
+		assert(idx == 0);
+		static constexpr auto square = 1.f;
+
+		const auto &view_forward = light.direction;
+		const auto &view_up      = view_forward == AXIS_Z or view_forward == -AXIS_Z? AXIS_X: AXIS_Z;
+
+		const auto light_view    = glm::lookAt(light.position, light.position + view_forward, view_up);
+		const auto projection    = glm::perspective(light.outer_angle*2, square, near_z, far_z);
+		const auto light_vp      = projection * light_view;
+
+		return { light_vp, near_z, far_z };
+	}
+	else
+	{
+		assert(false);
+		// for directional lights, the necessary stuff is calculated in update_csm_params()
+	}
+
+	return { glm::mat4(1), -1, -1 };
+}
+
+
+const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, const RGL::Camera &camera)//, float radius_uv)
+{
+	// TODO: move to ShadowAtlas ?
+	//   if so, also move view_projection() ?
+
+	auto found = _id_to_allocated.find(light_id);
+	if(found == _id_to_allocated.end())
+	{
+		assert(false);
+		return _csm_params;
+	}
+	const auto &atlas_light = found->second;
+	assert(atlas_light.num_slots >= 1 and atlas_light.num_slots <= 6);
+	const auto num_cascades = atlas_light.num_slots;
+	const auto shadow_map_size = float(atlas_light.slots[0].size);
+
+	const auto &sun = _lights.get_by_id(light_id);
+
+	_csm_params.num_cascades = num_cascades;
+
+	// this bit needs only be done when the frustum's near/far planes has changed
+	float near_z     = camera.nearPlane();
+	float far_z      = camera.farPlane();   // distance is limited below  (using _max_distance)
+	float clip_range = far_z - near_z;
+	float ratio      = far_z / near_z;
+
+	auto linear2normalized = [near_z, far_z](float d) {
+		return (d - near_z) / (far_z - near_z);
+	};
+
+	float last_split_dist  = 0.f;
+	// float avg_frustum_size = 0.f;
+
+	const auto range_scale = 1.f;//std::min(_max_distance / far_z, 1.f);
+	// std::print("CSM cascades: {}, depth: {:.1f}  scaler: {:.1f}\n", num_cascades, far_z, range_scale);
+
+	for(auto cascade = 0u; cascade < num_cascades; ++cascade)
+	{
+		// split frustum in depth slices; blend between logarithmic and linear
+		float p        = float(cascade + 1) / float(num_cascades);
+		float d_log    = near_z * std::pow(ratio, p);
+		float d_linear = near_z + clip_range * p;
+		float d_mix    = glm::mix(d_linear, d_log, _csm_frustum_split_mix);
+
+		float split_dist = linear2normalized(d_mix) * range_scale;
+
+		const auto split_depth = (camera.nearPlane() + split_dist * clip_range) * -1.0f;
+		// m_directional_light_shader->setUniform("u_cascade_splits[" + std::to_string(i) + "]", split_depth);
+		_csm_params.camera_depth[cascade] = split_depth;
+
+
+		std::array<glm::vec3, 8> frustum_corners = camera.frustum().corners(); // copy
+
+		auto slice_frustum = [&frustum_corners, last_split_dist](uint32_t idx, float distance) {
+			//                                            far   -   near
+			const auto to_far_plane  = frustum_corners[idx + 2] - frustum_corners[idx];
+			frustum_corners[idx + 2] = frustum_corners[idx] + (to_far_plane * distance);
+			frustum_corners[idx]     = frustum_corners[idx] + (to_far_plane * last_split_dist);
+		};
+		slice_frustum(0, split_dist);  // top-left
+		slice_frustum(1, split_dist);  // bottom-left
+		slice_frustum(4, split_dist);  // top-right
+		slice_frustum(5, split_dist);  // bottom-right
+
+		last_split_dist = split_dist;
+
+		// furstum slice has been calculated -> 'frustum_corners'
+		// now, calculate the orthographic projection to encompass the frustum slice
+
+		auto frustum_center = glm::vec3(0);
+		for(auto idx = 0u; idx < 8; ++idx)
+			frustum_center += frustum_corners[idx];
+		frustum_center /= 8.0f;
+
+
+		float cascade_radius = 0.f;
+		std::for_each(frustum_corners.begin(), frustum_corners.end(), [&cascade_radius, frustum_center](const auto &corner) {
+			cascade_radius = std::max(cascade_radius, glm::distance(corner, frustum_center));
+		});
+		cascade_radius = std::ceilf(cascade_radius * 16.0f) / 16.0f;  // not sure why this is a good idea...
+
+		auto light_pos = frustum_center - sun.direction * cascade_radius;
+		auto light_view = glm::lookAt(light_pos, frustum_center, AXIS_Y);
+
+		auto light_projection = glm::ortho(-cascade_radius, cascade_radius,
+										   -cascade_radius, cascade_radius,
+										   0.f, 2.f * cascade_radius);
+
+		auto light_vp = light_projection * light_view;
+
+		// apply "stabilization" logic; to reduce pixel "swimming"
+		auto shadow_origin = light_vp * glm::vec4(0, 0, 0, 1);
+		shadow_origin *= shadow_map_size / 2.f;
+
+		auto rounded_origin = glm::round(shadow_origin);
+		auto round_offset = rounded_origin - shadow_origin;
+		round_offset *= 2.f / shadow_map_size;
+		round_offset.z = 0.f;
+		round_offset.w = 0.f;
+
+		light_projection[3] += round_offset; // inject into projection matrix
+		light_vp = light_projection * light_view;
+
+
+		_csm_params.view_projection[cascade] = light_vp;
+
+		// std::print("   {}: D:{:>5.1f}  C: {:.1f}; {:.1f}; {:.1f}  r: {:.1f}\n",
+		// 		   cascade,
+		// 		   -split_depth,
+		// 		   frustum_center.x, frustum_center.y, frustum_center.z,
+		// 		   cascade_radius
+		// 		   );
+
+		_csm_params.depth_range[cascade] = { -cascade_radius, cascade_radius };
+	}
+
+	return _csm_params;
+}
+
+const ShadowAtlas::AtlasLight & ShadowAtlas::allocated_sun() const
+{
+	if(_sun_id == NO_LIGHT_ID)
+	{
+		static const AtlasLight sentinel;
+		return sentinel;
+	}
+
+	assert(_id_to_allocated.contains(_sun_id));
+	assert(_lights.contains(_sun_id));
+
+	return _id_to_allocated.find(_sun_id)->second;
 }
 
 void ShadowAtlas::clear()
@@ -446,7 +660,8 @@ ShadowAtlas::Counters ShadowAtlas::prioritize_lights(const std::vector<LightInde
 {
 	// calculate "value" for each shadow-casting light
 
-	float strongest_dir_value { -1.f };
+	float strongest_dir_value { -1.f };  // only the strongest dir light may get a shadow allocation
+	LightID strongest_dir_id { NO_LIGHT_ID };
 
 	Counters counters;
 
@@ -466,11 +681,11 @@ ShadowAtlas::Counters ShadowAtlas::prioritize_lights(const std::vector<LightInde
 			{
 				if(IS_DIR_LIGHT(light) and value > strongest_dir_value)
 				{
-					_allocated_sun.uuid = light_id;
+					strongest_dir_id = light_id;
 					strongest_dir_value = value;
 				}
 				else
-					prioritized.emplace_back(value, light_id, NUM_SHADOW_SLOTS(light));
+					prioritized.emplace_back(value, light_id, SLOT_CONFIG(light));
 			}
 			else
 			{
@@ -483,17 +698,12 @@ ShadowAtlas::Counters ShadowAtlas::prioritize_lights(const std::vector<LightInde
 
 	if(strongest_dir_value > s_min_light_value)
 	{
-		prioritized.push_back({
-			.value = 2.f,          // light should _always_ be included
-			.light_id = _allocated_sun.uuid,
-			.num_slots = 3,        // CSM  see: https://learnopengl.com/Guest-Articles/2021/CSM
-		});
+		// the "sun" should _always_ get a shadow slot
+		// CSM  see: https://learnopengl.com/Guest-Articles/2021/CSM
+		prioritized.emplace_back(2.f, strongest_dir_id, SlotConfig::Cascaded);
 	}
 
 	std::ranges::sort(prioritized, std::greater<>{});
-
-	if(_allocated_sun.uuid != NO_LIGHT_ID)
-		assert(IS_DIR_LIGHT(_lights.get_by_id(prioritized[0].light_id)));
 
 	return counters;
 }
@@ -511,7 +721,7 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const std::vector<AtlasLi
 
 	std::array<size_t, 4> size_promised = { 0, 0, 0, 0 };  // max to min level slot sizes promised (used for pro/demotions)
 
-	// deallocate for pro/demotions first, then new allocations and allocations for pro/demotions
+	// deallocate for pro/demotions first, then allocations for pro/demotions, then finally new allocations
 
 	// deallocate lights for pro/demotions
 	for(const auto &[desired_index, desired]: std::views::enumerate(desired_slots))
@@ -602,7 +812,7 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const std::vector<AtlasLi
 		found->second = atlas_light;
 	}
 
-	// no more promises!  (we already did those above)
+	// no more promises!  (we already delivered on those above)
 	size_promised = { 0, 0, 0, 0 };
 
 	// finally, allocate totally NEW slots
@@ -647,6 +857,9 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const std::vector<AtlasLi
 			// std::print("; {} remaining\n", _slot_sets[atlas_light.slots[0].size].size());
 
 			_id_to_allocated[light_id] = atlas_light;
+
+			if(desired.slot_config == SlotConfig::Cascaded)
+				_sun_id = light_id;
 		}
 	}
 
@@ -786,6 +999,15 @@ void ShadowAtlas::free_slot(SlotSize size, SlotID node_index)
 	free_slots.push_back(node_index);
 }
 
+void ShadowAtlas::free_all_slots(const AtlasLight &atlas_light)
+{
+	for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
+	{
+		const auto &slot = atlas_light.slots[idx];
+		free_slot(slot.size, slot.node_index);
+	}
+}
+
 float ShadowAtlas::light_value(const GPULight &light, const glm::vec3 &view_pos, const glm::vec3 &view_forward) const
 {
 	// calculate the "value" of a light on a fixed scale  [0, 1]
@@ -851,7 +1073,7 @@ void ShadowAtlas::generate_slots(std::initializer_list<size_t> distribution)
 	_slot_sets.reserve(_allocator.num_allocatable_levels());
 	_slot_sets.clear();
 
-	_max_shadow_slots = 0;
+	_total_num_slots = 0;
 
 	// use the allocator to calculate how many slots are possible
 	//  e.g. allocate the first N-1 levels of the distribution,
@@ -861,17 +1083,20 @@ void ShadowAtlas::generate_slots(std::initializer_list<size_t> distribution)
 	for(const auto count: _distribution)
 	{
 		auto &free_slots = _slot_sets[slot_size];
-		free_slots.reserve(count);
-
-		for(auto idx = 0u; idx < count; ++idx)
+		free_slots.clear();
+		if(count > 0)
 		{
-			const auto index = _allocator.allocate(slot_size);
-			assert(index != _allocator.end());
-			// prepend so they're allocated in "correct" order (uses pop_back())
-			free_slots.insert(free_slots.begin(), index);
-		}
-		_max_shadow_slots += free_slots.size();
+			free_slots.reserve(count);
 
+			for(auto idx = 0u; idx < count; ++idx)
+			{
+				const auto index = _allocator.allocate(slot_size);
+				assert(index != _allocator.end());
+				// prepend so they're allocated in "correct" order (uses pop_back())
+				free_slots.insert(free_slots.begin(), index);
+			}
+			_total_num_slots += free_slots.size();
+		}
 		slot_size >>= 1;
 	}
 
@@ -889,13 +1114,13 @@ void ShadowAtlas::generate_slots(std::initializer_list<size_t> distribution)
 	}
 	while(true);
 
-	_max_shadow_slots += free_slots.size();
+	_total_num_slots += free_slots.size();
 
 	_distribution.push_back(free_slots.size());
 
 	const auto Td = steady_clock::now() - T0;
 
-	std::print("\x1b[32;1mShadowAtlas\x1b[m {} shadow map slots defined, in {}\n", _max_shadow_slots, duration_cast<microseconds>(Td));
+	std::print("\x1b[32;1mShadowAtlas\x1b[m {} shadow map slots defined, in {}\n", _total_num_slots, duration_cast<microseconds>(Td));
 	slot_size = _allocator.max_size();
 	for(const auto count: _distribution)
 	{
@@ -952,54 +1177,9 @@ struct std::formatter<glm::mat4> {
 	"+Z"sv, "-Z"sv,
 };
 
-static glm::mat4 light_view_projection(const GPULight &light, size_t idx)
-{
-	const auto far_z  = light.affect_radius;
-	const auto near_z = std::max(0.1f, far_z / 250.f);
-
-	if(IS_POINT_LIGHT(light))
-	{
-		assert(idx < 6);
-		static constexpr auto square = 1.f;
-
-		const auto &view_forward   = s_cube_face_forward[idx];
-		const auto &view_up        = s_cube_face_up[idx];
-
-		assert(glm::epsilonEqual(glm::length(view_forward), 1.f, 0.01f));
-		const auto light_view      = glm::lookAt(light.position, light.position + view_forward, view_up);
-		const auto face_projection = glm::perspective(glm::half_pi<float>(), square, near_z, far_z);
-		const auto light_vp        = face_projection * light_view;
-
-		// std::print("  point VP {} ->\n{: .3f}\n", face_names[idx], light_view);
-
-		return light_vp;
-	}
-	if(IS_DIR_LIGHT(light))
-	{
-		assert(idx < 3);
-		// TODO
-		//   3 cascades (CSM)
-	}
-	if(IS_SPOT_LIGHT(light))
-	{
-		assert(idx == 0);
-		static constexpr auto square = 1.f;
-
-		const auto &view_forward = light.direction;
-		const auto &view_up      = view_forward == AXIS_Z or view_forward == -AXIS_Z? AXIS_X: AXIS_Z;
-
-		const auto light_view    = glm::lookAt(light.position, light.position + view_forward, view_up);
-		const auto projection    = glm::perspective(light.outer_angle*2, square, near_z, far_z);
-		const auto light_vp      = projection * light_view;
-
-		return light_vp;
-	}
-
-	return glm::mat4(1);
-}
-
 ShadowAtlas::AtlasLight::AtlasLight(const AtlasLight &other) :
 	uuid(other.uuid),
+	slot_config(other.slot_config),
 	num_slots(other.num_slots),
 	slots(other.slots),
 	hash(0),

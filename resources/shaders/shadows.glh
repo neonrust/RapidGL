@@ -9,7 +9,7 @@ uniform float u_shadow_max_distance;
 
 vec2 shadow_atlas_texel_size;
 
-uint detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 view_proj, out vec4 rect, out float near_z)
+uint detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 view_proj, out vec4 rect)
 {
 	// figure out which of the 6 cube faces is relevant
 
@@ -45,13 +45,6 @@ uint detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 v
 	vec4 rect_4 = slot_info.atlas_rect[4];
 	vec4 rect_5 = slot_info.atlas_rect[5];
 
-	float near_z_0 = slot_info.near_plane[0];
-	float near_z_1 = slot_info.near_plane[1];
-	float near_z_2 = slot_info.near_plane[2];
-	float near_z_3 = slot_info.near_plane[3];
-	float near_z_4 = slot_info.near_plane[4];
-	float near_z_5 = slot_info.near_plane[5];
-
 	uint face;
 
 	if (major_axis == 0)
@@ -61,14 +54,12 @@ uint detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 v
 			face = 0;
 			view_proj = vp_0;
 			rect = rect_0;
-			near_z = near_z_0;
 		}
 		else  // -X
 		{
 			face = 1;
 			view_proj = vp_1;
 			rect = rect_1;
-			near_z = near_z_1;
 		}
 	}
 	else if (major_axis == 1)
@@ -78,14 +69,12 @@ uint detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 v
 			face = 2;
 			view_proj = vp_2;
 			rect = rect_2;
-			near_z = near_z_2;
 		}
 		else  // -Y
 		{
 			face = 3;
 			view_proj = vp_3;
 			rect = rect_3;
-			near_z = near_z_3;
 		}
 	}
 	else
@@ -95,20 +84,18 @@ uint detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 v
 			face = 4;
 			view_proj = vp_4;
 			rect = rect_4;
-			near_z = near_z_4;
 		}
 		else  // -Z
 		{
 			face = 5;
 			view_proj = vp_5;
 			rect = rect_5;
-			near_z = near_z_5;
 		}
 	}
 	return face;
 }
 
-vec2 calculateShadowUV(vec3 world_pos, mat4 view_proj, vec4 rect, out vec4 rect_uv)
+vec2 calculateShadowUV(vec3 clip_pos, vec4 rect, out vec4 rect_uv)
 {
 	// rect     : slot square in atlas pixel-space; x,y & w,h
 	// rect_uv  : slot square in atlas UV-space; x,y & w,h
@@ -124,42 +111,44 @@ vec2 calculateShadowUV(vec3 world_pos, mat4 view_proj, vec4 rect, out vec4 rect_
 	rect.w -= 2;
 
 	// to light space
-	vec4 light_space = view_proj * vec4(world_pos, 1);
-	light_space.xyz /= light_space.w; // NDC
-	vec2 face_uv = light_space.xy * 0.5 + 0.5; // [0, 1]
+	// vec4 light_space = view_proj * vec4(world_pos, 1);
+	// light_space.xyz /= light_space.w; // NDC
+	vec2 face_uv = clip_pos.xy * 0.5 + 0.5; // [0, 1]
 	rect_uv = rect * vec4(shadow_atlas_texel_size, shadow_atlas_texel_size);
 	return rect_uv.xy + face_uv * (rect_uv.zw + shadow_atlas_texel_size);
 }
 
-// vec3 unpackNormal(vec2 f)
-// {
-//     // float z = sqrt(max(0, 1 - dot(f, f)));
-//     // return vec3(f, z);
+vec3 unpackNormal(vec2 f)
+{
+    // float z = sqrt(max(0, 1 - dot(f, f)));
+    // return vec3(f, z);
 
-//     // octahedral encoding
-//     f = f * 2.0 - 1.0; // Back to [-1, 1]
-//     vec3 n = vec3(f.xy, 1.0 - abs(f.x) - abs(f.y));
-//     float t = clamp(-n.z, 0.0, 1.0);
-//     n.xy -= sign(n.xy) * t;
-//     return normalize(n);
-// }
+    // octahedral encoding
+    f = f * 2.0 - 1.0; // Back to [-1, 1]
+    vec3 n = vec3(f.xy, 1.0 - abs(f.x) - abs(f.y));
+    float t = clamp(-n.z, 0.0, 1.0);
+    n.xy -= sign(n.xy) * t;
+    return normalize(n);
+}
 
-float sampleShadow(float distance, float normalized_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max);
+float sampleShadow(float camera_distance, float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max);
 
 float computeBias(float normalized_depth, vec3 light_to_frag, vec2 normal_uv);
 
-float shadowVisibility(vec3 light_to_frag, vec3 world_pos, vec3 cam_pos, GPULight light, mat4 view_proj, vec4 rect, float near_z)
+float sampleShadow1(float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max);
+float shadowVisibility(vec3 clip_pos, float camera_distance, GPULight light, vec4 rect)
 {
 	vec4 rect_uv;
-	vec2 atlas_uv = calculateShadowUV(world_pos, view_proj, rect, rect_uv);
+	vec2 atlas_uv = calculateShadowUV(clip_pos, rect, rect_uv);
 
-	float camera_distance = distance(world_pos, cam_pos);
-	float light_distance = length(light_to_frag);
-	float normalized_depth = linear2normalized(light_distance, near_z, light.affect_radius);
+	float frag_depth = clip_pos.z * 0.5 + 0.5;
+
+	float bias = max(0.001 * (1.0 - dot(normalize(in_normal), -light.direction)), 1e-5);
+	frag_depth -= bias;
 
 	vec2 uv_min = rect_uv.xy;
 	vec2 uv_max = rect_uv.xy + rect_uv.zw - shadow_atlas_texel_size;
-	return sampleShadow(camera_distance, normalized_depth, atlas_uv, uv_min, uv_max);
+	return sampleShadow(camera_distance, frag_depth, atlas_uv, uv_min, uv_max);
 }
 
 // float computeSlopeBias(vec3 light_to_frag, vec3 depth_normal)
@@ -191,7 +180,7 @@ float shadowVisibility(vec3 light_to_frag, vec3 world_pos, vec3 cam_pos, GPULigh
 // 	return bias + u_shadow_bias_constant;
 // }
 
-float sampleShadow1(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
+float sampleShadow1(float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
 {
 	// if 'atlas_uv' is closer than 2 pixels to 'uv_min' or 'uv_mac' (component wise),
 	// use the _single sampler
@@ -201,13 +190,13 @@ float sampleShadow1(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max
 	   || atlas_uv.y <= uv_min.y + margin || atlas_uv.y >= uv_max.y - margin)
 	{
 		atlas_uv = clamp(atlas_uv, uv_min, uv_max);
-		return texture(u_shadow_atlas_single, atlas_uv).r > current_depth? 1: 0;
+		return texture(u_shadow_atlas_single, atlas_uv).r > frag_depth? 1: 0;
 	}
 	else
-		return texture(u_shadow_atlas, vec3(atlas_uv, current_depth));
+		return texture(u_shadow_atlas, vec3(atlas_uv, frag_depth));
 }
 
-float sampleShadow5(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
+float sampleShadow5(float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
 {
 	// 5-point "kernel", X-shape
 
@@ -224,7 +213,7 @@ float sampleShadow5(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max
 	//   otherwise, sampler2DShadow will sample outside the slot square (commonly uses 2x2 texels)
 #define SAMPLE(uv_offset, weight) \
 	uv = atlas_uv + uv_offset*shadow_atlas_texel_size; \
-	shadow += sampleShadow1(current_depth, uv, uv_min, uv_max)*weight;
+	shadow += sampleShadow1(frag_depth, uv, uv_min, uv_max)*weight;
 
 	// cheaper sampling: only center and four corners of the 3x3 box
 	const float weights5[2] = { 0.4, 0.15 };  // total = 1
@@ -240,7 +229,7 @@ float sampleShadow5(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max
 	return shadow;
 }
 
-float sampleShadow9(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
+float sampleShadow9(float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
 {
 	// 3x3 gauss kernel
 
@@ -262,7 +251,7 @@ float sampleShadow9(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max
 	// sample a 3x3 box around the sample
 #define SAMPLE(uv_offset, weight) \
 	uv = atlas_uv + uv_offset*shadow_atlas_texel_size; \
-	shadow += sampleShadow1(current_depth, uv, uv_min, uv_max)*weight;
+	shadow += sampleShadow1(frag_depth, uv, uv_min, uv_max)*weight;
 
   	// 3x3 gauss box
   	const float weights9[3] = { 0.25, 0.125, 0.0625 };  // total = 1
@@ -285,11 +274,12 @@ float sampleShadow9(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max
 float shadow_low_sampling_distance  = u_shadow_max_distance / 3;
 float shadow_mid_sampling_distance  = u_shadow_max_distance / 8; // closer -> high sampling (3x3)
 
-float sampleShadow(float distance, float normalized_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
+float sampleShadow(float camera_distance, float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
 {
-	if(distance > shadow_low_sampling_distance)
-		return sampleShadow1(normalized_depth, atlas_uv, uv_min, uv_max);
-	else if(distance > shadow_mid_sampling_distance)
-		return sampleShadow5(normalized_depth, atlas_uv, uv_min, uv_max);
-	return sampleShadow9(normalized_depth, atlas_uv, uv_min, uv_max);
+	// select samplinmg algorithm basec on distance to camera
+	if(camera_distance > shadow_low_sampling_distance)
+		return sampleShadow1(frag_depth, atlas_uv, uv_min, uv_max);
+	else if(camera_distance > shadow_mid_sampling_distance)
+		return sampleShadow5(frag_depth, atlas_uv, uv_min, uv_max);
+	return sampleShadow9(frag_depth, atlas_uv, uv_min, uv_max);
 }

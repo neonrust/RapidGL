@@ -6,7 +6,8 @@
 #include "light_constants.h"
 
 #include "hash_combine.h"
-#include "hash_vec3.h"
+#include "hash_vec3.h"  // IWYU pragma: keep
+#include "hash_vec4.h"  // IWYU pragma: keep
 
 using namespace std::literals;
 
@@ -400,20 +401,20 @@ size_t LightManager::hash(const GPULight &L)
 		hash_combine(h, L.shape_data[1]);
 		hash_combine(h, L.shape_data[2]);
 		hash_combine(h, L.shape_data[3]);
-		hash_combine(h, L.shape_data[4]);  // orientation (quat)
+		hash_combine(h, L.shape_data[4]);   // orientation (quat)
 		break;
 	case LIGHT_TYPE_DISC:
-		hash_combine(h, L.shape_data[0].x);  // radius
+		hash_combine(h, L.shape_data[0].x); // radius
 		break;
 	case LIGHT_TYPE_TUBE:
 		hash_combine(h, L.shape_data[0]);
 		hash_combine(h, L.shape_data[1]);
 		break;
 	case LIGHT_TYPE_SPHERE:
-		hash_combine(h, L.shape_data[0].x);  // radius
+		hash_combine(h, L.shape_data[0].x); // radius
 		break;
 	}
 	static_assert(LIGHT_TYPE__COUNT == 7);
 
-	return 0;
+	return h;
 }

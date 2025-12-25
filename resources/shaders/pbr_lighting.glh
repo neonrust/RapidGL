@@ -14,6 +14,9 @@ layout (location = 2) in vec3 in_view_pos;
 layout (location = 3) in vec4 in_clip_pos;
 layout (location = 4) in vec3 in_normal;
 
+// layout (location = 6) in vec4 in_light_view_space_pos[4];
+layout (location = 7) in vec4 in_light_clip_space_pos[4];
+
 layout(binding = 0) uniform sampler2D u_albedo_map;
 layout(binding = 1) uniform sampler2D u_normal_map;
 layout(binding = 2) uniform sampler2D u_metallic_map;
@@ -41,6 +44,12 @@ uniform vec3  u_emission;
 uniform float u_emission_strength;
 
 uniform vec3  u_cam_pos;
+
+uniform uint u_csm_num_cascades;
+uniform float u_csm_depth_splits[4];
+uniform float u_csm_light_range[4];
+// uniform float u_csm_light_radius_uv;
+
 
 struct MaterialProperties
 {
@@ -204,7 +213,7 @@ vec3 pbr(GPULight light, vec3 direction, vec3 world_pos, float attenuation, Mate
 
 vec3 calcDirectionalLight(GPULight light, vec3 world_pos, MaterialProperties material)
 {
-    return pbr(light, -light.direction, world_pos, 1.0, material);
+    return pbr(light, -light.direction, world_pos, 1, material);
 }
 
 vec3 calcPointLight(GPULight light, vec3 world_pos, MaterialProperties material)

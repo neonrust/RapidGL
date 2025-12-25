@@ -1,6 +1,7 @@
 #include "clustered_shading.h"
 #include "filesystem.h"
 #include "gl_lookup.h"
+#include "hash_combine.h"
 #include "input.h"
 #include "instance_attributes.h"
 #include "postprocess.h"
@@ -1055,8 +1056,15 @@ void ClusteredShading::createLights()
 	static constexpr auto z_step = 12.f;
 	auto x_offset = 0.f;
 
-	// point lights
-	for(auto idx = 0u; idx < 14; ++idx)
+	_light_mgr.add(DirectionalLightParams{
+		.color = { 1.f, 1.f, 1.f },
+		.intensity = 100.f,
+		.fog = 1.f,
+		.shadow_caster = true,
+		.direction = glm::normalize(glm::vec3(0.5f, -1.f, 0.5f)),
+	});
+
+	for(auto idx = 0u; idx < 0; ++idx)
 	{
 		const auto rand_color= hsv2rgb(
 			float(Util::RandomDouble(1, 360)),       // hue
@@ -1623,6 +1631,14 @@ void ClusteredShading::renderShadowMaps()
 
 	// bake this decision into ShadowAtlas -> call to update_shadow_params() can be moved to eval_lights()
 	//   UNLESS, we want to only update it when the specific shadow map needs to be rendered
+
+	// if there's a sun allocated, update its shadow parameters
+	if(const auto &sun_id = _shadow_atlas.sun_id(); sun_id != NO_LIGHT_ID)
+	{
+		// TODO: only if light's direction or camera parameters changed
+		_shadow_atlas.update_csm_params(sun_id, m_camera);//, _sun_radius_uv);
+	}
+
 	if(now - last_eval_time > 100ms)
 	{
 		last_eval_time = now;
@@ -1648,9 +1664,10 @@ void ClusteredShading::renderShadowMaps()
 	_light_shadow_maps_rendered = 0;
 	_shadow_atlas_slots_rendered = 0;
 
-	// TODO: limit the number of shadow maps to render
-	//    if too many, render the ones closest to the camera first
+	// TODO: limit the number of shadow maps to render in one frame.
+	//    if too many, render the ones closest to the camera first.
 	//    the remaining will still by "dirty" so they will be rendered eventually.
+	//    this imlpies a 2-pass algo, since the "allocated_lights() is an unordered mapping.
 
 	for(auto &[light_id, atlas_light]: _shadow_atlas.allocated_lights())
 	{
@@ -1661,23 +1678,20 @@ void ClusteredShading::renderShadowMaps()
 		if(not _affecting_lights.contains(light_index))
 			continue;
 
-		const auto light_hash = _light_mgr.hash(light);
+		auto light_hash = _light_mgr.hash(light);
+		if(IS_DIR_LIGHT(light))  // CSM frustum splits are directly affected by the camera's frustum
+			hash_combine(light_hash, m_camera.hash());
 
-		// TODO: check wether scene objects inside the light's sphere is dynamic (not static)
-		//   this should also be per slot (cube face for point lights)
+		// TODO: check whether scene objects inside the light's sphere or frustum are dynamic (as opposed to static)
+		//   preferibly, this should be per slot (cube face for point lights)
 		const auto has_dynamic = false; //_scene_culler.pvs(light_id).has(SceneObjectType::Dynamic);
 
 		if(_shadow_parameters_changed or _shadow_atlas.should_render(atlas_light, now, light_hash, has_dynamic))
 		{
 			// render shadow map(s) for this light
 
-			const auto slot_index = _light_mgr.shadow_index(light_id);
+			const auto slot_index = GET_SHADOW_IDX(light);
 
-			// render only up to the light's radius
-			// NOTE: I think this must match the projection matrix, see light_view_projection() in shadow_atlas.cpp
-			const auto far_z = light.affect_radius;
-
-			// TODO: possible to render all cube faces in one draw call, using a geomety shader?
 			for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
 			{
 				const auto &slot_rect = atlas_light.slots[idx].rect;
@@ -1692,7 +1706,8 @@ void ClusteredShading::renderShadowMaps()
 						barrier();
 						did_barrier = true;
 					}
-					renderSceneShadow(light.position, far_z, slot_index, idx);
+
+					renderSceneShadow(light.position, slot_index, idx);
 					++_shadow_atlas_slots_rendered;
 				}
 			}
@@ -2056,7 +2071,7 @@ void ClusteredShading::renderDepth(const glm::mat4 &view_projection, RenderTarge
 	renderScene(view_projection, *m_depth_prepass_shader, NoMaterials);
 }
 
-void ClusteredShading::renderSceneShadow(const glm::vec3 &pos, float far_z, uint_fast16_t shadow_slot_index, uint32_t shadow_map_index)
+void ClusteredShading::renderSceneShadow(const glm::vec3 &pos, uint_fast16_t shadow_slot_index, uint32_t shadow_map_index)
 {
 	// TODO: ideally, only render objects whose AABB intersects with the light's projection (frustum)
 
@@ -2066,8 +2081,7 @@ void ClusteredShading::renderSceneShadow(const glm::vec3 &pos, float far_z, uint
 
 	m_shadow_depth_shader->bind();
 
-	m_shadow_depth_shader->setUniform("u_cam_pos"sv, pos); // well, light position :)
-	m_shadow_depth_shader->setUniform("u_far_z"sv, far_z);
+	m_shadow_depth_shader->setUniform("u_eye_pos"sv, pos);
 	m_shadow_depth_shader->setUniform("u_shadow_slot_index"sv, uint32_t(shadow_slot_index)); // for 'mvp'
 	m_shadow_depth_shader->setUniform("u_shadow_map_index"sv, shadow_map_index);
 	m_shadow_depth_shader->setUniform("u_shadow_bias_constant"sv,       m_shadow_bias_constant);
@@ -2106,6 +2120,16 @@ void ClusteredShading::renderSceneShading(const Camera &camera)
 	m_clustered_pbr_shader->setUniform("u_debug_clusters_occupancy"sv,   m_debug_clusters_occupancy);
 	m_clustered_pbr_shader->setUniform("u_debug_tile_occupancy"sv,       m_debug_tile_occupancy);
 	m_clustered_pbr_shader->setUniform("u_debug_overlay_blend"sv,        m_debug_coverlay_blend);
+
+	if(const auto &csm = _shadow_atlas.csm_params(); csm)
+	{
+		m_clustered_pbr_shader->setUniform("u_csm_num_cascades"sv,     uint32_t(csm.num_cascades));
+		m_clustered_pbr_shader->setUniform("u_csm_depth_splits"sv,     csm.camera_depth);
+		// m_clustered_pbr_shader->setUniform("u_csm_light_view"sv,      csm.view);
+		m_clustered_pbr_shader->setUniform("u_csm_light_view_proj"sv,  csm.view_projection);
+		m_clustered_pbr_shader->setUniform("u_csm_colorize_cascades"sv, _debug_csm_colorize_cascades);
+		// m_clustered_pbr_shader->setUniform("u_csm_light_radius_uv"sv, csm.radius_uv);
+	}
 
     m_irradiance_cubemap_rt->bindTexture(6);
     m_prefiltered_env_map_rt->bindTexture(7);

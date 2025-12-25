@@ -277,6 +277,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 
 		if(ImGui::CollapsingHeader("Shadows"))//, ImGuiTreeNodeFlags_DefaultOpen))
 		{
+			ImGui::Checkbox("Colorize CSM cascades", &_debug_csm_colorize_cascades);
 			_shadow_parameters_changed |= ImGui::SliderFloat("Bias constant",    &m_shadow_bias_constant,       -0.03f,  0.02f, "%.3f");
 			_shadow_parameters_changed |= ImGui::SliderFloat("Bias slope scale", &m_shadow_bias_slope_scale,     0.f,    5.f,   "%.1f");
 			_shadow_parameters_changed |= ImGui::SliderFloat("Bias slope power", &m_shadow_bias_slope_power,     0.01f,  5.f,   "%.2f");
@@ -317,7 +318,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 				"volumetric froxels back [3d]",
 				"volumetric froxels acc [3d]",
 			};
-			static int current_image = 10;
+			static int current_image = 9;
 			ImGui::Combo("Render target", &current_image, rt_names, std::size(rt_names));
 
 			RenderTarget::Texture2d *rt = nullptr;

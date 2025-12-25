@@ -6,17 +6,11 @@ layout(location = 0) in vec3 in_world_pos;
 layout(location = 1) in vec2 in_texcoord;
 layout(location = 2) in vec3 in_normal;
 
-// TODO: or declare the ssbo also in the frag shader?
-layout(location = 10) flat in float in_near_z;
-layout(location = 11) flat in float in_far_z;
-
 layout(location = 0) out vec2 out_normal; // color attachment 0
 
 layout(binding = 0) uniform sampler2D u_albedo_texture;
 
 uniform uint u_shadow_slot_index;
-
-uniform vec3 u_eye_pos;
 
 uniform float u_shadow_bias_constant;
 uniform float u_shadow_bias_slope_scale;
@@ -27,20 +21,17 @@ uniform float u_shadow_bias_scale;
 vec2 encodeNormal(vec3 normal);
 float computeFragmentBias(float normalized_depth, vec3 light_to_frag, vec3 depth_normal);
 
+// since we're not writing depth (but color),
+// we can, and should, force the early z-rejection test.
+layout(early_fragment_tests) in;
 void main()
 {
 	// simple alpha test, discard fragment if fransparent "enough"
 	float alpha = texture(u_albedo_texture, in_texcoord).a;
-	if (alpha < 0.5) discard;
+	if(alpha < 0.5)
+		discard;
 
-	float dist = distance(in_world_pos, u_eye_pos);
-	float normalized_depth = linear2normalized(dist, in_near_z, in_far_z);
-
-	// apply bias
-	vec3 light_dir = in_world_pos - u_eye_pos;
-	normalized_depth += computeFragmentBias(normalized_depth, light_dir, in_normal);
-
-	gl_FragDepth = normalized_depth;  // [0, 1] depth relative to light range
+	// also write normals
     out_normal = encodeNormal(in_normal);
 }
 

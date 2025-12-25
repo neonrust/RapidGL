@@ -17,6 +17,7 @@ uniform bool u_debug_clusters_occupancy;
 uniform bool u_debug_tile_occupancy;
 uniform float u_debug_overlay_blend;
 uniform uvec2 u_viewport_size;
+uniform bool  u_csm_colorize_cascades;
 
 const float s_min_visibility = 1e-3;
 
@@ -62,7 +63,7 @@ uint computeClusterIndex(uvec3 cluster_coord);
 uvec3 computeClusterCoord(vec2 screen_pos, float view_z);
 
 vec3 pointLightVisibility(GPULight light, vec3 world_pos);
-vec3 dirLightVisibility(GPULight light);
+vec3 dirLightVisibility(GPULight light, vec3 world_pos);
 vec3 spotLightVisibility(GPULight light, vec3 world_pos);
 vec3 rectLightVisibility(GPULight light);
 vec3 tubeLightVisibility(GPULight light);
@@ -116,7 +117,7 @@ void main()
 
 	        case LIGHT_TYPE_DIRECTIONAL:
 			{
-		        visibility = dirLightVisibility(light);
+		        visibility = dirLightVisibility(light, in_world_pos);
 		        if(visibility.x + visibility.y + visibility.z > s_min_visibility)
 		        	contribution = calcDirectionalLight(light, in_world_pos, material);
 			}
@@ -363,11 +364,12 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 	vec3 light_to_frag = world_pos - light.position;
 
 	mat4 view_proj;
-	vec4 rect; // shadow slot rectangle in atlas, in absolute pixels
-	float near_z;
-	detectCubeFaceSlot(light_to_frag, slot_info, view_proj, rect, near_z);
+	vec4 slot_rect; // shadow slot rectangle in atlas, in absolute pixels
+	uint slot_idx = detectCubeFaceSlot(light_to_frag, slot_info, view_proj, slot_rect);
 
-	float shadow_visibility = shadowVisibility(light_to_frag, world_pos, u_cam_pos, light, view_proj, rect, near_z);
+	vec4 clip_pos = view_proj * vec4(world_pos, 1);
+	clip_pos /= clip_pos.w;
+	float shadow_visibility = shadowVisibility(clip_pos.xyz, camera_distance, light, slot_rect);
 
 	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade;
 	float visible = light_fade * shadow_faded;
@@ -375,9 +377,52 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 	return vec3(visible);
 }
 
-vec3 dirLightVisibility(GPULight light)
+vec3 dirLightVisibility(GPULight light, vec3 world_pos)
 {
-	return vec3(1); // TODO
+	if(! IS_SHADOW_CASTER(light))
+		return vec3(1);
+
+	// vec3 cascade_debug_indicator = vec3(0.0, 0.0, 0.0);
+	float camera_distance = distance(world_pos, u_cam_pos);
+	float shadow_fade = 1;
+	// float shadow_fade = fadeByDistance(camera_distance, u_shadow_dir_max_distance);
+	// if(shadow_fade == 0)
+	// 	return vec3(0);
+
+	uint shadow_idx = GET_SHADOW_IDX(light);
+	if(shadow_idx == LIGHT_NO_SHADOW)
+		return vec3(1);  // no shadow map in use
+
+	ShadowSlotInfo slot_info = ssbo_shadow_slots[shadow_idx];
+
+	// use depth splits to select slot
+	// find cascade index
+	uint cascade_index = 0;
+	for(uint idx = 0; idx < u_csm_num_cascades - 1; ++idx)
+	{
+	    if(in_view_pos.z < u_csm_depth_splits[idx])
+	        cascade_index = idx + 1;
+	}
+
+	mat4 view_proj = slot_info.view_proj[cascade_index];
+	uvec4 slot_rect = slot_info.atlas_rect[cascade_index];
+
+	vec4 clip_pos = view_proj * vec4(world_pos, 1);
+	clip_pos /= clip_pos.w;
+	float shadow_visibility = shadowVisibility(clip_pos.xyz, camera_distance, light, slot_rect);
+
+	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade;
+	vec3 visible_color = vec3(shadow_faded);
+
+	if(u_csm_colorize_cascades)
+	{
+		if(cascade_index % 2 == 0)
+			visible_color *= vec3(0.8, 1.4, 0.8);
+		else
+			visible_color *= vec3(1.4, 0.8, 1.4);
+	}
+
+	return visible_color;
 }
 
 vec3 spotLightVisibility(GPULight light, vec3 world_pos)
@@ -402,13 +447,11 @@ vec3 spotLightVisibility(GPULight light, vec3 world_pos)
 	ShadowSlotInfo slot_info = ssbo_shadow_slots[shadow_idx];
 
 	mat4 view_proj = slot_info.view_proj[0];
-	vec4 rect = slot_info.atlas_rect[0];
+	vec4 slot_rect = slot_info.atlas_rect[0];
 
-	vec4 rect_uv;
-	vec2 atlas_uv = calculateShadowUV(world_pos, view_proj, rect, rect_uv);
-
-	vec3 light_to_frag = world_pos - light.position;
-	float shadow_visibility = shadowVisibility(light_to_frag, world_pos, u_cam_pos, light, view_proj, rect);
+	vec4 clip_pos = view_proj * vec4(world_pos, 1);
+	clip_pos /= clip_pos.w;
+	float shadow_visibility = shadowVisibility(clip_pos.xyz, camera_distance, light, slot_rect);
 
 	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade;
 	float visible = light_fade * shadow_faded;

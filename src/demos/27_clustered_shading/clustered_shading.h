@@ -117,7 +117,7 @@ private:
 	void renderScene(const glm::mat4 &view_projection, RGL::Shader &shader, MaterialCtrl matCtrl=UseMaterials);
 	void renderDepth(const glm::mat4 &view_projection, RGL::RenderTarget::Texture2d &target, const glm::ivec4 &rect={0,0,0,0});
 	void renderShadowMaps();
-	void renderSceneShadow(const glm::vec3 &pos, float far_z, uint_fast16_t shadow_slot_index, uint32_t shadow_map_inde);
+	void renderSceneShadow(const glm::vec3 &pos, uint_fast16_t shadow_slot_index, uint32_t shadow_map_inde);
 	void renderSceneShading(const RGL::Camera &camera);
 	void renderSkybox();
 	void renderSurfaceLightGeometry();
@@ -190,6 +190,7 @@ private:
 	bool  m_debug_clusters_occupancy     = false;
 	bool  m_debug_tile_occupancy         = false;
 	float m_debug_coverlay_blend         = 0.7f;
+	bool _debug_csm_colorize_cascades    = false;
 	float m_shadow_bias_constant         = 0.f;
 	float m_shadow_bias_slope_scale      = 0.f;
 	float m_shadow_bias_slope_power      = 2.f;
