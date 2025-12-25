@@ -29,14 +29,13 @@ void main()
     out_texcoord  = in_texcoord;
     out_normal    = u_normal_matrix * in_normal;
 
-    for(uint idx = 0; idx < u_csm_num_cascades; ++idx)
-    {
+	for(uint idx = 0; idx < u_csm_num_cascades; ++idx)
+	{
     	// view proj already stored in slot info?
-     	// except that this is probably faster (per vertex vs per pixel)
-      	// however, this is done for *all* vertices
-        // out_light_view_space_pos[idx] = u_csm_light_view[idx] * vec4(out_world_pos, 1);
-        out_light_clip_space_pos[idx] = u_csm_light_view_proj[idx] * vec4(out_world_pos, 1);
-    }
+		// except that this is probably faster (per vertex vs per pixel)
+		// but remember, this is done for *all* vertices
+		out_light_clip_space_pos[idx] = u_csm_light_view_proj[idx] * vec4(out_world_pos, 1);
+	}
 
     gl_Position = out_clip_pos;
 }
