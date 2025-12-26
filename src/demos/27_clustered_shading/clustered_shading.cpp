@@ -2082,14 +2082,8 @@ void ClusteredShading::renderSceneShadow(const glm::vec3 &pos, uint_fast16_t sha
 
 	m_shadow_depth_shader->bind();
 
-	m_shadow_depth_shader->setUniform("u_eye_pos"sv, pos);
 	m_shadow_depth_shader->setUniform("u_shadow_slot_index"sv, uint32_t(shadow_slot_index)); // for 'mvp'
 	m_shadow_depth_shader->setUniform("u_shadow_map_index"sv, shadow_map_index);
-	m_shadow_depth_shader->setUniform("u_shadow_bias_constant"sv,       m_shadow_bias_constant);
-	m_shadow_depth_shader->setUniform("u_shadow_bias_slope_scale"sv,    m_shadow_bias_slope_scale);
-	m_shadow_depth_shader->setUniform("u_shadow_bias_slope_power"sv,    m_shadow_bias_slope_power);
-	m_shadow_depth_shader->setUniform("u_shadow_bias_distance_scale"sv, m_shadow_bias_distance_scale);
-	m_shadow_depth_shader->setUniform("u_shadow_bias_scale"sv,          m_shadow_bias_scale);
 
 	for(const auto &obj: _scenePvs)
 	{
@@ -2121,6 +2115,12 @@ void ClusteredShading::renderSceneShading(const Camera &camera)
 	m_clustered_pbr_shader->setUniform("u_debug_clusters_occupancy"sv,   m_debug_clusters_occupancy);
 	m_clustered_pbr_shader->setUniform("u_debug_tile_occupancy"sv,       m_debug_tile_occupancy);
 	m_clustered_pbr_shader->setUniform("u_debug_overlay_blend"sv,        m_debug_coverlay_blend);
+
+	m_clustered_pbr_shader->setUniform("u_shadow_bias_constant"sv,       m_shadow_bias_constant);
+	m_clustered_pbr_shader->setUniform("u_shadow_bias_slope_scale"sv,    m_shadow_bias_slope_scale);
+	m_clustered_pbr_shader->setUniform("u_shadow_bias_slope_power"sv,    m_shadow_bias_slope_power);
+	m_clustered_pbr_shader->setUniform("u_shadow_bias_distance_scale"sv, m_shadow_bias_distance_scale);
+	m_clustered_pbr_shader->setUniform("u_shadow_bias_scale"sv,          m_shadow_bias_scale);
 
 	if(const auto &csm = _shadow_atlas.csm_params(); csm)
 	{

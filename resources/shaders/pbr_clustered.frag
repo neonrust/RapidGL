@@ -365,7 +365,7 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 
 	mat4 view_proj;
 	vec4 slot_rect; // shadow slot rectangle in atlas, in absolute pixels
-	uint slot_idx = detectCubeFaceSlot(light_to_frag, slot_info, view_proj, slot_rect);
+	detectCubeFaceSlot(light_to_frag, slot_info, view_proj, slot_rect);
 
 	vec4 clip_pos = view_proj * vec4(world_pos, 1);
 	clip_pos /= clip_pos.w;

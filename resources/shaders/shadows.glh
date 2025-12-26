@@ -7,6 +7,12 @@ layout (binding = 22) uniform sampler2D       u_shadow_atlas_normals;
 
 uniform float u_shadow_max_distance;
 
+uniform float u_shadow_bias_constant;
+uniform float u_shadow_bias_slope_scale;
+uniform float u_shadow_bias_distance_scale;
+uniform float u_shadow_bias_slope_power;
+uniform float u_shadow_bias_scale;
+
 vec2 shadow_atlas_texel_size;
 
 uint detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 view_proj, out vec4 rect)
@@ -133,7 +139,7 @@ vec3 unpackNormal(vec2 f)
 
 float sampleShadow(float camera_distance, float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max);
 
-float computeBias(float normalized_depth, vec3 light_to_frag, vec2 normal_uv);
+float computeBias(float normalized_depth, vec3 light_dir, vec2 normal_uv);
 
 float sampleShadow1(float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max);
 float shadowVisibility(vec3 clip_pos, float camera_distance, GPULight light, vec4 rect)
@@ -143,42 +149,43 @@ float shadowVisibility(vec3 clip_pos, float camera_distance, GPULight light, vec
 
 	float frag_depth = clip_pos.z * 0.5 + 0.5;
 
-	float bias = max(0.001 * (1.0 - dot(normalize(in_normal), -light.direction)), 1e-5);
-	frag_depth -= bias;
+	vec3 light_dir = normalize(clip_pos);
+	frag_depth += computeBias(frag_depth, light_dir, atlas_uv);
+	// float bias = max(0.001 * (1.0 - dot(normalize(in_normal), -light.direction)), 1e-5);
+	// frag_depth -= bias;
 
 	vec2 uv_min = rect_uv.xy;
 	vec2 uv_max = rect_uv.xy + rect_uv.zw - shadow_atlas_texel_size;
 	return sampleShadow(camera_distance, frag_depth, atlas_uv, uv_min, uv_max);
 }
 
-// float computeSlopeBias(vec3 light_to_frag, vec3 depth_normal)
-// {
-// 	vec3 light_dir = normalize(-light_to_frag);
-// 	float angle = dot(depth_normal, light_dir);
-// 	angle = pow(angle, u_shadow_bias_slope_power);
-// 	angle = clamp(angle, 0.0, 0.99);
-// 	return (0.001 / angle) * u_shadow_bias_slope_scale;
-// }
+float computeSlopeBias(vec3 light_dir, vec3 depth_normal)
+{
+	float angle = dot(depth_normal, light_dir);
+	angle = pow(angle, u_shadow_bias_slope_power);
+	angle = clamp(angle, 0.0, 0.99);
+	return (0.001 / angle) * u_shadow_bias_slope_scale;
+}
 
-// float computeBias(float normalized_depth, vec3 light_to_frag, vec2 normal_uv)
-// {
-// 	// calculate shadow depth bias by various factors
-// 	// bias by depth
-// 	float bias = normalized_depth * u_shadow_bias_distance_scale;
+float computeBias(float normalized_depth, vec3 light_dir, vec2 normal_uv)
+{
+	// calculate shadow depth bias by various factors
+	// bias by depth
+	float bias = normalized_depth * u_shadow_bias_distance_scale;
 
-// 	// bias based on surface normals
-// 	// bias increases when the angle between normal and light_dir is steep.
-// 	if(u_shadow_bias_slope_scale > 0)
-// 	{
-// 		vec2 encoded_normal = textureLod(u_shadow_atlas_normals, normal_uv, 0).xy;
-// 		vec3 depth_normal = unpackNormal(encoded_normal);
+	// bias based on surface normals
+	// bias increases when the angle between normal and light_dir is steep.
+	if(u_shadow_bias_slope_scale > 0)
+	{
+		vec2 encoded_normal = textureLod(u_shadow_atlas_normals, normal_uv, 0).xy;
+		vec3 depth_normal = unpackNormal(encoded_normal);
 
-// 		bias += computeSlopeBias(light_to_frag, depth_normal);
-// 	}
+		bias += computeSlopeBias(light_dir, depth_normal);
+	}
 
-// 	bias = clamp(bias, -0.05, 0.05) * u_shadow_bias_scale;
-// 	return bias + u_shadow_bias_constant;
-// }
+	bias = clamp(bias, -0.05, 0.05) * u_shadow_bias_scale;
+	return bias + u_shadow_bias_constant;
+}
 
 float sampleShadow1(float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
 {
