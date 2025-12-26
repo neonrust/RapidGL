@@ -342,8 +342,8 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			// const bool is_cube = current_image >= 1 and current_image <= 3;
 			// const bool is_depth = current_image == 4;
 
-			ImVec2 top_left { 0, 1 };
-			ImVec2 bottom_right { 1, 0 };
+			ImVec2 top_left { 0, 0 };
+			ImVec2 bottom_right { 1, 1 };
 
 			auto zoom_uv0 = [](float zoom, const ImVec2 &center) -> ImVec2 {
 				float half_inv_zoom = 0.5f / zoom;
@@ -430,9 +430,6 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 
 					top_left = zoom_uv0(magnification, center);
 					bottom_right = zoom_uv1(magnification, center);
-
-					top_left.y = 1 - top_left.y;
-					bottom_right.y = 1 - bottom_right.y;
 
 					// TODO: use custom shader to enable brightness and alpha boost controls
 
