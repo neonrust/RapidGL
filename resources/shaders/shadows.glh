@@ -109,13 +109,6 @@ vec2 calculateShadowUV(vec3 clip_pos, vec4 rect, out vec4 rect_uv)
 	//            0,0 of that cube face corresponds to the "top-lect" corner of the slot square
 	// atlas_uv : combination of above; the rect_uv + offset by face_uv, in atlas UV-space.
 
-	// ignore 1 pixel around the edges,
-	//   so the linear filtering doesn't blend  outside the slot rect
-	rect.x += 1;
-	rect.y += 1;
-	rect.z -= 2;
-	rect.w -= 2;
-
 	// to light space
 	// vec4 light_space = view_proj * vec4(world_pos, 1);
 	// light_space.xyz /= light_space.w; // NDC

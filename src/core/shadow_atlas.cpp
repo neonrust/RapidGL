@@ -30,9 +30,9 @@ static constexpr float s_min_light_value = 1e-2f;
 using namespace std::chrono;
 using namespace std::literals;
 
-inline glm::uvec4 to_uvec4(const RGL::SpatialAllocator<uint32_t>::Rect &r)
+inline glm::uvec4 mk_rect(const RGL::SpatialAllocator<uint32_t>::Rect &r, uint32_t margin=0)
 {
-	return glm::uvec4(r.x, r.y, r.w, r.h);
+	return glm::uvec4(r.x + margin, r.y + margin, r.w - 2*margin, r.h - 2*margin);
 }
 
 template<typename T>
@@ -802,7 +802,7 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const std::vector<AtlasLi
 			auto node_index = alloc_slot(desired.slots[idx].size);
 			slot.node_index = node_index;
 			slot.size = desired.slots[idx].size;
-			slot.rect = to_uvec4(_allocator.rect(node_index));
+			slot.rect = mk_rect(_allocator.rect(node_index), 1);
 		}
 		// std::print("; {} remaining\n", _slot_sets[desired.slots[0].size].size());
 
@@ -852,7 +852,7 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const std::vector<AtlasLi
 				const auto node_index = alloc_slot(atlas_light.slots[idx].size);
 
 				atlas_light.slots[idx].node_index = node_index;
-				atlas_light.slots[idx].rect = to_uvec4(_allocator.rect(node_index));
+				atlas_light.slots[idx].rect = mk_rect(_allocator.rect(node_index), 1);
 			}
 			// std::print("; {} remaining\n", _slot_sets[atlas_light.slots[0].size].size());
 
