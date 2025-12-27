@@ -79,7 +79,6 @@ vec3 froxelWorldPos(ivec3 froxel, float depth_exp, mat4 inv_view_proj);
 float sampleBlueNoise(ivec3 coord);
 float phaseFunction(vec3 Wo, vec3 Wi, float g);
 vec3 worldToUV(vec3 world_pos, mat4 view_proj);
-vec3 worldToFroxelUV(vec3 world_pos, mat4 view);
 
 uint computeSpotNumSamples(vec3 world_pos, GPULight spot, float maxWidth, uint  maxSamples);
 
@@ -521,33 +520,6 @@ vec3 worldToUV(vec3 world_pos, mat4 view)
 {
     vec3 ndc = worldToNDC(world_pos, u_projection * view);
     return ndcToUV(ndc, u_froxel_zexp);
-}
-
-vec3 worldToFroxelUV(vec3 world_pos, mat4 view)
-{
-    // Transform into *view space*
-    vec4 view_pos = view * vec4(world_pos, 1);
-
-    // Perspective divide not needed (we’re in view space now)
-    // u_cam_pos.z is negative in standard right-handed OpenGL camera space.
-    float view_z = -view_pos.z;
-
-    // --- X/Y mapping ---
-    // Project to NDC
-    vec4 clip_pos = u_projection * view_pos;
-    vec3 ndc = clip_pos.xyz / clip_pos.w;   // [ -1, 1 ]
-
-    // Map to [0,1]
-    // float u = ndc.x * 0.5 + 0.5;
-    // float v = ndc.y * 0.5 + 0.5;
-    vec2 uv = (ndc * 0.5 + 0.5).xy;
-
-    // --- Z mapping ---
-    // Match your exponential partitioning
-    // normalize viewZ against far
-    float w = log(view_z / u_near_z) / log(u_far_z / u_near_z);
-
-    return vec3(uv, clamp(w, 0, 1));
 }
 
 float getSpotAngleAttenuation(vec3 to_light, vec3 spot_dir, float outer_angle, float inner_angle)
