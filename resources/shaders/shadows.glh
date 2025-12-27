@@ -2,8 +2,7 @@
 #include "light.glh"
 
 layout (binding = 20) uniform sampler2DShadow u_shadow_atlas;
-layout (binding = 21) uniform sampler2D       u_shadow_atlas_single;
-layout (binding = 22) uniform sampler2D       u_shadow_atlas_normals;
+layout (binding = 21) uniform sampler2D       u_shadow_atlas_normals;
 
 uniform float u_shadow_max_distance;
 
@@ -182,18 +181,9 @@ float computeBias(float normalized_depth, vec3 light_dir, vec2 normal_uv)
 
 float sampleShadow1(float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
 {
-	// if 'atlas_uv' is closer than 2 pixels to 'uv_min' or 'uv_mac' (component wise),
-	// use the _single sampler
-	float margin = shadow_atlas_texel_size.x*2;
-
-	if(atlas_uv.x <= uv_min.x + margin || atlas_uv.x >= uv_max.x - margin
-	   || atlas_uv.y <= uv_min.y + margin || atlas_uv.y >= uv_max.y - margin)
-	{
-		atlas_uv = clamp(atlas_uv, uv_min, uv_max);
-		return texture(u_shadow_atlas_single, atlas_uv).r > frag_depth? 1: 0;
-	}
-	else
-		return texture(u_shadow_atlas, vec3(atlas_uv, frag_depth));
+	// only sample within the slot
+	atlas_uv = clamp(atlas_uv, uv_min, uv_max);
+	return texture(u_shadow_atlas, vec3(atlas_uv, frag_depth));
 }
 
 float sampleShadow5(float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)

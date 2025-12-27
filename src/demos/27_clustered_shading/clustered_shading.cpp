@@ -1515,8 +1515,7 @@ void ClusteredShading::render()
 		m_volumetrics_pp.shader().setUniform("u_light_max_distance"sv,  m_camera.farPlane() * s_light_affect_fraction);
 		m_volumetrics_pp.shader().setUniform("u_shadow_max_distance"sv, m_camera.farPlane() * s_light_shadow_affect_fraction);
 
-		_shadow_atlas.bindShadowSampler(20);  // sampler2DShadow
-		_shadow_atlas.bindDepthTextureSampler(21);  // sampler2D
+		_shadow_atlas.bindDepthTextureSampler(20); // just using single-sample, no PCF
 		m_depth_pass_rt.bindDepthTextureSampler(2);
 
 		m_volumetrics_pp.inject();
@@ -2137,8 +2136,7 @@ void ClusteredShading::renderSceneShading(const Camera &camera)
     m_ltc_amp_lut->Bind(10);
 
 	_shadow_atlas.bindShadowSampler(20);
-	_shadow_atlas.bindDepthTextureSampler(21);
-	_shadow_atlas.bindTextureSampler(22);   // encoded normals
+	_shadow_atlas.bindTextureSampler(21);   // encoded normals
 
 	// we need updated textures (shadow maps) and SSBO data
 	glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);

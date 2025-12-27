@@ -10,6 +10,9 @@ vec3 in_normal; // declared here b/c used in shadowVisibility() in shadows.glh (
 #include "light.glh"
 #include "noise.glh"
 
+layout (binding = 20) uniform sampler2D u_shadow_atlas_single;
+
+
 layout(local_size_x = FROXEL_THREADS_X, local_size_y = FROXEL_THREADS_Y, local_size_z = FROXEL_THREADS_Z) in;
 
 layout(binding = 3)          uniform           sampler2D u_blue_noise;
