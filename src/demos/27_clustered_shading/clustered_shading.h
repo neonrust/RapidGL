@@ -5,7 +5,7 @@
 #include "camera.h"
 #include "sample_window.h"
 #include "ssbo.h"
-#include "static_model.h"
+#include "static_object.h"
 #include "shader.h"
 #include "lights.h"
 #include "buffer_binds.h"
@@ -65,18 +65,6 @@ namespace
 
         return RGB + m;
     }
-};
-
-struct StaticObject
-{
-    StaticObject() : StaticObject(nullptr, glm::mat4(1.0)) {}
-	StaticObject(const std::shared_ptr<RGL::StaticModel> & model_,
-				 const glm::mat4                         & transform)
-		: transform(transform),
-		  model    (model_) {}
-
-	glm::mat4 transform;
-	std::shared_ptr<RGL::StaticModel> model;
 };
 
 enum struct BlendMode
