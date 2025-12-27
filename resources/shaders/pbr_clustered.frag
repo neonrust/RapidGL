@@ -340,6 +340,15 @@ float fadeLightByDistance(GPULight light)
 // returns [1, 0] whther the fragment corresponding to 'atlas_uv' has LOS to the light
 float fadeByDistance(float distance, float hard_limit);
 
+// const vec3 face_tint_colors[6] = vec3[](
+// 	vec3(1, 0, 0),
+// 	vec3(0, 1, 1),
+// 	vec3(1, 0, 1),
+// 	vec3(0, 1, 0),
+// 	vec3(0, 0, 1),
+// 	vec3(1, 1, 0)
+// );
+
 vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 {
 	float light_fade = fadeLightByDistance(light);
@@ -365,7 +374,7 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 
 	mat4 view_proj;
 	vec4 slot_rect; // shadow slot rectangle in atlas, in absolute pixels
-	detectCubeFaceSlot(light_to_frag, slot_info, view_proj, slot_rect);
+	uint cube_face = detectCubeFaceSlot(light_to_frag, slot_info, view_proj, slot_rect);
 
 	vec4 clip_pos = view_proj * vec4(world_pos, 1);
 	clip_pos /= clip_pos.w;
