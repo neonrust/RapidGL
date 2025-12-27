@@ -15,7 +15,10 @@ static constexpr LightID NO_LIGHT_ID { std::numeric_limits<LightID>::max() };
 using LightIndex = uint32_t;
 static constexpr LightID NO_LIGHT_INDEX { std::numeric_limits<LightIndex>::max() };
 
+namespace RGL
+{
 class LightManager;
+}
 
 // ------------------------------------------------------------------
 
@@ -29,7 +32,7 @@ class LightManager;
 #define INTERNAL                                \
 	inline LightID id() const { return uuid; }  \
 private:                                        \
-	friend class LightManager;                  \
+	friend class RGL::LightManager;             \
 	LightID uuid        { NO_LIGHT_ID }
 
 #define POINT                        \
