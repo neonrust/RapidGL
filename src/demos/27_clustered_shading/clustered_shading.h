@@ -146,7 +146,7 @@ private:
 	std::shared_ptr<RGL::RenderTarget::Cube>   m_prefiltered_env_map_rt;
 	std::shared_ptr<RGL::RenderTarget::Texture2d> m_brdf_lut_rt;
 	// RGL::RenderTarget::Texture2d _shadow_atlas;
-	ShadowAtlas _shadow_atlas;
+	RGL::ShadowAtlas _shadow_atlas;
 
     std::shared_ptr<RGL::Shader> m_equirectangular_to_cubemap_shader;
     std::shared_ptr<RGL::Shader> m_irradiance_convolution_shader;
@@ -223,7 +223,7 @@ private:
 	dense_set<uint>                  _affecting_lights;
 	RGL::buffer::Storage<uint>       _relevant_lights_index_ssbo;
 	RGL::buffer::Mapped<ShadowSlotInfo, MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS + MAX_RECT_LIGHTS> m_shadow_map_slots_ssbo;
-	LightManager _light_mgr;
+	RGL::LightManager _light_mgr;
 
     /// Rect lights variables
     std::shared_ptr<RGL::Texture2D> m_ltc_amp_lut;

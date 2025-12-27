@@ -19,6 +19,9 @@
 //   lights::set_*(GPULight &L, ...)
 //   lights::transform(GPULight &L, ...)
 
+namespace RGL
+{
+
 namespace _private
 {
 template<typename T>
@@ -161,7 +164,7 @@ private:
 	// essentially a CPU-side mirror of the SSBO  (otherwise we'd use a mapping container)
 	LightList _lights;
 
-	RGL::buffer::Storage<GPULight> _lights_ssbo;
+	buffer::Storage<GPULight> _lights_ssbo;
 
 	size_t _num_point_lights  { 0 };
 	size_t _num_dir_lights    { 0 };
@@ -428,3 +431,5 @@ std::string_view LightManager::type_name()
 		return type_name(LIGHT_TYPE_DISC);
 	return std::string_view("{unknown}");
 }
+
+} // RGL

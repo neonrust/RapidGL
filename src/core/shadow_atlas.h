@@ -11,18 +11,16 @@
 
 #include "generated/shared-structs.h"
 
-class LightManager;
-
 struct GPULight;
 
 namespace RGL
 {
+class LightManager;
 class Camera;
-}
 
 using Time = std::chrono::steady_clock::time_point;
 
-class ShadowAtlas : public RGL::RenderTarget::Texture2d
+class ShadowAtlas : public RenderTarget::Texture2d
 {
 public:
 	static constexpr size_t PADDING = 1;
@@ -31,7 +29,7 @@ public:
 	static constexpr size_t MAX_CASCADES = 4;
 
 private:
-	using allocator_t = RGL::SpatialAllocator<uint32_t>;
+	using allocator_t = SpatialAllocator<uint32_t>;
 
 public:
 	using SlotSize = allocator_t::SizeT;
@@ -127,7 +125,7 @@ public:
 	[[nodiscard]] bool should_render(const AtlasLight &atlas_light, Time now, size_t hash, bool has_dynamic) const;
 
 	void update_shadow_params();
-	const CSMParams &update_csm_params(LightID light_id, const RGL::Camera &camera);//, float radius_uv=0.5f);
+	const CSMParams &update_csm_params(LightID light_id, const Camera &camera);//, float radius_uv=0.5f);
 	inline const CSMParams &csm_params() const { return _csm_params; }
 
 	[[nodiscard]] const AtlasLight &allocated_sun() const;
@@ -220,8 +218,10 @@ private:
 	std::chrono::milliseconds _min_change_interval;
 	small_vec<std::pair<uint32_t, std::chrono::milliseconds>, 8> _render_intervals;
 
-	RGL::buffer::Storage<ShadowSlotInfo> _shadow_slots_info_ssbo;
+	buffer::Storage<ShadowSlotInfo> _shadow_slots_info_ssbo;
 	small_vec<size_t, 16> _distribution;  // slot sizes of each of the levels (from max to min)
 
-	RGL::SpatialAllocator<uint32_t> _allocator;
+	SpatialAllocator<uint32_t> _allocator;
 };
+
+} // RGL

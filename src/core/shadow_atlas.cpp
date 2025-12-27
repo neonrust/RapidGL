@@ -19,6 +19,49 @@
 
 #include "buffer_binds.h"
 
+template <>
+struct std::formatter<glm::mat4> {
+	std::formatter<float> elem_fmt;
+	bool pad_positive = false;
+
+	constexpr auto parse(std::format_parse_context &ctx)
+	{
+		auto it = ctx.begin();
+		if(it != ctx.end() and *it == ' ')
+		{
+			pad_positive = true;
+			++it;
+		}
+		ctx.advance_to(it);
+		return elem_fmt.parse(ctx);
+	}
+
+	auto format(const glm::mat4 &m, std::format_context &ctx) const
+	{
+		auto out = ctx.out();
+		for(int row = 0; row < 4; ++row)
+		{
+			*out++ = '{';
+			for(int col = 0; col < 4; ++col)
+			{
+				float val = m[row][col];
+				if(pad_positive and not std::signbit(val))
+					*out++ = ' ';
+				out = elem_fmt.format(val, ctx);
+				if(col < 3)
+					*out++ = ';';
+			}
+			*out++ = '}';
+			if(row < 3)
+				*out++ = '\n';
+		}
+		return out;
+	}
+};
+
+namespace RGL
+{
+
 using namespace std::literals;
 
 static constexpr float s_min_light_value = 1e-2f;
@@ -30,7 +73,7 @@ static constexpr float s_min_light_value = 1e-2f;
 using namespace std::chrono;
 using namespace std::literals;
 
-inline glm::uvec4 mk_rect(const RGL::SpatialAllocator<uint32_t>::Rect &r, uint32_t margin=0)
+inline glm::uvec4 mk_rect(const SpatialAllocator<uint32_t>::Rect &r, uint32_t margin=0)
 {
 	return glm::uvec4(r.x + margin, r.y + margin, r.w - 2*margin, r.h - 2*margin);
 }
@@ -46,6 +89,7 @@ constexpr T sign_cmp(T a, T b)
 {
 	return sign(a - b);
 }
+
 static const auto s_slot_max_size_shift = 3;
 
 ShadowAtlas::ShadowAtlas(uint32_t size, LightManager &lights) :
@@ -89,8 +133,8 @@ bool ShadowAtlas::create()
 {
 	const auto size = _allocator.size();
 
-	namespace C = RGL::RenderTarget::Color;
-	namespace D = RGL::RenderTarget::Depth;
+	namespace C = RenderTarget::Color;
+	namespace D = RenderTarget::Depth;
 	// store 2-omponent normals as well as depth
 	Texture2d::create("shadow-atlas", size, size, C::Texture | C::Float2, D::Texture | D::Float);
 	// TODO: if we only use the color attachment (i.e. the normals) for slope comparison,
@@ -510,7 +554,7 @@ std::tuple<glm::mat4, float, float> ShadowAtlas::light_view_projection(const GPU
 }
 
 
-const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, const RGL::Camera &camera)//, float radius_uv)
+const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, const Camera &camera)//, float radius_uv)
 {
 	// TODO: move to ShadowAtlas ?
 	//   if so, also move view_projection() ?
@@ -1130,47 +1174,6 @@ void ShadowAtlas::generate_slots(std::initializer_list<size_t> distribution)
 	}
 }
 
-template <>
-struct std::formatter<glm::mat4> {
-	std::formatter<float> elem_fmt;
-	bool pad_positive = false;
-
-	constexpr auto parse(std::format_parse_context &ctx)
-	{
-		auto it = ctx.begin();
-		if(it != ctx.end() and *it == ' ')
-		{
-			pad_positive = true;
-			++it;
-		}
-		ctx.advance_to(it);
-		return elem_fmt.parse(ctx);
-	}
-
-	auto format(const glm::mat4 &m, std::format_context &ctx) const
-	{
-		auto out = ctx.out();
-		for(int row = 0; row < 4; ++row)
-		{
-			*out++ = '{';
-			for(int col = 0; col < 4; ++col)
-			{
-				float val = m[row][col];
-				if(pad_positive and not std::signbit(val))
-					*out++ = ' ';
-				out = elem_fmt.format(val, ctx);
-				if(col < 3)
-					*out++ = ';';
-			}
-			*out++ = '}';
-			if(row < 3)
-				*out++ = '\n';
-		}
-		return out;
-	}
-};
-
-
 
 [[maybe_unused]] static constexpr std::string_view face_names[] = {
 	"+X"sv, "-X"sv,
@@ -1188,3 +1191,5 @@ ShadowAtlas::AtlasLight::AtlasLight(const AtlasLight &other) :
 	_frames_skipped(0)
 {
 }
+
+} // RGL

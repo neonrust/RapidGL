@@ -11,7 +11,8 @@
 
 using namespace std::literals;
 
-using namespace RGL;
+namespace RGL
+{
 
 // textual names for each light type, see light_constants.h
 static const std::string_view s_light_type_names[] {
@@ -25,8 +26,6 @@ static const std::string_view s_light_type_names[] {
 };
 static_assert(LIGHT_TYPE__COUNT == 7);
 
-
-static constexpr auto ident_quat = glm::quat_identity<float, glm::defaultp>();
 
 LightManager::LightManager(/* entt registry */) :
 	_lights_ssbo("lights"sv)
@@ -418,3 +417,5 @@ size_t LightManager::hash(const GPULight &L)
 
 	return h;
 }
+
+} // RGL
