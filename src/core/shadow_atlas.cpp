@@ -614,6 +614,7 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 		light_vp = light_projection * light_view;
 
 
+		_csm_params.view[cascade] = light_view;
 		_csm_params.view_projection[cascade] = light_vp;
 
 		// std::print("   {}: D:{:>5.1f}  C: {:.1f}; {:.1f}; {:.1f}  r: {:.1f}\n",

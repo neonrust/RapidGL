@@ -59,10 +59,10 @@ uniform vec3  u_cam_pos;
 uniform float u_near_z;
 uniform float u_far_z;
 uniform mat4  u_projection;
-uniform mat4 u_view;
 uniform mat4  u_inv_view_projection;
 uniform mat4  u_prev_view;
 
+uniform mat4 u_csm_light_view[4];
 uniform uint u_csm_num_cascades;
 uniform float u_csm_depth_splits[4];
 
@@ -617,13 +617,13 @@ vec3 dirLightVisibility(GPULight light, vec3 world_pos)
 
 	ShadowSlotInfo slot_info = ssbo_shadow_slots[shadow_idx];
 
-	vec3 view_pos = (u_view * vec4(world_pos, 1)).xyz;
-
 	// use depth splits to select slot
 	// find cascade index
 	uint cascade_index = 0;
 	for(uint idx = 0; idx < u_csm_num_cascades - 1; ++idx)
 	{
+		vec4 view_pos = u_csm_light_view[idx] * vec4(world_pos, 1);
+		view_pos /= view_pos.w;
 	    if(view_pos.z < u_csm_depth_splits[idx])
 	        cascade_index = idx + 1;
 	}
