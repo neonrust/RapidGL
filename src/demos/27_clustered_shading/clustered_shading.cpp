@@ -1515,6 +1515,13 @@ void ClusteredShading::render()
 		m_volumetrics_pp.shader().setUniform("u_light_max_distance"sv,  m_camera.farPlane() * s_light_affect_fraction);
 		m_volumetrics_pp.shader().setUniform("u_shadow_max_distance"sv, m_camera.farPlane() * s_light_shadow_affect_fraction);
 
+		if(const auto &csm = _shadow_atlas.csm_params(); csm)
+		{
+			m_volumetrics_pp.shader().setUniform("u_csm_num_cascades"sv,     uint32_t(csm.num_cascades));
+			m_volumetrics_pp.shader().setUniform("u_csm_depth_splits"sv,     csm.camera_depth);
+			m_volumetrics_pp.shader().setUniform("u_csm_colorize_cascades"sv, _debug_csm_colorize_cascades);
+		}
+
 		_shadow_atlas.bindDepthTextureSampler(20); // just using single-sample, no PCF
 		m_depth_pass_rt.bindDepthTextureSampler(2);
 

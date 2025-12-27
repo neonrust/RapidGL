@@ -59,11 +59,17 @@ uniform vec3  u_cam_pos;
 uniform float u_near_z;
 uniform float u_far_z;
 uniform mat4  u_projection;
+uniform mat4 u_view;
 uniform mat4  u_inv_view_projection;
 uniform mat4  u_prev_view;
 
+uniform uint u_csm_num_cascades;
+uniform float u_csm_depth_splits[4];
+
+
 vec3 pointLightVisibility(GPULight light, vec3 world_pos);
 vec3 spotLightVisibility(GPULight light, vec3 world_pos);
+vec3 dirLightVisibility(GPULight light, vec3 world_pos);
 
 float getSpotAngleAttenuation(vec3 to_light, vec3 spot_axis, float outer_angle, float inner_angle);
 
@@ -148,6 +154,8 @@ void main()
 				visibility = pointLightVisibility(light, world_pos);
 			else if(IS_SPOT_LIGHT(light))
 				visibility = spotLightVisibility(light, world_pos);
+			else if(IS_DIR_LIGHT(light))
+				visibility = dirLightVisibility(light, world_pos);
 			// other light types do not support shadowing
 
 			if(visibility.x + visibility.y + visibility.z > s_min_visibility)
@@ -589,6 +597,48 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 	float visible = light_fade * shadow_faded;
 
 	return vec3(visible);
+}
+
+vec3 dirLightVisibility(GPULight light, vec3 world_pos)
+{
+	if(! IS_SHADOW_CASTER(light))
+		return vec3(1);
+
+	// vec3 cascade_debug_indicator = vec3(0.0, 0.0, 0.0);
+	float camera_distance = distance(world_pos, u_cam_pos);
+	float shadow_fade = 1;
+	// float shadow_fade = fadeByDistance(camera_distance, u_shadow_dir_max_distance);
+	// if(shadow_fade == 0)
+	// 	return vec3(0);
+
+	uint shadow_idx = GET_SHADOW_IDX(light);
+	if(shadow_idx == LIGHT_NO_SHADOW)
+		return vec3(1);  // no shadow map in use
+
+	ShadowSlotInfo slot_info = ssbo_shadow_slots[shadow_idx];
+
+	vec3 view_pos = (u_view * vec4(world_pos, 1)).xyz;
+
+	// use depth splits to select slot
+	// find cascade index
+	uint cascade_index = 0;
+	for(uint idx = 0; idx < u_csm_num_cascades - 1; ++idx)
+	{
+	    if(view_pos.z < u_csm_depth_splits[idx])
+	        cascade_index = idx + 1;
+	}
+
+	mat4 view_proj = slot_info.view_proj[cascade_index];
+	uvec4 slot_rect = slot_info.atlas_rect[cascade_index];
+
+	vec4 clip_pos = view_proj * vec4(world_pos, 1);
+	clip_pos /= clip_pos.w;
+	float shadow_visibility = shadowVisibility(clip_pos.xyz, camera_distance, light, slot_rect);
+
+	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade;
+	vec3 visible = vec3(shadow_faded);
+
+	return visible;
 }
 
 vec3 spotLightVisibility(GPULight light, vec3 world_pos)
