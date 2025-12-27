@@ -1695,15 +1695,13 @@ void ClusteredShading::renderShadowMaps()
 		{
 			// render shadow map(s) for this light
 
-			const auto slot_index = GET_SHADOW_IDX(light);
+			const auto shadow_index = GET_SHADOW_IDX(light);
 
-			for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
+			for(auto slot_idx = 0u; slot_idx < atlas_light.num_slots; ++slot_idx)
 			{
-				const auto &slot_rect = atlas_light.slots[idx].rect;
+				const auto &slot_rect = atlas_light.slots[slot_idx].rect;
 
-				// TODO: if dirty or hash changed  or dynamic object _within this face's frustum_, render it
-
-				if(atlas_light.is_dirty() or light_hash != atlas_light.hash)//_scene_culler.pvs(light_id, idx).has(SceneObjectType::Dynamic))
+				if(true)//_scene_culler.pvs(light_id, idx).has(SceneObjectType::Dynamic))
 				{
 					_shadow_atlas.bindRenderTarget(slot_rect);
 					if(not did_barrier)
@@ -1712,7 +1710,7 @@ void ClusteredShading::renderShadowMaps()
 						did_barrier = true;
 					}
 
-					renderSceneShadow(light.position, slot_index, idx);
+					renderSceneShadow(shadow_index, slot_idx);
 					++_shadow_atlas_slots_rendered;
 				}
 			}
@@ -2076,7 +2074,7 @@ void ClusteredShading::renderDepth(const glm::mat4 &view_projection, RenderTarge
 	renderScene(view_projection, *m_depth_prepass_shader, NoMaterials);
 }
 
-void ClusteredShading::renderSceneShadow(const glm::vec3 &pos, uint_fast16_t shadow_slot_index, uint32_t shadow_map_index)
+void ClusteredShading::renderSceneShadow(uint_fast16_t shadow_index, uint32_t shadow_map_index)
 {
 	// TODO: ideally, only render objects whose AABB intersects with the light's projection (frustum)
 
@@ -2086,7 +2084,7 @@ void ClusteredShading::renderSceneShadow(const glm::vec3 &pos, uint_fast16_t sha
 
 	m_shadow_depth_shader->bind();
 
-	m_shadow_depth_shader->setUniform("u_shadow_slot_index"sv, uint32_t(shadow_slot_index)); // for 'mvp'
+	m_shadow_depth_shader->setUniform("u_shadow_slot_index"sv, uint32_t(shadow_index)); // for 'mvp'
 	m_shadow_depth_shader->setUniform("u_shadow_map_index"sv, shadow_map_index);
 
 	for(const auto &obj: _scenePvs)
