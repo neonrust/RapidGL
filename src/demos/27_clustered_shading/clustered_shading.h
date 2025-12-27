@@ -191,13 +191,12 @@ private:
 	bool  m_debug_tile_occupancy         = false;
 	float m_debug_coverlay_blend         = 0.7f;
 	bool _debug_csm_colorize_cascades    = false;
-	float m_shadow_bias_constant         = 0.f;
-	float m_shadow_bias_slope_scale      = 0.f;
-	float m_shadow_bias_slope_power      = 2.f;
-	float m_shadow_bias_distance_scale   = 0.f;
-	float m_shadow_bias_scale            = -0.2f;
-	bool  _shadow_parameters_changed     = false;
 
+	float m_shadow_bias_constant         = 0.0001f;
+	float m_shadow_bias_slope_scale      = 0.3f;
+	float m_shadow_bias_slope_power      = 0.01f;
+	float m_shadow_bias_distance_scale   = 0.f;
+	float m_shadow_bias_scale            = -0.3f;
 
 	bool      m_animate_lights             = false;
 	float     m_animation_speed            = 0.4f;
