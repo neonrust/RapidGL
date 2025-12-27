@@ -14,5 +14,8 @@ void main()
 	d = pow(d, 0.5);                            // optional gamma
 	d = 1 - d;                                  // invert; brighter = closer
 	d *= u_brightness;
-	frag_color = vec4(d, d, d, 1);              // grayscale output
+	if(d == 0)
+		frag_color = vec4(0.2, 0.4, 0, 1);
+	else
+		frag_color = vec4(d, d, d, 1);              // grayscale output
 }
