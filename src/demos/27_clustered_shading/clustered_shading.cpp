@@ -63,6 +63,9 @@ glm::mat3 make_common_space_from_direction(const glm::vec3 &direction)
 	return glm::mat3{ space_x, space_y, space_z };
 }
 
+
+static ClusteredShading *the_app = nullptr;
+
 void opengl_message_callback(GLenum,       // source
 							 GLenum type,
 							 GLuint,       // id
@@ -77,33 +80,7 @@ void opengl_message_callback(GLenum,       // source
 		or severity == GL_DEBUG_SEVERITY_NOTIFICATION)
 		return;
 
-	switch(type)
-	{
-	case GL_DEBUG_TYPE_ERROR:
-		std::print(stderr, "\x1b[1mGL \x1b[31mERROR\x1b[m severity {}: {}\n",
-				   gl_lookup::enum_name(severity).substr(18), message);
-		break;
-	case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR:
-		std::print(stderr, "\x1b[1mGL \x1b[31mDEPRECATED\x1b[m severity {}: {}\n",
-				   gl_lookup::enum_name(severity).substr(18), message);
-		break;
-	case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:
-		std::print(stderr, "\x1b[1mGL \x1b[33mUNDEFINED\x1b[m severity {}: {}\n",
-				   gl_lookup::enum_name(severity).substr(18), message);
-		break;
-	case GL_DEBUG_TYPE_PORTABILITY:
-		std::print(stderr, "\x1b[1mGL \x1b[34mPORTABILITY\x1b[m severity {}: {}\n",
-				   gl_lookup::enum_name(severity).substr(18), message);
-		break;
-	case GL_DEBUG_TYPE_PERFORMANCE:
-		std::print(stderr, "\x1b[1mGL \x1b[33mPERFORMANCE\x1b[m severity {}: {}\n",
-				   gl_lookup::enum_name(severity).substr(18), message);
-		break;
-	case GL_DEBUG_TYPE_OTHER:
-		std::print(stderr, "\x1b[1mGL \x1b[33mOTHER\x1b[m severity {}: {}\n",
-				   gl_lookup::enum_name(severity).substr(18), message);
-		break;
-	}
+	the_app->debug_message(type, gl_lookup::enum_name(severity).substr(18), message);
 }
 
 
@@ -134,6 +111,8 @@ ClusteredShading::ClusteredShading() :
 	_fog_density          (0.1f),    // [ 0, 1 ]
 	_fog_blend_weight     (0.95f)     // [ 0, 1 ]
 {
+	the_app = this;
+
 	m_cluster_aabb_ssbo.bindAt(SSBO_BIND_CLUSTER_AABB);
 	m_shadow_map_slots_ssbo.bindAt(SSBO_BIND_SHADOW_SLOTS_INFO);
 	m_cluster_discovery_ssbo.bindAt(SSBO_BIND_CLUSTER_DISCOVERY);
@@ -2157,3 +2136,43 @@ void ClusteredShading::renderSceneShading(const Camera &camera)
     glDepthFunc(GL_LEQUAL);
 }
 
+
+void ClusteredShading::debug_message(GLenum type, std::string_view severity, std::string_view message)
+{
+	GLuint program_id = 0;
+	GLenum shader_type = 0;
+
+	if(auto found = message.find("Fragment shader in program "); found != std::string_view::npos)
+	{
+		shader_type = GL_FRAGMENT_SHADER;
+		program_id = GLuint(std::atol(message.substr(found + 27).data()));
+	}
+	if(auto found = message.find("Vertex shader in program "); found != std::string_view::npos)
+	{
+		shader_type = GL_VERTEX_SHADER;
+		if(program_id != 0)
+			program_id = GLuint(std::atol(message.substr(found + 25).data()));
+	}
+
+	switch(type)
+	{
+	case GL_DEBUG_TYPE_ERROR:
+		std::print(stderr, "\x1b[1mGL \x1b[31mERROR\x1b[m severity {}: {}\n", severity, message);
+		break;
+	case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR:
+		std::print(stderr, "\x1b[1mGL \x1b[31mDEPRECATED\x1b[m severity {}: {}\n", severity, message);
+		break;
+	case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:
+		std::print(stderr, "\x1b[1mGL \x1b[33mUNDEFINED\x1b[m severity {}: {}\n", severity, message);
+		break;
+	case GL_DEBUG_TYPE_PORTABILITY:
+		std::print(stderr, "\x1b[1mGL \x1b[34mPORTABILITY\x1b[m severity {}: {}\n", severity, message);
+		break;
+	case GL_DEBUG_TYPE_PERFORMANCE:
+		std::print(stderr, "\x1b[1mGL \x1b[33mPERFORMANCE\x1b[m severity {}: {}\n", severity, message);
+		break;
+	case GL_DEBUG_TYPE_OTHER:
+		std::print(stderr, "\x1b[1mGL \x1b[33mOTHER\x1b[m severity {}: {}\n", severity, message);
+		break;
+	}
+}

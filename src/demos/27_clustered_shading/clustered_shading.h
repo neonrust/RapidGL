@@ -87,6 +87,8 @@ public:
     void render()                  override;
     void render_gui()              override;
 
+	void debug_message(GLenum type, std::string_view severity, std::string_view message);
+
 private:
 	void calculateShadingClusterGrid();
 	void prepareClusterBuffers();
