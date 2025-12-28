@@ -180,10 +180,10 @@ private:
 	float m_debug_coverlay_blend         = 0.7f;
 	bool _debug_csm_colorize_cascades    = false;
 
-	float m_shadow_bias_constant         = 0.0001f;
-	float m_shadow_bias_slope_scale      = 0.3f;
+	float m_shadow_bias_constant         = 0.0007f;
+	float m_shadow_bias_slope_scale      = 0.2f;
 	float m_shadow_bias_slope_power      = 0.01f;
-	float m_shadow_bias_distance_scale   = 0.f;
+	float m_shadow_bias_distance_scale   = 0.002f;
 	float m_shadow_bias_scale            = -0.3f;
 
 	bool      m_animate_lights             = false;
