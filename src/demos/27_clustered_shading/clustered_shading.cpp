@@ -146,6 +146,8 @@ ClusteredShading::ClusteredShading() :
 	_affecting_lights.reserve(256);
 
 	_lightsPvs.reserve(1024);
+
+	_light_mgr.set_falloff_power(50.f);
 }
 
 ClusteredShading::~ClusteredShading()
@@ -1514,6 +1516,8 @@ void ClusteredShading::render()
 
 		m_volumetrics_pp.shader().setUniform("u_light_max_distance"sv,  m_camera.farPlane() * s_light_affect_fraction);
 		m_volumetrics_pp.shader().setUniform("u_shadow_max_distance"sv, m_camera.farPlane() * s_light_shadow_affect_fraction);
+		m_volumetrics_pp.shader().setUniform("u_falloff_power"sv, _light_mgr.falloff_power());
+
 
 		if(const auto &csm = _shadow_atlas.csm_params(); csm)
 		{
@@ -2052,7 +2056,7 @@ void ClusteredShading::renderScene(const glm::mat4 &view_projection, Shader &sha
 		shader.setUniform("u_mvp"sv,   view_projection * obj.transform);
 		shader.setUniform("u_model"sv, obj.transform);
 		shader.setUniform("u_normal_matrix"sv, glm::transpose(glm::inverse(glm::mat3(obj.transform))));
-		shader.setUniform("u_falloff_power"sv, m_volumetrics_pp.falloffPower());
+		shader.setUniform("u_falloff_power"sv, _light_mgr.falloff_power());
 
 		if(materialCtrl == UseMaterials)
 			obj.model->Render(shader);

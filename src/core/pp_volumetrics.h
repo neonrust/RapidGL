@@ -29,8 +29,6 @@ public:
 
 	// multiplier for the volumetrics effect
 	inline void setStrength(float strength) { _strength = strength; }
-	inline float falloffPower() const { return _falloff_power; }
-	inline void setFalloffPower(float power) { _falloff_power = power; }
 	inline void setFroxelNoiseEnabled(bool enabled) { _z_noise_enabled = enabled; }
 	inline void setFroxelBlurEnabled(bool enabled) { _3dblur_enabled = enabled; }
 	inline void setPostBlurEnabled(bool enabled) { _2dblur_enabled = enabled; }
@@ -85,7 +83,6 @@ private:
 	float _density { 0.1f };    // small values, less than ~0.2
 	bool _blend_previous { true };
 	float _blend_weight { 0.95f };
-	float _falloff_power { 50.f };
 	bool _z_noise_enabled { true };
 	bool _3dblur_enabled { true };
 	bool _2dblur_enabled { false };

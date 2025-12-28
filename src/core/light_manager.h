@@ -84,6 +84,9 @@ public:
 	template<_private::LightParamsType LTP>
 	auto add(const LTP &ltp) -> _private::return_type<LTP>;
 
+	inline void set_falloff_power(float power=1) { _falloff_power = power; }
+	inline float falloff_power() const { return _falloff_power; }
+
 	void clear();
 
 	// template<_private::LightType LT>
@@ -158,13 +161,14 @@ private:
 	dense_map<LightID, LightIndex> _id_to_index;
 	dense_map<LightIndex, LightID> _index_to_id; // TODO: can this be a vector? store directly in '_lights'?
 
-
 	dense_set<LightIndex> _dirty;
 	std::vector<LightIndex> _dirty_list;
 	// essentially a CPU-side mirror of the SSBO  (otherwise we'd use a mapping container)
 	LightList _lights;
 
 	buffer::Storage<GPULight> _lights_ssbo;
+
+	float _falloff_power { 1.f };
 
 	size_t _num_point_lights  { 0 };
 	size_t _num_dir_lights    { 0 };

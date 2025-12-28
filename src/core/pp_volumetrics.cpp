@@ -151,7 +151,6 @@ void Volumetrics::inject()
 
 	_camera.setUniforms(_inject_shader);
 	_inject_shader.setUniform("u_frame_index"sv, _frame);
-	_inject_shader.setUniform("u_falloff_power"sv, _falloff_power);
 	_inject_shader.setUniform("u_fog_anisotropy"sv, _anisotropy);
 	_inject_shader.setUniform("u_froxel_zexp"sv,    1.f);
 	_inject_shader.setUniform("u_fog_density"sv, _density);
