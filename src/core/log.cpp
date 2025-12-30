@@ -6,6 +6,7 @@
 
 using namespace std::literals;
 using namespace std::chrono;
+namespace fs = std::filesystem;
 
 namespace Log
 {
@@ -29,7 +30,7 @@ void flush()
 		std::fflush(stderr);
 }
 
-bool set_file(std::filesystem::path &file_path)
+bool set_file(fs::path &file_path)
 {
 	auto *fp = std::fopen(file_path.native().c_str(), "wb");
 	if(not fp)
