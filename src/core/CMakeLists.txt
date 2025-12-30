@@ -19,8 +19,10 @@ set(SOURCE_FILES_CORE
 	GLTimer.cpp
 	input.cpp
 	input_bind.cpp
+	instance_attributes.cpp
 	ktx_loader.cpp
 	light_manager.cpp
+	log.cpp
 	material.cpp
 	plane.cpp
 	postprocess.cpp
@@ -62,6 +64,10 @@ set(HEADER_FILES_CORE
 	frustum.h
 	gl_lookup.h
 	GLTimer.h
+	hash_vec3.h
+	hash_combine.h
+	hash_mat4.h
+	hash_vec4.h
 	input.h
 	input_bind.h
 	instance_attributes.h
@@ -69,6 +75,7 @@ set(HEADER_FILES_CORE
 	light_constants.h
 	light_manager.h
 	lights.h
+	log.h
 	material.h
 	mesh_part.h
 	plane.h
@@ -90,6 +97,7 @@ set(HEADER_FILES_CORE
 	spatial_allocator.h
 	ssbo.h
 	static_model.h
+	static_object.h
 	texture.h
 	timer.h
 	ubo.h
