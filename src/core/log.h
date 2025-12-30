@@ -30,7 +30,7 @@ static Level error_level  { WARNING };  // at or higher also writes to stderr
 static FILE  *out         { stdout };
 static bool  output_date  { false };
 static bool  output_since { false };
-static std::chrono::system_clock::time_point start_time;
+static std::chrono::steady_clock::time_point start_time;
 
 template<typename... Args>
 void log_msg(Level lvl, std::format_string<Args...> fmt, Args&&... args)

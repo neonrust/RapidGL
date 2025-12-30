@@ -95,7 +95,10 @@ void stamp(FILE *fp)
 	else
 		std::print(fp, "\x1b[34;1m{:%H:%M:%S}\x1b[30m ", now);
 	if(output_since)
-		std::print(fp, "({:.3f}) ", duration_cast<seconds_f>(now - start_time).count());
+	{
+		const auto since = duration_cast<seconds_f>(steady_clock::now() - start_time);
+		std::print(fp, "({:.3f}) ", since.count());
+	}
 }
 
 void lf(FILE *fp)
@@ -135,7 +138,7 @@ void init()
 	std::signal(SIGFPE,   _private::on_signal);
 	std::signal(SIGWINCH, _private::on_signal);
 	initialized = true;
-	start_time = time_point_cast<milliseconds>(system_clock::now());
+	start_time = time_point_cast<milliseconds>(steady_clock::now());
 }
 
 struct _static_init
