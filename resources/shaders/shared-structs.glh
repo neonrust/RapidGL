@@ -43,6 +43,7 @@ struct ShadowSlotInfo
 {
 	mat4 view_proj[6];
 	uvec4 atlas_rect[6];
+	float texel_size[6];
 };
 
 struct AABB

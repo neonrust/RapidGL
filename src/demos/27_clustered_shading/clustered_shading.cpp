@@ -2083,6 +2083,7 @@ void ClusteredShading::renderSceneShading(const Camera &camera)
 	m_clustered_pbr_shader->setUniform("u_shadow_bias_slope_scale"sv,    m_shadow_bias_slope_scale);
 	m_clustered_pbr_shader->setUniform("u_shadow_bias_slope_power"sv,    m_shadow_bias_slope_power);
 	m_clustered_pbr_shader->setUniform("u_shadow_bias_distance_scale"sv, m_shadow_bias_distance_scale);
+	m_clustered_pbr_shader->setUniform("u_shadow_bias_texel_size_mix"sv, m_shadow_bias_texel_size_mix);
 	m_clustered_pbr_shader->setUniform("u_shadow_bias_scale"sv,          m_shadow_bias_scale);
 
 	if(const auto &csm = _shadow_atlas.csm_params(); csm)

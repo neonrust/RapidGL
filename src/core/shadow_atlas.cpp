@@ -469,24 +469,33 @@ void ShadowAtlas::update_shadow_params()
 	{
 		const auto &light = _lights.get_by_id(light_id);
 
-		std::array<glm::mat4, 6> projs;
+		std::array<glm::mat4, 6>  projs;
 		std::array<glm::uvec4, 6> rects;
+		std::array<float, 6>      texel_sizes;
 
+		// std::print("[{}] texel_sizes:", light_id);
 		for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
 		{
+			rects[idx] = atlas_light.slots[idx].rect;
+
 			if(IS_DIR_LIGHT(light))
+			{
 				projs[idx] = _csm_params.view_projection[idx];
+				texel_sizes[idx] = (_csm_params.depth_range[idx].y - _csm_params.depth_range[idx].x) / float(rects[idx].z);
+			}
 			else
 			{
 				const auto &[proj, nz, fz] = light_view_projection(light, idx);
 				projs[idx] = proj;
+				texel_sizes[idx] = (fz - nz) / float(rects[idx].z);
 			}
-			rects[idx] = atlas_light.slots[idx].rect;
+			// std::print("  {:.3f}", texel_sizes[idx]);
 		}
+		// std::print("\n");
 
 		_lights.set_shadow_index(light_id, shadow_params.size());
 
-		shadow_params.emplace_back(projs, rects);
+		shadow_params.emplace_back(projs, rects, texel_sizes);
 	}
 	_shadow_slots_info_ssbo.set(shadow_params);
 	_lights.flush();

@@ -374,11 +374,12 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 
 	mat4 view_proj;
 	vec4 slot_rect; // shadow slot rectangle in atlas, in absolute pixels
-	uint cube_face = detectCubeFaceSlot(light_to_frag, slot_info, view_proj, slot_rect);
+	float texel_size;
+	uint cube_face = detectCubeFaceSlot(light_to_frag, slot_info, view_proj, slot_rect, texel_size);
 
 	vec4 clip_pos = view_proj * vec4(world_pos, 1);
 	clip_pos /= clip_pos.w;
-	float shadow_visibility = shadowVisibility(clip_pos.xyz, camera_distance, light, slot_rect);
+	float shadow_visibility = shadowVisibility(clip_pos.xyz, camera_distance, light, slot_rect, texel_size);
 
 	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade;
 	float visible = light_fade * shadow_faded;
@@ -415,10 +416,11 @@ vec3 dirLightVisibility(GPULight light, vec3 world_pos)
 
 	mat4 view_proj = slot_info.view_proj[cascade_index];
 	uvec4 slot_rect = slot_info.atlas_rect[cascade_index];
+	float texel_size = slot_info.texel_size[cascade_index];
 
 	vec4 clip_pos = view_proj * vec4(world_pos, 1);
 	clip_pos /= clip_pos.w;
-	float shadow_visibility = shadowVisibility(clip_pos.xyz, camera_distance, light, slot_rect);
+	float shadow_visibility = shadowVisibility(clip_pos.xyz, 0/*camera_distance*/, light, slot_rect, texel_size);
 
 	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade;
 	vec3 visible_color = vec3(shadow_faded);
@@ -457,10 +459,11 @@ vec3 spotLightVisibility(GPULight light, vec3 world_pos)
 
 	mat4 view_proj = slot_info.view_proj[0];
 	vec4 slot_rect = slot_info.atlas_rect[0];
+	float texel_size = slot_info.texel_size[0];
 
 	vec4 clip_pos = view_proj * vec4(world_pos, 1);
 	clip_pos /= clip_pos.w;
-	float shadow_visibility = shadowVisibility(clip_pos.xyz, camera_distance, light, slot_rect);
+	float shadow_visibility = shadowVisibility(clip_pos.xyz, camera_distance, light, slot_rect, texel_size);
 
 	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade;
 	float visible = light_fade * shadow_faded;
