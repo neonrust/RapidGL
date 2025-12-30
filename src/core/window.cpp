@@ -66,22 +66,6 @@ namespace RGL
             exit(EXIT_FAILURE);
         }
 
-        #ifdef _DEBUG
-        GLint flags;
-        glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
-
-        if (flags & GL_CONTEXT_FLAG_DEBUG_BIT)
-        {
-            /* Create OpenGL debug context */
-            glEnable(GL_DEBUG_OUTPUT);
-            glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-
-            /* Register callback */
-            glDebugMessageCallback(DebugOutputGL::GLerrorCallback, nullptr /*userParam*/);
-            glDebugMessageControl(GL_DONT_CARE /*source*/, GL_DONT_CARE /*type*/, GL_DEBUG_SEVERITY_MEDIUM /*severity*/, 0 /*count*/, nullptr /*ids*/, GL_TRUE /*enabled*/);
-        }
-        #endif
-
         const GLubyte* vendor_name    = glGetString(GL_VENDOR);
         const GLubyte* renderer_name  = glGetString(GL_RENDERER);
         const GLubyte* driver_version = glGetString(GL_VERSION);
