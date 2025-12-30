@@ -39,7 +39,7 @@ void log_msg(Level lvl, std::format_string<Args...> fmt, Args&&... args)
 	std::print(out, fmt, std::forward<Args>(args)...);
 	_private::end(out);
 
-	if(lvl >= error_level and out != stderr)
+	if(lvl >= error_level and out != stdout and out != stderr)
 	{
 		_private::preamble(lvl, stderr);
 		std::print(stderr, fmt, std::forward<Args>(args)...);
