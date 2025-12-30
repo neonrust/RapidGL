@@ -8,6 +8,8 @@
 namespace Log
 {
 
+using seconds_f = std::chrono::duration<float, std::ratio<1>>;
+
 using Level = uint_fast8_t;
 static constexpr Level DEBUG   = 10;
 static constexpr Level INFO    = 20;
@@ -22,11 +24,13 @@ void preamble(Level lvl, FILE *fp);
 void end(FILE *fp);
 
 // settings
-static auto  initialized { true };
-static Level level       { WARNING };
-static Level error_level { WARNING };  // at or higher also writes to stderr
-static FILE  *out        { stdout };
-static bool  output_date { false };
+static auto  initialized  { true };
+static Level level        { WARNING };
+static Level error_level  { WARNING };  // at or higher also writes to stderr
+static FILE  *out         { stdout };
+static bool  output_date  { false };
+static bool  output_since { false };
+static std::chrono::system_clock::time_point start_time;
 
 template<typename... Args>
 void log_msg(Level lvl, std::format_string<Args...> fmt, Args&&... args)
@@ -48,6 +52,7 @@ void log_msg(Level lvl, std::format_string<Args...> fmt, Args&&... args)
 bool set_file(std::filesystem::path &file_path);
 Level set_level(Level min_level);
 void enable_date(bool enable);
+void enable_since(bool enable);
 
 template<typename... Args>
 void debug(std::format_string<Args...> fmt, Args&&... args)

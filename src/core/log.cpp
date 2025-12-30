@@ -50,6 +50,11 @@ void enable_date(bool enable)
 	_private::output_date = enable;
 }
 
+void enable_since(bool enable)
+{
+	_private::output_since = enable;
+}
+
 namespace _private
 {
 
@@ -64,10 +69,12 @@ void level_style(Level lvl, FILE *fp)
 	case FATAL:   std::print(fp, "\x1b[31;97;1m"sv); break;
 	}
 }
+
 void reset_style(FILE *fp)
 {
 	std::print(fp, "\x1b[m");
 }
+
 void out_level(Level lvl, FILE *fp)
 {
 	switch(lvl)
@@ -87,6 +94,8 @@ void stamp(FILE *fp)
 		std::print(fp, "\x1b[34;1m{:%Y-%m-%d %H:%M:%S}\x1b[30m ", now);
 	else
 		std::print(fp, "\x1b[34;1m{:%H:%M:%S}\x1b[30m ", now);
+	if(output_since)
+		std::print(fp, "({:.3f}) ", duration_cast<seconds_f>(now - start_time).count());
 }
 
 void lf(FILE *fp)
@@ -126,6 +135,7 @@ void init()
 	std::signal(SIGFPE,   _private::on_signal);
 	std::signal(SIGWINCH, _private::on_signal);
 	initialized = true;
+	start_time = time_point_cast<milliseconds>(system_clock::now());
 }
 
 struct _static_init
@@ -136,6 +146,6 @@ struct _static_init
 };
 static const _static_init _initializer_;
 
-} // _private
+}  // _private
 
 } // log
