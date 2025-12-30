@@ -80,6 +80,7 @@ Shader::~Shader()
 {
 	if (m_program_id)
 	{
+		ShaderRegistry::the().remove(m_program_id);
 		glDeleteProgram(m_program_id);
 		m_program_id = 0;
 	}
@@ -115,6 +116,7 @@ bool Shader::addShader(const std::filesystem::path & filepath, ShaderType type, 
 			Log::error("Error while creating program object.");
 			return false;
 		}
+		ShaderRegistry::the().add(m_program_id, this);
 	}
 
 	auto shaderObject = glCreateShader(GLenum(type));

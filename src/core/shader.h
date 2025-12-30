@@ -197,4 +197,37 @@ inline bool operator < (const Shader::UniformInfo &A, const Shader::UniformInfo 
 	return A.type < B.type;
 }
 
+class ShaderRegistry
+{
+private:
+	ShaderRegistry()
+	{
+		_shaders.reserve(32);
+	}
+public:
+	static ShaderRegistry &the()
+	{
+		static ShaderRegistry instance;
+		return instance;
+	}
+public:
+	void add(GLuint program_id, const Shader *shader)
+	{
+		_shaders[program_id] = shader;
+	}
+	void remove(GLuint program_id)
+	{
+		[[maybe_unused]] bool erased = _shaders.erase(program_id) == 1;
+		assert(erased);
+	}
+	const Shader *get(GLuint program_id)
+	{
+		if(auto found = _shaders.find(program_id); found != _shaders.end())
+			return found->second;
+		return nullptr;
+	}
+private:
+	dense_map<GLuint, const Shader *> _shaders;
+};
+
 } // RGL
