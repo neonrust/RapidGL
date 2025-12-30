@@ -4,6 +4,7 @@
 #include "hash_combine.h"
 #include "input.h"
 #include "instance_attributes.h"
+#include "log.h"
 #include "postprocess.h"
 #include "util.h"
 #include "gui/gui.h"   // IWYU pragma: keep
@@ -64,26 +65,6 @@ glm::mat3 make_common_space_from_direction(const glm::vec3 &direction)
 }
 
 
-static ClusteredShading *the_app = nullptr;
-
-void opengl_message_callback(GLenum,       // source
-							 GLenum type,
-							 GLuint,       // id
-							 GLenum severity,
-							 GLsizei,      // length
-							 const GLchar *message,
-							 const void *) // userParam
-{
-	// TODO: also include 'source' (GL_DEBUG_SOURCE_*) ?
-
-	if(severity == GL_DEBUG_SEVERITY_LOW
-		or severity == GL_DEBUG_SEVERITY_NOTIFICATION)
-		return;
-
-	the_app->debug_message(type, gl_lookup::enum_name(severity).substr(18), message);
-}
-
-
 using namespace RGL;
 
 ClusteredShading::ClusteredShading() :
@@ -111,8 +92,6 @@ ClusteredShading::ClusteredShading() :
 	_fog_density          (0.1f),    // [ 0, 1 ]
 	_fog_blend_weight     (0.95f)     // [ 0, 1 ]
 {
-	the_app = this;
-
 	m_cluster_aabb_ssbo.bindAt(SSBO_BIND_CLUSTER_AABB);
 	m_shadow_map_slots_ssbo.bindAt(SSBO_BIND_SHADOW_SLOTS_INFO);
 	m_cluster_discovery_ssbo.bindAt(SSBO_BIND_CLUSTER_DISCOVERY);
@@ -123,7 +102,6 @@ ClusteredShading::ClusteredShading() :
 	_relevant_lights_index_ssbo.bindAt(SSBO_BIND_RELEVANT_LIGHTS_INDEX);
 
 	_affecting_lights.reserve(256);
-
 	_lightsPvs.reserve(1024);
 
 	_light_mgr.set_falloff_power(50.f);
@@ -150,17 +128,31 @@ ClusteredShading::~ClusteredShading()
 	}
 }
 
+void opengl_message_callback(GLenum /*source*/, GLenum type, GLuint /*id*/, GLenum severity, GLsizei /*len*/, const GLchar *message, const void *handler)
+{
+	if(severity == GL_DEBUG_SEVERITY_NOTIFICATION)
+		return;
+	const auto *app = static_cast<const ClusteredShading *>(handler);
+	app->debug_message(type, gl_lookup::enum_name(severity).substr(18), message);
+}
+
 void ClusteredShading::init_app()
 {
-	glEnable(GL_DEBUG_OUTPUT);
-	glDebugMessageCallback(opengl_message_callback, 0);
+	GLint flags;
+	glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
+	if(flags & GL_CONTEXT_FLAG_DEBUG_BIT)
+	{
+		glEnable(GL_DEBUG_OUTPUT);
+		glDebugMessageCallback(opengl_message_callback, this);
+		glDebugMessageControl(GL_DONT_CARE /*source*/, GL_DONT_CARE /*type*/, GL_DEBUG_SEVERITY_MEDIUM /*severity*/, 0 /*count*/, nullptr /*ids*/, GL_TRUE /*enabled*/);
+	}
 
     /// Initialize all the variables, buffers, etc. here.
 	glClearColor(0.05f, 0.05f, 0.05f, 1);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 	// glEnable(GL_CULL_FACE);  // stops skybox from working !?
-	std::print(stderr, "-------------------- ENABLE FACE CULLING -------------------\n");
+	Log::warning("-------------------- ENABLE FACE CULLING -------------------");
 	glCullFace(GL_BACK);
 
 	// glLineWidth(2.f); // for wireframes (but >1 not commonly supported)
@@ -189,7 +181,7 @@ void ClusteredShading::init_app()
 	m_camera.setOrientationEuler({ 3.f, -90.f, 0 });
 
 
-	std::print("Horizontal FOV: {}\n", m_camera.horizontalFov());
+	Log::debug("Horizontal FOV: {}", m_camera.horizontalFov());
 
 	/// Randomly initialize lights (predictably)
 	::srand(3281533);//3281991);
@@ -234,7 +226,7 @@ void ClusteredShading::init_app()
 			assert(*model);
 			_surfaceLightModels.emplace_back(model, origin);
 		}
-		std::print("Loaded {} surface geometries\n", _surfaceLightModels.size());
+		Log::info("Loaded {} surface geometries", _surfaceLightModels.size());
 	}
 
     /// Prepare lights' SSBOs.
@@ -266,7 +258,7 @@ void ClusteredShading::init_app()
 		m_ltc_mat_lut->SetFiltering(TextureFiltering::Magnify, TextureFilteringParam::Linear);
     }
     else
-		std::print(stderr, "Error: could not load texture {}\n", ltc_lut_mat_path.string());
+		Log::error("Could not load texture {}", ltc_lut_mat_path.string());
 
 	m_ltc_amp_lut = std::make_shared<Texture2D>();
     if (m_ltc_amp_lut->LoadDds(ltc_lut_amp_path))
@@ -277,7 +269,7 @@ void ClusteredShading::init_app()
 		m_ltc_amp_lut->SetFiltering(TextureFiltering::Magnify, TextureFilteringParam::Linear);
     }
     else
-		std::print(stderr, "Error: could not load texture %s\n", ltc_lut_amp_path.string());
+		Log::error("Could not load texture %s", ltc_lut_amp_path.string());
 
     /// Create shaders.
 	const fs::path core_shaders = "resources/shaders/";
@@ -296,7 +288,7 @@ void ClusteredShading::init_app()
 	assert(*m_shadow_depth_shader);
 
 	m_generate_clusters_shader = std::make_shared<Shader>(core_shaders/"generate_clusters.comp");
-    m_generate_clusters_shader->link();
+	m_generate_clusters_shader->link();
 	assert(*m_generate_clusters_shader);
 
 	m_find_nonempty_clusters_shader = std::make_shared<Shader>(core_shaders/"find_nonempty_clusters.comp");
@@ -399,7 +391,7 @@ void ClusteredShading::init_app()
 
 	const auto T1 = steady_clock::now();
 	const auto shader_init_time = duration_cast<microseconds>(T1 - T0);
-	std::print("Shader init time: {:.1f} ms\n", float(shader_init_time.count())/1000.f);
+	Log::info("Shader init time: {:.1f} ms", float(shader_init_time.count())/1000.f);
 
 	namespace C = RenderTarget::Color;
 	namespace D = RenderTarget::Depth;
@@ -473,19 +465,19 @@ void ClusteredShading::init_app()
 		auto target = u_inv_projection * glm::vec4(coord.x, coord.y, 1, 1);
 		auto direction = glm::vec3(u_inv_view * glm::vec4(glm::normalize(glm::vec3(target) / target.w), 0)); // World space
 
-		std::print("        target: {:.5f}; {:.5f}; {:.5f}; {:.5f}\n", target.x, target.y, target.z, target.w);
+		Log::info("        target: {:.5f}; {:.5f}; {:.5f}; {:.5f}", target.x, target.y, target.z, target.w);
 		const auto far_depth = target.z / target.w;
 		target = glm::normalize(target);
-		std::print("   norm.target: {:.5f}; {:.5f}; {:.5f}   (max depth: {:.1f})\n", target.x, target.y, target.z, far_depth);
-		std::print("     direction: {:.5f}; {:.5f}; {:.5f}\n", direction.x, direction.y, direction.z);
+		Log::info("   norm.target: {:.5f}; {:.5f}; {:.5f}   (max depth: {:.1f})", target.x, target.y, target.z, far_depth);
+		Log::info("     direction: {:.5f}; {:.5f}; {:.5f}", direction.x, direction.y, direction.z);
 
-		// std::print("   u_view: {}\n", glm::to_string(u_view).c_str());
+		// Log::info("   u_view: {}", glm::to_string(u_view).c_str());
 
 		const glm::vec3 light_pos { -10, 2.f, 0 };
-		std::print("  camera[ws]: {:.5f}; {:.5f}; {:.5f}\n", u_cam_pos.x, u_cam_pos.y, u_cam_pos.z);
-		std::print("   light[ws]: {:.5f}; {:.5f}; {:.5f}\n", light_pos.x, light_pos.y, light_pos.z);
+		Log::info("  camera[ws]: {:.5f}; {:.5f}; {:.5f}", u_cam_pos.x, u_cam_pos.y, u_cam_pos.z);
+		Log::info("   light[ws]: {:.5f}; {:.5f}; {:.5f}", light_pos.x, light_pos.y, light_pos.z);
 		auto light_pos_cs = glm::vec3(u_view * glm::vec4(light_pos, 1));
-		std::print("   light[cs]: {:.5f}; {:.5f}; {:.5f}\n", light_pos_cs.x, light_pos_cs.y, light_pos_cs.z);
+		Log::info("   light[cs]: {:.5f}; {:.5f}; {:.5f}", light_pos_cs.x, light_pos_cs.y, light_pos_cs.z);
 
 
 		std::exit(EXIT_SUCCESS);
@@ -516,24 +508,24 @@ void ClusteredShading::init_app()
 			glm::vec4(light_center, 1)
 		};
 
-		std::print("        X = {:.3f}; {:.3f}; {:.3f}\n", space_x.x, space_x.y, space_x.z);
-		std::print("        Y = {:.3f}; {:.3f}; {:.3f}\n", space_y.x, space_y.y, space_y.z);
-		std::print("        Z = {:.3f}; {:.3f}; {:.3f}\n", space_z.x, space_z.y, space_z.z);
+		Log::info("        X = {:.3f}; {:.3f}; {:.3f}", space_x.x, space_x.y, space_x.z);
+		Log::info("        Y = {:.3f}; {:.3f}; {:.3f}", space_y.x, space_y.y, space_y.z);
+		Log::info("        Z = {:.3f}; {:.3f}; {:.3f}", space_z.x, space_z.y, space_z.z);
 
 		glm::vec3 ray_direction = glm::normalize(glm::vec3(1, 0, 0));
 
 		auto cone_ray = cone_space * glm::vec4(ray_direction, 0);
 
-		std::print(" cone ray = {:.3f}; {:.3f}; {:.3f}\n", cone_ray.x, cone_ray.y, cone_ray.z);
+		Log::info(" cone ray = {:.3f}; {:.3f}; {:.3f}", cone_ray.x, cone_ray.y, cone_ray.z);
 		std::exit(EXIT_SUCCESS);
 	}
 
 	if(false)
 	{
 		const auto space = make_common_space_from_direction({ 0, 0, -1 });
-		std::print("        X = {:.3f}; {:.3f}; {:.3f}\n", space[0].x, space[0].y, space[0].z);
-		std::print("        Y = {:.3f}; {:.3f}; {:.3f}\n", space[1].x, space[1].y, space[1].z);
-		std::print("        Z = {:.3f}; {:.3f}; {:.3f}\n", space[2].x, space[2].y, space[2].z);
+		Log::info("        X = {:.3f}; {:.3f}; {:.3f}", space[0].x, space[0].y, space[0].z);
+		Log::info("        Y = {:.3f}; {:.3f}; {:.3f}", space[1].x, space[1].y, space[1].z);
+		Log::info("        Z = {:.3f}; {:.3f}; {:.3f}", space[2].x, space[2].y, space[2].z);
 		std::exit(EXIT_SUCCESS);
 	}
 
@@ -557,11 +549,11 @@ void ClusteredShading::init_app()
 
 		std::puts("-----------------------------------------------------");
 
-		std::print("cone center : {:.1f}; {:.1f}; {:.1f}\n", cone.center.x, cone.center.y, cone.center.z);
-		std::print("cone axis   : {:.1f}; {:.1f}; {:.1f}\n", cone.axis.x, cone.axis.y, cone.axis.z);
-		std::print("cone angle  : {:.1f}\n", glm::degrees(cone.angle));
-		std::print("ray start   : {:.1f}; {:.1f}; {:.1f}\n", ray_start.x, ray_start.y, ray_start.z);
-		std::print("ray dir     : {:.1f}; {:.1f}; {:.1f}\n", ray_dir.x, ray_dir.y, ray_dir.z);
+		Log::info("cone center : {:.1f}; {:.1f}; {:.1f}", cone.center.x, cone.center.y, cone.center.z);
+		Log::info("cone axis   : {:.1f}; {:.1f}; {:.1f}", cone.axis.x, cone.axis.y, cone.axis.z);
+		Log::info("cone angle  : {:.1f}", glm::degrees(cone.angle));
+		Log::info("ray start   : {:.1f}; {:.1f}; {:.1f}", ray_start.x, ray_start.y, ray_start.z);
+		Log::info("ray dir     : {:.1f}; {:.1f}; {:.1f}", ray_dir.x, ray_dir.y, ray_dir.z);
 
 		glm::vec3 center_to_ray = ray_start - cone.center; // aka CO
 		float distance_sq = glm::dot(center_to_ray, center_to_ray);
@@ -575,16 +567,16 @@ void ClusteredShading::init_app()
 		float B = 2 * (dir_axis_dot*CO_axis_dot - glm::dot(ray_dir, center_to_ray)*cos_theta_sq);
 		float C = CO_axis_dot*CO_axis_dot - distance_sq*cos_theta_sq;
 
-		std::print("    A = {:.3f}\n", A);
-		std::print("    B = {:.3f}\n", B);
-		std::print("    C = {:.3f}\n", C);
+		Log::info("    A = {:.3f}", A);
+		Log::info("    B = {:.3f}", B);
+		Log::info("    C = {:.3f}", C);
 
 		float discriminant = B*B - 4*A*C;
 		if(discriminant < 0)
-			std::print("no intersection\n");
+			Log::warning("no intersection");
 		else
 		{
-			std::print("discriminant = {:.3f}\n", discriminant);
+			Log::info("discriminant = {:.3f}", discriminant);
 			float sqrt_discriminant = std::sqrt(discriminant);
 			float t1 = (-B - sqrt_discriminant) / (2*A);
 			float t2 = (-B + sqrt_discriminant) / (2*A);
@@ -593,11 +585,10 @@ void ClusteredShading::init_app()
 				return ray_start + ray_dir*t;
 			};
 			auto p1 = ray_point(t1);
-			std::print("  t1 = {:.3f}  ->  {:.2f}; {:.2f}; {:.2f}\n", t1, p1.x, p1.y, p1.z);
+			Log::info("  t1 = {:.3f}  ->  {:.2f}; {:.2f}; {:.2f}", t1, p1.x, p1.y, p1.z);
 			auto p2 = ray_point(t2);
-			std::print("  t2 = {:.3f}  ->  {:.2f}; {:.2f}; {:.2f}\n", t2, p2.x, p2.y, p2.z);
+			Log::info("  t2 = {:.3f}  ->  {:.2f}; {:.2f}; {:.2f}", t2, p2.x, p2.y, p2.z);
 		}
-
 
 		std::exit(EXIT_SUCCESS);
 	}
@@ -627,13 +618,13 @@ void ClusteredShading::init_app()
 
 		std::puts("-----------------------------------------------------");
 
-		std::print("cone center  : {:.1f}; {:.1f}; {:.1f}\n", cone.center.x, cone.center.y, cone.center.z);
-		std::print("cone axis    : {:.1f}; {:.1f}; {:.1f}\n", cone.axis.x, cone.axis.y, cone.axis.z);
-		std::print("cone angle   : {:.1f}   radius: {:.1f}\n", glm::degrees(cone.angle), cone.radius);
-		std::print("ray start    : {:.1f}; {:.1f}; {:.1f}\n", ray_start.x, ray_start.y, ray_start.z);
-		std::print("ray dir      : {:.1f}; {:.1f}; {:.1f}\n", ray_dir.x, ray_dir.y, ray_dir.z);
+		Log::info("cone center  : {:.1f}; {:.1f}; {:.1f}", cone.center.x, cone.center.y, cone.center.z);
+		Log::info("cone axis    : {:.1f}; {:.1f}; {:.1f}", cone.axis.x, cone.axis.y, cone.axis.z);
+		Log::info("cone angle   : {:.1f}   radius: {:.1f}", glm::degrees(cone.angle), cone.radius);
+		Log::info("ray start    : {:.1f}; {:.1f}; {:.1f}", ray_start.x, ray_start.y, ray_start.z);
+		Log::info("ray dir      : {:.1f}; {:.1f}; {:.1f}", ray_dir.x, ray_dir.y, ray_dir.z);
 		const auto ray_end = ray_point(50);
-		std::print("ray end @ 50 : {:.1f}; {:.1f}; {:.1f}\n", ray_end.x, ray_end.y, ray_end.z);
+		Log::info("ray end @ 50 : {:.1f}; {:.1f}; {:.1f}", ray_end.x, ray_end.y, ray_end.z);
 
 		glm::vec3 center_to_ray = ray_start - cone.center; // aka CO
 
@@ -641,16 +632,16 @@ void ClusteredShading::init_app()
 		float B = 2 * glm::dot(center_to_ray, ray_dir);
 		float C = glm::dot(center_to_ray, center_to_ray) - cone.radius*cone.radius;
 
-		std::print("    A = {:.3f}\n", A);
-		std::print("    B = {:.3f}\n", B);
-		std::print("    C = {:.3f}\n", C);
+		Log::info("    A = {:.3f}", A);
+		Log::info("    B = {:.3f}", B);
+		Log::info("    C = {:.3f}", C);
 
 		float discriminant = B*B - 4*A*C;
 		if(discriminant < 0)
-			std::puts("NO INTERSECTION");
+			Log::warning("NO INTERSECTION");
 		else
 		{
-			std::print("discriminant = {:.3f}\n", discriminant);
+			Log::info("discriminant = {:.3f}", discriminant);
 			float sqrt_discriminant = std::sqrt(discriminant);
 			float t1 = (-B - sqrt_discriminant) / (2*A);
 			float t2 = (-B + sqrt_discriminant) / (2*A);
@@ -684,7 +675,7 @@ void ClusteredShading::init_app()
 				auto p1 = ray_point(t1);
 				if(point_inside_cone(p1))
 				{
-					std::print("  t1 = {:.3f}  ->  {:.2f}; {:.2f}; {:.2f}\n", t1, p1.x, p1.y, p1.z);
+					Log::info("  t1 = {:.3f}  ->  {:.2f}; {:.2f}; {:.2f}", t1, p1.x, p1.y, p1.z);
 					got_point = true;
 				}
 			}
@@ -693,14 +684,14 @@ void ClusteredShading::init_app()
 				auto p2 = ray_point(t2);
 				if(point_inside_cone(p2))
 				{
-					std::print("  t2 = {:.3f}  ->  {:.2f}; {:.2f}; {:.2f}\n", t2, p2.x, p2.y, p2.z);
+					Log::info("  t2 = {:.3f}  ->  {:.2f}; {:.2f}; {:.2f}", t2, p2.x, p2.y, p2.z);
 					got_point = true;
 				}
 			}
 			if(got_point)
-				std::puts("INTERSECTION");
+				Log::warning("INTERSECTION");
 			else
-				std::puts("NO INTERSECTION");
+				Log::warning("NO INTERSECTION");
 		}
 
 		std::exit(EXIT_SUCCESS);
@@ -725,9 +716,8 @@ void ClusteredShading::init_app()
 		glm::vec4 wpos = inv_projection * pos;
 		wpos /= wpos.w;
 
-		std::print("depth pos  : {:.1f}; {:.1f}; {:.1f}\n", pos.x, pos.y, pos.z);
-
-		std::print("world  pos : {:.5f}; {:.5f}; {:.5f}\n", wpos.x, wpos.y, wpos.z);
+		Log::info("depth pos  : {:.1f}; {:.1f}; {:.1f}", pos.x, pos.y, pos.z);
+		Log::info("world  pos : {:.5f}; {:.5f}; {:.5f}", wpos.x, wpos.y, wpos.z);
 
 		std::exit(EXIT_SUCCESS);
 	}
@@ -752,14 +742,14 @@ void ClusteredShading::init_app()
 		};
 
 
-		std::print("spot  : {:.1f}; {:.1f}; {:.1f}  {:.0f}° - {:.0f}°\n", spot_pos.x, spot_pos.y, spot_pos.z, glm::degrees(inner_angle), glm::degrees(outer_angle));
+		Log::info("spot  : {:.1f}; {:.1f}; {:.1f}  {:.0f}° - {:.0f}°", spot_pos.x, spot_pos.y, spot_pos.z, glm::degrees(inner_angle), glm::degrees(outer_angle));
 
 		for(auto idx = 0; idx <= 8; ++idx)
 		{
 			point.x = float(idx) * 0.2f;
 			auto to_point = glm::normalize(point - spot_pos);
 			float att = spot_angle_att(to_point, spot_dir, outer_angle, inner_angle);
-			std::print("point : {:.1f}; {:.1f}; {:.1f}  --> {:f}\n", point.x, point.y, point.z, att);
+			Log::info("point : {:.1f}; {:.1f}; {:.1f}  --> {:f}", point.x, point.y, point.z, att);
 		}
 
 		std::exit(EXIT_SUCCESS);
@@ -819,7 +809,7 @@ void ClusteredShading::calculateShadingClusterGrid()
 	if(cluster_count != cluster_count_before)
 	{
 		m_cluster_count = cluster_count;
-		std::print("Shading clusters: {}   ({} x {} x {})\n", m_cluster_count, m_cluster_resolution.x, m_cluster_resolution.y, m_cluster_resolution.z);
+		Log::info("Shading clusters: {}   ({} x {} x {})", m_cluster_count, m_cluster_resolution.x, m_cluster_resolution.y, m_cluster_resolution.z);
 
 		auto cluster_depth = [this](size_t slice_n) -> float {
 			return -m_camera.nearPlane() * std::pow(std::abs(m_near_k), float(slice_n));
@@ -832,9 +822,9 @@ void ClusteredShading::calculateShadingClusterGrid()
 		const float depthF0 = -cluster_depth(m_cluster_resolution.z - 1);
 		const float depthF1 = -cluster_depth(m_cluster_resolution.z);  // this should be camera's far plane (approximately)
 
-		std::print("    cluster[0].depth: {:.3f}\n", depthN1 - depthN0);
-		std::print("  cluster[N/2].depth: {:.2f}\n", depthM1 - depthM0);
-		std::print("    cluster[N].depth: {:.1f}   ({:.1f} - {:.1f}) \n", depthF1 - depthF0, depthF0, depthF1);
+		Log::info("    cluster[0].depth: {:.3f}", depthN1 - depthN0);
+		Log::info("  cluster[N/2].depth: {:.2f}", depthM1 - depthM0);
+		Log::info("    cluster[N].depth: {:.1f}   ({:.1f} - {:.1f})", depthF1 - depthF0, depthF0, depthF1);
 
 		// {
 		// 	const float depthN0 = -doom_slice_z(0); // this should be camera's near plane
@@ -844,9 +834,9 @@ void ClusteredShading::calculateShadingClusterGrid()
 		// 	const float depthF0 = -doom_slice_z(m_cluster_grid_dim.z - 1);
 		// 	const float depthF1 = -doom_slice_z(m_cluster_grid_dim.z);  // this should be camera's far plane (approximately)
 
-		// 	std::print("DOOM    Near: %.3f - %.3f (%.3f)\n", depthN0, depthN1, depthN1 - depthN0);
-		// 	std::print("DOOM     MId: %.2f - %.2f (%.2f)\n", depthM0, depthM1, depthM1 - depthM0);
-		// 	std::print("DOOM     Far: %.1f - %.1f (%.1f)\n", depthF0, depthF1, depthF1 - depthF0);
+		// 	Log::info("DOOM    Near: %.3f - %.3f (%.3f)", depthN0, depthN1, depthN1 - depthN0);
+		// 	Log::info("DOOM     MId: %.2f - %.2f (%.2f)", depthM0, depthM1, depthM1 - depthM0);
+		// 	Log::info("DOOM     Far: %.1f - %.1f (%.1f)", depthF0, depthF1, depthF1 - depthF0);
 		// }
 		prepareClusterBuffers();
 	}
@@ -978,7 +968,7 @@ void ClusteredShading::update(double delta_time)
 			{
 				float new_angle = std::max(Lmut.outer_angle + adjust_angle, glm::radians(3.f));  // noise becomes apparent at smaller degrees
 				_light_mgr.set_spot_angle(Lmut, new_angle);
-				std::print("  [{}] spot angle: {:.1f}  {:.1f}   P:{:.0f}   R:{:.0f}\n", light_id,
+				Log::info("  [{}] spot angle: {:.1f}  {:.1f}   P:{:.0f}   R:{:.0f}", light_id,
 						   glm::degrees(Lmut.outer_angle),
 						   glm::degrees(Lmut.inner_angle),
 						   Lmut.intensity,
@@ -1173,7 +1163,7 @@ void ClusteredShading::createLights()
 
 		const auto &L = _light_mgr.get_by_id(l_id);
 
-		std::print("light[{:2}] {:5} @ {:5.1f}; {:3.1f}; {:5.1f}  {:3},{:3},{:3}  {:4.0f} (R:{:.1f})\n",
+		Log::info("light[{:2}] {:5} @ {:5.1f}; {:3.1f}; {:5.1f}  {:3},{:3},{:3}  {:4.0f} (R:{:.1f})",
 				   l_id,
 				   type_name,
 				   rand_pos.x, rand_pos.y, rand_pos.z,
@@ -1360,7 +1350,7 @@ void ClusteredShading::downloadAffectingLightSet()
 {
 	_affecting_lights.clear();
 
-	// std::print("  affecting lights:");
+	// Log::info("  affecting lights:");
 
 	// "decode" the bitfield into actual light indices
 	for(const auto &[bucket, bucket_bits]: std::views::enumerate(m_affecting_lights_bitfield_ssbo))
@@ -1374,7 +1364,7 @@ void ClusteredShading::downloadAffectingLightSet()
 			_affecting_lights.insert(light_index);
 			bits &= bits - 1u; // clear lowest set bit
 
-			// std::print(" {}", light_index);
+			// Log::info(" {}", light_index);
 
 #if defined(DEBUG)
 			assert(light_index < _light_mgr.num_lights());
@@ -1430,7 +1420,6 @@ void ClusteredShading::render()
 
 	// TODO: is it possible to not do this every frame?
 	//   some threshold for camera movement and if dynamic objects is in the frustum?
-	// std::print("cull lights, after {} ms\n", duration_cast<milliseconds>(now - last_discovery_T));
 	prev_cam_pos = m_camera.position();
 	prev_cam_fwd = m_camera.forwardVector();
 	last_discovery_T = now;
@@ -1702,8 +1691,6 @@ void ClusteredShading::renderShadowMaps()
 			atlas_light.on_rendered(now, light_hash);
 
 			++_light_shadow_maps_rendered;
-
-			// std::print("  slot[0] {} @ {},{}  ({})\n", slot.slots[0].size, slot.slots[0].rect.x, slot.slots[0].rect.y, slot.slots[0].node_index);
 		}
 	}
 
@@ -1735,8 +1722,6 @@ void ClusteredShading::renderSurfaceLightGeometry()
 		glm::vec3 color_intensity;
 		uint32_t double_sided;
 	};
-
-	// auto num_rendered = 0u;
 
 	static std::vector<SurfaceLightAttrs> surf_attrs;
 	surf_attrs.reserve(_lightsPvs.size());
@@ -1825,10 +1810,7 @@ void ClusteredShading::renderSurfaceLightGeometry()
 		inst_attrs.load<SurfaceLightAttrs>(surf_attrs);
 
 		model->Render(*m_surface_lights_shader, uint32_t(surf_attrs.size()));
-
-		// ++num_rendered;
 	}
-	// std::print("   surface lights rendered: {}\n", num_rendered);
 }
 
 
@@ -1963,7 +1945,6 @@ const std::vector<StaticObject> &ClusteredShading::cullScene(const Camera &view)
 			// previous_pvs.insert(_lightsPvs.begin(), _lightsPvs.end());
 			_lightsPvs.clear();
 
-			// std::print("  finding relevant lights:\n");
 			for(const auto &[l_index, L]: std::views::enumerate(_light_mgr))
 			{
 				const auto light_index = LightIndex(l_index);
@@ -1981,9 +1962,6 @@ const std::vector<StaticObject> &ClusteredShading::cullScene(const Camera &view)
 						_lightsPvs.push_back(light_index);
 					else
 					{
-						// if(previous_pvs.contains(light_index))
-						// 	std::print("    light {} removed from PVS\n", light_index);
-
 						if(IS_SHADOW_CASTER(L) /* and was in the light pvs before? */)
 						{
 							const auto light_id = _light_mgr.light_id(light_index);
@@ -1994,7 +1972,6 @@ const std::vector<StaticObject> &ClusteredShading::cullScene(const Camera &view)
 			}
 			// TODO: ideally these should be sorted by distance from camera
 			_relevant_lights_index_ssbo.set(_lightsPvs);
-			// std::print("   relevant lights: {}\n", _lightsPvs.size());
 		}
 
 	}
@@ -2137,42 +2114,51 @@ void ClusteredShading::renderSceneShading(const Camera &camera)
 }
 
 
-void ClusteredShading::debug_message(GLenum type, std::string_view severity, std::string_view message)
+void ClusteredShading::debug_message(GLenum type, std::string_view severity, std::string_view message) const
 {
-	GLuint program_id = 0;
-	GLenum shader_type = 0;
-
-	if(auto found = message.find("Fragment shader in program "); found != std::string_view::npos)
-	{
-		shader_type = GL_FRAGMENT_SHADER;
-		program_id = GLuint(std::atol(message.substr(found + 27).data()));
-	}
-	if(auto found = message.find("Vertex shader in program "); found != std::string_view::npos)
-	{
-		shader_type = GL_VERTEX_SHADER;
-		if(program_id != 0)
-			program_id = GLuint(std::atol(message.substr(found + 25).data()));
-	}
-
 	switch(type)
 	{
 	case GL_DEBUG_TYPE_ERROR:
-		std::print(stderr, "\x1b[1mGL \x1b[31mERROR\x1b[m severity {}: {}\n", severity, message);
+		Log::error("GL ERROR: {}", severity, message);
 		break;
 	case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR:
-		std::print(stderr, "\x1b[1mGL \x1b[31mDEPRECATED\x1b[m severity {}: {}\n", severity, message);
+		Log::error("GL DEPRECATED / {}: {}", severity, message);
 		break;
 	case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:
-		std::print(stderr, "\x1b[1mGL \x1b[33mUNDEFINED\x1b[m severity {}: {}\n", severity, message);
+		Log::error("GL U.B. / {}: {}", severity, message);
 		break;
 	case GL_DEBUG_TYPE_PORTABILITY:
-		std::print(stderr, "\x1b[1mGL \x1b[34mPORTABILITY\x1b[m severity {}: {}\n", severity, message);
+		Log::warning("GL PORTING / {}: {}", severity, message);
 		break;
 	case GL_DEBUG_TYPE_PERFORMANCE:
-		std::print(stderr, "\x1b[1mGL \x1b[33mPERFORMANCE\x1b[m severity {}: {}\n", severity, message);
+		Log::warning("GL PERF. / {}: {}", severity, message);
 		break;
 	case GL_DEBUG_TYPE_OTHER:
-		std::print(stderr, "\x1b[1mGL \x1b[33mOTHER\x1b[m severity {}: {}\n", severity, message);
+		Log::warning("GL mOTHER / {}: {}", severity, message);
 		break;
+	}
+
+	GLuint program_id = 0;
+	GLenum shader_type = 0;
+
+	if(auto found = message.find(" shader in program "); found != std::string_view::npos)
+	{
+		if(found >= 8 and message.substr(found - 8, 8) == "Fragment"sv)
+			shader_type = GL_FRAGMENT_SHADER;
+		else if(found >= 6 and message.substr(found - 6, 6) == "Vertex"sv)
+			shader_type = GL_VERTEX_SHADER;
+		if(shader_type != 0)
+			program_id = GLuint(std::atol(message.substr(found + 19).data()));
+
+		if(program_id)
+		{
+			const auto *shader = ShaderRegistry::the().get(program_id);
+			if(shader)
+			{
+				auto name = shader->name();
+				//auto file_name = shader->sourceFile(shader_type);
+				Log::info("   program {} -> \"{}\"", program_id, name);//, file_name);
+			}
+		}
 	}
 }

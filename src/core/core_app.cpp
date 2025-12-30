@@ -11,6 +11,7 @@ using namespace std::chrono;
 #include "input.h"
 #include "timer.h"
 #include "window.h"
+#include "log.h"
 
 #include "gui/gui.h"  // IWYU pragma: keep
 
@@ -25,6 +26,7 @@ namespace RGL
 
     CoreApp::~CoreApp()
     {
+		Log::close();
     }
 
     void CoreApp::init(unsigned int width, unsigned int height, const std::string & title, double framerate)
