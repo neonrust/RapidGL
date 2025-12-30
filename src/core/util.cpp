@@ -1,5 +1,6 @@
 ﻿#include "util.h"
 
+#include "log.h"
 #include "zstr.h"
 
 #include <cstring>
@@ -40,7 +41,7 @@ std::tuple<std::string, bool> Util::LoadFile(const fs::path & filename, bool fai
 	if(not inFile)
 	{
 		if(not fail_ok)
-			std::print(stderr, "Could not open file {}\n", filepath.string());
+			Log::error("Could not open file {}", filepath.string());
 		inFile.close();
 
 		return { std::string(), false };
@@ -65,11 +66,9 @@ std::tuple<std::string, bool> Util::LoadShaderFile(const std::filesystem::path &
 	const auto &[file_content, okf] = Util::LoadFile(filepath);
 	if(not okf)
 	{
-		std::print(stderr, "Load shader failed: {}\n", filepath.string());
+		Log::error("Load shader failed: {}", filepath.string());
 		return { std::string(), false };
 	}
-
-	// std::print(" >> {}\n", filepath.string());
 
 	static dense_set<std::filesystem::path> visited_files;
 	visited_files.reserve(8);
@@ -78,7 +77,7 @@ std::tuple<std::string, bool> Util::LoadShaderFile(const std::filesystem::path &
 	auto [code, okp] = PreprocessShaderSource(filepath, file_content, visited_files);
 	if(not okp)
 	{
-		std::print(stderr, "Preprocessing shader failed: {}\n", filepath.string());
+		Log::error("Preprocessing shader failed: {}", filepath.string());
 		return { std::string(), false };
 	}
 
@@ -112,7 +111,7 @@ std::vector<uint8_t> Util::LoadFileBinary(const fs::path& filename)
 
 	if (!file)
 	{
-		std::print(stderr, "Could not open file %s\n", filepath.string());
+		Log::error("Could not open file %s", filepath.string());
 		file.close();
 
 		return {};
@@ -183,7 +182,7 @@ std::tuple<std::string, bool> Util::PreprocessShaderSource(const fs::path &filep
 				// if not absolute always relative to the current file
 				if(not found_path_)
 				{
-					std::print(stderr, "[{}:{}] \x1b[31;1minclude not found\x1b[m: {}\n", filepath.string(), line_num, preproc_instruction);
+					Log::error("[{}:{}] \x1b[31;1minclude not found\x1b[m: {}", filepath.string(), line_num, preproc_instruction);
 					return { std::string(), false };
 				}
 				const auto found_path = found_path_.value();
@@ -191,15 +190,13 @@ std::tuple<std::string, bool> Util::PreprocessShaderSource(const fs::path &filep
 				{
 					visited_files.insert(found_path);
 
-					// std::print("  .. {}\n", found_path.string());
 					const auto &[include_data, ok] = LoadFile(found_path);
 					if(not ok)
 					{
-						std::print(stderr, "[{}:{}] \x1b[31;1minclude failed\x1b[m: {}\n", filepath.string(), line_num, preproc_instruction);
+						Log::error("[{}:{}] \x1b[31;1minclude failed\x1b[m: {}", filepath.string(), line_num, preproc_instruction);
 						return { std::string(), false };
 					}
 
-					// std::print(" -> \x1b[34;1m{}\x1b[m\n", found_path.string());
 					if(not include_data.empty())
 					{
 						// TODO: this recursion should probably modify the same string object
@@ -228,7 +225,7 @@ std::tuple<std::string, bool> Util::PreprocessShaderSource(const fs::path &filep
 					}
 				}
 				else
-					std::print(stderr, "[{}:{}] already included {}\n", filepath.string(), line_num, found_path.string());
+					Log::debug("[{}:{}] already included {}", filepath.string(), line_num, found_path.string());
 			}
 			else
 				is_preproc = false; // make sure the non-processed line get forwarded to 'new_source'
@@ -265,7 +262,7 @@ Util::TextureData Util::LoadTextureData(const fs::path& filepath, ImageMeta & im
 		if (data)
 			image_data.channels = desired_number_of_channels == 0 ? GLuint(channels_in_file) : GLuint(desired_number_of_channels);
 		else
-			std::print(stderr, "Load failed: {}\n", stbi_failure_reason());
+			Log::error("Load failed: {}", stbi_failure_reason());
 		// data.size = image_data.width * image_data.height * image_data.channels;
 	}
 
@@ -341,13 +338,13 @@ Util::TextureData Util::jxl_load(const fs::path &filepath, ImageMeta &image_meta
 	res = JxlDecoderSubscribeEvents(dec.get(), JXL_DEC_BASIC_INFO /*| JXL_DEC_COLOR_ENCODING*/ | JXL_DEC_FULL_IMAGE);
 	if(res != JXL_DEC_SUCCESS)
 	{
-		std::print(stderr, "[{}] JxlDecoderSubscribeEvents failed: {}\n", short_name.string(), int(res));
+		Log::error("[{}] JxlDecoderSubscribeEvents failed: {}", short_name.string(), int(res));
 		return {};
 	}
 	res = JxlDecoderSetParallelRunner(dec.get(), JxlResizableParallelRunner, runner.get());
 	if(res != JXL_DEC_SUCCESS)
 	{
-		std::print(stderr, "[{}] JxlDecoderSetParallelRunner failed: {}\n", short_name.string(), int(res));
+		Log::error("[{}] JxlDecoderSetParallelRunner failed: {}", short_name.string(), int(res));
 		return {};
 	}
 
@@ -364,7 +361,7 @@ Util::TextureData Util::jxl_load(const fs::path &filepath, ImageMeta &image_meta
 	res = JxlDecoderSetInput(dec.get(), jxlData.data(), jxlData.size());
 	if(res != JXL_DEC_SUCCESS)
 	{
-		std::print(stderr, "[{}] JxlDecoderSetInput failed: {}\n", short_name.string(), int(res));
+		Log::error("[{}] JxlDecoderSetInput failed: {}", short_name.string(), int(res));
 		return {};
 	}
 	JxlDecoderCloseInput(dec.get());
@@ -383,18 +380,17 @@ Util::TextureData Util::jxl_load(const fs::path &filepath, ImageMeta &image_meta
 		switch(status)
 		{
 		case JXL_DEC_ERROR:
-			std::print(stderr, "[{}] Jxl: Decoder error\n", short_name.c_str());
+			Log::error("[{}] Jxl: Decoder error", short_name.c_str());
 			return {};
 		case JXL_DEC_NEED_MORE_INPUT:
-			std::print(stderr, "[{}] Jxl: Error, already provided all input\n", short_name.string());
+			Log::error("[{}] Jxl: Error, already provided all input", short_name.string());
 			return {};
 		case JXL_DEC_BASIC_INFO:
 		{
-			// std::print("[{}] JXL_DEC_BASIC_INFO\n", short_name.string());
 			res = JxlDecoderGetBasicInfo(dec.get(), &info);
 			if(res != JXL_DEC_SUCCESS)
 			{
-				std::print(stderr, "[{}] Jxl: JxlDecoderGetBasicInfo failed: {}\n", short_name.string(), int(res));
+				Log::error("[{}] Jxl: JxlDecoderGetBasicInfo failed: {}", short_name.string(), int(res));
 				return {};
 			}
 			// update our initial guesses regarding format
@@ -416,8 +412,6 @@ Util::TextureData Util::jxl_load(const fs::path &filepath, ImageMeta &image_meta
 			case 2: format.data_type = JXL_TYPE_FLOAT; channel_size = 4; image_meta.channel_type = GL_FLOAT; break;
 			case 4: format.data_type = JXL_TYPE_FLOAT; channel_size = 4; image_meta.channel_type = GL_FLOAT; break;
 			}
-
-				   // std::print(stderr, "[{}] Jxl: {} x {}  channel size: %zu\n", short_name.string(), image_data.width, image_data.height, channel_size);
 
 			const auto num_threads = JxlResizableParallelRunnerSuggestThreads(info.xsize, info.ysize);
 			JxlResizableParallelRunnerSetThreads(runner.get(), num_threads);
@@ -447,14 +441,14 @@ Util::TextureData Util::jxl_load(const fs::path &filepath, ImageMeta &image_meta
 			res = JxlDecoderImageOutBufferSize(dec.get(), &format, &buffer_size);
 			if(res != JXL_DEC_SUCCESS)
 			{
-				std::print(stderr, "[{}] Jxl: JxlDecoderImageOutBufferSize failed: {}\n", short_name.string(), int(res));
+				Log::error("[{}] Jxl: JxlDecoderImageOutBufferSize failed: {}", short_name.string(), int(res));
 				return {};
 			}
 			{
 				const auto expected_size = image_meta.width * image_meta.height * channel_size * format.num_channels;
 				if(buffer_size != expected_size)
 				{
-					std::print(stderr, "[{}] Jxl: Invalid out buffer size %ld, expected %ld\n", short_name.string(), buffer_size, expected_size);
+					Log::error("[{}] Jxl: Invalid out buffer size %ld, expected %ld", short_name.string(), buffer_size, expected_size);
 					return {};
 				}
 			}
@@ -463,7 +457,7 @@ Util::TextureData Util::jxl_load(const fs::path &filepath, ImageMeta &image_meta
 			res = JxlDecoderSetImageOutBuffer(dec.get(), &format, data, buffer_size);
 			if(res != JXL_DEC_SUCCESS)
 			{
-				std::print(stderr, "[{}] Jxl: JxlDecoderSetImageOutBuffer failed: {}\n", short_name.c_str(), int(res));
+				Log::error("[{}] Jxl: JxlDecoderSetImageOutBuffer failed: {}", short_name.c_str(), int(res));
 				return {};
 			}
 			break;
@@ -473,18 +467,11 @@ Util::TextureData Util::jxl_load(const fs::path &filepath, ImageMeta &image_meta
 			// full frames may be decoded. This example only keeps the last one.
 			break;
 		case JXL_DEC_SUCCESS:
-			// std::print("[{}] JXL_DEC_SUCCESS\n", short_name.string());
-			// All decoding successfully finished.
-			// It's not required to call JxlDecoderReleaseInput(dec.get()) here since
-			// the decoder will be destroyed.
-
-				   // data = (unsigned char *)malloc(pixels.size());
-				   // std::memcpy(data, pixels.data(), pixels.size());
 			decodingDone = true;
 			break;
 
 		default:
-			std::print(stderr, "[{}] Jxl: unhandled decoder status: {}\n", short_name.string(), int(status));
+			Log::error("[{}] Jxl: unhandled decoder status: {}", short_name.string(), int(status));
 			break;
 		}
 	}
