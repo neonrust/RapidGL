@@ -1,6 +1,7 @@
 #include "pp_gaussian_blur_fixed.h"
 
 #include "filesystem.h"
+#include "log.h"
 #include "zstr.h"
 
 using namespace std::literals;
@@ -45,7 +46,7 @@ bool _blur_fixed_init(size_t width, size_t height, float sigma, Shader &horizont
 	}
 
 	if(not conditionals.empty())
-		std::print("[PP Gaussian blur] Conditionals:\n  {}\n", zstr::join(conditionals.begin(), conditionals.end(), "\n  "sv));
+		Log::debug("[PP Gaussian blur] Conditionals:\n  {}", zstr::join(conditionals.begin(), conditionals.end(), "\n  "sv));
 
 	const auto shader_dir = FileSystem::getResourcesPath() / "shaders";
 

@@ -1,12 +1,12 @@
 #pragma once
 
 #include "container_types.h"
+#include "log.h"
 #include <cstdint>
 #include <bit>
 #include <glm/integer.hpp>
 #include <glm/vec3.hpp>
 #include <vector>
-#include <print>
 
 /*
 0-based linear indexing:
@@ -141,7 +141,7 @@ inline SpatialAllocator<AxisT>::SpatialAllocator(AxisT size, size_t min_block_si
 
 	_allocated.reserve(num_levels);
 
-	std::print("SpatialAllocator[{}..{}]: {} levels; {} nodes\n", _min_size, _max_size, num_allocatable_levels(), num_nodes);
+	Log::info("SpatialAllocator[{}..{}]: {} levels; {} nodes", _min_size, _max_size, num_allocatable_levels(), num_nodes);
 }
 
 template<IntT AxisT>

@@ -1,8 +1,9 @@
 #include "rendertarget_common.h"
 
-#include <print>
 #include <string>
+#include <format>
 #include "gl_lookup.h"
+#include "log.h"
 
 using namespace std::literals;
 
@@ -47,7 +48,7 @@ bool check_fbo(GLuint fbo_id)
 			msg = "(unknown status code)";
 		}
 		if(msg)
-			std::print(stderr, "FBO INVALID: {} ({})\n", msg, fbo_status);
+			Log::error("FBO INVALID: {} ({})", msg, fbo_status);
 		return false;
 	}
 
@@ -80,7 +81,10 @@ void dump_config(const char *fbo_name, GLuint fbo)
 				label = gl_lookup::enum_name(attachment).substr(3); // GL_
 		}
 
-		std::print("  {}:", label);
+
+		std::string msg;
+		msg.reserve(32);
+		std::format_to(std::back_inserter(msg), "  {}:", label);
 
 		GLint fmt = 0;
 		GLint w = 0;
@@ -88,7 +92,7 @@ void dump_config(const char *fbo_name, GLuint fbo)
 
 		if (type == GL_RENDERBUFFER)
 		{
-			std::print("Renderb.({})",  obj);
+			std::format_to(std::back_inserter(msg), "Renderb.({})",  obj);
 
 			glGetNamedRenderbufferParameteriv(obj, GL_RENDERBUFFER_INTERNAL_FORMAT, &fmt);
 			glGetNamedRenderbufferParameteriv(obj, GL_RENDERBUFFER_WIDTH, &w);
@@ -96,18 +100,19 @@ void dump_config(const char *fbo_name, GLuint fbo)
 		}
 		else if (type == GL_TEXTURE)
 		{
-			std::print("Texture ({})", obj);
+			std::format_to(std::back_inserter(msg), "Texture ({})", obj);
 
 			glGetTextureLevelParameteriv(obj, 0, GL_TEXTURE_INTERNAL_FORMAT, &fmt);
 			glGetTextureLevelParameteriv(obj, 0, GL_TEXTURE_WIDTH, &w);
 			glGetTextureLevelParameteriv(obj, 0, GL_TEXTURE_HEIGHT, &h);
 		}
-		std::print("  {} x {} {} ({:#04x})\n", w, h, gl_lookup::enum_name(uint32_t(fmt)).substr(3), fmt);
+		std::format_to(std::back_inserter(msg), "  {} x {} {} ({:#04x})", w, h, gl_lookup::enum_name(uint32_t(fmt)).substr(3), fmt);
+		Log::info("{}", msg);
 	};
 
-	std::print("FBO \"{}\" ({})\n", fbo_name, fbo);
+	Log::info("FBO \"{}\" ({})", fbo_name, fbo);
 
-		   // Check for standard attachments
+	// Check for standard attachments
 	for (int i = 0; i < 8; ++i)
 		printAttachment(GLenum(GL_COLOR_ATTACHMENT0 + i));
 

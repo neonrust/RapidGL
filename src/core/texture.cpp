@@ -1,5 +1,6 @@
 #include "texture.h"
 #include "gl_lookup.h"
+#include "log.h"
 
 #include <cstring>
 #include <glm/glm.hpp>
@@ -230,16 +231,19 @@ bool Texture::Create(size_t width, size_t height, size_t depth, GLenum internalF
 		break;
 	}
 
-#if defined(DEBUG)
+#if defined(_DEBUG)
 	const auto format_name = gl_lookup::enum_name(internalFormat).substr(3);
-	std::print("Texture: created {}", width);
+	std::string msg;
+	msg.reserve(32);
+	std::format_to(std::back_inserter(msg), "Texture: created {}", width);
 	if(height > 1)
 	{
-		std::print("x{}", height);
+		std::format_to(std::back_inserter(msg), "x{}", height);
 		if(depth > 1)
-			std::print("x{}", depth);
+			std::format_to(std::back_inserter(msg), "x{}", depth);
 	}
-	std::print("; {}\n", format_name);
+	std::format_to(std::back_inserter(msg), "; {}", format_name);
+	Log::debug("{}", msg);
 #endif
 
 	return true;
@@ -470,7 +474,7 @@ bool Texture2D::Load(const std::filesystem::path& filepath, bool is_srgb, uint32
 
 	if (!data)
 	{
-		std::print(stderr, "Texture failed to load: {}\n", filepath.string());
+		Log::error("Texture failed to load: {}", filepath.string());
 		return false;
 	}
 
@@ -517,7 +521,7 @@ bool Texture2D::Load(unsigned char* memory_data, uint32_t data_size, bool is_srg
 
 	if (not data)
 	{
-		std::print(stderr, "Texture failed to load from the memory.\n");
+		Log::error("Texture failed to load from the memory");
 		return false;
 	}
 
@@ -562,17 +566,12 @@ bool Texture2D::Load(unsigned char* memory_data, uint32_t data_size, bool is_srg
 bool Texture2D::LoadHdr(const std::filesystem::path & filepath, uint32_t num_mipmaps)
 {
 	const auto T0 = steady_clock::now();
-	// if (filepath.extension() != ".hdr")
-	// {
-	// 	std::print(stderr, "This function is meant for loading HDR images only.\n");
-	// 	return false;
-	// }
 
 	auto data = Util::LoadTextureDataHdr(filepath, m_metadata);
 
 	if (not data)
 	{
-		std::print(stderr, "Texture failed to load: {}\n", filepath.generic_string());
+		Log::error("Texture failed to load: {}", filepath.generic_string());
 		return false;
 	}
 
@@ -595,7 +594,7 @@ bool Texture2D::LoadHdr(const std::filesystem::path & filepath, uint32_t num_mip
 
 	Util::ReleaseTextureData(data);
 
-	std::print("Loaded HDR texture {}  ({} ms)\n", filepath.c_str(), duration_cast<milliseconds>(steady_clock::now() - T0));
+	Log::debug("Loaded HDR texture {}  ({} ms)", filepath.c_str(), duration_cast<milliseconds>(steady_clock::now() - T0));
 
 	return true;
 }
@@ -607,11 +606,8 @@ bool Texture2D::LoadDds(const std::filesystem::path& filepath)
 
 	if (Result::Success != ret)
 	{
-		std::print("Failed to load.[{}]\n", filepath.string());
-		std::print("Result : {}\n", int(ret));
-
-		std::print(stderr, "Texture failed to load: {}\n", filepath.string());
-		std::print(stderr, "Result: {}\n", int(ret));
+		Log::error("Failed to load.[{}]", filepath.string());
+		Log::error("Result : {}", int(ret));
 		return false;
 	}
 
@@ -683,7 +679,7 @@ bool Texture2DArray::Create(size_t width, size_t height, size_t layers, GLenum i
 	(void)layers;
 	(void)internalFormat;
 	(void)num_mipmaps;
-	std::print(stderr, "Texture2DArray::Create - Not implenented!\n");
+	Log::error("Texture2DArray::Create - Not implenented!");
 	assert(false);
 
 	// createLayerViews(internalFormat);
@@ -720,7 +716,7 @@ bool Texture2DArray::Load(const fs::path &filepath, bool is_srgb)
 		fp.open(filepath, std::ios::in);
 		if(not fp.is_open())
 		{
-			std::print(stderr, "[{}] failed to open file: {}\n", filepath.string(), std::strerror(errno));
+			Log::error("[{}] failed to open file: {}", filepath.string(), std::strerror(errno));
 			return false;
 		}
 
@@ -741,7 +737,7 @@ bool Texture2DArray::Load(const fs::path &filepath, bool is_srgb)
 
 		const auto result = LoadLayers(filepaths, is_srgb);
 		if(result)
-			std::print("Texture[{}] array, {} layers\n", filepath.string(), filepaths.size());
+			Log::debug("Texture[{}] array, {} layers", filepath.string(), filepaths.size());
 		return result;
 	}
 
@@ -760,7 +756,7 @@ bool Texture2DArray::LoadLayers(const std::vector<fs::path> &paths, bool is_srgb
 
 		if(not data)
 		{
-			std::print(stderr, "Texture failed to load: {}\n", filepath.string());
+			Log::error("Texture failed to load: {}", filepath.string());
 			return false;
 		}
 
@@ -823,11 +819,8 @@ bool Texture2DArray::LoadDds(const std::filesystem::path &filepath)
 
 	if (Result::Success != ret)
 	{
-		std::print("Failed to load.[{}]\n", filepath.string());
-		std::print("Result : {}\n", int(ret));
-
-		std::print(stderr, "Texture failed to load: {}\n", filepath.string());
-		std::print(stderr, "Result: {}\n", int(ret));
+		Log::error("Texture failed to load: {}", filepath.string());
+		Log::error("Result: {}", int(ret));
 		return false;
 	}
 
@@ -970,7 +963,7 @@ bool TextureCube::Load(const std::array<std::filesystem::path, 6> &filepaths, bo
 
 		if (not images_data[idx])
 		{
-			std::print(stderr, "Texture failed to load: {}\n", filepaths[idx].string());
+			Log::error("Texture cube face failed to load: {}", filepaths[idx].string());
 			return false;
 		}
 	}

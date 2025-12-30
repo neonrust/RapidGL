@@ -8,8 +8,8 @@
 #include <assimp/postprocess.h>
 
 #include "container_types.h"
+#include "log.h"
 
-#include <print>
 #include <string_view>
 using namespace std::literals;
 
@@ -139,7 +139,7 @@ bool StaticModel::Load(const std::filesystem::path& filepath)
 
 	if(not _ok)
 	{
-		std::print(stderr, "\x1b[97;41;1mError\x1b[m loading mesh failed: {}: {}\n", filepath.generic_string().c_str(), importer.GetErrorString());
+		Log::error("\x1b[97;41;1mError\x1b[m loading mesh failed: {}: {}", filepath.generic_string().c_str(), importer.GetErrorString());
 		return false;
 	}
 
@@ -192,7 +192,7 @@ bool StaticModel::ParseScene(const aiScene* scene, const std::filesystem::path& 
 		// max = glm::max(max, vec3_cast(mesh->mAABB.mMax));
 		_aabb.expand(vec3_cast(mesh->mAABB.mMin));
 		_aabb.expand(vec3_cast(mesh->mAABB.mMax));
-		std::print("[{}]  added mesh part {}; {} vertices. AABB: {:.1f}, {:.1f}, {:.1f}  ->  {:.1f}, {:.1f}, {:.1f}   ({:.1f} x {:.1f} x {:.1f})\n",
+		Log::info("[{}]  added mesh part {}; {} vertices. AABB: {:.1f}, {:.1f}, {:.1f}  ->  {:.1f}, {:.1f}, {:.1f}   ({:.1f} x {:.1f} x {:.1f})",
 				   filename.string(),
 				   idx,
 				   mesh->mNumVertices,
@@ -206,7 +206,7 @@ bool StaticModel::ParseScene(const aiScene* scene, const std::filesystem::path& 
 
 	if(not LoadMaterials(scene, filepath))
 	{
-		std::print(stderr, "\x1b[97;41;1mError\x1b[m loading mesh failed: {}: Could not load the materials\n", filepath.generic_string());
+		Log::error("\x1b[97;41;1mError\x1b[m loading mesh failed: {}: Could not load the materials", filepath.generic_string());
 		return false;
 	}
 
@@ -215,7 +215,7 @@ bool StaticModel::ParseScene(const aiScene* scene, const std::filesystem::path& 
 
 	const auto T1 = steady_clock::now();
 
-	std::print("Loaded mesh {}  ({:.1f} x {:.1f} x {:.1f})  ({} ms)\n", filepath.string().c_str(), _aabb.width(), _aabb.height(), _aabb.depth(), duration_cast<milliseconds>(T1 - T0));
+	Log::info("Loaded mesh {}  ({:.1f} x {:.1f} x {:.1f})  ({} ms)", filepath.string().c_str(), _aabb.width(), _aabb.height(), _aabb.depth(), duration_cast<milliseconds>(T1 - T0));
 
 	return true;
 }
@@ -337,7 +337,7 @@ bool StaticModel::LoadMaterialTextures(const aiScene* scene, const aiMaterial* m
 
 				if (texture->Load(reinterpret_cast<unsigned char*>(paiTexture->pcData), data_size, is_srgb))
 				{
-					std::print("Loaded embedded texture for the model {}\n", path.C_Str());
+					Log::debug("Loaded embedded texture for the model {}", path.C_Str());
 					m_materials[material_index].set(texture_type, texture);
 
 					if (texture_map_mode[0] == aiTextureMapMode_Wrap)
@@ -348,7 +348,7 @@ bool StaticModel::LoadMaterialTextures(const aiScene* scene, const aiMaterial* m
 				}
 				else
 				{
-					std::print(stderr, "\x1b[97;41;1mError\x1b[m Loading embedded texture for the model failed: {}\n", path.C_Str());
+					Log::error("\x1b[97;41;1mError\x1b[m Loading embedded texture for the model failed: {}", path.C_Str());
 					return false;
 				}
 			}
@@ -367,13 +367,13 @@ bool StaticModel::LoadMaterialTextures(const aiScene* scene, const aiMaterial* m
 				std::string full_path = directory + "/" + p;
 				if (!texture->Load(full_path, is_srgb))
 				{
-					std::print(stderr, "\x1b[97;41;1mError\x1b[m Loading texture failed {}.\n", full_path);
+					Log::error("\x1b[97;41;1mError\x1b[m Loading texture failed {}.", full_path);
 					return false;
 				}
 				else
 				{
 					const auto T1 = steady_clock::now();
-					std::print("Loaded texture {}  ({} ms)\n", full_path, duration_cast<milliseconds>(T1 - T0));
+					Log::debug("Loaded texture {}  ({} ms)", full_path, duration_cast<milliseconds>(T1 - T0));
 					m_materials[material_index].set(texture_type, texture);
 
 					if (texture_map_mode[0] == aiTextureMapMode_Wrap)

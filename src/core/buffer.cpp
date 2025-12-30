@@ -1,5 +1,6 @@
 #include "buffer.h"
 #include "gl_lookup.h"
+#include "log.h"
 
 #include <cassert>
 #include <print>
@@ -12,7 +13,7 @@ Buffer::~Buffer()
 	if(_id)
 	{
 		glDeleteBuffers(1, &_id);
-		std::print("Buffer[{}]: deleted {} ({})\n", _name, gl_lookup::enum_name(_buffer_type), _id);
+		Log::debug("Buffer[{}]: deleted {} ({})", _name, gl_lookup::enum_name(_buffer_type), _id);
 		_id = 0;
 	}
 }
@@ -21,7 +22,7 @@ bool Buffer::create()
 {
 	glCreateBuffers(1, &_id);
 	assert(_id > 0);
-	std::print("Buffer[{}]: created {} -> {}\n", _name, gl_lookup::enum_name(_buffer_type), _id);
+	Log::debug("Buffer[{}]: created {} -> {}", _name, gl_lookup::enum_name(_buffer_type), _id);
 
 	if(_bind_index != GLuint(-1))
 		glBindBufferBase(_buffer_type, _bind_index, _id);
@@ -65,12 +66,12 @@ void Buffer::upload(const void *ptr, size_t size)
 	{
 		assert(ptr == nullptr);  // not an actual upload
 		glNamedBufferStorage(id(), GLsizeiptr(size), nullptr, GL_MAP_READ_BIT | GL_DYNAMIC_STORAGE_BIT);
-		// std::print("Buffer[{}]: uploaded {} bytes GL_MAP_READ_BIT | GL_DYNAMIC_STORAGE_BIT\n", _name, size);
+		// Log::debug("Buffer[{}]: uploaded {} bytes GL_MAP_READ_BIT | GL_DYNAMIC_STORAGE_BIT", _name, size);
 	}
 	else
 	{
 		glNamedBufferData(id(),  GLsizeiptr(size), ptr, GLenum(_default_usage));
-		// std::print("Buffer[{}]: uploaded {} bytes {}\n", _name, size, gl_lookup::enum_name(GLenum(usage())));
+		// Log::debug("Buffer[{}]: uploaded {} bytes {}", _name, size, gl_lookup::enum_name(GLenum(usage())));
 	}
 }
 
@@ -79,14 +80,14 @@ void Buffer::upload(const void *ptr, size_t size, size_t start_offset)
 	assert(_default_usage != BufferUsage::ReadBack);
 
 	glNamedBufferSubData(id(), GLintptr(start_offset), GLsizeiptr(size), ptr);
-	// std::print("Buffer[{}]: uploaded {} bytes @ offset {}\n", _name, size, start_offset);
+	// Log::debug("Buffer[{}]: uploaded {} bytes @ offset {}", _name, size, start_offset);
 }
 
 void Buffer::download(void *ptr, size_t size, size_t start_offset)
 {
 	assert(_default_usage == BufferUsage::ReadBack);
 	glGetNamedBufferSubData(id(), GLintptr(start_offset), GLsizeiptr(size), ptr);
-	// std::print("Buffer[{}]: downloaded {} bytes @ offset {}\n", _name, size, start_offset);
+	// Log::debug("Buffer[{}]: downloaded {} bytes @ offset {}", _name, size, start_offset);
 }
 
 

@@ -22,6 +22,9 @@ namespace RGL
           m_fps       (0),
           m_is_running(false)
     {
+#if defined(_DEBUG)
+		Log::set_level(Log::DEBUG);
+#endif
     }
 
     CoreApp::~CoreApp()
