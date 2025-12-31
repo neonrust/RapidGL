@@ -2142,6 +2142,7 @@ void ClusteredShading::debug_message(GLenum type, std::string_view severity, std
 	GLuint program_id = 0;
 	GLenum shader_type = 0;
 
+	// "(Vertex|Fragment) shader in program <id>"
 	if(auto found = message.find(" shader in program "); found != std::string_view::npos)
 	{
 		if(found >= 8 and message.substr(found - 8, 8) == "Fragment"sv)
