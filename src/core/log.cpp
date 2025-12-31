@@ -13,20 +13,20 @@ namespace Log
 
 void close()
 {
-	if(not _private::initialized)
+	if(not _private::the().initialized)
 		return;
-	_private::initialized = false;
+	_private::the().initialized = false;
 
-	_private::log_msg(INFO, "Log ended");
+	_private::the().log_msg(INFO, "Log ended");
 	flush();
-	if(_private::out != stdout and _private::out != stderr)
-		std::fclose(_private::out);
+	if(_private::the().out != stdout and _private::the().out != stderr)
+		std::fclose(_private::the().out);
 }
 
 void flush()
 {
-	std::fflush(_private::out);
-	if(_private::out != stderr)
+	std::fflush(_private::the().out);
+	if(_private::the().out != stderr)
 		std::fflush(stderr);
 }
 
@@ -35,79 +35,78 @@ bool set_file(fs::path &file_path)
 	auto *fp = std::fopen(file_path.native().c_str(), "wb");
 	if(not fp)
 		return false;
-	_private::out = fp;
+	_private::the().out = fp;
 	return true;
 }
 
 Level set_level(Level min_level)
 {
-	const auto old_level = _private::level;
-	_private::level = min_level;
+	const auto old_level = _private::the().level;
+	_private::the().level = min_level;
+	std::print("set level = {}\n", min_level);
 	return old_level;
 }
 
 void enable_date(bool enable)
 {
-	_private::output_date = enable;
+	_private::the().output_date = enable;
 }
 
 void enable_since(bool enable)
 {
-	_private::output_since = enable;
+	_private::the().output_since = enable;
 }
 
-namespace _private
-{
-
-void level_style(Level lvl, FILE *fp)
+void _private::level_style(Level lvl, FILE *fp)
 {
 	switch(lvl)
 	{
-	case DEBUG:   std::print(fp, "\x1b[2m"sv);       break;
-	case INFO:                                       break;
-	case WARNING: std::print(fp, "\x1b[33;1m"sv);    break;
-	case ERROR:   std::print(fp, "\x1b[31;1m"sv);    break;
-	case FATAL:   std::print(fp, "\x1b[31;97;1m"sv); break;
+	case DEBUG:   std::fputs("\x1b[2m", fp);       break;
+	case INFO:    std::fputs("\x1b[m", fp);        break;
+	case WARNING: std::fputs("\x1b[m", fp);        break;
+	case ERROR:   std::fputs("\x1b[31;1m", fp);    break;
+	case FATAL:   std::fputs("\x1b[31;97;1m", fp); break;
 	}
+
 }
 
-void reset_style(FILE *fp)
+void _private::reset_style(FILE *fp)
 {
 	std::print(fp, "\x1b[m");
 }
 
-void out_level(Level lvl, FILE *fp)
+void _private::out_level(Level lvl, FILE *fp)
 {
 	switch(lvl)
 	{
-	case DEBUG:   std::print(fp, "DEBUG "sv); break;
-	case INFO:    std::print(fp, "INFO  "sv); break;
-	case WARNING: std::print(fp, "\x1b[33;1mWARN\x1b[m  "sv); break;
-	case ERROR:   std::print(fp, "\x1b[31;1mERROR\x1b[m "sv); break;
-	case FATAL:   std::print(fp, "\x1b[41;97;1mFATAL\x1b[m "sv); break;
+	case DEBUG:   std::fputs("\x1b[mDEBUG ", fp); break;
+	case INFO:    std::fputs("\x1b[mINFO  ", fp); break;
+	case WARNING: std::fputs("\x1b[33;1mWARN  ", fp); break;
+	case ERROR:   std::fputs("\x1b[31;1mERROR ", fp); break;
+	case FATAL:   std::fputs("\x1b[41;97;1mFATAL ", fp); break;
 	}
 }
 
-void stamp(FILE *fp)
+void _private::stamp(FILE *fp)
 {
 	const auto now = time_point_cast<milliseconds>(system_clock::now());
 	if(output_date)
-		std::print(fp, "\x1b[34;1m{:%Y-%m-%d %H:%M:%S}\x1b[30m ", now);
+		std::print(fp, "\x1b[34;1m{:%Y-%m-%d %H:%M:%S} ", now);
 	else
-		std::print(fp, "\x1b[34;1m{:%H:%M:%S}\x1b[30m ", now);
+		std::print(fp, "\x1b[34;1m{:%H:%M:%S} ", now);
 	if(output_since)
 	{
 		const auto since = duration_cast<seconds_f>(steady_clock::now() - start_time);
-		std::print(fp, "({:.3f}) ", since.count());
+		std::print(fp, "\x1b[32;1m{:.3f} ", since.count());
 	}
 }
 
-void lf(FILE *fp)
+void _private::lf(FILE *fp)
 {
 	std::fputc('\n', fp);
 }
 
-void preamble(Level lvl, FILE *fp)
+void _private::preamble(Level lvl, FILE *fp)
 {
 	stamp(fp);
 	out_level(lvl, fp);
@@ -116,7 +115,7 @@ void preamble(Level lvl, FILE *fp)
 	// TODO: other columns
 }
 
-void end(FILE *fp)
+void _private::end(FILE *fp)
 {
 	// TODO: other stuff? e.g. currently added context
 
@@ -124,32 +123,29 @@ void end(FILE *fp)
 	lf(fp);
 }
 
-void on_signal(int signum)
+void _private::on_signal(int signum)
 {
 	Log::warning("Received signal {}  (flushing)", signum);
 	Log::flush();
 }
 
-void init()
+_private::_private()
 {
 	::atexit(Log::close);
-	std::signal(SIGINT,   _private::on_signal);
-	std::signal(SIGTERM,  _private::on_signal);
-	std::signal(SIGABRT,  _private::on_signal);
-	std::signal(SIGFPE,   _private::on_signal);
-	std::signal(SIGWINCH, _private::on_signal);
+	std::signal(SIGINT,   on_signal);
+	std::signal(SIGTERM,  on_signal);
+	std::signal(SIGABRT,  on_signal);
+	std::signal(SIGFPE,   on_signal);
+	std::signal(SIGWINCH, on_signal);
 	initialized = true;
 	start_time = time_point_cast<milliseconds>(steady_clock::now());
 }
 
-struct _static_init
-{
-	_static_init() {
-		init();
-	}
-};
-static const _static_init _initializer_;
-
-}  // _private
+// static struct _static_init
+// {
+// 	_static_init() {
+// 		_private::the();
+// 	}
+// } _initializer_;
 
 } // log

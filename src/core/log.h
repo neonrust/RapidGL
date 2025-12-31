@@ -18,71 +18,93 @@ static constexpr Level ERROR   = 40;
 static constexpr Level FATAL   = 50;
 
 
-namespace _private
+class _private
 {
-void preamble(Level lvl, FILE *fp);
-void end(FILE *fp);
-
-// settings
-static auto  initialized  { true };
-static Level level        { WARNING };
-static Level error_level  { WARNING };  // at or higher also writes to stderr
-static FILE  *out         { stdout };
-static bool  output_date  { false };
-static bool  output_since { false };
-static std::chrono::steady_clock::time_point start_time;
-
-template<typename... Args>
-void log_msg(Level lvl, std::format_string<Args...> fmt, Args&&... args)
-{
-	_private::preamble(lvl, out);
-	std::print(out, fmt, std::forward<Args>(args)...);
-	_private::end(out);
-
-	if(lvl >= error_level and out != stdout and out != stderr)
-	{
-		_private::preamble(lvl, stderr);
-		std::print(stderr, fmt, std::forward<Args>(args)...);
-		_private::end(stderr);
+private:
+	_private();
+public:
+	static inline _private &the() {
+		static _private instance;
+		return instance;
 	}
-}
+	void preamble(Level lvl, FILE *fp);
+	void end(FILE *fp);
+	void level_style(Level lvl, FILE *fp);
+	void reset_style(FILE *fp);
+	void out_level(Level lvl, FILE *fp);
+	void stamp(FILE *fp);
+	void lf(FILE *fp);
 
-} // _private
+	static void on_signal(int signum);
+
+	template<typename... Args>
+	void log_msg(Level lvl, std::format_string<Args...> fmt, Args&&... args)
+	{
+		preamble(lvl, out);
+		std::print(out, fmt, std::forward<Args>(args)...);
+		end(out);
+
+		if(lvl >= error_level and out != stdout and out != stderr)
+		{
+			preamble(lvl, stderr);
+			std::print(stderr, fmt, std::forward<Args>(args)...);
+			end(stderr);
+		}
+	}
+
+	// settings
+	bool  initialized  { true };
+	Level level        { WARNING };
+	Level error_level  { WARNING };  // at or higher also writes to stderr
+	FILE  *out         { stdout };
+	bool  output_date  { false };
+	bool  output_since { false };
+	std::chrono::steady_clock::time_point start_time;
+};
 
 bool set_file(std::filesystem::path &file_path);
 Level set_level(Level min_level);
 void enable_date(bool enable);
 void enable_since(bool enable);
+void flush();
+void close();
 
 template<typename... Args>
 void debug(std::format_string<Args...> fmt, Args&&... args)
 {
-	if(_private::level <= DEBUG)
-		_private::log_msg(DEBUG, fmt, std::forward<Args>(args)...);
+	if(_private::the().level <= DEBUG)
+		_private::the().log_msg(DEBUG, fmt, std::forward<Args>(args)...);
 }
 
 template<typename... Args>
 void info(std::format_string<Args...> fmt, Args&&... args)
 {
-	if(_private::level <= INFO)
-		_private::log_msg(INFO, fmt, std::forward<Args>(args)...);
+	if(_private::the().level <= INFO)
+		_private::the().log_msg(INFO, fmt, std::forward<Args>(args)...);
 }
 
 template<typename... Args>
 void warning(std::format_string<Args...> fmt, Args&&... args)
 {
-	if(_private::level <= WARNING)
-		_private::log_msg(WARNING, fmt, std::forward<Args>(args)...);
+	if(_private::the().level <= WARNING)
+		_private::the().log_msg(WARNING, fmt, std::forward<Args>(args)...);
 }
 
 template<typename... Args>
 void error(std::format_string<Args...> fmt, Args&&... args)
 {
-	if(_private::level <= ERROR)
-		_private::log_msg(ERROR, fmt, std::forward<Args>(args)...);
+	if(_private::the().level <= ERROR)
+		_private::the().log_msg(ERROR, fmt, std::forward<Args>(args)...);
 }
 
-void flush();
-void close();
+template<typename... Args>
+void fatal(std::format_string<Args...> fmt, Args&&... args)
+{
+	if(_private::the().level <= FATAL)
+		_private::the().log_msg(FATAL, fmt, std::forward<Args>(args)...);
+
+	Log::close();
+	std::exit(EXIT_FAILURE);
+}
 
 } // log
