@@ -27,6 +27,7 @@ public:
 	enum class CubeFace : uint32_t { PosX, NegX, PosY, NegY, PosZ, NegZ };
 
 	static constexpr size_t MAX_CASCADES = 4;
+	static_assert(MAX_CASCADES >= 1 and MAX_CASCADES <= 6);
 
 private:
 	using allocator_t = SpatialAllocator<uint32_t>;
