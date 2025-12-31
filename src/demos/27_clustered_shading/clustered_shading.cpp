@@ -989,7 +989,7 @@ void ClusteredShading::update(double delta_time)
 	else if (m_animate_lights)
     {
 		// time_accum  += float(delta_time * m_animation_speed);
-		const auto orbit_mat = glm::rotate(glm::mat4(1), glm::radians(-23.f * float(delta_time)) * 2.f * m_animation_speed, AXIS_Y);
+		const auto orbit_mat = glm::rotate(glm::mat4(1), glm::radians(float(delta_time)) * 2.f * m_animation_speed, AXIS_Y);
 		const auto spin_mat = glm::angleAxis(glm::radians(float(15*delta_time * m_animation_speed)), AXIS_Y);
 
 		// auto spin_mat  = glm::rotate(glm::mat4(1), glm::radians(60.f * float(delta_time)) * 2.f * m_animation_speed, AXIS_Y);
