@@ -1040,7 +1040,7 @@ void ClusteredShading::createLights()
 	{
 		const auto rand_color= hsv2rgb(
 			float(Util::RandomDouble(1, 360)),       // hue
-			float(Util::RandomDouble(0.6f, 1.f)),   // saturation
+			float(Util::RandomDouble(0.1f, 0.5f)),   // saturation
 			1.f                                      // value (brightness)
 		);
 		// const auto rand_pos = Util::RandomVec3(room_min, room_max);
