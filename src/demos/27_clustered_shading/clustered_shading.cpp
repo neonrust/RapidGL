@@ -1018,9 +1018,9 @@ void ClusteredShading::update(double delta_time)
 
 void ClusteredShading::createLights()
 {
-	static const glm::vec3 room_min { -18, 0.5f, -18 };
-	// static const glm::vec3 room_max { 178, 3.5f, 18 };
-	static const glm::vec3 room_max {  18, 3.5f,  18 };
+	[[maybe_unused]] static const glm::vec3 room_min { -18, 0.5f, -18 };
+	// [[maybe_unused]] static const glm::vec3 room_max { 178, 3.5f, 18 };
+	[[maybe_unused]] static const glm::vec3 room_max {  18, 3.5f,  18 };
 
 	static constexpr auto ident_quat = glm::quat_identity<float, glm::defaultp>();
 
