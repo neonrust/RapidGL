@@ -22,6 +22,8 @@ public:
 	void config(size_t stride, GLuint bindingIndex=5);
 	void config_with_vao(GLuint vao, size_t stride, GLuint bindingIndex=5);
 
+	inline size_t stride() const { return size_t(_stride); }
+
 	template<typename ItemT>
 	uint32_t add(std::string_view name);
 
