@@ -183,7 +183,7 @@ void LightManager::clear_shadow_index(LightID light_id)
 	}
 }
 
-void LightManager::set_spot_angle(GPULight &L, float new_outer_angle)
+void LightManager::set_spot_angle(GPULight &L, float new_outer_angle) const
 {
 	L.intensity *= spot_intensity_multiplier(new_outer_angle) / spot_intensity_multiplier(L.outer_angle);
 	set_intensity(L, L.intensity);
@@ -191,7 +191,7 @@ void LightManager::set_spot_angle(GPULight &L, float new_outer_angle)
 	L.outer_angle = new_outer_angle;
 }
 
-void LightManager::set_intensity(GPULight &L, float new_intensity)
+void LightManager::set_intensity(GPULight &L, float new_intensity) const
 {
 	L.intensity = new_intensity;
 
@@ -201,29 +201,29 @@ void LightManager::set_intensity(GPULight &L, float new_intensity)
 		break;
 	case LIGHT_TYPE_POINT:
 	case LIGHT_TYPE_SPOT:
-		L.affect_radius  = std::pow(L.intensity, 0.6f);
+		L.affect_radius  = std::pow(L.intensity, _radius_power);
 		break;
 	case LIGHT_TYPE_RECT:
 	{
 		const auto area = glm::distance(L.shape_data[0], L.shape_data[1]) * glm::distance(L.shape_data[2], L.shape_data[3]);
-		L.affect_radius = std::pow(L.intensity, 0.6f) * (1 + area);
+		L.affect_radius = std::pow(L.intensity, _radius_power) * (1 + area);
 	}
 	break;
 	case LIGHT_TYPE_TUBE:
 	{
 		const auto area = glm::distance(L.shape_data[0], L.shape_data[1]) * L.shape_data[2].x;
-		L.affect_radius = std::pow(L.intensity, 0.6f) * (1 + area);
+		L.affect_radius = std::pow(L.intensity, _radius_power) * (1 + area);
 	}
 	break;
 	case LIGHT_TYPE_SPHERE:
 		// complete bollox
-		L.affect_radius = std::pow(L.intensity, 0.6f) + L.shape_data[0].x*1.5f;
+		L.affect_radius = std::pow(L.intensity, _radius_power) + L.shape_data[0].x*1.5f;
 		break;
 	case LIGHT_TYPE_DISC:
 	{
 		const float radius = L.shape_data[0].x;
 		const auto area = radius * radius * std::numbers::pi_v<float>;
-		L.affect_radius = std::pow(L.intensity, 0.6f) * (1 + area);
+		L.affect_radius = std::pow(L.intensity, _radius_power) * (1 + area);
 	}
 	break;
 	}

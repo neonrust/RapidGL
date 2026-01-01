@@ -85,6 +85,7 @@ public:
 	auto add(const LTP &ltp) -> _private::return_type<LTP>;
 
 	inline void set_falloff_power(float power=1) { _falloff_power = power; }
+	inline void set_radius_power(float power=0.6f) { _radius_power = power; }
 	inline float falloff_power() const { return _falloff_power; }
 
 	void clear();
@@ -128,8 +129,8 @@ public:
 	template<typename LT=GPULight> requires (std::same_as<LT, GPULight> || _private::LightType<LT>)
 	inline size_t num_lights() const;
 
-	static void set_spot_angle(GPULight &L, float new_outer_angle); // also sets intensity and affect_radius
-	static void set_intensity(GPULight &L, float new_intensity);  // sets intensity and affect_radius
+	void set_intensity(GPULight &L, float new_intensity) const;  // sets intensity and affect_radius
+	void set_spot_angle(GPULight &L, float new_outer_angle) const; // also sets intensity and affect_radius
 	static void set_direction(GPULight &L, const glm::vec3 &direction);  // spot & disc lights
 	static void transform(GPULight &L, const glm::mat4 &tfm);
 	static void transform(GPULight &L, const glm::mat3 &rotate);
@@ -149,7 +150,7 @@ private:
 
 	// convert any light type to a GPULight
 	template<typename LT> requires _private::LightType<LT> || _private::LightParamsType<LT>
-	static GPULight to_gpu_light(const LT &l);
+	GPULight to_gpu_light(const LT &l) const;
 	static void compute_spot_bounds(GPULight &L);
 	static float spot_intensity_multiplier(float angle);
 
@@ -168,7 +169,8 @@ private:
 
 	buffer::Storage<GPULight> _lights_ssbo;
 
-	float _falloff_power { 1.f };
+	float _radius_power  { 0.6f };
+	float _falloff_power { 50.f };
 
 	size_t _num_point_lights  { 0 };
 	size_t _num_dir_lights    { 0 };
@@ -264,7 +266,7 @@ auto LightManager::add(const LTP &ltp) -> _private::return_type<LTP>
 }
 
 template<typename LT> requires _private::LightType<LT> || _private::LightParamsType<LT>
-GPULight LightManager::to_gpu_light(const LT &l)
+GPULight LightManager::to_gpu_light(const LT &l) const
 {
 	GPULight L;
 	L.color         = l.color;

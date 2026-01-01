@@ -105,6 +105,7 @@ ClusteredShading::ClusteredShading() :
 	_lightsPvs.reserve(1024);
 
 	_light_mgr.set_falloff_power(50.f);
+	_light_mgr.set_radius_power(0.6f);
 }
 
 ClusteredShading::~ClusteredShading()
