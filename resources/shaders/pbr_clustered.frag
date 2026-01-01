@@ -330,17 +330,12 @@ vec3 falseColor(float value)
 	return mix(c7, c8, (value - 7*w) * N);
 }
 
-float fadeByDistance(float distance, float hard_limit);
-
 float fadeLightByDistance(GPULight light)
 {
 	float light_edge_distance = max(0, distance(light.position, u_cam_pos) - light.affect_radius);
 	// fade the whole light by distance
 	return fadeByDistance(light_edge_distance, u_light_max_distance);
 }
-
-// returns [1, 0] whther the fragment corresponding to 'atlas_uv' has LOS to the light
-float fadeByDistance(float distance, float hard_limit);
 
 // const vec3 face_tint_colors[6] = vec3[](
 // 	vec3(1, 0, 0),
@@ -488,10 +483,4 @@ vec3 sphereLightVisibility(GPULight light, float camera_distance)
 vec3 discLightVisibility(GPULight light, float camera_distance)
 {
 	return vec3(fadeLightByDistance(light));
-}
-
-
-float fadeByDistance(float distance, float hard_limit)
-{
-	return 1 - smoothstep(hard_limit*0.8, hard_limit, distance);
 }

@@ -44,7 +44,7 @@ uniform vec3  u_emission;
 uniform float u_emission_strength;
 
 uniform vec3  u_cam_pos;
-
+uniform float u_specular_max_distance;
 uniform uint u_csm_num_cascades;
 uniform float u_csm_depth_splits[4];
 
@@ -59,6 +59,12 @@ struct MaterialProperties
     float ao;
     float opacity;
 };
+
+// returns [1, 0] whther the fragment corresponding to 'atlas_uv' has LOS to the light
+float fadeByDistance(float distance, float hard_limit)
+{
+	return 1 - smoothstep(hard_limit*0.8, hard_limit, distance);
+}
 
 vec3 getNormalFromMap()
 {
@@ -176,42 +182,52 @@ vec3 indirectLightingIBL(vec3 world_pos, MaterialProperties material)
 
 vec3 pbr(GPULight light, vec3 direction, vec3 world_pos, float attenuation, MaterialProperties material)
 {
-    vec3 wo         = normalize(u_cam_pos - world_pos);
-    vec3 radiance   = vec3(0);
+	vec3 wo         = normalize(u_cam_pos - world_pos);
+	vec3 radiance   = vec3(0);
 
-    // fresnel reflectance at normal incidence
-    vec3 F0 = vec3(0.04); // base reflectance
-         F0 = mix(F0, material.albedo, material.metallic);
+	// fresnel reflectance at normal incidence
+	vec3 F0 = vec3(0.04); // base reflectance
+		 F0 = mix(F0, material.albedo, material.metallic);
 
     // calculate radiance
     {
-        vec3 wi               = normalize(direction);
-        vec3 h                = normalize(wo + wi);
-        vec3 light_irradiance = light.color * light.intensity;
+		vec3 wi               = normalize(direction);
+		float NdotL           = max(dot(material.normal, wi), 0.0);
+		vec3 h                = normalize(wo + wi);
+		vec3 light_irradiance = light.color * light.intensity;
 
-        // cook-torrance brdf
-        float NDF = distributionGGX(material.normal, h, material.roughness);
-        float G   = geometrySmith(material.normal, wo, wi, material.roughness);
-        vec3  F   = fresnelSchlick(max(dot(h, wo), 0.0), F0);
+		// cook-torrance brdf
+		vec3  F   = fresnelSchlick(max(dot(h, wo), 0.0), F0);
 
-        float NdotL    = max(dot(material.normal, wi), 0.0);
-        vec3  num      = NDF * G * F;
-        float denominator    = 4.0 * max(dot(material.normal, wo), 0.0) * NdotL;
-        vec3  specular = num / max(denominator, 1e-5);
+		vec3 specular = vec3(0);
+        // fade specular by distance from light
+		float light_distance = distance(world_pos, light.position);
+		if(light_distance < u_specular_max_distance)
+		{
+			// also fade by light's distance from camera
+			float edge_distance = max(0, distance(u_cam_pos, light.position) - light.affect_radius);
+			if(edge_distance < u_specular_max_distance*2)
+			{
+				float cam_fade = fadeByDistance(edge_distance, u_specular_max_distance*2);
+				//float fade = 1 - smoothstep(u_specular_max_distance*0.8, u_specular_max_distance, light_distance);
+				float fade = 1 - clamp((light_distance - u_specular_max_distance*0.8)/(u_specular_max_distance - u_specular_max_distance*0.8), 0, 1);
+				float NDF = distributionGGX(material.normal, h, material.roughness);
+				float G   = geometrySmith(material.normal, wo, wi, material.roughness);
 
-        vec3 ks = F;
-        vec3 kd = 1.0 - ks;
-             kd = kd * (1.0 - material.metallic);
+				vec3  num         = NDF * G * F;
+				float denominator = 4.0 * max(dot(material.normal, wo), 0.0) * NdotL;
+				specular = cam_fade * fade * num / max(denominator, 1e-5);
+			}
+		}
 
-        radiance += (kd * material.albedo / PI + specular) * light_irradiance * NdotL * attenuation;
-    }
+		vec3 ks = F;
+		vec3 kd = 1.0 - ks;
+			 kd = kd * (1.0 - material.metallic);
 
-    return radiance;
-}
+		radiance += (kd * material.albedo / PI + specular) * light_irradiance * NdotL * attenuation;
+	}
 
-vec3 calcDirectionalLight(GPULight light, vec3 world_pos, MaterialProperties material)
-{
-    return pbr(light, -light.direction, world_pos, 1, material);
+	return radiance;
 }
 
 vec3 calcPointLight(GPULight light, vec3 world_pos, MaterialProperties material)
@@ -221,6 +237,11 @@ vec3 calcPointLight(GPULight light, vec3 world_pos, MaterialProperties material)
 	float attenuation = lightFalloff(distance_sq, light.affect_radius*light.affect_radius);
 
     return pbr(light, light_direction, world_pos, attenuation, material);
+}
+
+vec3 calcDirectionalLight(GPULight light, vec3 world_pos, MaterialProperties material)
+{
+    return pbr(light, -light.direction, world_pos, 1, material);
 }
 
 vec3 calcSpotLight(GPULight light, vec3 world_pos, MaterialProperties material)

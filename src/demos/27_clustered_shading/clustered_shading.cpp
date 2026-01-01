@@ -39,6 +39,14 @@ static constexpr auto s_light_affect_fraction        = 0.5f;  // fade shading by
 static constexpr auto s_light_volumetric_fraction    = 0.2f;  // fade volumetric/scattering by distance
 static constexpr auto s_light_shadow_max_fraction    = 0.4f;  // may allocated  sdhadow map
 static constexpr auto s_light_shadow_affect_fraction = 0.3f;  // fade shadow by distance
+static constexpr auto s_light_specular_fraction      = 0.1f;  // how far from the light speculars are calculated
+
+static_assert(s_light_relevant_fraction > 0.f and s_light_relevant_fraction <= 1.f);
+static_assert(s_light_affect_fraction > 0.f and s_light_affect_fraction <= 1.f);
+static_assert(s_light_volumetric_fraction > 0.f and s_light_volumetric_fraction <= 1.f);
+static_assert(s_light_shadow_max_fraction > 0.f and s_light_shadow_max_fraction <= 1.f);
+static_assert(s_light_shadow_affect_fraction > 0.f and s_light_shadow_affect_fraction <= 1.f);
+static_assert(s_light_specular_fraction > 0.f and s_light_specular_fraction <= 1.f);
 
 static_assert(s_light_relevant_fraction > s_light_affect_fraction);
 static_assert(s_light_affect_fraction > s_light_shadow_max_fraction);
@@ -2078,6 +2086,7 @@ void ClusteredShading::renderSceneShading(const Camera &camera)
 	m_clustered_pbr_shader->setUniform("u_log_cluster_res_y"sv,          m_log_cluster_res_y);
 	m_clustered_pbr_shader->setUniform("u_light_max_distance"sv,         m_camera.farPlane() * s_light_affect_fraction);
 	m_clustered_pbr_shader->setUniform("u_shadow_max_distance"sv,        m_camera.farPlane() * s_light_shadow_affect_fraction);
+	//m_clustered_pbr_shader->setUniform("u_specular_max_distance"sv,      m_camera.farPlane() * s_light_specular_fraction);
 
 	m_clustered_pbr_shader->setUniform("u_debug_cluster_geom"sv,         m_debug_cluster_geom);
 	m_clustered_pbr_shader->setUniform("u_debug_clusters_occupancy"sv,   m_debug_clusters_occupancy);
