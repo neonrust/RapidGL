@@ -127,6 +127,8 @@ inline SpatialAllocator<AxisT>::SpatialAllocator(AxisT size, size_t min_block_si
 	_max_size(max_block_size_shift? _size >> max_block_size_shift: _size >> default_max_size_shift),
 	_min_size(min_block_size_shift? _size >> min_block_size_shift: _size >> default_min_size_shift)
 {
+	assert(_min_size > 0);
+	assert(_max_size > 0);
 	assert(_max_size <= _size);
 	assert(_min_size <= _size);
 	assert(_min_size <= _max_size);

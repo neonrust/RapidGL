@@ -27,16 +27,16 @@ suite<fixed_string("SpatialAllocator")> sa_suite([]{
 	};
 
 	"num_allocatable"_test = [] {
-		SpatialAllocator a1(1024u, 64u, 256u);
+		SpatialAllocator a1(1024u, 4u, 2u);
 		expect(a1.num_allocatable_levels() == 3) << "64, 128, 256";
-		SpatialAllocator a2(8192u, 64u, 1024u);
+		SpatialAllocator a2(8192u, 7u, 3u);
 		expect(a2.num_allocatable_levels() == 5) << "64, 128, 256, 512, 1024";
-		SpatialAllocator a3(8192u, 1024u, 1024u);
+		SpatialAllocator a3(8192u, 3u, 3u);
 		expect(a3.num_allocatable_levels() == 1) << "1024";
 	};
 
 	"allocate_1"_test = [] {
-		SpatialAllocator a(1024u, 64u, 256u);
+		SpatialAllocator a(1024u, 4u, 2u);
 		expect(a.num_allocated(256) == 0);
 		auto node = a.allocate(256);
 		expect(node != a.end()) << std::format("allocated not > {}", node);
@@ -46,13 +46,13 @@ suite<fixed_string("SpatialAllocator")> sa_suite([]{
 	};
 
 	"allocate_bad_size"_test = [] {
-		SpatialAllocator a(1024u, 64u, 256u);
+		SpatialAllocator a(1024u, 4u, 2u);
 		expect(a.allocate(512) == a.end());
 		expect(a.allocate(32) == a.end());
 	};
 
 	"allocate_full"_test = [] {
-		SpatialAllocator a(1024u, 64u, 256u);
+		SpatialAllocator a(1024u, 4u, 2u);
 		for(auto idx = 0u; idx < 16; ++idx)
 			expect(a.allocate(256) != a.end());
 		expect(a.num_allocated().size() == 1);
@@ -63,7 +63,7 @@ suite<fixed_string("SpatialAllocator")> sa_suite([]{
 	};
 
 	"allocate_demote"_test = [] {
-		SpatialAllocator a(1024u, 64u, 256u);
+		SpatialAllocator a(1024u, 4u, 2u);
 		for(auto idx = 0u; idx < 15; ++idx)
 			expect(a.allocate(256) != a.end());
 		expect(a.allocate(128) != a.end());
@@ -76,7 +76,7 @@ suite<fixed_string("SpatialAllocator")> sa_suite([]{
 	};
 
 	"allocate_after_free_many"_test = [] {
-		SpatialAllocator a(1024u, 64u, 256u);
+		SpatialAllocator a(1024u, 4u, 2u);
 		for(auto idx = 0u; idx < 15; ++idx)
 			expect(a.allocate(256) != a.end());
 		std::vector<decltype(a)::NodeIndex> small;
