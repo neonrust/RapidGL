@@ -187,7 +187,7 @@ private:
 	float m_shadow_bias_slope_power      = 0.01f;
 	float m_shadow_bias_distance_scale   = 0.0021f;
 	float m_shadow_bias_scale            = -0.3f;
-	float m_shadow_bias_texel_size_mix   = 0.5f;
+	float m_shadow_bias_texel_size_mix   = 0.f;
 
 	bool      m_animate_lights             = false;
 	float     m_animation_speed            = 0.4f;
