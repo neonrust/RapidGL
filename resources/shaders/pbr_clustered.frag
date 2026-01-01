@@ -62,13 +62,13 @@ vec3 falseColor(float value);
 uint computeClusterIndex(uvec3 cluster_coord);
 uvec3 computeClusterCoord(vec2 screen_pos, float view_z);
 
-vec3 pointLightVisibility(GPULight light, vec3 world_pos);
-vec3 dirLightVisibility(GPULight light, vec3 world_pos);
-vec3 spotLightVisibility(GPULight light, vec3 world_pos);
-vec3 rectLightVisibility(GPULight light);
-vec3 tubeLightVisibility(GPULight light);
-vec3 sphereLightVisibility(GPULight light);
-vec3 discLightVisibility(GPULight light);
+vec3 pointLightVisibility(GPULight light, vec3 world_pos, float camera_distance);
+vec3 dirLightVisibility(GPULight light, vec3 world_pos, float camera_distance);
+vec3 spotLightVisibility(GPULight light, vec3 world_pos, float camera_distance);
+vec3 rectLightVisibility(GPULight light, float camera_distance);
+vec3 tubeLightVisibility(GPULight light, float camera_distance);
+vec3 sphereLightVisibility(GPULight light, float camera_distance);
+vec3 discLightVisibility(GPULight light, float camera_distance);
 
 
 void main()
@@ -92,6 +92,8 @@ void main()
 
     vec3 radiance = vec3(0);
 
+    float camera_distance = distance(u_cam_pos, in_world_pos);
+
     // too many lights?
     if(lights_range.count > CLUSTER_MAX_LIGHTS)
 		radiance += vec3(1, 0, 1);
@@ -109,7 +111,7 @@ void main()
        	{
 			case LIGHT_TYPE_POINT:
 			{
-		        visibility = pointLightVisibility(light, in_world_pos);
+		        visibility = pointLightVisibility(light, in_world_pos, camera_distance);
 		        if(visibility.x + visibility.y + visibility.z > s_min_visibility)
 		        	contribution = calcPointLight(light, in_world_pos, material);
 			}
@@ -117,7 +119,7 @@ void main()
 
 	        case LIGHT_TYPE_DIRECTIONAL:
 			{
-		        visibility = dirLightVisibility(light, in_world_pos);
+		        visibility = dirLightVisibility(light, in_world_pos, camera_distance);
 		        if(visibility.x + visibility.y + visibility.z > s_min_visibility)
 		        	contribution = calcDirectionalLight(light, in_world_pos, material);
 			}
@@ -125,7 +127,7 @@ void main()
 
 			case LIGHT_TYPE_SPOT:
 			{
-				visibility = spotLightVisibility(light, in_world_pos);
+				visibility = spotLightVisibility(light, in_world_pos, camera_distance);
 			    if(visibility.x + visibility.y + visibility.z > s_min_visibility)
     				contribution = calcSpotLight(light, in_world_pos, material);
         	}
@@ -133,7 +135,7 @@ void main()
 
           	case LIGHT_TYPE_RECT:
            	{
-	           	visibility = rectLightVisibility(light);
+	           	visibility = rectLightVisibility(light, camera_distance);
 		        if(visibility.x + visibility.y + visibility.z > s_min_visibility)
 		        	contribution = calcRectLight(light, in_world_pos, material);
             }
@@ -141,7 +143,7 @@ void main()
 
            	case LIGHT_TYPE_TUBE:
             {
-	           	visibility = tubeLightVisibility(light);
+	           	visibility = tubeLightVisibility(light, camera_distance);
 		        if(visibility.x + visibility.y + visibility.z > s_min_visibility)
 		        	contribution = calcTubeLight(light, in_world_pos, material);
             }
@@ -149,7 +151,7 @@ void main()
 
            	case LIGHT_TYPE_SPHERE:
             {
-	           	visibility = sphereLightVisibility(light);
+	           	visibility = sphereLightVisibility(light, camera_distance);
 		        if(visibility.x + visibility.y + visibility.z > s_min_visibility)
 		        	contribution = calcSphereLight(light, in_world_pos, material);
             }
@@ -157,7 +159,7 @@ void main()
 
            	case LIGHT_TYPE_DISC:
             {
-	           	visibility = discLightVisibility(light);
+	           	visibility = discLightVisibility(light, camera_distance);
 		        if(visibility.x + visibility.y + visibility.z > s_min_visibility)
 		        	contribution = calcDiscLight(light, in_world_pos, material);
             }
@@ -349,7 +351,7 @@ float fadeByDistance(float distance, float hard_limit);
 // 	vec3(1, 1, 0)
 // );
 
-vec3 pointLightVisibility(GPULight light, vec3 world_pos)
+vec3 pointLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 {
 	float light_fade = fadeLightByDistance(light);
 	if(light_fade == 0)
@@ -363,7 +365,6 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 		return vec3(light_fade);  // no shadow map in use
 
 	// fade the shadow sample by distance
-	float camera_distance = distance(world_pos, u_cam_pos);
 	float shadow_fade = fadeByDistance(camera_distance, u_shadow_max_distance);
 	if(shadow_fade == 0)
 		return vec3(light_fade);
@@ -387,13 +388,12 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 	return vec3(visible);
 }
 
-vec3 dirLightVisibility(GPULight light, vec3 world_pos)
+vec3 dirLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 {
 	if(! IS_SHADOW_CASTER(light))
 		return vec3(1);
 
 	// vec3 cascade_debug_indicator = vec3(0.0, 0.0, 0.0);
-	float camera_distance = distance(world_pos, u_cam_pos);
 	float shadow_fade = 1;
 	// float shadow_fade = fadeByDistance(camera_distance, u_shadow_dir_max_distance);
 	// if(shadow_fade == 0)
@@ -436,7 +436,7 @@ vec3 dirLightVisibility(GPULight light, vec3 world_pos)
 	return visible_color;
 }
 
-vec3 spotLightVisibility(GPULight light, vec3 world_pos)
+vec3 spotLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 {
 	float light_fade = fadeLightByDistance(light);
 	if(light_fade == 0)
@@ -450,7 +450,6 @@ vec3 spotLightVisibility(GPULight light, vec3 world_pos)
 		return vec3(light_fade);  // no shadow map in use
 
 	// fade the shadow sample by distance
-	float camera_distance = distance(world_pos, u_cam_pos);
 	float shadow_fade = fadeByDistance(camera_distance, u_shadow_max_distance);
 	if(shadow_fade == 0)
 		return vec3(light_fade);
@@ -471,22 +470,22 @@ vec3 spotLightVisibility(GPULight light, vec3 world_pos)
 	return vec3(visible);
 }
 
-vec3 rectLightVisibility(GPULight light)
+vec3 rectLightVisibility(GPULight light, float camera_distance)
 {
 	return vec3(fadeLightByDistance(light));
 }
 
-vec3 tubeLightVisibility(GPULight light)
+vec3 tubeLightVisibility(GPULight light, float camera_distance)
 {
 	return vec3(fadeLightByDistance(light));
 }
 
-vec3 sphereLightVisibility(GPULight light)
+vec3 sphereLightVisibility(GPULight light, float camera_distance)
 {
 	return vec3(fadeLightByDistance(light));
 }
 
-vec3 discLightVisibility(GPULight light)
+vec3 discLightVisibility(GPULight light, float camera_distance)
 {
 	return vec3(fadeLightByDistance(light));
 }
