@@ -243,6 +243,7 @@ float sampleShadow9(float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
 	// TODO: random sampling
 	//    https://www.youtube.com/watch?v=NCptEJ1Uevg&t=380s
 	//    https://www.youtube.com/watch?v=3FMONJ1O39U&t=850s
+	//    or even demo 24 & 25
 
 	vec2 uv;
 	float shadow = 0;
@@ -283,6 +284,8 @@ float shadow_mid_sampling_distance  = u_shadow_max_distance / 8; // closer -> hi
 
 float sampleShadow(float camera_distance, float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
 {
+	// TODO: use PCSS for the closest range ?
+
 	// select samplinmg algorithm basec on distance to camera
 	if(camera_distance > shadow_low_sampling_distance)
 		return sampleShadow1(frag_depth, atlas_uv, uv_min, uv_max);
