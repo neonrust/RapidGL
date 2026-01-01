@@ -7,8 +7,6 @@ layout(location = 0) out vec4 frag_color;
 
 void main()
 {
-    // frag_color = vec4(0, 0, 0, 0);
-
     if (gl_FrontFacing || in_double_sided == 1)
        	frag_color = vec4(in_color_intensity, 1);
     else
