@@ -1702,6 +1702,10 @@ void ClusteredShading::renderShadowMaps()
 
 void ClusteredShading::renderSkybox()
 {
+	glEnable(GL_DEPTH_TEST);
+	glDepthMask(GL_FALSE);
+	glDepthFunc(GL_LEQUAL);
+
 	m_background_shader->bind();
 	m_camera.setUniforms(*m_background_shader);
 	m_background_shader->setUniform("u_view_orientation"sv, glm::mat4(glm::mat3(m_camera.viewTransform())));  // only rotational part
@@ -2111,8 +2115,8 @@ void ClusteredShading::renderSceneShading(const Camera &camera)
 	renderScene(view_projection, *m_clustered_pbr_shader);
 
 	// Enable writing to the depth buffer
-	glDepthMask(GL_TRUE);
-    glDepthFunc(GL_LEQUAL);
+	// glDepthMask(GL_TRUE);
+	// glDepthFunc(GL_LESS);
 }
 
 
