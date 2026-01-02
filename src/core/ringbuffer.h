@@ -8,6 +8,7 @@
 // _size     : how many elements are currently in the buffer
 // _head     : raw index where next element will be written
 // _tail     : raw index where the oldest existing element is (if _size > 0, else n/a)
+// BUT: methods head() and pop_head() returns the most recently pushed value
 
 // TODO: having both '_tail' and '_size' is redundant; '_tail' should be removed, at some point.
 //   _tail = (_head - _size) % capacity
@@ -187,9 +188,11 @@ template<typename T, size_t capacity> requires (capacity > 1)
 void RingBuffer<T, capacity>::push(std::initializer_list<T> elems) noexcept
 {
 	auto iter = std::cbegin(elems);
+
 	const auto d = std::distance(iter, std::cend(elems));
-	if(d >= capacity)
+	if(d > capacity)
 		std::advance(iter, d - capacity);
+
 	_push(iter, std::cend(elems));
 }
 
@@ -198,8 +201,9 @@ template<typename It>
 void RingBuffer<T, capacity>::push(It first, It last) noexcept
 {
 	auto iter = first;
+
 	const auto d = std::distance(iter, last);
-	if(d >= capacity)
+	if(d > capacity)
 		std::advance(iter, d - capacity);
 
 	_push(iter, last);
@@ -210,7 +214,14 @@ template<typename It>
 void RingBuffer<T, capacity>::_push(It first, It last) noexcept
 {
 	// TODO: this could probably be done more idiomatically (or something)
-	//   e.g. a single std::copy() call
+	//   e.g. one or two calls to std::copy()
+
+	// const auto count = std::distance(first, last);
+	// auto copy_1 = count - (capacity - _head);
+	// auto copy_2 = count - copy_1;
+	// std::copy(first, first + copy_1, _buffer.begin() + _head);
+	// if(copy_2)
+	// 	std::copy(first + copy_1, last, _buffer.begin());
 
 	for(auto iter = first; iter != last; ++iter)
 		push(*iter);
