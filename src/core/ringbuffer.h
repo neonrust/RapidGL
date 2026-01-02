@@ -9,12 +9,12 @@
 // _head     : raw index where next element will be written
 // _tail     : raw index where the oldest existing element is (if _size > 0, else n/a)
 
-// TODO: '_tail' and '_size' is redundant; '_tail' should be removed, at some point.
+// TODO: having both '_tail' and '_size' is redundant; '_tail' should be removed, at some point.
+//   _tail = (_head - _size) % capacity
 
 // terminology:
 //    position : [ 0, _size )       (virtual position seen from the outside)
 //    index    : [ 0, _capacity )   (actual subscript index into the buffer)
-//    index & position do not point to the same element (they can, but likely aren't).
 
 // example:  capacity = 3
 //
@@ -141,6 +141,7 @@ private:
 	size_t _tail;
 	size_t _size;
 };
+
 
 template<typename T, size_t capacity> requires (capacity > 1)
 RingBuffer<T, capacity>::RingBuffer() :
