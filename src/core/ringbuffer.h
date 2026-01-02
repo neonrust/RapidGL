@@ -310,7 +310,7 @@ public:
 	RingBuffer_std_iterator() = default;
 	inline RingBuffer_std_iterator(rbuf_t *rb, size_t position) :
 		_position { position },
-		_index { (rb->_head + position) % capacity },
+		_index { (rb->_tail + position) % capacity },
 		_buffer { rb }
 	{
 	}

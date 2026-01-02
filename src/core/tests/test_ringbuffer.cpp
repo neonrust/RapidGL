@@ -1,5 +1,6 @@
 #include "ringbuffer.h"
 
+#include <array>
 #include <ranges>
 
 #include <boost/ut.hpp>
@@ -199,6 +200,36 @@ suite<fixed_string("RingBuffer")> rb_suite([]{
 		expect(r.size() == 3);
 		expect(r.tail() == 42);
 		expect(r.head() == 44);
+	};
+
+	"iter_empty"_test = [] {
+		RingBuffer<int, 4> r;
+		for([[maybe_unused]] const auto &[idx, value]: std::views::enumerate(r))
+			expect(false);
+	};
+
+	"iter_full"_test = [] {
+		RingBuffer<int, 4> r;
+		r.push({ 42, 43, 44, 45 });
+		std::array<int, 4> expected = { 42, 43, 44, 45 };
+		for(const auto &[idx, value]: std::views::enumerate(r))
+			expect(expected[size_t(idx)] == value);
+	};
+
+	"iter_overflow"_test = [] {
+		RingBuffer<int, 4> r;
+		r.push({ 42, 43, 44, 45, 46, 47 });
+		std::array<int, 4> expected = { 44, 45, 46, 47 };
+		for(const auto &[idx, value]: std::views::enumerate(r))
+			expect(expected[size_t(idx)] == value);
+	};
+
+	"iter_nonfull"_test = [] {
+		RingBuffer<int, 32> r;
+		r.push({ 42, 43, 44, 45 });
+		std::array<int, 4> expected = { 42, 43, 44, 45 };
+		for(const auto &[idx, value]: std::views::enumerate(r))
+			expect(expected[size_t(idx)] == value);
 	};
 
 });
