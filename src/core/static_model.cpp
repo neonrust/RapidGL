@@ -1313,6 +1313,8 @@ InstanceAttributes &StaticModel::instance_attributes(size_t stride)
 		m_inst_attrs.config_with_vao(m_vao_name, stride);
 		// caller is expected to do the apropriate add() calls
 	}
+	else
+		assert(m_inst_attrs.stride() == stride);
 
 	return m_inst_attrs;
 }
