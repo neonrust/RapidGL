@@ -208,8 +208,8 @@ vec3 pbr(GPULight light, vec3 direction, vec3 world_pos, float attenuation, Mate
 			// float edge_distance = max(0, distance(u_cam_pos, light.position) - light.affect_radius);
 			// if(edge_distance < u_specular_max_distance*2)
 			// {
-				float cam_fade = fadeByDistance(edge_distance, u_specular_max_distance*2);
-				float fade = 1 - clamp((light_distance - u_specular_max_distance*0.8)/(u_specular_max_distance - u_specular_max_distance*0.8), 0, 1);
+				// float cam_fade = fadeByDistance(edge_distance, u_specular_max_distance*2);
+				// float fade = 1 - clamp((light_distance - u_specular_max_distance*0.8)/(u_specular_max_distance - u_specular_max_distance*0.8), 0, 1);
 				float NDF = distributionGGX(material.normal, h, material.roughness);
 				float G   = geometrySmith(material.normal, wo, wi, material.roughness);
 
