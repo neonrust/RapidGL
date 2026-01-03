@@ -134,9 +134,9 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			static float falloff_power { _light_mgr.falloff_power() };
 			if(ImGui::SliderFloat("Falloff power", &falloff_power, 10.f, 1000.f, "%.0f"))
 				_light_mgr.set_falloff_power(falloff_power);
-			static float spec_distance { m_camera.farPlane()*0.1f };
-			if(ImGui::SliderFloat("Specular distance", &spec_distance, .5f, 100.f, "%.1f"))
-				m_clustered_pbr_shader->setUniform("u_specular_max_distance"sv, spec_distance);
+			// static float spec_distance { m_camera.farPlane()*0.1f };
+			// if(ImGui::SliderFloat("Specular distance", &spec_distance, .5f, 100.f, "%.1f"))
+			// 	m_clustered_pbr_shader->setUniform("u_specular_max_distance"sv, spec_distance);
 			ImGui::Text("Cluster  resolution: %u x %u x %u", m_cluster_resolution.x, m_cluster_resolution.y, m_cluster_resolution.z);
 			ImGui::Checkbox("Draw cluster grid (slow!)  [c]", &m_debug_draw_cluster_grid);
 			if(ImGui::Checkbox("Show cluster geom", &m_debug_cluster_geom) and m_debug_cluster_geom)

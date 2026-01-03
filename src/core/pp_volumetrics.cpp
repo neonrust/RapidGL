@@ -93,7 +93,7 @@ bool Volumetrics::create()
 	_all_volumetric_lights.resize(256); // that's a lot :)
 
 	const auto num_tiles = s_froxels.x / FROXELS_PER_TILE * s_froxels.y / FROXELS_PER_TILE;
-	_tile_lights_ranges.resize(num_tiles);
+	_tile_lights_ranges.resize(LIGHT_TYPE__COUNT * num_tiles);
 	_all_tile_lights.resize(num_tiles * FROXEL_TILE_AVG_LIGHTS);
 
 	return *this;

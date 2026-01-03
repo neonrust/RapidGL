@@ -594,7 +594,6 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 	};
 
 	float last_split_dist  = 0.f;
-	// float avg_frustum_size = 0.f;
 
 	const auto range_scale = 1.f;//std::min(_max_distance / far_z, 1.f);
 
@@ -608,9 +607,8 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 
 		float split_dist = linear2normalized(d_mix) * range_scale;
 
-		const auto split_depth = (camera.nearPlane() + split_dist * clip_range) * -1.0f;
-		// m_directional_light_shader->setUniform("u_cascade_splits[" + std::to_string(i) + "]", split_depth);
-		_csm_params.camera_depth[cascade] = split_depth;
+		const auto split_depth = -(camera.nearPlane() + split_dist * clip_range);
+		_csm_params.camera_depth[cascade] = split_depth;  // the "far side" of the split
 
 
 		std::array<glm::vec3, 8> frustum_corners = camera.frustum().corners(); // copy

@@ -388,44 +388,82 @@ vec3 dirLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 	if(! IS_SHADOW_CASTER(light))
 		return vec3(1);
 
-	// vec3 cascade_debug_indicator = vec3(0.0, 0.0, 0.0);
-	float shadow_fade = 1;
-	// float shadow_fade = fadeByDistance(camera_distance, u_shadow_dir_max_distance);
-	// if(shadow_fade == 0)
-	// 	return vec3(0);
-
 	uint shadow_idx = GET_SHADOW_IDX(light);
 	if(shadow_idx == LIGHT_NO_SHADOW)
 		return vec3(1);  // no shadow map in use
 
 	ShadowSlotInfo slot_info = ssbo_shadow_slots[shadow_idx];
 
-	// use depth splits to select slot
-	// find cascade index
-	uint cascade_index = 0;
-	for(uint idx = 0; idx < u_csm_num_cascades - 1; ++idx)
-	{
-	    if(in_view_pos.z < u_csm_depth_splits[idx])
-	        cascade_index = idx + 1;
-	}
+	mat4 view_proj_0 = slot_info.view_proj[0];
+	mat4 view_proj_1 = slot_info.view_proj[1];
+	mat4 view_proj_2 = slot_info.view_proj[2];
+	mat4 view_proj_3 = slot_info.view_proj[3];
 
-	mat4 view_proj = slot_info.view_proj[cascade_index];
-	uvec4 slot_rect = slot_info.atlas_rect[cascade_index];
-	float texel_size = slot_info.texel_size[cascade_index];
+	uvec4 slot_rect_0 = slot_info.atlas_rect[0];
+	uvec4 slot_rect_1 = slot_info.atlas_rect[1];
+	uvec4 slot_rect_2 = slot_info.atlas_rect[2];
+	uvec4 slot_rect_3 = slot_info.atlas_rect[3];
+
+	float texel_size_0 = slot_info.texel_size[0];
+	float texel_size_1 = slot_info.texel_size[1];
+	float texel_size_2 = slot_info.texel_size[2];
+	float texel_size_3 = slot_info.texel_size[3];
+
+	// use depth splits to find which cascade contains the fragment,
+	//   that then corresponds to which slot to use
+	//   note that values are negative; X > Y means X is closer to camera than Y
+	uint cascade_index = 3;
+ 	if(in_view_pos.z > u_csm_depth_splits[0])
+  		cascade_index = 0;
+   	else if(in_view_pos.z > u_csm_depth_splits[1])
+   		cascade_index = 1;
+   	else if(in_view_pos.z > u_csm_depth_splits[2])
+   		cascade_index = 2;
+
+	mat4 view_proj;
+	uvec4 slot_rect;
+	float texel_size;
+	if(cascade_index == 0)
+	{
+		view_proj = view_proj_0;
+		slot_rect = slot_rect_0;
+		texel_size = texel_size_0;
+	}
+	else if(cascade_index == 1)
+	{
+		view_proj = view_proj_1;
+		slot_rect = slot_rect_1;
+		texel_size = texel_size_1;
+	}
+	else if(cascade_index == 2)
+	{
+		view_proj = view_proj_2;
+		slot_rect = slot_rect_2;
+		texel_size = texel_size_2;
+	}
+	else if(cascade_index == 3)
+	{
+		view_proj = view_proj_3;
+		slot_rect = slot_rect_3;
+		texel_size = texel_size_3;
+	}
 
 	vec4 clip_pos = view_proj * vec4(world_pos, 1);
 	clip_pos /= clip_pos.w;
 	float shadow_visibility = shadowVisibility(clip_pos.xyz, 0/*camera_distance*/, light, slot_rect, texel_size);
 
-	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade;
-	vec3 visible_color = vec3(shadow_faded);
+	vec3 visible_color = vec3(shadow_visibility);
 
 	if(u_csm_colorize_cascades)
 	{
-		if(cascade_index % 2 == 0)
+		if(cascade_index == 0)
 			visible_color *= vec3(0.8, 1.4, 0.8);
-		else
+		else if(cascade_index == 1)
 			visible_color *= vec3(1.4, 0.8, 1.4);
+		else if(cascade_index == 2)
+			visible_color *= vec3(1.4, 1.4, 0.8);
+		else if(cascade_index == 3)
+			visible_color *= vec3(0.8, 1.4, 1.4);
 	}
 
 	return visible_color;

@@ -33,7 +33,7 @@ writeonly buffer VolAllTileLightsIndexSSBO
 layout(std430, binding = SSBO_BIND_VOLUMETRIC_TILE_LIGHTS_INDEX)
 writeonly buffer VolTileLightsIndexSSBO
 {
-	IndexRange ssbo_tile_lights[];  // size = num_tiles
+	IndexRange ssbo_tile_lights[];  // size = LIGHT_TYPE__COUNT * num_tiles
 };
 
 SSBO_RELEVANT_LIGHTS_INDEX_ro;
@@ -44,9 +44,8 @@ uniform vec3  u_frustum_corners[8];
 bool intersect_frustum(Plane planes[6], Sphere sphere);
 void compute_tile_frustum(ivec2 tile, out Plane planes[6]);
 
-shared uint s_index_offset;
-shared uint s_light_count;
-shared uint s_affecting_lights[FROXEL_TILE_MAX_LIGHTS];
+shared uint s_light_count[LIGHT_TYPE__COUNT];
+shared uint s_affecting_lights[LIGHT_TYPE__COUNT][FROXEL_TILE_MAX_LIGHTS];
 
 void main()
 {
@@ -57,8 +56,8 @@ void main()
 
 	if(gl_LocalInvocationIndex == 0)
 	{
-		s_index_offset = 0;
-		s_light_count = 0;
+		for(uint idx = 0; idx < LIGHT_TYPE__COUNT; ++idx)
+			s_light_count[idx] = 0;
 	}
 
 	// tile coordinate from work group id (0 - tile_grid.x-1, 0 - tile_grid.y-1)
@@ -76,7 +75,9 @@ void main()
 
 		bool is_affecting = true;
 
-		if(! IS_DIR_LIGHT(L))
+		uint light_type = GET_LIGHT_TYPE(L);
+
+		if(light_type != LIGHT_TYPE_DIRECTIONAL)
 		{
 			// test light's bounding sphere against the tile's frustum
 			Sphere sphere;
@@ -90,9 +91,9 @@ void main()
 
 		if(is_affecting)
 		{
-			uint next_index = atomicAdd(s_light_count, 1);
+			uint next_index = atomicAdd(s_light_count[light_type], 1);
 			if(next_index < FROXEL_TILE_MAX_LIGHTS)
-				s_affecting_lights[next_index] = light_index;
+				s_affecting_lights[light_type][next_index] = light_index;
 		}
 	}
 
@@ -101,15 +102,19 @@ void main()
 	// write index range entry for the tile (only one thread)
 	if(gl_LocalInvocationIndex == 0)// && s_light_count > 0)
 	{
-		uint count = min(s_light_count, FROXEL_TILE_MAX_LIGHTS);
-		// reserve space ub tge gkibak kust fir tgus tuke
-		uint start_offset = atomicAdd(ssbo_all_tile_start_index, count);
+		uint num_tiles = tile_grid.x * tile_grid.y;
+		for(uint light_type = 0; light_type < LIGHT_TYPE__COUNT; ++light_type)
+		{
+			uint count = min(s_light_count[light_type], FROXEL_TILE_MAX_LIGHTS);
+			// reserve space ub tge gkibak kust fir tgus tuke
+			uint start_offset = atomicAdd(ssbo_all_tile_start_index, count);
 
-		for(uint idx = 0; idx < count; ++idx)
-			ssbo_all_tile_lights[start_offset + idx] = s_affecting_lights[idx];
+			for(uint idx = 0; idx < count; ++idx)
+				ssbo_all_tile_lights[start_offset + idx] = s_affecting_lights[light_type][idx];
 
-		uint tile_index = tile.y*tile_grid.x + tile.x;
-		ssbo_tile_lights[tile_index] = IndexRange(start_offset, count);
+			uint tile_index = tile.y*tile_grid.x + tile.x;
+			ssbo_tile_lights[light_type * num_tiles + tile_index] = IndexRange(start_offset, count);
+		}
 	}
 }
 
