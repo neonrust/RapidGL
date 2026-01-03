@@ -110,18 +110,23 @@ void ClusteredShading::debugDrawSceneBounds()
 				debugDrawSphere(L.position, L.affect_radius, glm::vec4(no_shadow_color, 0.5f));
 		}
 	}
+
+	// restore some states
+	glDepthMask(GL_TRUE);
+	// glEnable(GL_DEPTH_TEST);
 }
 
 void ClusteredShading::debugDrawLightMarkers()
 {
 	enum class Icon : uint32_t
 	{
-		PointLight  = 0,
-		SpotLight   = 1,
-		RectLight   = 2,
-		TubeLight   = 3,
-		SphereLight = 4,
-		DiscLight   = 5,
+		PointLight       = 0,
+		DirectionalLight = 1,
+		SpotLight        = 2,
+		RectLight        = 3,
+		TubeLight        = 4,
+		SphereLight      = 5,
+		DiscLight        = 6,
 	};
 
 	struct IconData
@@ -145,8 +150,12 @@ void ClusteredShading::debugDrawLightMarkers()
 		const auto to_light = L.position - m_camera.position();
 		float distance_sq = glm::dot(to_light, to_light);
 
-		auto icon = Icon::PointLight;
-		if(IS_SPOT_LIGHT(L))
+		Icon icon = Icon::PointLight;
+		if(IS_POINT_LIGHT(L))
+			icon = Icon::PointLight;
+		if(IS_DIR_LIGHT(L))
+			icon = Icon::DirectionalLight;
+		else if(IS_SPOT_LIGHT(L))
 			icon = Icon::SpotLight;
 		else if(IS_RECT_LIGHT(L))
 			icon = Icon::RectLight;
