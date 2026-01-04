@@ -7,6 +7,7 @@
 
 #include "filesystem.h"
 #include "constants.h"
+#include <ranges>
 
 using namespace std::literals;
 
@@ -137,6 +138,20 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			// static float spec_distance { m_camera.farPlane()*0.1f };
 			// if(ImGui::SliderFloat("Specular distance", &spec_distance, .5f, 100.f, "%.1f"))
 			// 	m_clustered_pbr_shader->setUniform("u_specular_max_distance"sv, spec_distance);
+			if(auto sun_id = _shadow_atlas.sun_id(); sun_id != NO_LIGHT_ID)
+			{
+				static glm::vec2 sun_angles{ 45.f, 45.f };
+				if(ImGui::SliderFloat2("Sun direction", glm::value_ptr(sun_angles), -90.f, 90.f, "%.1f"))
+				{
+					auto sun = _light_mgr.get_by_id(sun_id);
+					const auto direction = glm::angleAxis(glm::radians(sun_angles.x), AXIS_X) *
+						glm::angleAxis(glm::radians(sun_angles.y), AXIS_Z) * (-AXIS_Y);
+					Log::debug("sun direction: {}; {}  ->  {:.1f}; {:.1f}; {:.1f}", sun_angles.x, sun_angles.y,
+							   direction.x, direction.y, direction.z);
+					_light_mgr.set_direction(sun, direction);
+					_light_mgr.set(sun_id, sun);
+				}
+			}
 			ImGui::Text("Cluster  resolution: %u x %u x %u", m_cluster_resolution.x, m_cluster_resolution.y, m_cluster_resolution.z);
 			ImGui::Checkbox("Draw cluster grid (slow!)  [c]", &m_debug_draw_cluster_grid);
 			if(ImGui::Checkbox("Show cluster geom", &m_debug_cluster_geom) and m_debug_cluster_geom)
