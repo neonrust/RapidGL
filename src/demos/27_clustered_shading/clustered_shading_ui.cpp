@@ -346,18 +346,11 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			// const bool is_cube = current_image >= 1 and current_image <= 3;
 			// const bool is_depth = current_image == 4;
 
-			ImVec2 top_left { 0, 0 };
-			ImVec2 bottom_right { 1, 1 };
+			static ImVec2 default_top_left { 0, 0 };
+			static ImVec2 default_bottom_right { 1, 1 };
 
-			auto zoom_uv0 = [](float zoom, const ImVec2 &center) -> ImVec2 {
-				float half_inv_zoom = 0.5f / zoom;
-				return ImVec2(center.x - half_inv_zoom, center.y - half_inv_zoom);
-			};
-
-			auto zoom_uv1 = [](float zoom, const ImVec2 &center) -> ImVec2 {
-				float half_inv_zoom = 0.5f / zoom;
-				return ImVec2(center.x + half_inv_zoom, center.y + half_inv_zoom);
-			};
+			static ImVec2 top_left = default_top_left;
+			static ImVec2 bottom_right = default_bottom_right;
 
 			const auto vMin = ImGui::GetWindowContentRegionMin();
 			const auto vMax = ImGui::GetWindowContentRegionMax();
@@ -410,30 +403,73 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			{
 				float aspect = float(rt->width()) / float(rt->height());
 
-				// static float brightness { 4 };
-				// ImGui::SliderFloat("Brightness", &brightness, 0, 10, "%.1f");
+				if(rt == &_shadow_atlas)
+				{
+					glm::vec2 atlas_size { rt->width(), rt->height() };
+					static std::string selected_label = "< whole atlas >";
+					selected_label.reserve(32);
+					static LightID selected_light { NO_LIGHT_ID };
+					static uint32_t selected_slot { std::numeric_limits<uint32_t>::max() };
+					static std::string label;
+					label.reserve(32);
+					if(ImGui::BeginCombo("Atlas light", selected_label.c_str()))
+					{
+						label = "< whole atlas >";
+						if(ImGui::Selectable(label.c_str(), selected_label == label))
+						{
+							selected_label = label;
+							top_left = default_top_left;
+							bottom_right = default_bottom_right;
+							Log::debug("  no region");
+						}
 
-				// static float alpha_boost { 5 };
-				// ImGui::SliderFloat("Alpha boost", &alpha_boost, 1, 10, "%.1f");
+						for(const auto &[light_id, atlas_light]: _shadow_atlas.allocated_lights())
+						{
+							auto is_selected = selected_light == light_id;
+							label.clear();
+							const auto &L = _light_mgr.get_by_id(light_id);
+							std::format_to(std::back_inserter(label), "{} {}: {} slots", _light_mgr.type_name(L), light_id, atlas_light.num_slots);
+							ImGui::Selectable(label.c_str(), is_selected, ImGuiSelectableFlags_Disabled);
+
+							for(auto slot = 0u; slot < atlas_light.num_slots; ++slot)
+							{
+								// ImGui::PushID(123);
+								auto is_slot_selected = is_selected and slot == selected_slot;
+								label.clear();
+								// TODO: instead of "slot", use "cascade N" or "+X", etc. (depending on light type)
+								std::format_to(std::back_inserter(label), "  {}: slot {} ({})", light_id, slot, atlas_light.slots[slot].size);
+								if(ImGui::Selectable(label.c_str(), is_slot_selected))
+								{
+									selected_light = light_id;
+									selected_slot = slot;
+									selected_label = label;
+									// std::format_to(std::back_inserter(selected_label), "{}, slot {} ({})", light_id, slot, atlas_light.slots[slot].size);
+
+									const auto rect = glm::vec4(atlas_light.slots[slot].rect);
+									top_left = ImVec2{ rect.x / atlas_size.x, rect.y / atlas_size.y };
+									bottom_right = ImVec2{ (rect.x + rect.z) / atlas_size.x, (rect.y + rect.w) / atlas_size.y };
+									Log::debug("  region {:.2f}; {:.2f}  {:.2f}x{:.2f}", top_left.x, top_left.y, bottom_right.x, bottom_right.y);
+								}
+								if(is_selected)
+									ImGui::SetItemDefaultFocus();
+							}
+						}
+						ImGui::EndCombo();
+					}
+				}
+				else
+				{
+					top_left = default_top_left;
+					bottom_right = default_bottom_right;
+					Log::debug("  no region");
+				}
+
 
 				const ImVec2 img_size { win_width, float(win_width)/aspect };
 
-				static ImVec2 center { 0.5f, 0.5f };
-				static float magnification = 1.f;
-/*
-				if(rt->color_texture() or rt->depth_texture())
-				{
-					ImGui::SliderFloat("Magnification", &magnification, 1.f, 16.f, "%.1f");
-					ImGui::SliderFloat("X-center", &center.x, 0, 1.f, "%.2f");
-					ImGui::SliderFloat("Y-center", &center.y, 0, 1.f, "%.2f");
-				}
-*/
 				if(rt->has_color() and rt->color_texture())
 				{
 					const auto &texture = rt->color_texture();
-
-					top_left = zoom_uv0(magnification, center);
-					bottom_right = zoom_uv1(magnification, center);
 
 					// TODO: use custom shader to enable brightness and alpha boost controls
 
