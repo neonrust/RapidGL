@@ -43,7 +43,6 @@ Level set_level(Level min_level)
 {
 	const auto old_level = _private::the().level;
 	_private::the().level = min_level;
-	std::print("set level = {}\n", min_level);
 	return old_level;
 }
 
