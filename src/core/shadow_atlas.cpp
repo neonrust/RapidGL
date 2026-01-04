@@ -650,7 +650,7 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 
 		auto light_vp = light_projection * light_view;
 
-		// apply "stabilization" logic; to reduce pixel "swimming"
+		// apply "stabilization" logic; to reduce pixel "swimming" when camera moves
 		auto shadow_origin = light_vp * glm::vec4(0, 0, 0, 1);
 		shadow_origin *= shadow_map_size / 2.f;
 
