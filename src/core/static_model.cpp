@@ -118,22 +118,20 @@ bool StaticModel::Load(const std::filesystem::path& filepath)
 {
 	/* Release the previously loaded mesh if it was loaded. */
 	if(m_vao_name)
-	{
 		Release();
-	}
 
-	/* Load model */
+	// Load model
 	Assimp::Importer importer;
 	// TODO: importer.SetIOHandler(compressionLayer);
-	const aiScene* scene = importer.ReadFile(filepath.generic_string(),
-												 aiProcess_Triangulate              |
-												 aiProcess_GenSmoothNormals         |
-												 aiProcess_GenUVCoords              |
-												 aiProcess_CalcTangentSpace         |
-												 aiProcess_FlipUVs                  |
-												 aiProcess_JoinIdenticalVertices    |
-												 aiProcess_RemoveRedundantMaterials |
-												 aiProcess_GenBoundingBoxes );
+	const auto *scene = importer.ReadFile(filepath.generic_string(),
+										  aiProcess_Triangulate              |
+										  aiProcess_GenSmoothNormals         |
+										  aiProcess_GenUVCoords              |
+										  aiProcess_CalcTangentSpace         |
+										  aiProcess_FlipUVs                  |
+										  aiProcess_JoinIdenticalVertices    |
+										  aiProcess_RemoveRedundantMaterials |
+										  aiProcess_GenBoundingBoxes );
 
 	_ok = scene and scene->mFlags != AI_SCENE_FLAGS_INCOMPLETE and scene->mRootNode;
 
@@ -147,7 +145,7 @@ bool StaticModel::Load(const std::filesystem::path& filepath)
 	return _ok;
 }
 
-bool StaticModel::ParseScene(const aiScene* scene, const std::filesystem::path& filepath)
+bool StaticModel::ParseScene(const aiScene *scene, const std::filesystem::path& filepath)
 {
 	const auto T0 = steady_clock::now();
 
@@ -173,7 +171,7 @@ bool StaticModel::ParseScene(const aiScene* scene, const std::filesystem::path& 
 		indices_count  += m_mesh_parts[idx].m_indices_count;
 	}
 
-		   // Reserve space for the vertex attributes and indices
+	// Reserve space for the vertex attributes and indices
 	vertex_data.positions.reserve(vertices_count);
 	vertex_data.texcoords.reserve(vertices_count);
 	vertex_data.normals.reserve(vertices_count);
@@ -192,7 +190,7 @@ bool StaticModel::ParseScene(const aiScene* scene, const std::filesystem::path& 
 		// max = glm::max(max, vec3_cast(mesh->mAABB.mMax));
 		_aabb.expand(vec3_cast(mesh->mAABB.mMin));
 		_aabb.expand(vec3_cast(mesh->mAABB.mMax));
-		Log::info("[{}]  added mesh part {}; {} vertices. AABB: {:.1f}, {:.1f}, {:.1f}  ->  {:.1f}, {:.1f}, {:.1f}   ({:.1f} x {:.1f} x {:.1f})",
+		Log::info("[{}] added sub-mesh {}: {} vertices  AABB: {:.1f}, {:.1f}, {:.1f}  ->  {:.1f}, {:.1f}, {:.1f}   ({:.1f}x{:.1f}x{:.1f})",
 				   filename.string(),
 				   idx,
 				   mesh->mNumVertices,
