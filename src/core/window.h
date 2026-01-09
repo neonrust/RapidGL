@@ -43,11 +43,6 @@ namespace RGL
 
 		static void setViewportMatrix(size_t width, size_t height);
 
-		static void error_callback([[maybe_unused]] int error, const char* description)
-        {
-            std::cerr << description << std::endl;
-        }
-
         static void framebuffer_size_callback(GLFWwindow * window, int width, int height);
     };
 }
