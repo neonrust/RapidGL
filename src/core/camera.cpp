@@ -54,23 +54,27 @@ void Camera::setSize(size_t width, size_t height)
 
 void Camera::setPerspective(float fovy, size_t width, size_t height, float z_near, float z_far)
 {
-	m_projection   = glm::perspectiveFov(glm::radians(fovy), float(width), float(height), z_near, z_far);
 	m_is_ortho     = false;
 	m_width        = width;
 	m_height       = height;
 	m_near         = z_near;
 	m_far          = z_far;
 	m_fovy         = fovy;
+	m_projection   = projectionTransform(z_near, z_far);
 	m_is_dirty     = true;
 }
 
 void Camera::setOrtho(float left, float right, float bottom, float top, float z_near, float z_far)
 {
-	m_projection   = glm::ortho(left, right, bottom, top, z_near, z_far);
 	m_is_ortho     = true;
+	m_left         = left;
+	m_right        = right;
+	m_top          = top;
+	m_bottom       = bottom;
 	m_near         = z_near;
 	m_far          = z_far;
 	m_fovy         = 1.f;
+	m_projection   = projectionTransform(z_near, z_far);
 	m_is_dirty     = true;
 }
 
@@ -79,6 +83,13 @@ const Frustum &Camera::frustum() const
 	if(m_is_dirty)
 		const_cast<Camera *>(this)->updateFrustum();
 	return _frustum;
+}
+
+glm::mat4 Camera::projectionTransform(float z_near, float z_far) const
+{
+	if(m_is_ortho)
+		return glm::ortho(m_left, m_right, m_bottom, m_top, z_near, z_far);
+	return glm::perspectiveFov(glm::radians(m_fovy), float(m_width), float(m_height), z_near, z_far);
 }
 
 void Camera::setUniforms(Shader &shader) const

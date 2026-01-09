@@ -78,6 +78,8 @@ public:
 	inline const glm::mat4 &projectionTransform() const { return m_projection; }
 	inline const glm::mat4 &viewTransform() const { return m_view; }
 
+	// create same projection as current, except different near & far planes
+	glm::mat4 projectionTransform(float z_near, float z_far) const;
 
 	void setUniforms(Shader &shader) const;
 
@@ -123,6 +125,10 @@ private:
 	size_t m_height;
 	float m_near;
 	float m_far;
+	float m_left;
+	float m_right;
+	float m_top;
+	float m_bottom;
 	float m_fovy; // in degrees
 
 	glm::ivec2 m_mouse_pressed_position;
