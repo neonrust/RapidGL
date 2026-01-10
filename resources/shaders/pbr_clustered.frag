@@ -409,10 +409,10 @@ vec3 dirLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 	float texel_size_2 = slot_info.texel_size[2];
 	float texel_size_3 = slot_info.texel_size[3];
 
-	// use depth splits to find which cascade contains the fragment,
-	//   that then corresponds to which slot to use
+	// use depth splits to find the cascade contains the fragment,
+	//   that index corresponds to which slot to use
 	//   note that values are negative; X > Y means X is closer to camera than Y
-	uint cascade_index = 3;
+	uint cascade_index = u_csm_num_cascades - 1;
  	if(in_view_pos.z > u_csm_depth_splits[0])
   		cascade_index = 0;
    	else if(in_view_pos.z > u_csm_depth_splits[1])
