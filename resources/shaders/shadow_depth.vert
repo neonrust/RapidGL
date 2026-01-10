@@ -28,7 +28,7 @@ void main()
 
 	ShadowSlotInfo slot_info = ssbo_shadow_slots[u_shadow_slot_index];
 
-	mat4 vp = slot_info.view_proj[u_shadow_map_index];
+	mat4 light_vp = slot_info.view_proj[u_shadow_map_index];
 
-	gl_Position = vp * u_model * vec4(in_pos, 1);
+	gl_Position = light_vp * u_model * vec4(in_pos, 1);
 }
