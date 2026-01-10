@@ -375,7 +375,8 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 
 	vec4 clip_pos = view_proj * vec4(world_pos, 1);
 	clip_pos /= clip_pos.w;
-	float shadow_visibility = shadowVisibility(clip_pos.xyz, camera_distance, light, slot_rect, texel_size);
+	float bias = 0;//computeBias(frag_depth, light_dir, atlas_uv, texel_size);
+	float shadow_visibility = shadowVisibility(clip_pos.xyz, camera_distance, light, slot_rect, texel_size, bias);
 
 	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade;
 	float visible = light_fade * shadow_faded;
@@ -450,7 +451,17 @@ vec3 dirLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 
 	vec4 clip_pos = view_proj * vec4(world_pos, 1);
 	clip_pos /= clip_pos.w;
-	float shadow_visibility = shadowVisibility(clip_pos.xyz, 0/*camera_distance*/, light, slot_rect, texel_size);
+
+	// float bias = max(0.05 * (1 - dot(in_normal, light.direction)), 0.005);
+ //    const float biasModifier = 0.5f;
+ //    if(cascade_index == u_csm_num_cascades - 1)
+ //        bias *= 1 / (200/*farPlane*/ * biasModifier);
+ //    else
+ //        bias *= 1 / (u_csm_depth_splits[cascade_index] * biasModifier);
+    // float bias = computeBias(frag_depth, light.direction, atlas_uv, texel_size);
+    float bias = u_shadow_bias_constant;
+
+	float shadow_visibility = shadowVisibility(clip_pos.xyz, 0/*camera_distance*/, light, slot_rect, texel_size, bias);
 
 	vec3 visible_color = vec3(shadow_visibility);
 
@@ -495,7 +506,8 @@ vec3 spotLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 
 	vec4 clip_pos = view_proj * vec4(world_pos, 1);
 	clip_pos /= clip_pos.w;
-	float shadow_visibility = shadowVisibility(clip_pos.xyz, camera_distance, light, slot_rect, texel_size);
+	float bias = 0;//computeBias(frag_depth, light_dir, atlas_uv, texel_size);
+	float shadow_visibility = shadowVisibility(clip_pos.xyz, camera_distance, light, slot_rect, texel_size, bias);
 
 	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade;
 	float visible = light_fade * shadow_faded;

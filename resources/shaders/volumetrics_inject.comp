@@ -996,7 +996,7 @@ float fadeLightByDistance(GPULight light)
 }
 
 //vec2 calculateShadowUV(vec3 world_pos, mat4 view_proj, vec4 rect, out vec4 rect_uv);
-float shadowVisibility(vec3 clip_pos, GPULight light, vec4 rect, float texel_size);
+float shadowVisibility(vec3 clip_pos, GPULight light, vec4 rect);
 float sampleShadow(float distance, float normalized_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max);
 
 vec3 pointLightVisibility(GPULight light, vec3 world_pos)
@@ -1024,12 +1024,12 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 
 	mat4 view_proj;
 	vec4 slot_rect;
-	float texel_size;
-	detectCubeFaceSlot(light_to_frag, slot_info, view_proj, slot_rect, texel_size);
+	float texel_size_unused;
+	detectCubeFaceSlot(light_to_frag, slot_info, view_proj, slot_rect, texel_size_unused);
 
 	vec4 clip_pos = view_proj * vec4(world_pos, 1);
 	clip_pos /= clip_pos.w;
-	float shadow_visibility = shadowVisibility(clip_pos.xyz, light, slot_rect, texel_size);
+	float shadow_visibility = shadowVisibility(clip_pos.xyz, light, slot_rect);
 
 	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade;
 	float visible = light_fade * shadow_faded;
@@ -1093,35 +1093,35 @@ vec3 dirLightVisibility(GPULight light, vec3 world_pos)
 
 	mat4 view_proj;
 	uvec4 slot_rect;
-	float texel_size;
+	// float texel_size_unused;
 	if(cascade_index == 0)
 	{
 		view_proj = view_proj_0;
 		slot_rect = slot_rect_0;
-		texel_size = texel_size_0;
+		// texel_size_unused = texel_size_0;
 	}
 	else if(cascade_index == 1)
 	{
 		view_proj = view_proj_1;
 		slot_rect = slot_rect_1;
-		texel_size = texel_size_1;
+		// texel_size_unused = texel_size_1;
 	}
 	else if(cascade_index == 2)
 	{
 		view_proj = view_proj_2;
 		slot_rect = slot_rect_2;
-		texel_size = texel_size_2;
+		// texel_size_unused = texel_size_2;
 	}
 	else if(cascade_index == 3)
 	{
 		view_proj = view_proj_3;
 		slot_rect = slot_rect_3;
-		texel_size = texel_size_3;
+		// texel_size_unused = texel_size_3;
 	}
 
 	vec4 clip_pos = view_proj * vec4(world_pos, 1);
 	clip_pos /= clip_pos.w;
-	float shadow_visibility = shadowVisibility(clip_pos.xyz, camera_distance, light, slot_rect, texel_size);
+	float shadow_visibility = shadowVisibility(clip_pos.xyz, light, slot_rect);
 
 	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade;
 	vec3 visible = vec3(shadow_faded);
@@ -1152,11 +1152,11 @@ vec3 spotLightVisibility(GPULight light, vec3 world_pos)
 
 	mat4 view_proj = slot_info.view_proj[0];
 	vec4 slot_rect = slot_info.atlas_rect[0];
-	float texel_size = slot_info.texel_size[0];
+	// float texel_size = slot_info.texel_size[0];
 
 	vec4 clip_pos = view_proj * vec4(world_pos, 1);
 	clip_pos /= clip_pos.w;
-	float shadow_visibility = shadowVisibility(clip_pos.xyz, light, slot_rect, texel_size);
+	float shadow_visibility = shadowVisibility(clip_pos.xyz, light, slot_rect);
 
 	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade;
 	float visible = light_fade * shadow_faded;
@@ -1169,7 +1169,7 @@ float sampleShadow(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
 	return texture(u_shadow_atlas_single, atlas_uv).r > current_depth? 1: 0;
 }
 
-float shadowVisibility(vec3 clip_pos, GPULight light, vec4 slot_rect, float texel_size)
+float shadowVisibility(vec3 clip_pos, GPULight light, vec4 slot_rect)
 {
 	vec4 rect_uv;
 	vec2 atlas_uv = calculateShadowUV(clip_pos, slot_rect, rect_uv);
