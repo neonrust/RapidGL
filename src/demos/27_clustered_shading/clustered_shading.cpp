@@ -2105,7 +2105,6 @@ void ClusteredShading::renderSceneShading(const Camera &camera)
 	{
 		m_clustered_pbr_shader->setUniform("u_csm_num_cascades"sv,     uint32_t(csm.num_cascades));
 		m_clustered_pbr_shader->setUniform("u_csm_depth_splits"sv,     csm.camera_depth);
-		m_clustered_pbr_shader->setUniform("u_csm_light_view_proj"sv,  csm.view_projection);
 		m_clustered_pbr_shader->setUniform("u_csm_colorize_cascades"sv, _debug_csm_colorize_cascades);
 	}
 
