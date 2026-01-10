@@ -318,7 +318,7 @@ void ClusteredShading::init_app()
 	m_clustered_pbr_shader = std::make_shared<Shader>(core_shaders/"pbr_lighting.vert", core_shaders/"pbr_clustered.frag");
     m_clustered_pbr_shader->link();
 	assert(*m_clustered_pbr_shader);
-	// m_clustered_pbr_shader->setUniform("u_specular_max_distance"sv, m_camera.farPlane()*s_light_specular_fraction);
+	m_clustered_pbr_shader->setUniform("u_specular_max_distance"sv, m_camera.farPlane()*s_light_specular_fraction);
 
 	m_surface_lights_shader = std::make_shared<Shader>(core_shaders/"surface_light_geom.vert", core_shaders/"surface_light_geom.frag");
 	m_surface_lights_shader->link();
