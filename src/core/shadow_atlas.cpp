@@ -562,7 +562,6 @@ std::tuple<glm::mat4, float, float> ShadowAtlas::light_view_projection(const GPU
 	return { glm::mat4(1), -1, -1 };
 }
 
-
 const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, const Camera &camera)//, float radius_uv)
 {
 	// TODO: move to ShadowAtlas ?
@@ -589,13 +588,29 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 	float clip_range = far_z - near_z;
 	float ratio      = far_z / near_z;
 
-	auto linear2normalized = [near_z, far_z](float d) {
-		return (d - near_z) / (far_z - near_z);
+	// const auto range_scale = std::min(_max_distance / far_z, 1.f);
+	const float shadow_range = _max_distance - camera.nearPlane();
+	const float camera_range = camera.farPlane() - camera.nearPlane();
+	const float range_scale = shadow_range / camera_range;
+
+	// frustum corners in NFC space (always the same)
+	static constexpr std::array<glm::vec4, 8> frustum_corners_ndc = {
+		glm::vec4(-1, -1, -1,  1),
+		glm::vec4(-1, -1,  1,  1),
+		glm::vec4(-1,  1, -1,  1),
+		glm::vec4(-1,  1,  1,  1),
+		glm::vec4( 1, -1, -1,  1),
+		glm::vec4( 1, -1,  1,  1),
+		glm::vec4( 1,  1, -1,  1),
+		glm::vec4( 1,  1,  1,  1),
 	};
 
-	float last_split_dist  = 0.f;
+	float last_split_depth  = camera.nearPlane();
 
-	const auto range_scale = 1.f;//std::min(_max_distance / far_z, 1.f);
+	float ogl_split_depths[] { 8.0f, 20.f, 100.f };
+
+	// Log::debug("cam   pos: {:.2f}; {:.2f}; {:.2f}", camera.position().x, camera.position().y, camera.position().z);
+	// Log::debug("light dir: {:.5f}; {:.5f}; {:.5f}", sun.direction.x, sun.direction.y, sun.direction.z);
 
 	for(auto cascade = 0u; cascade < num_cascades; ++cascade)
 	{
@@ -605,51 +620,80 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 		float d_linear = near_z + clip_range * p;
 		float d_mix    = glm::mix(d_linear, d_log, _csm_frustum_split_mix);
 
-		float split_dist = linear2normalized(d_mix) * range_scale;
+		// const float split_depth = camera.nearPlane() + (d_mix - camera.nearPlane())*range_scale;
+		const float split_depth = ogl_split_depths[cascade];
+		_csm_params.camera_depth[cascade] = -split_depth;  // store depth to the far side of the split
 
-		const auto split_depth = -(camera.nearPlane() + split_dist * clip_range);
-		_csm_params.camera_depth[cascade] = split_depth;  // the "far side" of the split
+		// TODO: for better bounds fitting, use light-view space corners + AABB
+		//   i.e. start with NDC corners (static data), transform -> world -> light view
 
+		// make afrustum slice (between last_split_dist and split_dist)
+		const auto split_near = last_split_depth;
+		const auto split_far  = split_depth;
+		//   also the center point as we go
+		auto cascade_center_ws = glm::vec3(0);
 
-		std::array<glm::vec3, 8> frustum_corners = camera.frustum().corners(); // copy
-
-		auto slice_frustum = [&frustum_corners, last_split_dist](uint32_t idx, float distance) {
-			//                                            far   -   near
-			const auto to_far_plane  = frustum_corners[idx + 2] - frustum_corners[idx];
-			frustum_corners[idx + 2] = frustum_corners[idx] + (to_far_plane * distance);
-			frustum_corners[idx]     = frustum_corners[idx] + (to_far_plane * last_split_dist);
-		};
-		slice_frustum(0, split_dist);  // top-left
-		slice_frustum(1, split_dist);  // bottom-left
-		slice_frustum(4, split_dist);  // top-right
-		slice_frustum(5, split_dist);  // bottom-right
-
-		last_split_dist = split_dist;
-
-		// furstum slice has been calculated -> 'frustum_corners'
-		// now, calculate the orthographic projection to encompass the frustum slice
-
-		auto frustum_center = glm::vec3(0);
+		// construct the ws corners by creating a new projection matrix per cascade, using the split_near/far
+		const auto cascade_projection = camera.projectionTransform(split_near, split_far);
+		const auto inv_view_proj = glm::inverse(cascade_projection * camera.viewTransform());
+		std::array<glm::vec3, 8> cascade_corners_ws;
 		for(auto idx = 0u; idx < 8; ++idx)
-			frustum_center += frustum_corners[idx];
-		frustum_center /= 8.0f;
+		{
+			auto corner_ws = inv_view_proj * frustum_corners_ndc[idx];
+			corner_ws /= corner_ws.w;
+			cascade_corners_ws[idx] = corner_ws;
+			cascade_center_ws += glm::vec3(corner_ws);
+		}
+		cascade_center_ws /= 8.f;
 
+		// Log::debug("cascade {}: {:.2f} ⯈ {:.2f}", cascade, split_near, split_far);
 
-		float cascade_radius = 0.f;
-		std::for_each(frustum_corners.begin(), frustum_corners.end(), [&cascade_radius, frustum_center](const auto &corner) {
-			cascade_radius = std::max(cascade_radius, glm::distance(corner, frustum_center));
-		});
-		cascade_radius = std::ceilf(cascade_radius * 16.0f) / 16.0f;  // not sure why this is a good idea...
+		const auto light_pos = cascade_center_ws - sun.direction;
+		const glm::mat4 light_view = glm::lookAt(light_pos, cascade_center_ws, AXIS_Y);
 
-		auto light_pos = frustum_center - sun.direction * cascade_radius;
-		auto light_view = glm::lookAt(light_pos, frustum_center, AXIS_Y);
+		// Log::debug("   light 'pos': {:.5f}; {:.5f}; {:.5f}", light_pos.x, light_pos.y, light_pos.z);
+		// Log::debug("   WS center: {:.5f}; {:.5f}; {:.5f}", cascade_center_ws.x, cascade_center_ws.y, cascade_center_ws.z);
 
-		auto light_projection = glm::ortho(-cascade_radius, cascade_radius,
-										   -cascade_radius, cascade_radius,
-										   0.f, 2.f * cascade_radius);
+		// for(auto row = 0u; row < 4; ++row)
+		// 	Log::debug("   light view.{}: {:.5f}; {:.5f}; {:.5f}; {:.5f}", row, light_view[row].x, light_view[row].y, light_view[row].z, light_view[row].w);
 
+		// build AABB in light-space
+		bounds::AABB cascade_aabb_ls;
+		for(const auto &corner_ws: cascade_corners_ws)
+		{
+			const auto corner_ls = light_view * glm::vec4(corner_ws, 1.f);
+			cascade_aabb_ls.expand(corner_ls);
+
+			// Log::debug("  WS {:5.5f}; {:5.5f}; {:5.5f} ⯈ LS {:5.2f}; {:5.2f}; {:5.2f}", corner_ws.x, corner_ws.y, corner_ws.z, corner_ls.x, corner_ls.y, corner_ls.z);
+		}
+
+		// expand the z extent "outwards"
+
+		auto minZ = cascade_aabb_ls.min().z;
+		auto maxZ = cascade_aabb_ls.max().z;
+		static constexpr auto z_offset = 10.f;
+		minZ = cascade_aabb_ls.min().z * (cascade_aabb_ls.min().z < 0? z_offset: 1/z_offset);
+		maxZ = cascade_aabb_ls.max().z * (cascade_aabb_ls.max().z < 0? 1/z_offset: z_offset);
+
+		auto light_projection = glm::ortho(cascade_aabb_ls.min().x, cascade_aabb_ls.max().x,
+										   cascade_aabb_ls.min().y, cascade_aabb_ls.max().y,
+										   minZ, maxZ);
+
+#if 0
+		// force a square aspect ratio (X & Y)
+		float width  = cascade_aabb_ls.width();
+		float height = cascade_aabb_ls.height();
+		float max_dim = std::max(width, height) / 2.f;
+		float mid_x = (cascade_aabb_ls.max().x + cascade_aabb_ls.min().x) / 2.f;
+		float mid_y = (cascade_aabb_ls.max().y + cascade_aabb_ls.min().y) / 2.f;
+
+		light_projection = glm::ortho(mid_x - max_dim, mid_x + max_dim,
+									  mid_y - max_dim, mid_y + max_dim,
+									  cascade_aabb_ls.min().z, cascade_aabb_ls.max().z);
+#endif
 		auto light_vp = light_projection * light_view;
 
+#if 1
 		// apply "stabilization" logic; to reduce pixel "swimming" when camera moves
 		auto shadow_origin = light_vp * glm::vec4(0, 0, 0, 1);
 		shadow_origin *= shadow_map_size / 2.f;
@@ -662,20 +706,23 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 
 		light_projection[3] += round_offset; // inject into projection matrix
 		light_vp = light_projection * light_view;
-
+#endif
 
 		_csm_params.view[cascade] = light_view;
 		_csm_params.view_projection[cascade] = light_vp;
+#if 0
+		Log::debug("   extent: {:>5.2f}⯈{:>5.2f} x {:>5.2f}⯈{:>5.2f} x {:>6.2f}⯈{:>6.2f}",
+				   cascade_aabb_ls.min().x, cascade_aabb_ls.max().x,
+				   cascade_aabb_ls.min().y, cascade_aabb_ls.max().y,
+				   cascade_aabb_ls.min().z, cascade_aabb_ls.max().z
+				   );
+#endif
+		_csm_params.depth_range[cascade] = { cascade_aabb_ls.min().z, cascade_aabb_ls.max().z };
 
-		// Log::debug("   {}: D:{:>5.1f}  C: {:.1f}; {:.1f}; {:.1f}  r: {:.1f}",
-		// 		   cascade,
-		// 		   -split_depth,
-		// 		   frustum_center.x, frustum_center.y, frustum_center.z,
-		// 		   cascade_radius
-		// 		   );
-
-		_csm_params.depth_range[cascade] = { -cascade_radius, cascade_radius };
+		last_split_depth = split_depth;
 	}
+
+	// std::exit(42);
 
 	return _csm_params;
 }
