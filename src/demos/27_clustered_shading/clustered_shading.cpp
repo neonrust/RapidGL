@@ -896,37 +896,14 @@ void ClusteredShading::input()
 	else if(Input::isKeyDown(KeyCode::Minus))
 		m_camera_fov = std::max(m_camera_fov - 0.5f, 3.f);
 
-    /* Toggle between wireframe and solid rendering */
-	// if (Input::getKeyUp(KeyCode::F2))
-	// {
-	//     static bool toggle_wireframe = false;
-
-	//     toggle_wireframe = !toggle_wireframe;
-
-	//     if (toggle_wireframe)
-	//     {
-	//         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	//     }
-	//     else
-	//     {
-	//         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	//     }
-	// }
-
-    /* It's also possible to take a screenshot. */
 	if (Input::wasKeyReleased(KeyCode::F12))
     {
-		/* Specify filename of Sthe screenshot. */
+		// TODO: add "slot numer" suffix
         std::string filename = "27_clustered_shading";
-		if (take_screenshot_png(filename, Window::width() / 2, Window::height() / 2))
-        {
-            /* If specified folders in the path are not already created, they'll be created automagically. */
-			std::cout << "Saved " << filename << ".png to " << (FileSystem::rootPath() / "screenshots/") << std::endl;
-        }
+		if (take_screenshot_png(filename, Window::width(), Window::height()))
+			Log::info("Screenshot: {}.png", filename);
         else
-        {
-			std::cerr << "Could not save " << filename << ".png to " << (FileSystem::rootPath() / "screenshots/") << std::endl;
-        }
+			Log::error("Failed screenshot [{}]", filename);
     }
 
 	if (Input::wasKeyReleased(KeyCode::Space))
