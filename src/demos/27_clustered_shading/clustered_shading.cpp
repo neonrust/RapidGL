@@ -296,21 +296,21 @@ void ClusteredShading::init_app()
 	m_shadow_depth_shader->link();
 	assert(*m_shadow_depth_shader);
 
-	m_generate_clusters_shader = std::make_shared<Shader>(core_shaders/"generate_clusters.comp");
+	m_generate_clusters_shader = std::make_shared<Shader>(core_shaders/"clustered_generate.comp");
 	m_generate_clusters_shader->link();
 	assert(*m_generate_clusters_shader);
 
-	m_find_nonempty_clusters_shader = std::make_shared<Shader>(core_shaders/"find_nonempty_clusters.comp");
+	m_find_nonempty_clusters_shader = std::make_shared<Shader>(core_shaders/"clustered_find_nonempty.comp");
 	m_find_nonempty_clusters_shader->link();
 	assert(*m_find_nonempty_clusters_shader);
 	m_find_nonempty_clusters_shader->setPostBarrier(Shader::Barrier::SSBO);  // config, only once
 
-	m_collect_nonempty_clusters_shader = std::make_shared<Shader>(core_shaders/"collect_nonempty_clusters.comp");
+	m_collect_nonempty_clusters_shader = std::make_shared<Shader>(core_shaders/"clustered_collect_nonempty.comp");
 	m_collect_nonempty_clusters_shader->link();
 	assert(*m_collect_nonempty_clusters_shader);
 	m_collect_nonempty_clusters_shader->setPostBarrier(Shader::Barrier::SSBO);  // config, only once
 
-	m_cull_lights_shader = std::make_shared<Shader>(core_shaders/"cull_lights.comp");
+	m_cull_lights_shader = std::make_shared<Shader>(core_shaders/"clustered_cull.comp");
     m_cull_lights_shader->link();
 	assert(*m_cull_lights_shader);
 	m_cull_lights_shader->setPostBarrier(Shader::Barrier::SSBO);  // config, only once
