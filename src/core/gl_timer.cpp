@@ -1,4 +1,4 @@
-#include "GLTimer.h"
+#include "gl_timer.h"
 
 #include <cassert>
 

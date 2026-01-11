@@ -16,7 +16,7 @@ set(SOURCE_FILES_CORE
 	core_app.cpp
 	filesystem.cpp
 	frustum.cpp
-	GLTimer.cpp
+	gl_timer.cpp
 	input.cpp
 	input_bind.cpp
 	instance_attributes.cpp
@@ -63,7 +63,7 @@ set(HEADER_FILES_CORE
 	filesystem.h
 	frustum.h
 	gl_lookup.h
-	GLTimer.h
+	gl_timer.h
 	hash_vec3.h
 	hash_combine.h
 	hash_mat4.h

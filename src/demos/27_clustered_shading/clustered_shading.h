@@ -11,7 +11,7 @@
 #include "buffer_binds.h"
 #include "rendertarget_2d.h"
 #include "rendertarget_cube.h"
-#include "GLTimer.h"
+#include "gl_timer.h"
 #include "pp_bloom.h"
 #include "pp_gaussian_blur_fixed.h"
 #include "pp_volumetrics.h"
