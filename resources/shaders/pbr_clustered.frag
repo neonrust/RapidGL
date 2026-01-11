@@ -452,14 +452,10 @@ vec3 dirLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 	vec4 clip_pos = view_proj * vec4(world_pos, 1);
 	clip_pos /= clip_pos.w;
 
-	// float bias = max(0.05 * (1 - dot(in_normal, light.direction)), 0.005);
- //    const float biasModifier = 0.5f;
- //    if(cascade_index == u_csm_num_cascades - 1)
- //        bias *= 1 / (200/*farPlane*/ * biasModifier);
- //    else
- //        bias *= 1 / (u_csm_depth_splits[cascade_index] * biasModifier);
-    // float bias = computeBias(frag_depth, light.direction, atlas_uv, texel_size);
-    float bias = u_shadow_bias_constant;
+	// directional-light specific bias calculation; only slope sensitive
+    float slope = dot(in_normal, light.direction);
+    slope = sqrt(1 - slope * slope);
+    float bias = 0;//pow(slope, u_shadow_bias_slope_power) * u_shadow_bias_slope_scale;
 
 	float shadow_visibility = shadowVisibility(clip_pos.xyz, 0/*camera_distance*/, light, slot_rect, texel_size, bias);
 
