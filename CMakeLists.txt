@@ -32,19 +32,19 @@ set(SHADER_FILES
 	${SHADER_PATH}/billboard-icon.vert
 	${SHADER_PATH}/billboard-icon.frag
 	${SHADER_PATH}/blur_3d.comp
-	${SHADER_PATH}/collect_nonempty_clusters.comp
-	${SHADER_PATH}/cull_lights.comp
+	${SHADER_PATH}/clustered_collect_nonempty.comp
+	${SHADER_PATH}/clustered_cull.comp
+	${SHADER_PATH}/clustered_find_nonempty.comp
+	${SHADER_PATH}/clustered_generate.comp
 	${SHADER_PATH}/depth_pass.frag
 	${SHADER_PATH}/depth_pass.vert
 	${SHADER_PATH}/downscale.comp
 	${SHADER_PATH}/draw2d_line.frag
 	${SHADER_PATH}/draw2d_rectangle.frag
-	${SHADER_PATH}/find_nonempty_clusters.comp
 	${SHADER_PATH}/frustum.glh
 	${SHADER_PATH}/FSQ.frag
 	${SHADER_PATH}/FSQ.vert
 	${SHADER_PATH}/gaussian_blur.comp
-	${SHADER_PATH}/generate_clusters.comp
 	${SHADER_PATH}/imgui_3d_texture.frag
 	${SHADER_PATH}/imgui_3d_texture.vert
 	${SHADER_PATH}/imgui_depth_image.frag
