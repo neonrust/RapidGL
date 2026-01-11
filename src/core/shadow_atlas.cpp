@@ -607,8 +607,6 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 
 	float last_split_depth  = camera.nearPlane();
 
-	float ogl_split_depths[] { 8.0f, 20.f, 100.f };
-
 	// Log::debug("cam   pos: {:.2f}; {:.2f}; {:.2f}", camera.position().x, camera.position().y, camera.position().z);
 	// Log::debug("light dir: {:.5f}; {:.5f}; {:.5f}", sun.direction.x, sun.direction.y, sun.direction.z);
 
@@ -620,12 +618,8 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 		float d_linear = near_z + clip_range * p;
 		float d_mix    = glm::mix(d_linear, d_log, _csm_frustum_split_mix);
 
-		// const float split_depth = camera.nearPlane() + (d_mix - camera.nearPlane())*range_scale;
-		const float split_depth = ogl_split_depths[cascade];
+		const float split_depth = camera.nearPlane() + (d_mix - camera.nearPlane())*range_scale;
 		_csm_params.camera_depth[cascade] = -split_depth;  // store depth to the far side of the split
-
-		// TODO: for better bounds fitting, use light-view space corners + AABB
-		//   i.e. start with NDC corners (static data), transform -> world -> light view
 
 		// make afrustum slice (between last_split_dist and split_dist)
 		const auto split_near = last_split_depth;

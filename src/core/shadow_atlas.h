@@ -206,7 +206,7 @@ private:
 	dense_map<LightID, AtlasLight> _id_to_allocated;
 
 	size_t _total_num_slots;
-	uint_fast8_t _sun_num_cascades { 3 };
+	uint_fast8_t _sun_num_cascades { 4 };
 	LightID _sun_id { NO_LIGHT_ID };
 	float _csm_frustum_split_mix = 0.7f;  // 0 = linear, 1 = logarithic
 	CSMParams _csm_params;
