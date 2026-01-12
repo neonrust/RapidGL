@@ -203,7 +203,7 @@ private:
 	std::vector<StaticObject> _scene;  // TODO: Scene _scene;
 	std::vector<StaticObject> _scenePvs;  // potentially visible set
 	std::vector<LightIndex>   _lightsPvs;  // basically all lights within theoretical range
-	std::vector<StaticObject> _surfaceLightModels;
+	std::vector<StaticObject> _lightModels;
 	float _sun_size { 1.f };               // only affects the visible disc in the sky
 
 	RGL::buffer::Storage<AABB>       m_cluster_aabb_ssbo;

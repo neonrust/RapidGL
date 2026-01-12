@@ -225,17 +225,17 @@ void ClusteredShading::init_app()
 	{
 		const auto origin = glm::mat4(1);
 
-		auto surface_lights = models_path / "surface_lights";
+		const auto light_meshes = models_path / "lights";
 
 		for(const auto &light_type: { LIGHT_TYPE_RECT, LIGHT_TYPE_TUBE, LIGHT_TYPE_SPHERE, LIGHT_TYPE_DISC })
 		{
 			auto filename = std::format("{}.gltf", _light_mgr.type_name(uint_fast8_t(light_type)));
 			auto model = std::make_shared<StaticModel>();
-			model->Load(surface_lights / filename);
+			model->Load(light_meshes / filename);
 			assert(*model);
-			_surfaceLightModels.emplace_back(model, origin);
+			_lightModels.emplace_back(model, origin);
 		}
-		Log::info("Loaded {} surface geometries", _surfaceLightModels.size());
+		Log::info("Loaded {} light geometries", _lightModels.size());
 	}
 
     /// Prepare lights' SSBOs.
@@ -1791,7 +1791,7 @@ void ClusteredShading::renderLightGeometry()
 
 		auto model_index = light_type - LIGHT_TYPE_RECT;
 
-		auto &model = _surfaceLightModels[model_index].model;
+		auto &model = _lightModels[model_index].model;
 
 		auto &inst_attrs = model->instance_attributes(sizeof(SurfaceLightAttrs));
 		if(not inst_attrs)
@@ -1845,7 +1845,7 @@ void ClusteredShading::renderLightGeometry()
 		surf_attrs.clear();
 		surf_attrs.emplace_back(sun_model, L.color*L.intensity, false);
 
-		auto &model = _surfaceLightModels[2].model;  // render as a disc  (but currently as a sphere, for testing)
+		auto &model = _lightModels[2].model;  // render as a disc  (but currently as a sphere, for testing)
 		auto &inst_attrs = model->instance_attributes(sizeof(SurfaceLightAttrs));
 		if(not inst_attrs)
 		{
