@@ -508,7 +508,7 @@ float sampleTubeLight(GPULight light, vec3 world_pos, float distance_sq)
 {
 	// TODO: degenerate into point light at large distance
 
-	// simulate using a froxel-facing area light, thick as tube diameter
+	// get brightness from closest point
 
 	vec3 point_a = light.position + light.shape_data[0].xyz;
 	vec3 point_b = light.position + light.shape_data[1].xyz;
