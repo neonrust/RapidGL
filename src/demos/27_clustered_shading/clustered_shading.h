@@ -182,9 +182,9 @@ private:
 	float m_debug_coverlay_blend         = 0.7f;
 	bool _debug_csm_colorize_cascades    = false;
 
-	float m_shadow_bias_constant         = 0.0007f;
-	float m_shadow_bias_slope_scale      = 0.2f;
-	float m_shadow_bias_slope_power      = 0.01f;
+	float m_shadow_bias_constant         = 0.0001f; // 0.0006
+	float m_shadow_bias_slope_scale      = 0.01f;
+	float m_shadow_bias_slope_power      = 0.02f;
 	float m_shadow_bias_distance_scale   = 0.0021f;
 	float m_shadow_bias_scale            = -0.3f;
 	float m_shadow_bias_texel_size_mix   = 0.f;
