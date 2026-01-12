@@ -320,9 +320,9 @@ void ClusteredShading::init_app()
 	assert(*m_clustered_pbr_shader);
 	m_clustered_pbr_shader->setUniform("u_specular_max_distance"sv, m_camera.farPlane()*s_light_specular_fraction);
 
-	m_surface_lights_shader = std::make_shared<Shader>(core_shaders/"surface_light_geom.vert", core_shaders/"surface_light_geom.frag");
-	m_surface_lights_shader->link();
-	assert(*m_surface_lights_shader);
+	m_light_geometry_shader = std::make_shared<Shader>(core_shaders/"surface_light_geom.vert", core_shaders/"surface_light_geom.frag");
+	m_light_geometry_shader->link();
+	assert(*m_light_geometry_shader);
 
 	m_equirectangular_to_cubemap_shader = std::make_shared<Shader>(shaders/"cubemap.vert", shaders/"equirectangular_to_cubemap.frag");
     m_equirectangular_to_cubemap_shader->link();
@@ -1453,7 +1453,7 @@ void ClusteredShading::render()
 	m_shading_time.add(_gl_timer.elapsed<microseconds>(true));
 
 	if(m_draw_surface_lights_geometry)
-		renderSurfaceLightGeometry(); // to '_rt'
+		renderLightGeometry(); // to '_rt'
 
 	renderSkybox(); // to '_rt'
 
@@ -1702,10 +1702,11 @@ void ClusteredShading::renderSkybox()
 	glDrawArrays     (GL_TRIANGLES, 0, 36);
 }
 
-void ClusteredShading::renderSurfaceLightGeometry()
+void ClusteredShading::renderLightGeometry()
 {
-	m_surface_lights_shader->bind();
-	m_surface_lights_shader->setUniform("u_view_projection"sv, m_camera.projectionTransform() * m_camera.viewTransform());
+	glEnable(GL_DEPTH_TEST);
+	glDepthMask(GL_TRUE);
+	glDepthFunc(GL_LEQUAL);
 
 	struct SurfaceLightAttrs
 	{
@@ -1713,6 +1714,9 @@ void ClusteredShading::renderSurfaceLightGeometry()
 		glm::vec3 color_intensity;
 		uint32_t double_sided;
 	};
+
+	m_light_geometry_shader->bind();
+	m_light_geometry_shader->setUniform("u_view_projection"sv, m_camera.projectionTransform() * m_camera.viewTransform());
 
 	static std::vector<SurfaceLightAttrs> surf_attrs;
 	surf_attrs.reserve(_lightsPvs.size());
@@ -1800,7 +1804,60 @@ void ClusteredShading::renderSurfaceLightGeometry()
 
 		inst_attrs.load<SurfaceLightAttrs>(surf_attrs);
 
-		model->Render(*m_surface_lights_shader, uint32_t(surf_attrs.size()));
+		model->Render(*m_light_geometry_shader, uint32_t(surf_attrs.size()));
+	}
+
+	// draw "sun"   (or just draw all directional lights?)
+	if(auto sun_id = _shadow_atlas.sun_id(); sun_id != NO_LIGHT_ID)  // TODO: LightManager should probably keep track of this
+	{
+		// draw a "sun" disc (or moon, I suppose); only supports one
+		const auto &L = _light_mgr.get_by_id(sun_id);
+
+		const auto cam_pos = m_camera.position();
+		const auto cam_up = m_camera.upVector();           // e.g. AXIS_Y
+		const auto sun_dir_world = L.direction; // direction light -> scene?
+		// Make sure sun_dir points from camera toward the sun position. If sun_dir is light direction
+		// (pointing from sun -> scene) use -sun_dir when computing position below.
+
+		const float distance = m_camera.farPlane() * 0.99f;
+		const auto sun_pos_ws = cam_pos -sun_dir_world * distance;
+
+		// Choose sun angular half-angle (physical ~0.00465 rad) or artistic scale
+		const float sun_half_angle = 0.03f * _sun_size; // radians
+		float radius_ws = std::tan(sun_half_angle) * distance;
+
+		// Build camera-facing basis
+		glm::vec3 forward = glm::normalize(cam_pos - sun_pos_ws); // points from sun -> camera
+		glm::vec3 right = glm::normalize(glm::cross(forward, cam_up));
+		if(std::abs(glm::dot(forward, cam_up)) > 0.999f)
+			right = glm::normalize(glm::cross(forward, AXIS_X));
+		glm::vec3 up = glm::cross(right, forward);
+
+		// Log::debug("sun pos: {:.0f}; {:.0f}; {:.0f}   R: {:.1f}  F: {:.2f}; {:.2f}; {:.2f}", sun_pos_ws.x, sun_pos_ws.y, sun_pos_ws.z, radius_ws, forward.x, forward.y, forward.z);
+
+		glm::mat4 sun_model;
+		sun_model[0] = glm::vec4(right * radius_ws, 0); // local +X -> world right * scale
+		sun_model[1] = glm::vec4(up    * radius_ws, 0); // local +Y -> world up * scale
+		sun_model[2] = glm::vec4(forward,           0); // local +Z -> world forward (keeps normal facing camera)
+		sun_model[3] = glm::vec4(sun_pos_ws,        1); // translation
+
+
+		surf_attrs.clear();
+		surf_attrs.emplace_back(sun_model, L.color*L.intensity, false);
+
+		auto &model = _surfaceLightModels[2].model;  // render as a disc  (but currently as a sphere, for testing)
+		auto &inst_attrs = model->instance_attributes(sizeof(SurfaceLightAttrs));
+		if(not inst_attrs)
+		{
+			inst_attrs.skip(4);  // TODO: query the mesh to find how many locations are used. Also, this must match the shader
+			inst_attrs.add<glm::mat4>("transform"sv);
+			inst_attrs.add<glm::vec3>("color-intensity"sv);
+			inst_attrs.add<uint32_t>("double-sided");
+		}
+
+		inst_attrs.load<SurfaceLightAttrs>(surf_attrs);
+
+		model->Render(*m_light_geometry_shader, uint32_t(surf_attrs.size()));
 	}
 }
 

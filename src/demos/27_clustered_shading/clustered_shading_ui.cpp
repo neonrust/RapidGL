@@ -151,6 +151,8 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 					_light_mgr.set_direction(sun, direction);
 					_light_mgr.set(sun_id, sun);
 				}
+
+				ImGui::SliderFloat("Sun size", &_sun_size, 0.1f, 5.f, "%.1f");
 			}
 			ImGui::Text("Cluster  resolution: %u x %u x %u", m_cluster_resolution.x, m_cluster_resolution.y, m_cluster_resolution.z);
 			ImGui::Checkbox("Draw cluster grid (slow!)  [c]", &m_debug_draw_cluster_grid);
