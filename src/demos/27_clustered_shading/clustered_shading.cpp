@@ -160,8 +160,7 @@ void ClusteredShading::init_app()
 	glClearColor(0.05f, 0.05f, 0.05f, 1);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
-	// glEnable(GL_CULL_FACE);  // stops skybox from working !?
-	Log::warning("-------------------- ENABLE FACE CULLING -------------------");
+	glEnable(GL_CULL_FACE);  // stops skybox from working !?
 	glCullFace(GL_BACK);
 
 	// glLineWidth(2.f); // for wireframes (but >1 not commonly supported)
@@ -1276,49 +1275,50 @@ void ClusteredShading::GenSkyboxGeometry()
     glCreateVertexArrays(1, &m_skybox_vao);
     glCreateBuffers(1, &m_skybox_vbo);
 
+	// vertex positions for cube faces
 	glm::vec3 skybox_positions[] = {
-        // positions
+		// back face
 		{ -1, -1, -1 },
-		{  1,  1, -1 },
 		{  1, -1, -1 },
 		{  1,  1, -1 },
-		{ -1, -1, -1 },
+		{  1,  1, -1 },
 		{ -1,  1, -1 },
+		{ -1, -1, -1 },
         // front face
 		{ -1, -1,  1 },
+		{  1,  1,  1 },
 		{  1, -1,  1 },
 		{  1,  1,  1 },
-		{  1,  1,  1 },
-		{ -1,  1,  1 },
 		{ -1, -1,  1 },
+		{ -1,  1,  1 },
         // left face
 		{ -1,  1,  1 },
+		{ -1, -1, -1 },
 		{ -1,  1, -1 },
 		{ -1, -1, -1 },
-		{ -1, -1, -1 },
-		{ -1, -1,  1 },
 		{ -1,  1,  1 },
+		{ -1, -1,  1 },
         // right face
 		{ 1,  1,  1 },
-		{ 1, -1, -1 },
 		{ 1,  1, -1 },
 		{ 1, -1, -1 },
-		{ 1,  1,  1 },
+		{ 1, -1, -1 },
 		{ 1, -1,  1 },
+		{ 1,  1,  1 },
         // bottom face
 		{ -1, -1, -1 },
+		{  1, -1,  1 },
 		{  1, -1, -1 },
 		{  1, -1,  1 },
-		{  1, -1,  1 },
-		{ -1, -1,  1 },
 		{ -1, -1, -1 },
+		{ -1, -1,  1 },
         // top face
 		{ -1,  1, -1 },
-		{  1,  1 , 1 },
 		{  1,  1, -1 },
+		{  1,  1 , 1 },
 		{  1,  1,  1 },
-		{ -1,  1, -1 },
 		{ -1,  1,  1 },
+		{ -1,  1, -1 },
     };
 
     /* Set up buffer objects */
@@ -1577,7 +1577,7 @@ void ClusteredShading::render()
 void ClusteredShading::renderShadowMaps()
 {
 	glCullFace(GL_FRONT);  // render only back faces   TODO face culling fscks up rendering! (see init_app())
-	glEnable(GL_CULL_FACE);
+	// glEnable(GL_CULL_FACE);
 	glEnable(GL_SCISSOR_TEST);
 
 	// TODO: render shadow-maps
@@ -1682,7 +1682,7 @@ void ClusteredShading::renderShadowMaps()
 	}
 
 	glDisable(GL_SCISSOR_TEST);
-	glDisable(GL_CULL_FACE);
+	// glDisable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 }
 
