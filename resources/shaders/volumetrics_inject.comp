@@ -67,6 +67,8 @@ uniform uint u_csm_num_cascades;
 uniform float u_csm_depth_splits[4];
 
 
+const float DIR_LIGHT_SCALE = 0.3;
+
 vec3 pointLightVisibility(GPULight light, vec3 world_pos);
 vec3 spotLightVisibility(GPULight light, vec3 world_pos);
 vec3 dirLightVisibility(GPULight light, vec3 world_pos);
@@ -253,7 +255,7 @@ vec3 scatterPointLight(GPULight light, vec3 world_pos)
 vec3 scatterDirLight(GPULight light, vec3 world_pos)
 {
 	vec3 visibility = dirLightVisibility(light, world_pos);
-    return visibility * light.color * light.intensity * light.fog_intensity;
+    return visibility * light.color * light.intensity * light.fog_intensity * DIR_LIGHT_SCALE;
 }
 
 vec3 scatterSpotLight(GPULight light, vec3 world_pos)
