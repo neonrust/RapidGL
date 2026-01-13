@@ -455,7 +455,7 @@ vec3 dirLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 	// directional-light specific bias calculation; only slope sensitive
     float slope = dot(in_normal, light.direction);
     slope = sqrt(1 - slope * slope);
-    float bias = 0;//pow(slope, u_shadow_bias_slope_power) * u_shadow_bias_slope_scale;
+    float bias = -u_shadow_bias_constant + pow(slope, u_shadow_bias_slope_power) * u_shadow_bias_slope_scale * texel_size;
 
 	float shadow_visibility = shadowVisibility(clip_pos.xyz, 0/*camera_distance*/, light, slot_rect, texel_size, bias);
 
