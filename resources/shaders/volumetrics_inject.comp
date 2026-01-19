@@ -64,7 +64,7 @@ uniform mat4  u_prev_view;
 
 uniform mat4 u_csm_light_view[4];
 uniform uint u_csm_num_cascades;
-uniform float u_csm_depth_splits[4];
+uniform float u_csm_cascade_far[4];
 
 
 const float DIR_LIGHT_SCALE = 0.3;
@@ -822,11 +822,11 @@ vec3 dirLightVisibility(GPULight light, vec3 world_pos)
 	//   that then corresponds to which slot to use
 	//   note that values are negative; X > Y means X is closer to camera than Y
 	uint cascade_index = 3;
- 	if(view_pos_0.z > u_csm_depth_splits[0])
+ 	if(view_pos_0.z > u_csm_cascade_far[0])
   		cascade_index = 0;
-   	else if(view_pos_1.z > u_csm_depth_splits[1])
+   	else if(view_pos_1.z > u_csm_cascade_far[1])
    		cascade_index = 1;
-   	else if(view_pos_2.z > u_csm_depth_splits[2])
+   	else if(view_pos_2.z > u_csm_cascade_far[2])
    		cascade_index = 2;
 
 	mat4 view_proj;
