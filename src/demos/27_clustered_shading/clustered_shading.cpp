@@ -160,7 +160,6 @@ void ClusteredShading::init_app()
 	glClearColor(0.05f, 0.05f, 0.05f, 1);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
-	glEnable(GL_CULL_FACE);  // stops skybox from working !?
 	glCullFace(GL_BACK);
 
 	// glLineWidth(2.f); // for wireframes (but >1 not commonly supported)
@@ -1576,8 +1575,10 @@ void ClusteredShading::render()
 void ClusteredShading::renderShadowMaps()
 {
 	glCullFace(GL_FRONT);  // render only back faces   TODO face culling fscks up rendering! (see init_app())
-	// glEnable(GL_CULL_FACE);
 	glEnable(GL_SCISSOR_TEST);
+	glDepthMask(GL_TRUE);
+	glColorMask(GL_TRUE, GL_TRUE, GL_FALSE, GL_FALSE);  // writing 2-component normals
+	glDepthFunc(GL_LESS);
 
 	// TODO: render shadow-maps
 	// if light or meshes within its radius moved -> implies caching, somehow
@@ -1680,8 +1681,8 @@ void ClusteredShading::renderShadowMaps()
 		}
 	}
 
+	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);  // back to default; write all color channels
 	glDisable(GL_SCISSOR_TEST);
-	// glDisable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 }
 
@@ -2086,10 +2087,6 @@ void ClusteredShading::renderSceneShadow(uint_fast16_t shadow_index, uint32_t sh
 {
 	// TODO: ideally, only render objects whose AABB intersects with the light's projection (frustum)
 
-	glDepthMask(GL_TRUE);
-	glColorMask(GL_TRUE, GL_TRUE, GL_FALSE, GL_FALSE);  // writing 2-component normals
-	glDepthFunc(GL_LESS);
-
 	m_shadow_depth_shader->bind();
 
 	m_shadow_depth_shader->setUniform("u_shadow_slot_index"sv, uint32_t(shadow_index)); // for 'mvp'
@@ -2102,8 +2099,6 @@ void ClusteredShading::renderSceneShadow(uint_fast16_t shadow_index, uint32_t sh
 
 		obj.model->Render();
 	}
-
-	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);  // writing 2-component normals
 }
 
 void ClusteredShading::renderSceneShading(const Camera &camera)
