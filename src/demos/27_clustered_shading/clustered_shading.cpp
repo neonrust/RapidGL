@@ -1651,6 +1651,15 @@ void ClusteredShading::renderShadowMaps()
 		//   preferibly, this should be per slot (cube face for point lights)
 		const auto has_dynamic = false; //_scene_culler.pvs(light_id).has(SceneObjectType::Dynamic);
 
+		// TODO: keep TWO shadow maps, one static-object only (cache) and one active (all objects)
+		//   1. render static objects first, to both maps
+		//   2. render dynamic objects, to active map
+		//   next frame:
+		//   - if dynamic objects moved:
+		//       - copy static to active
+		//       - render only dynamic ibjects
+		//   - naturally, if light moved/changed, go to step 1.
+
 		if(_shadow_atlas.should_render(atlas_light, now, light_hash, has_dynamic))
 		{
 			// render shadow map(s) for this light
