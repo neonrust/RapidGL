@@ -19,6 +19,8 @@ uniform float u_debug_overlay_blend;
 uniform uvec2 u_viewport_size;
 uniform bool  u_csm_colorize_cascades;
 
+uniform float u_shadow_dir_light_occlusion;
+
 const float s_min_visibility = 1e-3;
 
 // TODO distance-based fg
@@ -473,7 +475,9 @@ vec3 dirLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 			visible_color *= vec3(0.8, 1.4, 1.4);
 	}
 
-	return visible_color;
+	float shadow_faded = 1 - (1 - shadow_visibility) * u_shadow_dir_light_occlusion;
+
+	return shadow_faded * visible_color;
 }
 
 vec3 spotLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
