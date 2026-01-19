@@ -43,7 +43,7 @@ uniform float u_emission_strength;
 uniform vec3  u_cam_pos;
 uniform float u_specular_max_distance;
 uniform uint u_csm_num_cascades;
-uniform float u_csm_depth_splits[4];
+uniform float u_csm_cascade_far[4];
 
 
 struct MaterialProperties

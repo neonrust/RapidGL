@@ -87,7 +87,7 @@ public:
 	struct CSMParams
 	{
 		size_t num_cascades { 0 };  // valid items in arrays
-		std::array<float, MAX_CASCADES> camera_depth;
+		std::array<float, MAX_CASCADES> far_plane;
 		std::array<glm::mat4, MAX_CASCADES> view;
 		std::array<glm::mat4, MAX_CASCADES> view_projection;
 		std::array<glm::vec2, MAX_CASCADES> depth_range;
