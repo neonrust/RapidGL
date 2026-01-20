@@ -14,8 +14,10 @@ uniform float u_light_max_distance;
 
 uniform bool u_debug_cluster_geom;
 uniform bool u_debug_clusters_occupancy;
+uniform bool u_debug_unshaded_clusters;
 uniform bool u_debug_tile_occupancy;
 uniform float u_debug_overlay_blend;
+
 uniform uvec2 u_viewport_size;
 uniform float u_shadow_occlusion;
 uniform bool  u_shadow_colorize;
@@ -108,6 +110,8 @@ void main()
     // too many lights?
     if(lights_range.count > CLUSTER_MAX_LIGHTS)
 		radiance += vec3(1, 0, 1);
+	else if(u_debug_unshaded_clusters && num_lights == 0)
+		radiance += vec3(int((gl_FragCoord.x + gl_FragCoord.y)/10) % 2 == 0? 2: 0, 0, 0); // TODO: draw a simple pattern
 
     for (uint idx = 0; idx < num_lights; ++idx)
     {

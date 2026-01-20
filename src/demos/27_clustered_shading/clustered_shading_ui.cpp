@@ -171,6 +171,9 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 				m_debug_cluster_geom = false;
 				m_debug_clusters_occupancy = false;
 			}
+			static bool show_unshaded { false };
+			if(ImGui::Checkbox("Show unshaded as red", &show_unshaded))
+				m_clustered_pbr_shader->setUniform("u_debug_unshaded_clusters"sv, show_unshaded);
 
 			if (m_debug_cluster_geom or m_debug_clusters_occupancy or m_debug_draw_cluster_grid or m_debug_tile_occupancy)
 				ImGui::SliderFloat("Debug overlay blend", &m_debug_coverlay_blend, 0.0f, 1.0f);
