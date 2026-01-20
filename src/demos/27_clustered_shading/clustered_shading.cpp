@@ -2137,13 +2137,13 @@ void ClusteredShading::renderSceneShading(const Camera &camera)
 	m_clustered_pbr_shader->setUniform("u_shadow_bias_distance_scale"sv, m_shadow_bias_distance_scale);
 	m_clustered_pbr_shader->setUniform("u_shadow_bias_texel_size_mix"sv, m_shadow_bias_texel_size_mix);
 	m_clustered_pbr_shader->setUniform("u_shadow_bias_scale"sv,          m_shadow_bias_scale);
-	m_clustered_pbr_shader->setUniform("u_shadow_dir_light_occlusion"sv, m_shadow_dir_light_occlusion);
+	m_clustered_pbr_shader->setUniform("u_shadow_occlusion"sv,           m_shadow_occlusion);
+	m_clustered_pbr_shader->setUniform("u_shadow_colorize"sv,            _debug_colorize_shadows);
 
 	if(const auto &csm = _shadow_atlas.csm_params(); csm)
 	{
 		m_clustered_pbr_shader->setUniform("u_csm_num_cascades"sv,     uint32_t(csm.num_cascades));
 		m_clustered_pbr_shader->setUniform("u_csm_cascade_far"sv,      csm.far_plane);
-		m_clustered_pbr_shader->setUniform("u_csm_colorize_cascades"sv, _debug_csm_colorize_cascades);
 	}
 
     m_irradiance_cubemap_rt->bindTexture(6);

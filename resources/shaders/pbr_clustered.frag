@@ -17,9 +17,18 @@ uniform bool u_debug_clusters_occupancy;
 uniform bool u_debug_tile_occupancy;
 uniform float u_debug_overlay_blend;
 uniform uvec2 u_viewport_size;
-uniform bool  u_csm_colorize_cascades;
+uniform float u_shadow_occlusion;
+uniform bool  u_shadow_colorize;
 
-uniform float u_shadow_dir_light_occlusion;
+const vec3 s_shadow_tints[6] = vec3[]
+(
+	vec3(0.8, 1.5, 0.8),
+	vec3(1.5, 0.8, 1.5),
+	vec3(1.5, 1.5, 0.8),
+	vec3(0.8, 1.5, 1.5),
+	vec3(0.8, 0.8, 1.5),
+	vec3(1.5, 1.5, 1.5)
+);
 
 const float s_min_visibility = 1e-3;
 
@@ -339,15 +348,6 @@ float fadeLightByDistance(GPULight light)
 	return fadeByDistance(light_edge_distance, u_light_max_distance);
 }
 
-// const vec3 face_tint_colors[6] = vec3[](
-// 	vec3(1, 0, 0),
-// 	vec3(0, 1, 1),
-// 	vec3(1, 0, 1),
-// 	vec3(0, 1, 0),
-// 	vec3(0, 0, 1),
-// 	vec3(1, 1, 0)
-// );
-
 vec3 pointLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 {
 	float light_fade = fadeLightByDistance(light);
@@ -380,10 +380,14 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 	float bias = 0;//computeBias(frag_depth, light_dir, atlas_uv, texel_size);
 	float shadow_visibility = shadowVisibility(clip_pos.xyz, camera_distance, light, slot_rect, texel_size, bias);
 
-	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade;
+	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade * u_shadow_occlusion;
 	float visible = light_fade * shadow_faded;
 
-	return vec3(visible);
+	vec3 visible_color = vec3(visible);
+	if(u_shadow_colorize)
+		visible_color *= s_shadow_tints[cube_face];
+
+	return visible_color;
 }
 
 vec3 dirLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
@@ -459,23 +463,14 @@ vec3 dirLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
     slope = sqrt(1 - slope * slope);
     float bias = -u_shadow_bias_constant + pow(slope, u_shadow_bias_slope_power) * u_shadow_bias_slope_scale * texel_size;
 
+
 	float shadow_visibility = shadowVisibility(clip_pos.xyz, 0/*camera_distance*/, light, slot_rect, texel_size, bias);
+	vec3 visible_color = vec3(1); // dir lights are never faded
 
-	vec3 visible_color = vec3(shadow_visibility);
+	if(u_shadow_colorize)
+		visible_color *= s_shadow_tints[cascade_index];
 
-	if(u_csm_colorize_cascades)
-	{
-		if(cascade_index == 0)
-			visible_color *= vec3(0.8, 1.4, 0.8);
-		else if(cascade_index == 1)
-			visible_color *= vec3(1.4, 0.8, 1.4);
-		else if(cascade_index == 2)
-			visible_color *= vec3(1.4, 1.4, 0.8);
-		else if(cascade_index == 3)
-			visible_color *= vec3(0.8, 1.4, 1.4);
-	}
-
-	float shadow_faded = 1 - (1 - shadow_visibility) * u_shadow_dir_light_occlusion;
+	float shadow_faded = 1 - (1 - shadow_visibility) * u_shadow_occlusion;
 
 	return shadow_faded * visible_color;
 }
@@ -509,10 +504,14 @@ vec3 spotLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 	float bias = 0;//computeBias(frag_depth, light_dir, atlas_uv, texel_size);
 	float shadow_visibility = shadowVisibility(clip_pos.xyz, camera_distance, light, slot_rect, texel_size, bias);
 
-	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade;
+	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade * u_shadow_occlusion;
 	float visible = light_fade * shadow_faded;
 
-	return vec3(visible);
+	vec3 visible_color = vec3(visible);
+	if(u_shadow_colorize)
+		visible_color *= s_shadow_tints[0];
+
+	return visible_color;
 }
 
 vec3 rectLightVisibility(GPULight light, float camera_distance)
