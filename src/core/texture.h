@@ -242,7 +242,7 @@ public:
 	TextureDescriptor CreateView() const;
 
 	// TODO: convert to factory function
-	//   also, these should access a shared storage,
+	//   also, these should access a shared storage/cache,
 	//   if the texture is already loaded, return the existing (a shread_ptr)
 	bool Load(const std::filesystem::path & filepath, bool is_srgb = false, uint32_t num_mipmaps=DefaultMipmaps);
 	bool Load(unsigned char* memory_data, uint32_t data_size, bool is_srgb = false, uint32_t num_mipmaps=DefaultMipmaps);
