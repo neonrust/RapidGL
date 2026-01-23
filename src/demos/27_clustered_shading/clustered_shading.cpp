@@ -1646,7 +1646,7 @@ void ClusteredShading::renderShadowMaps()
 
 		auto light_hash = _light_mgr.hash(light);
 		if(IS_DIR_LIGHT(light))  // CSM frustum splits are directly affected by the camera's frustum
-			hash_combine(light_hash, m_camera.hash());
+			light_hash = hash_combine(light_hash, m_camera.hash());
 
 		// TODO: check whether scene objects inside the light's sphere or frustum are dynamic (as opposed to static)
 		//   preferibly, this should be per slot (cube face for point lights)

@@ -8,13 +8,13 @@ namespace std
 template<>
 struct hash<glm::vec4>
 {
-	size_t operator()(const glm::vec4 &v) const
+	[[nodiscard]] inline size_t operator()(const glm::vec4 &v) const
 	{
 		size_t h { 0 };
-		hash_combine(h, v.x);
-		hash_combine(h, v.y);
-		hash_combine(h, v.z);
-		hash_combine(h, v.w);
+		h = hash_combine(h, v.x);
+		h = hash_combine(h, v.y);
+		h = hash_combine(h, v.z);
+		h = hash_combine(h, v.w);
 		return h;
 	}
 };
