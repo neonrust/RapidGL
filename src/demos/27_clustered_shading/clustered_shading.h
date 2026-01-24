@@ -180,15 +180,15 @@ private:
 	bool  m_debug_clusters_occupancy     = false;
 	bool  m_debug_tile_occupancy         = false;
 	float m_debug_coverlay_blend         = 0.7f;
-	bool _debug_colorize_shadows    = false;
+	bool _debug_colorize_shadows         = false;
 
 	float m_shadow_bias_constant         = 0.0001f; // 0.0006
 	float m_shadow_bias_slope_scale      = 0.01f;
 	float m_shadow_bias_slope_power      = 0.02f;
-	float m_shadow_bias_distance_scale   = 0.0021f;
+	float m_shadow_bias_distance_scale   = 0.0004f;
 	float m_shadow_bias_scale            = -0.3f;
 	float m_shadow_bias_texel_size_mix   = 0.f;
-	float m_shadow_occlusion   = 0.8f;
+	float m_shadow_occlusion             = 0.8f;
 
 	bool      m_animate_lights             = false;
 	float     m_animation_speed            = 0.4f;
