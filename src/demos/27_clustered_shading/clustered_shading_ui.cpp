@@ -318,7 +318,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			else
 				ImGui::Text("  %s", size_line.c_str());
 
-			ImGui::Text("Lights rendered: %3lu  slots: %lu", _light_shadow_maps_rendered, _shadow_atlas_slots_rendered);
+			ImGui::Text("Rendered:  Lights: %3lu  Slots: %lu", _light_shadow_maps_rendered, _shadow_atlas_slots_rendered);
 		}
 
 		if(ImGui::CollapsingHeader("Textures", ImGuiTreeNodeFlags_DefaultOpen))
