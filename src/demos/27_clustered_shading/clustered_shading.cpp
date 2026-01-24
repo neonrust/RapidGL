@@ -1575,33 +1575,23 @@ void ClusteredShading::render()
 
 void ClusteredShading::renderShadowMaps()
 {
-	glCullFace(GL_FRONT);  // render only back faces   TODO face culling fscks up rendering! (see init_app())
+	// render shadow-maps if light or meshes within its radius/frustum moved (the latter is TODO)
+
+	glCullFace(GL_FRONT);  // render only back faces
 	glEnable(GL_SCISSOR_TEST);
 	glDepthMask(GL_TRUE);
 	glColorMask(GL_TRUE, GL_TRUE, GL_FALSE, GL_FALSE);  // writing 2-component normals
 	glDepthFunc(GL_LESS);
 
-	// TODO: render shadow-maps
-	// if light or meshes within its radius moved -> implies caching, somehow
-	//   cap the number of shadow maps (maybe dynamically, based on fps), e.g. top X closest
-	//   pack the shadow maps into a few textures (maybe one texture per light type?)
-	//     to simplify packing, one texture per shadow map size?
-	//   Scale shadow map size is deduced based on distance from camera (far away, small shadow map),
-	//     also light radius.
-	//   maybe not update the shadow maps every frame?  (preferably, as little as possible)
-	// NOTE: render only "dirty" shadow maps AND if their sphere intersects the camera frustum
-
 	const auto now = steady_clock::now();
 
 	static steady_clock::time_point last_eval_time;
 
-	// bake this decision into ShadowAtlas -> call to update_shadow_params() can be moved to eval_lights()
-	//   UNLESS, we want to only update it when the specific shadow map needs to be rendered
-
 	// if there's a sun allocated, update its shadow parameters
 	if(const auto &sun_id = _shadow_atlas.sun_id(); sun_id != NO_LIGHT_ID)
 	{
-		// TODO: only if light's direction or camera parameters changed
+		// technically needed only if/when light's direction or camera changed, or objects moved,
+		//    but it's nearly always
 		_shadow_atlas.update_csm_params(sun_id, m_camera);//, _sun_radius_uv);
 	}
 
@@ -1616,9 +1606,9 @@ void ClusteredShading::renderShadowMaps()
 	}
 	m_shadow_alloc_time.add(microseconds(0));
 
-	// light projections needs to be updated more often than the allocation
-	//   needs to updated every time it's rendered, but for simplicity,
-	//   we'll update for all the allocated lights in one go
+	// light projections needs to be updated more often than the atlas allocations.
+	//   it also needs to be updated when the light has moved (new view-projection),
+	// but for simplicity, we're updating all the allocated lights in one go.
 	_shadow_atlas.update_shadow_params();
 
 
@@ -1630,35 +1620,32 @@ void ClusteredShading::renderShadowMaps()
 	_light_shadow_maps_rendered = 0;
 	_shadow_atlas_slots_rendered = 0;
 
-	// TODO: limit the number of shadow maps to render in one frame.
-	//    if too many, render the ones closest to the camera first.
+	// TODO: limit the number of shadow maps to render in one frame, e.g. top N most important lights
 	//    the remaining will still by "dirty" so they will be rendered eventually.
-	//    this imlpies a 2-pass algo, since the "allocated_lights() is an unordered mapping.
+	//    this implies a 2-pass algo; "allocated_lights() is an unordered mapping.
 
 	for(auto &[light_id, atlas_light]: _shadow_atlas.allocated_lights())
 	{
 		const auto &light = _light_mgr.get_by_id(light_id);
 
-		// if this light did not contribute to the frame, no need to render its shadow map
+		// if this light did not contribute to the (previous) frame, no need to render its shadow map
 		const auto light_index = _light_mgr.light_index(light_id);
 		if(not _affecting_lights.contains(light_index))
 			continue;
 
 		auto light_hash = _light_mgr.hash(light);
-		if(IS_DIR_LIGHT(light))  // CSM frustum splits are directly affected by the camera's frustum
+		if(IS_DIR_LIGHT(light))  // cascades are also affected by the camera's frustum
 			light_hash = hash_combine(light_hash, m_camera.hash());
 
 		// TODO: check whether scene objects inside the light's sphere or frustum are dynamic (as opposed to static)
-		//   preferibly, this should be per slot (cube face for point lights)
+		//   preferably, this should be per slot (cube face for point lights)
 		const auto has_dynamic = false; //_scene_culler.pvs(light_id).has(SceneObjectType::Dynamic);
 
 		// TODO: keep TWO shadow maps, one static-object only (cache) and one active (all objects)
-		//   1. render static objects first, to both maps
-		//   2. render dynamic objects, to active map
+		//   1. render static objects first, to both maps (copy to active afterwards?)
+		//   2. render dynamic objects to active map only
 		//   next frame:
-		//   - if dynamic objects moved:
-		//       - copy static to active
-		//       - render only dynamic ibjects
+		//   - if dynamic objects moved: copy static to active & render dynamic objects
 		//   - naturally, if light moved/changed, go to step 1.
 
 		if(_shadow_atlas.should_render(atlas_light, now, light_hash, has_dynamic))
@@ -1686,7 +1673,6 @@ void ClusteredShading::renderShadowMaps()
 			}
 
 			atlas_light.on_rendered(now, light_hash);
-
 			++_light_shadow_maps_rendered;
 		}
 	}
