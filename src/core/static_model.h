@@ -39,8 +39,7 @@ enum class DrawMode {
 class StaticModel
 {
 public:
-	StaticModel()
-		: m_unit_scale(1),
+	StaticModel() :
 		m_vao_name  (0),
 		m_vbo_name  (0),
 		m_ibo_name  (0),
@@ -56,14 +55,12 @@ public:
 	StaticModel(StaticModel&& other) noexcept
 		: m_mesh_parts(std::move(other.m_mesh_parts)),
 		m_materials  (std::move(other.m_materials)),
-		m_unit_scale(other.m_unit_scale),
 		m_vao_name  (other.m_vao_name),
 		m_vbo_name  (other.m_vbo_name),
 		m_ibo_name  (other.m_ibo_name),
 		m_draw_mode (other.m_draw_mode),
 		_ok(false)
 	{
-		other.m_unit_scale = 1;
 		other.m_vao_name   = 0;
 		other.m_vbo_name   = 0;
 		other.m_ibo_name   = 0;
@@ -78,7 +75,6 @@ public:
 
 			std::swap(m_mesh_parts, other.m_mesh_parts);
 			std::swap(m_materials,  other.m_materials);
-			std::swap(m_unit_scale, other.m_unit_scale);
 			std::swap(m_vao_name,   other.m_vao_name);
 			std::swap(m_vbo_name,   other.m_vbo_name);
 			std::swap(m_ibo_name,   other.m_ibo_name);
@@ -92,7 +88,6 @@ public:
 	virtual void AddTexture(const std::shared_ptr<Texture2D> & texture, Material::TextureType texture_type = Material::TextureType::ALBEDO, uint32_t mesh_id = 0);
 
 	virtual void SetDrawMode(DrawMode mode) { m_draw_mode = mode; }
-	virtual float GetUnitScaleFactor() const { return m_unit_scale; }
 
 	// TODO: convert to factory function
 	virtual bool Load(const std::filesystem::path& filepath);
@@ -146,7 +141,6 @@ protected:
 	std::vector<MeshPart> m_mesh_parts;
 	std::vector<Material> m_materials;
 
-	float    m_unit_scale;
 	GLuint   m_vao_name;
 	GLuint   m_vbo_name;
 	GLuint   m_ibo_name;

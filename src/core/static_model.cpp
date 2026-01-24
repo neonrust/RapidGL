@@ -200,8 +200,6 @@ bool StaticModel::ParseScene(const aiScene *scene, const std::filesystem::path& 
 				   );
 	}
 
-	m_unit_scale = 1.0f / glm::compMax(_aabb.max() - _aabb.min());
-
 	if(not LoadMaterials(scene, filepath))
 	{
 		Log::error("\x1b[97;41;1mError\x1b[m loading mesh failed: {}: Could not load the materials", filepath.generic_string());
@@ -561,8 +559,6 @@ void StaticModel::GenPrimitive(VertexData& vertex_data, bool generate_tangents)
 
 void StaticModel::Release()
 {
-	m_unit_scale = 1;
-
 	glDeleteBuffers(1, &m_vbo_name);
 	m_vbo_name = 0;
 
