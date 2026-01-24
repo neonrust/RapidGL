@@ -2079,7 +2079,7 @@ void ClusteredShading::renderDepth(const glm::mat4 &view_projection, RenderTarge
 	renderScene(view_projection, *m_depth_prepass_shader, NoMaterials);
 }
 
-void ClusteredShading::renderSceneShadow(uint_fast16_t shadow_index, uint32_t shadow_map_index)
+void ClusteredShading::renderSceneShadow(uint_fast16_t shadow_index, uint32_t shadow_map_index, bool dynamic_only)
 {
 	// TODO: ideally, only render objects whose AABB intersects with the light's projection (frustum)
 
@@ -2090,6 +2090,9 @@ void ClusteredShading::renderSceneShadow(uint_fast16_t shadow_index, uint32_t sh
 
 	for(const auto &obj: _scenePvs)
 	{
+		(void)dynamic_only;
+		// if(dynamic_only and not obj.is_dynamic)
+		// 	continue;
 		m_shadow_depth_shader->setUniform("u_model"sv, obj.transform);
 		m_shadow_depth_shader->setUniform("u_normal_matrix"sv, glm::transpose(glm::inverse(glm::mat3(obj.transform))));
 
