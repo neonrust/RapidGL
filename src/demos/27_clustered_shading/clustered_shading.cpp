@@ -1026,7 +1026,7 @@ void ClusteredShading::createLights()
 	{
 		const auto rand_color= hsv2rgb(
 			float(Util::RandomDouble(1, 360)),       // hue
-			float(Util::RandomDouble(0.1f, 0.5f)),   // saturation
+			float(Util::RandomDouble(0.2f, 0.8f)),   // saturation
 			1.f                                      // value (brightness)
 		);
 		// const auto rand_pos = Util::RandomVec3(room_min, room_max);
@@ -1036,10 +1036,10 @@ void ClusteredShading::createLights()
 		if(z_offset > z_step*5 + 1)
 		{
 			z_offset = 0;
-			x_offset += 19.f;
+			x_offset += 22.f;
 		}
 
-		const auto rand_intensity = 80.f;//float(Util::RandomDouble(10, 100));
+		const auto rand_intensity = 100.f;//float(Util::RandomDouble(10, 100));
 
 		auto light_type = 3 + (idx % 4);
 		// light_type = LIGHT_TYPE_DISC;
@@ -1070,7 +1070,7 @@ void ClusteredShading::createLights()
 				.fog = 1.f,
 				.shadow_caster = true,
 				.position = rand_pos,
-				.direction = -AXIS_Z, //glm::normalize(Util::RandomVec3(0, 1)),
+				.direction = AXIS_X, //glm::normalize(Util::RandomVec3(0, 1)),
 				.outer_angle = glm::radians(25.f),
 				.inner_angle = glm::radians(15.f),
 			});
@@ -1086,7 +1086,7 @@ void ClusteredShading::createLights()
 				.fog = 1.f,
 				.shadow_caster = false,   // probably never
 				.position = rand_pos,
-				.size = glm::vec2(0.8f, 0.8f),
+				.size = glm::vec2(0.6f, 0.4f),
 				.orientation = glm::rotate(ident_quat, glm::radians(-90.f), glm::vec3(0, 1, 0)),
 				.double_sided = false,
 				.visible_surface = true,
@@ -1103,8 +1103,8 @@ void ClusteredShading::createLights()
 				.fog = 1.f,
 				.shadow_caster = false,   // probably never
 				.position = rand_pos,
-				.half_extent = { 0.f, 0.f, 1.f },
-				.thickness = 0.05f,
+				.half_extent = { 0.f, 0.f, 0.5f },
+				.thickness = 0.02f,
 				.visible_surface = true,
 			});
 			type_name = _light_mgr.type_name<decltype(l)>();
@@ -1119,7 +1119,7 @@ void ClusteredShading::createLights()
 				.fog = 1.f,
 				.shadow_caster = false,  // probably never
 				.position = rand_pos,
-				.radius = 0.3f,
+				.radius = 0.2f,
 				.visible_surface = true,
 			});
 			type_name = _light_mgr.type_name<decltype(l)>();
@@ -1135,7 +1135,7 @@ void ClusteredShading::createLights()
 				.shadow_caster = false,   // probably never
 				.position = rand_pos,
 				.direction = AXIS_X,
-				.radius = 0.45f,
+				.radius = 0.25f,
 				.double_sided = false,
 				.visible_surface = true,
 			});
