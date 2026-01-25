@@ -265,86 +265,6 @@ uvec3 computeClusterCoord(vec2 screen_pos, float view_z)
     return uvec3(x, y, z);
 }
 
-// Heat map functions
-// source: https://www.shadertoy.com/view/ltlSRj
-vec3 fromRedToGreen(float interpolant)
-{
-    if (interpolant < 0.5)
-    {
-       return vec3(1.0, 2.0 * interpolant, 0.0);
-    }
-    else
-    {
-        return vec3(2.0 - 2.0 * interpolant, 1.0, 0.0 );
-    }
-}
-
-vec3 fromGreenToBlue(float interpolant)
-{
-    if (interpolant < 0.5)
-    {
-       return vec3(0.0, 1.0, 2.0 * interpolant);
-    }
-    else
-    {
-        return vec3(0.0, 2.0 - 2.0 * interpolant, 1.0 );
-    }
-}
-
-vec3 heatMap(float interpolant)
-{
-    float invertedInterpolant = interpolant;
-    if (invertedInterpolant < 0.5)
-    {
-        float remappedFirstHalf = 1.0 - 2.0 * invertedInterpolant;
-        return fromGreenToBlue(remappedFirstHalf);
-    }
-    else
-    {
-        float remappedSecondHalf = 2.0 - 2.0 * invertedInterpolant;
-        return fromRedToGreen(remappedSecondHalf);
-    }
-}
-
-vec3 falseColor(float value)
-{
-    value = clamp(value, 0, 1);
-
-	// TODO: could do this in a more general way (i.e. a gradient)
-	//  but this is probably faster
-
-	const float N = 8.0;      // number of sub-gradients
-    const float w = 1.0 / N;
-
-    const float v = 3;
-
-    const vec3 c0 = vec3( 0,   0,  v/2);
-    const vec3 c1 = vec3( 0,   0,   v);
-	const vec3 c2 = vec3( 0,  v/2,  v);
-	const vec3 c3 = vec3( 0,   v,   v);
-    const vec3 c4 = vec3(v/2,  v,  v/2);
-    const vec3 c5 = vec3( v,   v,   0);
-    const vec3 c6 = vec3( v,  v/2,  0);
-    const vec3 c7 = vec3( v,   0,   0);
-    const vec3 c8 = vec3(v/2,  0,   0);
-
-    if (value < 1*w)
-    	return mix(c0, c1, (value - 0*w) * N);
-    if (value < 2*w)
-	    return mix(c1, c2, (value - 1*w) * N);
-    if (value < 3*w)
-    	return mix(c2, c3, (value - 2*w) * N);
-    if (value < 4*w)
-     	return mix(c3, c4, (value - 3*w) * N);
-    if (value < 5*w)
-      	return mix(c4, c5, (value - 4*w) * N);
-	if (value < 6*w)
-        return mix(c5, c6, (value - 5*w) * N);
-    if (value < 7*w)
-        return mix(c6, c7, (value - 6*w) * N);
-	return mix(c7, c8, (value - 7*w) * N);
-}
-
 float fadeLightByDistance(GPULight light)
 {
 	float light_edge_distance = max(0, distance(light.position, u_cam_pos) - light.affect_radius);
@@ -525,4 +445,84 @@ vec3 sphereLightVisibility(GPULight light, float camera_distance)
 vec3 discLightVisibility(GPULight light, float camera_distance)
 {
 	return vec3(fadeLightByDistance(light));
+}
+
+// Heat map functions
+// source: https://www.shadertoy.com/view/ltlSRj
+vec3 fromRedToGreen(float interpolant)
+{
+    if (interpolant < 0.5)
+    {
+       return vec3(1.0, 2.0 * interpolant, 0.0);
+    }
+    else
+    {
+        return vec3(2.0 - 2.0 * interpolant, 1.0, 0.0 );
+    }
+}
+
+vec3 fromGreenToBlue(float interpolant)
+{
+    if (interpolant < 0.5)
+    {
+       return vec3(0.0, 1.0, 2.0 * interpolant);
+    }
+    else
+    {
+        return vec3(0.0, 2.0 - 2.0 * interpolant, 1.0 );
+    }
+}
+
+vec3 heatMap(float interpolant)
+{
+    float invertedInterpolant = interpolant;
+    if (invertedInterpolant < 0.5)
+    {
+        float remappedFirstHalf = 1.0 - 2.0 * invertedInterpolant;
+        return fromGreenToBlue(remappedFirstHalf);
+    }
+    else
+    {
+        float remappedSecondHalf = 2.0 - 2.0 * invertedInterpolant;
+        return fromRedToGreen(remappedSecondHalf);
+    }
+}
+
+vec3 falseColor(float value)
+{
+    value = clamp(value, 0, 1);
+
+	// TODO: could do this in a more general way (i.e. a gradient)
+	//  but this is probably faster
+
+	const float N = 8.0;      // number of sub-gradients
+    const float w = 1.0 / N;
+
+    const float v = 3;
+
+    const vec3 c0 = vec3( 0,   0,  v/2);
+    const vec3 c1 = vec3( 0,   0,   v);
+	const vec3 c2 = vec3( 0,  v/2,  v);
+	const vec3 c3 = vec3( 0,   v,   v);
+    const vec3 c4 = vec3(v/2,  v,  v/2);
+    const vec3 c5 = vec3( v,   v,   0);
+    const vec3 c6 = vec3( v,  v/2,  0);
+    const vec3 c7 = vec3( v,   0,   0);
+    const vec3 c8 = vec3(v/2,  0,   0);
+
+    if (value < 1*w)
+    	return mix(c0, c1, (value - 0*w) * N);
+    if (value < 2*w)
+	    return mix(c1, c2, (value - 1*w) * N);
+    if (value < 3*w)
+    	return mix(c2, c3, (value - 2*w) * N);
+    if (value < 4*w)
+     	return mix(c3, c4, (value - 3*w) * N);
+    if (value < 5*w)
+      	return mix(c4, c5, (value - 4*w) * N);
+	if (value < 6*w)
+        return mix(c5, c6, (value - 5*w) * N);
+    if (value < 7*w)
+        return mix(c6, c7, (value - 6*w) * N);
+	return mix(c7, c8, (value - 7*w) * N);
 }
