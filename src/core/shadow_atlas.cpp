@@ -296,6 +296,8 @@ size_t ShadowAtlas::eval_lights(const std::vector<LightIndex> &relevant_lights, 
 
 bool ShadowAtlas::should_render(const AtlasLight &atlas_light, Time now, size_t light_hash, bool has_dynamic) const
 {
+	// NOTE: see comment in renderShadowMaps() regarding static/dynamic caching
+
 	if(atlas_light.is_dirty())
 		return true;
 
