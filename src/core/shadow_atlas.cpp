@@ -576,7 +576,6 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 	const auto &atlas_light = found->second;
 	assert(atlas_light.num_slots >= 1 and atlas_light.num_slots <= 6);
 	const auto num_cascades = atlas_light.num_slots;
-	const auto shadow_map_size = float(atlas_light.slots[0].size);
 
 	const auto &sun = _lights.get_by_id(light_id);
 
@@ -619,7 +618,7 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 		float d_mix    = glm::mix(d_linear, d_log, _csm_frustum_split_mix);
 
 		const float split_depth = camera.nearPlane() + (d_mix - camera.nearPlane())*range_scale;
-		_csm_params.camera_depth[cascade] = -split_depth;  // store depth to the far side of the split
+		_csm_params.far_plane[cascade] = -split_depth;  // store depth to the far side of the split
 
 		// make afrustum slice (between last_split_dist and split_dist)
 		const auto split_near = last_split_depth;
@@ -643,7 +642,7 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 		// Log::debug("cascade {}: {:.2f} ⯈ {:.2f}", cascade, split_near, split_far);
 
 		const auto light_pos = cascade_center_ws - sun.direction;
-		const glm::mat4 light_view = glm::lookAt(light_pos, cascade_center_ws, AXIS_Y);
+		auto light_view = glm::lookAt(light_pos, cascade_center_ws, AXIS_Y);
 
 		// Log::debug("   light 'pos': {:.5f}; {:.5f}; {:.5f}", light_pos.x, light_pos.y, light_pos.z);
 		// Log::debug("   WS center: {:.5f}; {:.5f}; {:.5f}", cascade_center_ws.x, cascade_center_ws.y, cascade_center_ws.z);
