@@ -11,6 +11,7 @@ uniform uvec3 u_cluster_resolution;
 uniform uvec2 u_cluster_size_ss;
 uniform float u_log_cluster_res_y;
 uniform float u_light_max_distance;
+uniform vec3  u_ambient_radiance;
 
 uniform bool u_debug_cluster_geom;
 uniform bool u_debug_clusters_occupancy;
@@ -99,13 +100,11 @@ void main()
     IndexRange lights_range = ssbo_cluster_lights[cluster_index];
 
     uint num_clusters = u_cluster_resolution.x*u_cluster_resolution.y*u_cluster_resolution.z;
-
-    // Calculate the point lights contribution
     uint num_lights = min(lights_range.count, CLUSTER_MAX_LIGHTS);
 
-    vec3 radiance = vec3(0);
-
     float camera_distance = distance(u_cam_pos, in_world_pos);
+
+    vec3 radiance = u_ambient_radiance;
 
     // too many lights?
     if(lights_range.count > CLUSTER_MAX_LIGHTS)

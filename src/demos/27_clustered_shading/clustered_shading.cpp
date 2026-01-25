@@ -2115,6 +2115,7 @@ void ClusteredShading::renderSceneShading(const Camera &camera)
 	m_clustered_pbr_shader->setUniform("u_light_max_distance"sv,         m_camera.farPlane() * s_light_affect_fraction);
 	m_clustered_pbr_shader->setUniform("u_shadow_max_distance"sv,        m_camera.farPlane() * s_light_shadow_affect_fraction);
 	//m_clustered_pbr_shader->setUniform("u_specular_max_distance"sv,      m_camera.farPlane() * s_light_specular_fraction);
+	m_clustered_pbr_shader->setUniform("u_ambient_radiance"sv,           _ambient_radiance);
 
 	m_clustered_pbr_shader->setUniform("u_debug_cluster_geom"sv,         m_debug_cluster_geom);
 	m_clustered_pbr_shader->setUniform("u_debug_clusters_occupancy"sv,   m_debug_clusters_occupancy);
