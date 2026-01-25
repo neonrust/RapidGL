@@ -381,12 +381,14 @@ void ShadowAtlas::debug_dump_allocated(bool details) const
 		sizes.reserve(_distribution.size());
 	sizes.clear();
 
+#if defined(_DEBUG)
 	auto num_used = 0u;
-
+#endif
 	for(const auto &[light_id, atlas_light]: _id_to_allocated)
 	{
+#if defined(_DEBUG)
 		num_used += atlas_light.num_slots;
-
+#endif
 		for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
 		{
 			const auto slot_size = atlas_light.slots[idx].size;
@@ -432,7 +434,7 @@ void ShadowAtlas::debug_dump_allocated(bool details) const
 		}
 		msg.append(" }}");
 		Log::debug("{}", msg);
-#if defined(DEBUG)
+#if defined(_DEBUG)
 		auto num_available = 0u;
 		for(const auto &[size, slot_set]: _slot_sets)
 			num_available += slot_set.size();
@@ -661,19 +663,28 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 			// Log::debug("  WS {:5.5f}; {:5.5f}; {:5.5f} ⯈ LS {:5.2f}; {:5.2f}; {:5.2f}", corner_ws.x, corner_ws.y, corner_ws.z, corner_ls.x, corner_ls.y, corner_ls.z);
 		}
 
-		// expand the z extent "outwards"
+#if 1
+		// TODO: round extents to even texel
+		//   see https://alextardif.com/shadowmapping.html
+#endif
 
+#if 1
+		// expand the z extent "outwards"
 		auto minZ = cascade_aabb_ls.min().z;
 		auto maxZ = cascade_aabb_ls.max().z;
 		static constexpr auto z_offset = 10.f;
-		minZ = cascade_aabb_ls.min().z * (cascade_aabb_ls.min().z < 0? z_offset: 1/z_offset);
-		maxZ = cascade_aabb_ls.max().z * (cascade_aabb_ls.max().z < 0? 1/z_offset: z_offset);
+		minZ *= minZ < 0? z_offset: 1/z_offset;
+		maxZ *= maxZ < 0? 1/z_offset: z_offset;
+#else
+		const auto minZ = cascade_aabb_ls.min().z;
+		const auto maxZ = cascade_aabb_ls.max().z;
+#endif
 
+#if 0
 		auto light_projection = glm::ortho(cascade_aabb_ls.min().x, cascade_aabb_ls.max().x,
 										   cascade_aabb_ls.min().y, cascade_aabb_ls.max().y,
 										   minZ, maxZ);
-
-#if 0
+#else
 		// force a square aspect ratio (X & Y)
 		float width  = cascade_aabb_ls.width();
 		float height = cascade_aabb_ls.height();
@@ -681,20 +692,21 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 		float mid_x = (cascade_aabb_ls.max().x + cascade_aabb_ls.min().x) / 2.f;
 		float mid_y = (cascade_aabb_ls.max().y + cascade_aabb_ls.min().y) / 2.f;
 
-		light_projection = glm::ortho(mid_x - max_dim, mid_x + max_dim,
-									  mid_y - max_dim, mid_y + max_dim,
-									  cascade_aabb_ls.min().z, cascade_aabb_ls.max().z);
+		auto light_projection = glm::ortho(mid_x - max_dim, mid_x + max_dim,
+										   mid_y - max_dim, mid_y + max_dim,
+										   minZ, maxZ);
 #endif
 		auto light_vp = light_projection * light_view;
 
 #if 1
 		// apply "stabilization" logic; to reduce pixel "swimming" when camera moves
+		const auto shadow_size = float(atlas_light.slots[cascade].size);
 		auto shadow_origin = light_vp * glm::vec4(0, 0, 0, 1);
-		shadow_origin *= shadow_map_size / 2.f;
+		shadow_origin *= shadow_size / 2.f;
 
 		auto rounded_origin = glm::round(shadow_origin);
 		auto round_offset = rounded_origin - shadow_origin;
-		round_offset *= 2.f / shadow_map_size;
+		round_offset *= 2.f / shadow_size;
 		round_offset.z = 0.f;
 		round_offset.w = 0.f;
 
