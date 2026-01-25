@@ -147,7 +147,7 @@ vec3 unpackNormal(vec2 f)
 
 float sampleShadow(float camera_distance, float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max);
 
-float computeBias(float normalized_depth, vec3 light_dir, vec2 normal_uv, float texel_radius);
+float computeBias(float normalized_depth, vec3 light_dir, vec2 normalv, float texel_radius);
 
 float sampleShadow1(float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max);
 float shadowVisibility(vec3 clip_pos, float camera_distance, GPULight light, vec4 rect, float texel_size, float bias)
@@ -156,9 +156,6 @@ float shadowVisibility(vec3 clip_pos, float camera_distance, GPULight light, vec
 	vec2 atlas_uv = calculateShadowUV(clip_pos, rect, rect_uv);
 
 	float frag_depth = clip_pos.z * 0.5 + 0.5;
-
-	// vec3 light_dir = -normalize(clip_pos);
-	// frag_depth += computeBias(frag_depth, light.direction, atlas_uv, texel_size);
 	frag_depth += bias;
 
 	vec2 uv_min = rect_uv.xy;
@@ -174,7 +171,7 @@ float computeSlopeBias(vec3 light_dir, vec3 normal)
 	return (0.001 / angle) * u_shadow_bias_slope_scale;
 }
 
-float computeBias(float normalized_depth, vec3 light_dir, vec2 normal_uv, float texel_size)
+float computeBias(float normalized_depth, vec3 light_dir, vec3 normal, float texel_size)
 {
 	// calculate shadow depth bias by various factors
 	// bias by depth
@@ -182,13 +179,7 @@ float computeBias(float normalized_depth, vec3 light_dir, vec2 normal_uv, float 
 
 	// bias based on surface normals
 	// bias increases when the angle between normal and light_dir is steep.
-	if(u_shadow_bias_slope_scale > 0)
-	{
-		vec2 encoded_normal = textureLod(u_shadow_atlas_normals, normal_uv, 0).xy;
-		vec3 depth_normal = unpackNormal(encoded_normal);
-
-		bias += computeSlopeBias(light_dir, depth_normal);
-	}
+	bias += computeSlopeBias(light_dir, normal);
 
 	bias = clamp(bias, -0.05, 0.05) * u_shadow_bias_scale;
 

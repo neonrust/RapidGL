@@ -301,7 +301,7 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 
 	vec4 clip_pos = view_proj * vec4(world_pos, 1);
 	clip_pos /= clip_pos.w;
-	float bias = 0;//computeBias(frag_depth, light_dir, atlas_uv, texel_size);
+	float bias = computeBias(clip_pos.z * 0.5 + 0.5, normalize(light_to_frag), in_normal, texel_size);
 	float shadow_visibility = shadowVisibility(clip_pos.xyz, camera_distance, light, slot_rect, texel_size, bias);
 
 	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade * u_shadow_occlusion;
@@ -378,10 +378,20 @@ vec3 dirLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 	vec4 clip_pos = view_proj * vec4(world_pos, 1);
 	clip_pos /= clip_pos.w;
 
-	// directional-light specific bias calculation; only slope sensitive
-    float slope = dot(in_normal, light.direction);
-    slope = sqrt(1 - slope * slope);
-    float bias = -u_shadow_bias_constant + pow(slope, u_shadow_bias_slope_power) * u_shadow_bias_slope_scale * texel_size;
+	// a bit cascade-specific bias stuff; this probably depends on number of cascades (and a number of other parameters)
+    float bias = 0;//
+    if(cascade_index == 0)
+    {
+		// directional-light specific bias calculation; only slope sensitive
+		float slope = dot(in_normal, light.direction);
+		slope = sqrt(1 - slope * slope);
+
+		bias = -0.001 - pow(slope, u_shadow_bias_slope_power) * u_shadow_bias_slope_scale * texel_size * 0.1;
+	}
+	else if(cascade_index == 1)
+		bias = -0.0015;
+	else
+		bias = -0.001 / float(cascade_index - 1);
 
 
 	float shadow_visibility = shadowVisibility(clip_pos.xyz, 0/*camera_distance*/, light, slot_rect, texel_size, bias);
@@ -418,7 +428,7 @@ vec3 spotLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 
 	vec4 clip_pos = view_proj * vec4(world_pos, 1);
 	clip_pos /= clip_pos.w;
-	float bias = 0;//computeBias(frag_depth, light_dir, atlas_uv, texel_size);
+	float bias = computeBias(clip_pos.z * 0.5 + 0.5, normalize(light.position - world_pos), in_normal, texel_size);
 	float shadow_visibility = shadowVisibility(clip_pos.xyz, camera_distance, light, slot_rect, texel_size, bias);
 
 	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade * u_shadow_occlusion;
