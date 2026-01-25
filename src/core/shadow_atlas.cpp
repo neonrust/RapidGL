@@ -545,7 +545,8 @@ std::tuple<glm::mat4, float, float> ShadowAtlas::light_view_projection(const GPU
 		static constexpr auto square = 1.f;
 
 		const auto &view_forward = light.direction;
-		const auto &view_up      = view_forward == AXIS_Z or view_forward == -AXIS_Z? AXIS_X: AXIS_Z;
+		// if 'view_forward' is close to Y axis, use X axis as "up"
+		const auto &view_up      = glm::all(glm::lessThan(glm::abs(view_forward) - AXIS_Y, glm::vec3(1e-3f, 1e-3f, 1e-3f))) ? AXIS_X: AXIS_Y;
 
 		const auto light_view    = glm::lookAt(light.position, light.position + view_forward, view_up);
 		const auto projection    = glm::perspective(light.outer_angle*2, square, near_z, far_z);
