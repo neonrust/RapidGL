@@ -132,7 +132,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 		{
 			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.5f); // less wide sliders
 
-			ImGui::ColorPicker3("Ambient", glm::value_ptr(_ambient_radiance));
+			ImGui::ColorEdit3("Ambient", glm::value_ptr(_ambient_radiance));
 
 			static float falloff_power { _light_mgr.falloff_power() };
 			if(ImGui::SliderFloat("Falloff power", &falloff_power, 10.f, 1000.f, "%.0f"))
