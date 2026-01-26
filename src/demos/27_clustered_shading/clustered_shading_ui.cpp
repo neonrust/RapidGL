@@ -194,7 +194,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.5f);
 			ImGui::SliderFloat("Exposure",             &m_exposure,             0.0, 10.0, "%.1f");
 			ImGui::SliderFloat("Gamma",                &m_gamma,                0.0, 10.0, "%.1f");
-			ImGui::SliderFloat("Background LOD level", &m_background_lod_level, 0.0, glm::log2(float(m_env_cubemap_rt->width())), "%.1f");
+			ImGui::SliderFloat("Background MIP level", &m_background_mip_level, 0.0, glm::log2(float(m_env_cubemap_rt->width())), "%.1f");
 
 			if (ImGui::BeginCombo("HDR map", m_hdr_maps_names[m_current_hdr_map_idx].data()))
 			{

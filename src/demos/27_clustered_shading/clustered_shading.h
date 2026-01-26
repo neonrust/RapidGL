@@ -233,7 +233,7 @@ private:
 	RGL::PP::Volumetrics m_volumetrics_pp;
 	RGL::RenderTarget::Texture2d _final_rt;
 
-    float m_background_lod_level;
+	float m_background_mip_level;
 	// TODO: need to test with actual HDR jpeg xl image (converting from hdr wasn't successful)
 	std::string_view m_hdr_maps_names[5] = {
 		"../black.hdr",

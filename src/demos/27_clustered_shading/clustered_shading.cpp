@@ -87,7 +87,7 @@ ClusteredShading::ClusteredShading() :
 	m_shadow_map_slots_ssbo("shadow-map-slots"sv),
 	m_exposure            (0.4f),
 	m_gamma               (2.2f),
-	m_background_lod_level(1.2f),
+	m_background_mip_level(1.2f),
 	m_skybox_vao          (0),
 	m_skybox_vbo          (0),
 	m_bloom_threshold     (1.5f),
@@ -1691,7 +1691,7 @@ void ClusteredShading::renderSkybox()
 	m_background_shader->bind();
 	m_camera.setUniforms(*m_background_shader);
 	m_background_shader->setUniform("u_view_orientation"sv, glm::mat4(glm::mat3(m_camera.viewTransform())));  // only rotational part
-	m_background_shader->setUniform("u_lod_level"sv,        m_background_lod_level);
+	m_background_shader->setUniform("u_mip_level"sv,        m_background_mip_level);
 	m_env_cubemap_rt->bindTexture();
 
 	glBindVertexArray(m_skybox_vao);
