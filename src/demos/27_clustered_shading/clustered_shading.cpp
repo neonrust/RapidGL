@@ -918,7 +918,7 @@ void ClusteredShading::update(double delta_time)
 	if(_pov_light_id != NO_LIGHT_ID)
 	{
 		auto L = _light_mgr.get_by_id(_pov_light_id);
-		L.position = m_camera.position() + m_camera.forwardVector();
+		L.position = m_camera.position() + m_camera.forwardVector() * _pov_light_distance;
 		_light_mgr.set(_pov_light_id, L);
 	}
 
