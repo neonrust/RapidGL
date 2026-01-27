@@ -155,16 +155,17 @@ size_t ShadowAtlas::eval_lights(const std::vector<LightIndex> &relevant_lights, 
 	// 1. assign value to all, shadow-casting, lights
 	auto counters = prioritize_lights(relevant_lights, view_pos, view_forward, prioritized);
 
-	if(prioritized.empty())
+	if(prioritized.empty()) // TODO: also if light(s) no longer are casting shadows
 	{
-		size_t num_changes { 0 };
-		for(const auto &[light_id, atlas_light]: _id_to_allocated)
+		auto num_dropped = _id_to_allocated.size();
+		clear();
+		if(num_dropped)
 		{
-			bool deallocaded = remove_allocation(light_id);
-			assert(deallocaded);
-			++num_changes;
+			Counters counters;
+			counters.dropped += num_dropped;
+			log_changes(counters, 0, T0);
 		}
-		return num_changes;
+		return num_dropped;
 	}
 
 	// 2. "pour" the valued lights into the sizd -buckets.
@@ -262,28 +263,9 @@ size_t ShadowAtlas::eval_lights(const std::vector<LightIndex> &relevant_lights, 
 	counters += apply_desired_slots(desired_slots, T0);
 
 	const auto num_changes = counters.changed();
-
 	if(num_changes)
 	{
-		std::string msg;
-		msg.reserve(32);
-		std::format_to(std::back_inserter(msg), "\x1b[32;1mShadowAtlas\x1b[m {} lights ->", prioritized.size());
-		if(counters.retained)
-			std::format_to(std::back_inserter(msg), " \x1b[1m=\x1b[m{}", counters.retained);
-		if(counters.allocated)
-			std::format_to(std::back_inserter(msg), " \x1b[33;1m⭐\x1b[m{}", counters.allocated);
-		if(counters.dropped)
-			std::format_to(std::back_inserter(msg), " \x1b[31;1m❌\x1b[m{}", counters.dropped);
-		if(counters.denied)
-			std::format_to(std::back_inserter(msg), " \x1b[31;1m!\x1b[m{}", counters.denied);
-		if(counters.promoted)
-			std::format_to(std::back_inserter(msg), " \x1b[32;1m🡅\x1b[m{}", counters.promoted);
-		if(counters.demoted)
-			std::format_to(std::back_inserter(msg), " \x1b[34;1m🡇\x1b[m{}", counters.demoted);
-		if(counters.change_pending)
-			std::format_to(std::back_inserter(msg), " \x1b[1m❔\x1b[m{}", counters.change_pending);
-		std::format_to(std::back_inserter(msg), ", in {}", duration_cast<microseconds>(steady_clock::now() - T0));
-		Log::info("{}", msg);
+		log_changes(counters, prioritized.size(), T0);
 #if defined(DEBUG)
 		std::print(" ->");
 		debug_dump_allocated(false);
@@ -292,6 +274,29 @@ size_t ShadowAtlas::eval_lights(const std::vector<LightIndex> &relevant_lights, 
 
 	// return how many shadow maps changed  (new, dropped, promoted, demoted)
 	return num_changes;
+}
+
+void ShadowAtlas::log_changes(const Counters &counters, size_t num_prio, Time start_time)
+{
+	std::string msg;
+	msg.reserve(32);
+	std::format_to(std::back_inserter(msg), "\x1b[32;1mShadowAtlas\x1b[m {} lights ->", num_prio);
+	if(counters.retained)
+		std::format_to(std::back_inserter(msg), " \x1b[1m=\x1b[m{}", counters.retained);
+	if(counters.allocated)
+		std::format_to(std::back_inserter(msg), " \x1b[33;1m⭐\x1b[m{}", counters.allocated);
+	if(counters.dropped)
+		std::format_to(std::back_inserter(msg), " \x1b[31;1m❌\x1b[m{}", counters.dropped);
+	if(counters.denied)
+		std::format_to(std::back_inserter(msg), " \x1b[31;1m!\x1b[m{}", counters.denied);
+	if(counters.promoted)
+		std::format_to(std::back_inserter(msg), " \x1b[32;1m🡅\x1b[m{}", counters.promoted);
+	if(counters.demoted)
+		std::format_to(std::back_inserter(msg), " \x1b[34;1m🡇\x1b[m{}", counters.demoted);
+	if(counters.change_pending)
+		std::format_to(std::back_inserter(msg), " \x1b[1m❔\x1b[m{}", counters.change_pending);
+	std::format_to(std::back_inserter(msg), ", in {}", duration_cast<microseconds>(steady_clock::now() - start_time));
+	Log::info("{}", msg);
 }
 
 bool ShadowAtlas::should_render(const AtlasLight &atlas_light, Time now, size_t light_hash, bool has_dynamic) const
@@ -751,11 +756,11 @@ const ShadowAtlas::AtlasLight & ShadowAtlas::allocated_sun() const
 
 void ShadowAtlas::clear()
 {
-	Counters counters;
+	// Counters counters;
 	for(const auto &[light_id, atlas_light]: _id_to_allocated)
 	{
 		if(remove_allocation(light_id))
-			++counters.dropped;
+			;//++counters.dropped;
 	}
 	_id_to_allocated.clear();
 

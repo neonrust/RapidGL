@@ -191,6 +191,7 @@ private:
 
 	Counters prioritize_lights(const std::vector<LightIndex> &relevant_lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward, std::vector<ValueLight> &prioritized);
 	Counters apply_desired_slots(const std::vector<AtlasLight> &desired_slots, Time now);
+	void log_changes(const Counters &counters, size_t num_prio, Time start_time);
 	void generate_slots(std::initializer_list<size_t> distribution);
 	bool has_slots_available(const AtlasLight &atlas_light, const std::array<size_t, 4> &num_promised) const;
 	SlotID alloc_slot(SlotSize size, bool first=true);
