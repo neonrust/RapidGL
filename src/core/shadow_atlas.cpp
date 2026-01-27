@@ -515,15 +515,21 @@ void ShadowAtlas::update_shadow_params()
 	_lights.flush();
 }
 
-[[maybe_unused]] static constexpr glm::vec3 s_cube_face_forward[] = {
-	AXIS_X, -AXIS_X,
-	AXIS_Y, -AXIS_Y,
-	AXIS_Z, -AXIS_Z,
+static constexpr glm::vec3 s_cube_face_forward[] = {
+	 AXIS_X,
+	-AXIS_X,
+	 AXIS_Y,
+	-AXIS_Y,
+	 AXIS_Z,
+	-AXIS_Z,
 };
-[[maybe_unused]] static constexpr glm::vec3 s_cube_face_up[] = {
-	-AXIS_Y, -AXIS_Y,
-	AXIS_Z, -AXIS_Z,
-	-AXIS_Y, -AXIS_Y,
+static constexpr glm::vec3 s_cube_face_up[] = {
+	-AXIS_Y,
+	-AXIS_Y,
+	 AXIS_Z,
+	-AXIS_Z,
+	-AXIS_Y,
+	-AXIS_Y,
 };
 
 std::tuple<glm::mat4, float, float> ShadowAtlas::light_view_projection(const GPULight &light, size_t idx)
