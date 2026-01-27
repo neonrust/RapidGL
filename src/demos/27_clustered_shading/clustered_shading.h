@@ -176,6 +176,7 @@ private:
 	uint32_t   m_cluster_count { 0 };
 
 
+	LightID _pov_light_id { NO_LIGHT_ID };
 	bool  m_debug_cluster_geom           = false;
 	bool  m_debug_clusters_occupancy     = false;
 	bool  m_debug_tile_occupancy         = false;

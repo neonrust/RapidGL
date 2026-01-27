@@ -915,6 +915,13 @@ void ClusteredShading::update(double delta_time)
 
 	m_camera.update(delta_time);
 
+	if(_pov_light_id != NO_LIGHT_ID)
+	{
+		auto L = _light_mgr.get_by_id(_pov_light_id);
+		L.position = m_camera.position() + m_camera.forwardVector();
+		_light_mgr.set(_pov_light_id, L);
+	}
+
 	const float energy_multiplier = 1.01f;
 	float adjust_energy = 0.f;
 	if(Input::isKeyDown(KeyCode::UpArrow))
@@ -946,6 +953,9 @@ void ClusteredShading::update(double delta_time)
 		for(LightIndex light_index = 0; light_index <  _light_mgr.size(); ++light_index)
 		{
 			const auto &[light_id, L] =_light_mgr.at(light_index);
+			if(light_id == _pov_light_id)
+				continue;
+
 			auto Lmut = L;
 
 			Lmut.position.z += adjust_position;
@@ -985,6 +995,8 @@ void ClusteredShading::update(double delta_time)
 		for(LightIndex light_index = 0; light_index <  _light_mgr.size(); ++light_index)
 		{
 			const auto &[light_id, L] =_light_mgr.at(light_index);
+			if(light_id == _pov_light_id)
+				continue;
 			auto Lmut = L;
 
 			if(IS_POINT_LIGHT(Lmut) or IS_SPHERE_LIGHT(Lmut))
@@ -1021,6 +1033,16 @@ void ClusteredShading::createLights()
 		.shadow_caster = true,
 		.direction = glm::normalize(glm::vec3(0.5f, -1.f, 0.5f)),
 	});
+
+	auto l = _light_mgr.add(PointLightParams{
+		.color = { 0.5f, 0.8f, 1.f },
+		.intensity = 50.f,
+		.fog = 0.f,
+		.shadow_caster = true,
+		.position = m_camera.position(),
+	});
+	_pov_light_id = l.id();
+
 
 	for(auto idx = 0u; idx < 0; ++idx)
 	{
