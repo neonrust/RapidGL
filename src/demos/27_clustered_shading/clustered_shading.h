@@ -177,7 +177,7 @@ private:
 
 
 	LightID _pov_light_id { NO_LIGHT_ID };
-	float _pov_light_distance { 1.f };
+	float _pov_light_distance { 0.5f };
 	bool  m_debug_cluster_geom           = false;
 	bool  m_debug_clusters_occupancy     = false;
 	bool  m_debug_tile_occupancy         = false;

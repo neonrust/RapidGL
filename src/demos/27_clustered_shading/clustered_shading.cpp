@@ -919,6 +919,7 @@ void ClusteredShading::update(double delta_time)
 	{
 		auto L = _light_mgr.get_by_id(_pov_light_id);
 		L.position = m_camera.position() + m_camera.forwardVector() * _pov_light_distance;
+		L.direction = m_camera.forwardVector();
 		_light_mgr.set(_pov_light_id, L);
 	}
 
@@ -1026,20 +1027,23 @@ void ClusteredShading::createLights()
 	static constexpr auto z_step = 12.f;
 	auto x_offset = 0.f;
 
-	_light_mgr.add(DirectionalLightParams{
-		.color = { 1.f, 1.f, 1.f },
+	// _light_mgr.add(DirectionalLightParams{
+	// 	.color = { 1.f, 1.f, 1.f },
+	// 	.intensity = 50.f,
+	// 	.fog = 1.f,
+	// 	.shadow_caster = true,
+	// 	.direction = glm::normalize(glm::vec3(20, -50, 20)),
+	// });
+
+	auto l = _light_mgr.add(SpotLightParams{
+		.color = { 1.f, 0.85f, 0.7f },
 		.intensity = 100.f,
 		.fog = 1.f,
 		.shadow_caster = true,
-		.direction = glm::normalize(glm::vec3(0.5f, -1.f, 0.5f)),
-	});
-
-	auto l = _light_mgr.add(PointLightParams{
-		.color = { 0.5f, 0.8f, 1.f },
-		.intensity = 50.f,
-		.fog = 0.f,
-		.shadow_caster = true,
-		.position = m_camera.position(),
+		.position = m_camera.position(),  // will be kept up to date in update()
+		.direction = AXIS_X,              // will be kept up to date in update()
+		.outer_angle = glm::radians(45.f),
+		.inner_angle = glm::radians(35.f),
 	});
 	_pov_light_id = l.id();
 
