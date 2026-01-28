@@ -72,6 +72,8 @@ void main()
 	{
 		uint light_index = ssbo_volumetric_lights_index[index];
 		GPULight L = ssbo_lights[light_index];
+		if(! IS_ENABLED(L))
+        	continue;
 
 		bool is_affecting = true;
 

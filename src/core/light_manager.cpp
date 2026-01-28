@@ -280,6 +280,27 @@ void LightManager::transform(GPULight &L, const glm::quat &rotate)
 	}
 }
 
+bool LightManager::is_enabled(LightID light_id) const
+{
+	auto found = _id_to_index.find(light_id);
+	assert(found != _id_to_index.end());
+	return IS_ENABLED(_lights[found->second]);
+}
+
+void LightManager::set_enabled(LightID light_id, bool enabled)
+{
+	auto found = _id_to_index.find(light_id);
+	assert(found != _id_to_index.end());
+	const auto light_index = found->second;
+	if(enabled)
+		_lights[light_index].type_flags |= LIGHT_ENABLED;
+	else
+		_lights[light_index].type_flags &= ~LIGHT_ENABLED;
+
+	if(const auto &[_, ok] = _dirty.insert(light_index); ok)
+		_dirty_list.push_back(light_index);
+}
+
 bounds::Sphere LightManager::light_bounds(const GPULight &L) const
 {
 	assert(not IS_DIR_LIGHT(L));

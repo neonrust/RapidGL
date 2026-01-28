@@ -136,6 +136,9 @@ public:
 	static void transform(GPULight &L, const glm::mat3 &rotate);
 	static void transform(GPULight &L, const glm::quat &rotate);
 
+	bool is_enabled(LightID light_id) const;
+	void set_enabled(LightID light_id, bool enabled=true);
+
 	// calculate a hash of its properties
 	size_t hash(const GPULight &L);
 	bounds::Sphere light_bounds(const GPULight &L) const;
@@ -346,6 +349,7 @@ GPULight LightManager::to_gpu_light(const LT &l) const
 		L.shape_data[0].x = l.radius;
 	}
 
+	L.type_flags     |= LIGHT_ENABLED;
 	if(l.shadow_caster)
 		L.type_flags |= LIGHT_SHADOW_CASTER;
 	if(l.fog > 0)

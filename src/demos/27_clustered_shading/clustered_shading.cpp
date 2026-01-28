@@ -2019,6 +2019,9 @@ const std::vector<StaticObject> &ClusteredShading::cullScene(const Camera &view)
 			{
 				const auto light_index = LightIndex(l_index);
 
+				if(not IS_ENABLED(L))
+					continue;
+
 				if(GET_LIGHT_TYPE(L) == LIGHT_TYPE_DIRECTIONAL)
 					_lightsPvs.push_back(light_index);
 				else

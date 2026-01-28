@@ -117,6 +117,8 @@ void main()
 	    uint light_index = all_lights_index[lights_range.start_index + idx];
 
         GPULight light = ssbo_lights[light_index];
+        if(! IS_ENABLED(light))
+        	continue;
 
         vec3 visibility = vec3(1);
 		vec3 contribution = vec3(0);

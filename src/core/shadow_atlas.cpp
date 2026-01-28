@@ -786,7 +786,7 @@ ShadowAtlas::Counters ShadowAtlas::prioritize_lights(const std::vector<LightInde
 	{
 		const auto &light = _lights[light_index];
 
-		if(IS_SHADOW_CASTER(light))
+		if(IS_SHADOW_CASTER(light) and IS_ENABLED(light))
 		{
 			const auto value = light_value(light, view_pos, view_forward);
 

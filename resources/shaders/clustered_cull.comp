@@ -64,8 +64,8 @@ void main()
     	uint light_index = ssbo_relevant_lights_index[index];
     	GPULight light = ssbo_lights[light_index];
 
-     	if(light.intensity < 1e-1)
-      		continue;
+     	if(light.intensity < 1e-1 || ! IS_ENABLED(light))
+     		continue;
 
 		vec3 sphere_center = light.position;
 		float sphere_radius = light.affect_radius;
