@@ -191,7 +191,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			static std::string selected_light_label = "< select light >";
 			static LightID selected_light_id = NO_LIGHT_ID;
 			static GPULight Lmut;
-			if(ImGui::BeginCombo("Propertie", selected_light_label.c_str()))
+			if(ImGui::BeginCombo("Properties", selected_light_label.c_str()))
 			{
 				for(auto idx = 0u; idx < _light_mgr.size(); ++idx)
 				{
@@ -200,6 +200,8 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 					label.reserve(32);
 					label.clear();
 					std::format_to(std::back_inserter(label), "[{}] {}", light_id, _light_mgr.type_name(L));
+					if(light_id == _pov_light_id)
+						label.append(" POV");
 					const auto is_selected = selected_light_id == light_id;
 					if(ImGui::Selectable(label.c_str(), is_selected))
 					{
@@ -526,8 +528,20 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 							auto is_selected = selected_light == light_id;
 							label.clear();
 							const auto &L = _light_mgr.get_by_id(light_id);
-							std::format_to(std::back_inserter(label), "{} {}: {} slots", _light_mgr.type_name(L), light_id, atlas_light.num_slots);
+							std::format_to(std::back_inserter(label), "[{}] {}: {} slots", light_id, _light_mgr.type_name(L), atlas_light.num_slots);
+							if(light_id == _pov_light_id)
+								label.append(" pov");
 							ImGui::Selectable(label.c_str(), is_selected, ImGuiSelectableFlags_Disabled);
+
+							static const char *face_names[] = {
+								" left",
+								" right",
+								" up",
+								" down",
+								" forw.",
+								" backw.",
+
+							};
 
 							for(auto slot = 0u; slot < atlas_light.num_slots; ++slot)
 							{
@@ -536,6 +550,8 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 								label.clear();
 								// TODO: instead of "slot", use "cascade N" or "+X", etc. (depending on light type)
 								std::format_to(std::back_inserter(label), "  {}: slot {} ({})", light_id, slot, atlas_light.slots[slot].size);
+								if(IS_POINT_LIGHT(L))
+									label.append(face_names[slot]);
 								if(ImGui::Selectable(label.c_str(), is_slot_selected))
 								{
 									selected_light = light_id;
