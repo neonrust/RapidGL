@@ -895,6 +895,10 @@ void ClusteredShading::input()
 	else if(Input::isKeyDown(KeyCode::Minus))
 		m_camera_fov = std::max(m_camera_fov - 0.5f, 3.f);
 
+	if(_pov_light_id != NO_LIGHT_ID and Input::wasKeyPressed(KeyCode::P))
+		_light_mgr.set_enabled(_pov_light_id, not _light_mgr.is_enabled(_pov_light_id));
+
+
 	if (Input::wasKeyReleased(KeyCode::F12))
     {
 		// TODO: add "slot numer" suffix
