@@ -146,6 +146,9 @@ void ClusteredShading::debugDrawLightMarkers()
 	for(const auto &light_index: _lightsPvs)
 	{
 		const auto &L = _light_mgr[light_index];
+		const auto light_id = _light_mgr.light_id(light_index);
+		if(light_id == _pov_light_id)
+			continue;
 
 		const auto to_light = L.position - m_camera.position();
 		float distance_sq = glm::dot(to_light, to_light);
