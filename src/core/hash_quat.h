@@ -6,7 +6,7 @@
 namespace std
 {
 template<>
-struct hash<glm::vec4>
+struct hash<glm::quat>
 {
 	[[nodiscard]] inline size_t operator()(const glm::quat &q) const
 	{

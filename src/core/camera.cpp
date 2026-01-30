@@ -5,6 +5,7 @@
 #include "hash_combine.h"
 #include "hash_vec3.h"   // IWYU pragma: keep
 #include "hash_mat4.h"   // IWYU pragma: keep
+#include "hash_quat.h"   // IWYU pragma: keep
 
 using namespace std::literals;
 
