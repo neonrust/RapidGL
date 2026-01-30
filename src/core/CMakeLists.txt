@@ -68,6 +68,7 @@ set(HEADER_FILES_CORE
 	hash_combine.h
 	hash_mat4.h
 	hash_vec4.h
+	hash_quat.h
 	input.h
 	input_bind.h
 	instance_attributes.h

@@ -206,7 +206,7 @@ size_t Camera::hash() const
 {
 	size_t h { 0 };
 	h = hash_combine(h, m_position);
-	h = hash_combine(h, m_view);
+	h = hash_combine(h, m_orientation);
 	h = hash_combine(h, m_projection);
 	return h;
 }
