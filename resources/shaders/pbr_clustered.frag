@@ -104,7 +104,7 @@ void main()
 
     float camera_distance = distance(u_cam_pos, in_world_pos);
 
-    vec3 radiance = u_ambient_radiance;
+    vec3 radiance = calcAmbience(u_ambient_radiance, material);
 
     // too many lights?
     if(lights_range.count > CLUSTER_MAX_LIGHTS)

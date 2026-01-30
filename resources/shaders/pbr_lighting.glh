@@ -263,6 +263,11 @@ vec3 pbr_dir(GPULight light, vec3 direction, vec3 world_pos, float attenuation, 
 }
 
 
+vec3 calcAmbience(vec3 radiance, MaterialProperties material)
+{
+	return radiance * material.albedo;
+}
+
 vec3 calcPointLight(GPULight light, vec3 world_pos, MaterialProperties material)
 {
     vec3  light_direction = light.position - world_pos;
