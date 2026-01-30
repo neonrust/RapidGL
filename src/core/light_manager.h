@@ -10,6 +10,7 @@
 #include "generated/shared-structs.h"
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
+#include <glm/gtx/compatibility.hpp>
 
 #include <cstddef>
 
@@ -272,7 +273,7 @@ template<typename LT> requires _private::LightType<LT> || _private::LightParamsT
 GPULight LightManager::to_gpu_light(const LT &l) const
 {
 	GPULight L;
-	L.color         = l.color;
+	L.color         = glm::saturate(l.color);  // 'color' should not contain any intensity
 	L.fog_intensity = l.fog;
 
 	static_assert(LIGHT_TYPE__COUNT == 7);
