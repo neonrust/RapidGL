@@ -205,9 +205,9 @@ void Camera::update(double dt)
 size_t Camera::hash() const
 {
 	size_t h { 0 };
-	hash_combine(h, m_position);
-	hash_combine(h, m_view);
-	hash_combine(h, m_projection);
+	h = hash_combine(h, m_position);
+	h = hash_combine(h, m_view);
+	h = hash_combine(h, m_projection);
 	return h;
 }
 
