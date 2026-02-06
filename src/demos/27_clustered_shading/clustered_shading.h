@@ -240,9 +240,9 @@ private:
 	// TODO: need to test with actual HDR jpeg xl image (converting from hdr wasn't successful)
 	std::string_view m_hdr_maps_names[5] = {
 		"../black.hdr",
-		"colorful_studio_4k.hdr",
-		"phalzer_forest_01_4k.hdr",
-		"sunset_fairway_4k.hdr",
+		"colorful_studio_2k.hdr",
+		"phalzer_forest_01_2k.hdr",
+		"sunset_fairway_2k.hdr",
 		"rogland_clear_night_2k.hdr",
 	};
 	uint8_t m_current_hdr_map_idx = 0;
