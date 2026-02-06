@@ -22,6 +22,7 @@ struct Tonemapping : public PostProcess
 
 	void setExposure(float exposure);
 	void setGamma(float gamma);
+	void setSaturation(float saturation);
 
 	void render(const RGL::RenderTarget::Texture2d &in, RGL::RenderTarget::Texture2d &out) override;
 

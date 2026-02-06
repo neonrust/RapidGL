@@ -20,6 +20,8 @@ void Tonemapping::create()
 	_shader->link();
 	assert(*_shader.get());
 
+	setSaturation(1.f);
+
 	glCreateVertexArrays(1, &_dummy_vao_id);
 }
 
@@ -54,6 +56,11 @@ void Tonemapping::setExposure(float exposure)
 void Tonemapping::setGamma(float gamma)
 {
 	_shader->setUniform("u_gamma"sv, gamma);
+}
+
+void Tonemapping::setSaturation(float saturation)
+{
+	_shader->setUniform("u_saturation"sv, saturation);
 }
 
 } // RGL:PP

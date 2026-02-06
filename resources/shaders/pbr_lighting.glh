@@ -41,6 +41,7 @@ uniform vec3  u_emission;
 uniform float u_emission_strength;
 
 uniform vec3  u_cam_pos;
+uniform float u_ibl_strength;
 uniform float u_specular_max_distance;
 uniform uint u_csm_num_cascades;
 uniform float u_csm_cascade_far[4];
@@ -174,7 +175,7 @@ vec3 indirectLightingIBL(vec3 world_pos, MaterialProperties material)
     vec3 specular           =  prefiletered_color * (F * brdf.x + brdf.y);
 
     // total indirect lighting
-    return (kd * diffuse + specular) * material.ao;
+    return (kd * diffuse + specular) * material.ao * u_ibl_strength;
 }
 
 vec3 pbr(GPULight light, vec3 direction, vec3 world_pos, float attenuation, MaterialProperties material)

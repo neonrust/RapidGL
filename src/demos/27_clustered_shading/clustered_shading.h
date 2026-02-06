@@ -186,6 +186,7 @@ private:
 
 	glm::vec3 _ambient_radiance            { 0.023f, 0.023f, 0.023f };
 	float m_shadow_occlusion             = 0.8f;
+	float _ibl_strength                  = 1.f;
 	float m_shadow_bias_constant         = -0.0001f;
 	float m_shadow_bias_slope_scale      = 0.09f;
 	float m_shadow_bias_slope_power      = 0.02f;
@@ -235,7 +236,7 @@ private:
 	RGL::PP::Volumetrics m_volumetrics_pp;
 	RGL::RenderTarget::Texture2d _final_rt;
 
-	float m_background_mip_level;
+	float _ibl_mip_level;
 	// TODO: need to test with actual HDR jpeg xl image (converting from hdr wasn't successful)
 	std::string_view m_hdr_maps_names[5] = {
 		"../black.hdr",

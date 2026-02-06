@@ -87,7 +87,7 @@ ClusteredShading::ClusteredShading() :
 	m_shadow_map_slots_ssbo("shadow-map-slots"sv),
 	m_exposure            (0.4f),
 	m_gamma               (2.2f),
-	m_background_mip_level(1.2f),
+	_ibl_mip_level(1.2f),
 	m_skybox_vao          (0),
 	m_skybox_vbo          (0),
 	m_bloom_threshold     (1.5f),
@@ -1721,7 +1721,7 @@ void ClusteredShading::renderSkybox()
 	m_background_shader->bind();
 	m_camera.setUniforms(*m_background_shader);
 	m_background_shader->setUniform("u_view_orientation"sv, glm::mat4(glm::mat3(m_camera.viewTransform())));  // only rotational part
-	m_background_shader->setUniform("u_mip_level"sv,        m_background_mip_level);
+	m_background_shader->setUniform("u_mip_level"sv,        _ibl_mip_level);
 	m_env_cubemap_rt->bindTexture();
 
 	glBindVertexArray(m_skybox_vao);
@@ -2089,7 +2089,6 @@ void ClusteredShading::renderScene(const glm::mat4 &view_projection, Shader &sha
 		shader.setUniform("u_mvp"sv,   view_projection * obj.transform);
 		shader.setUniform("u_model"sv, obj.transform);
 		shader.setUniform("u_normal_matrix"sv, glm::transpose(glm::inverse(glm::mat3(obj.transform))));
-		shader.setUniform("u_falloff_power"sv, _light_mgr.falloff_power());
 
 		if(materialCtrl == UseMaterials)
 			obj.model->Render(shader);
@@ -2149,6 +2148,8 @@ void ClusteredShading::renderSceneShading(const Camera &camera)
 	m_clustered_pbr_shader->setUniform("u_shadow_max_distance"sv,        m_camera.farPlane() * s_light_shadow_affect_fraction);
 	//m_clustered_pbr_shader->setUniform("u_specular_max_distance"sv,      m_camera.farPlane() * s_light_specular_fraction);
 	m_clustered_pbr_shader->setUniform("u_ambient_radiance"sv,           _ambient_radiance);
+	m_clustered_pbr_shader->setUniform("u_ibl_strength"sv,               _ibl_strength);
+	m_clustered_pbr_shader->setUniform("u_falloff_power"sv,              _light_mgr.falloff_power());
 
 	m_clustered_pbr_shader->setUniform("u_debug_cluster_geom"sv,         m_debug_cluster_geom);
 	m_clustered_pbr_shader->setUniform("u_debug_clusters_occupancy"sv,   m_debug_clusters_occupancy);
