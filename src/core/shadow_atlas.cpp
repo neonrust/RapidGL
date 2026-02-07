@@ -578,6 +578,18 @@ std::tuple<glm::mat4, float, float> ShadowAtlas::light_view_projection(const GPU
 	return { glm::mat4(1), -1, -1 };
 }
 
+	   // frustum corners in NFC space (always the same)
+static constexpr std::array<glm::vec4, 8> s_frustum_corners_ndc = {
+	glm::vec4(-1, -1, -1,  1),
+	glm::vec4(-1, -1,  1,  1),
+	glm::vec4(-1,  1, -1,  1),
+	glm::vec4(-1,  1,  1,  1),
+	glm::vec4( 1, -1, -1,  1),
+	glm::vec4( 1, -1,  1,  1),
+	glm::vec4( 1,  1, -1,  1),
+	glm::vec4( 1,  1,  1,  1),
+};
+
 const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, const Camera &camera)//, float radius_uv)
 {
 	// TODO: move to ShadowAtlas ?
@@ -608,22 +620,16 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 	const float camera_range = camera.farPlane() - camera.nearPlane();
 	const float range_scale = shadow_range / camera_range;
 
-	// frustum corners in NFC space (always the same)
-	static constexpr std::array<glm::vec4, 8> frustum_corners_ndc = {
-		glm::vec4(-1, -1, -1,  1),
-		glm::vec4(-1, -1,  1,  1),
-		glm::vec4(-1,  1, -1,  1),
-		glm::vec4(-1,  1,  1,  1),
-		glm::vec4( 1, -1, -1,  1),
-		glm::vec4( 1, -1,  1,  1),
-		glm::vec4( 1,  1, -1,  1),
-		glm::vec4( 1,  1,  1,  1),
-	};
-
-	float last_split_depth  = camera.nearPlane();
+	float previous_split_far  = camera.nearPlane();
 
 	// Log::debug("cam   pos: {:.2f}; {:.2f}; {:.2f}", camera.position().x, camera.position().y, camera.position().z);
 	// Log::debug("light dir: {:.5f}; {:.5f}; {:.5f}", sun.direction.x, sun.direction.y, sun.direction.z);
+
+#define STABLE_PROJECTION
+#define BOUNDS_RADIUS  0x01
+#define BOUNDS_AABB    0x02
+#define BOUNDS_MODE BOUNDS_RADIUS
+// #define BOUNDS_MODE BOUNDS_AABB
 
 	for(auto cascade = 0u; cascade < num_cascades; ++cascade)
 	{
@@ -633,12 +639,10 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 		float d_linear = near_z + clip_range * p;
 		float d_mix    = glm::mix(d_linear, d_log, _csm_frustum_split_mix);
 
-		const float split_depth = camera.nearPlane() + (d_mix - camera.nearPlane())*range_scale;
-		_csm_params.far_plane[cascade] = -split_depth;  // store depth to the far side of the split
+		const auto split_near = previous_split_far;
+		const float split_far = camera.nearPlane() + (d_mix - camera.nearPlane())*range_scale;
+		_csm_params.far_plane[cascade] = -split_far;  // store depth to the far side of the split
 
-		// make afrustum slice (between last_split_dist and split_dist)
-		const auto split_near = last_split_depth;
-		const auto split_far  = split_depth;
 		//   also the center point as we go
 		auto cascade_center_ws = glm::vec3(0);
 
@@ -648,17 +652,17 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 		std::array<glm::vec3, 8> cascade_corners_ws;
 		for(auto idx = 0u; idx < 8; ++idx)
 		{
-			auto corner_ws = inv_view_proj * frustum_corners_ndc[idx];
+			auto corner_ws = inv_view_proj * s_frustum_corners_ndc[idx];
 			corner_ws /= corner_ws.w;
 			cascade_corners_ws[idx] = corner_ws;
 			cascade_center_ws += glm::vec3(corner_ws);
 		}
 		cascade_center_ws /= 8.f;
 
-		// Log::debug("cascade {}: {:.2f} ⯈ {:.2f}", cascade, split_near, split_far);
-
+#if BOUNDS_MODE == BOUNDS_AABB
 		const auto light_pos = cascade_center_ws - sun.direction;
 		auto light_view = glm::lookAt(light_pos, cascade_center_ws, AXIS_Y);
+#endif
 
 		// Log::debug("   light 'pos': {:.5f}; {:.5f}; {:.5f}", light_pos.x, light_pos.y, light_pos.z);
 		// Log::debug("   WS center: {:.5f}; {:.5f}; {:.5f}", cascade_center_ws.x, cascade_center_ws.y, cascade_center_ws.z);
@@ -668,32 +672,37 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 
 		// build AABB in light-space
 		bounds::AABB cascade_aabb_ls;
+		float radius_sq = 0.f;
 		for(const auto &corner_ws: cascade_corners_ws)
 		{
+			const auto to_corner_ws = corner_ws - cascade_center_ws;
+			radius_sq = std::max(radius_sq, glm::dot(to_corner_ws, to_corner_ws));
+
+#if BOUNDS_MODE == BOUNDS_AABB
 			const auto corner_ls = light_view * glm::vec4(corner_ws, 1.f);
 			cascade_aabb_ls.expand(corner_ls);
-
 			// Log::debug("  WS {:5.5f}; {:5.5f}; {:5.5f} ⯈ LS {:5.2f}; {:5.2f}; {:5.2f}", corner_ws.x, corner_ws.y, corner_ws.z, corner_ls.x, corner_ls.y, corner_ls.z);
+#endif
 		}
+
+#if BOUNDS_MODE == BOUNDS_RADIUS
+		[[maybe_unused]] const auto cascade_radius = std::sqrt(radius_sq);
+#endif
 
 #if 1
 		// TODO: round extents to even texel
 		//   see https://alextardif.com/shadowmapping.html
 #endif
 
-#if 1
-		// expand the z extent "outwards"
+		const auto z_offset = _csm_cascade_backoff;
+
+#if BOUNDS_MODE == BOUNDS_AABB
+#if 0
+	  // expand the z extent "outwards"
 		auto minZ = cascade_aabb_ls.min().z;
 		auto maxZ = cascade_aabb_ls.max().z;
-		static constexpr auto z_offset = 10.f;
 		minZ *= minZ < 0? z_offset: 1/z_offset;
 		maxZ *= maxZ < 0? 1/z_offset: z_offset;
-#else
-		const auto minZ = cascade_aabb_ls.min().z;
-		const auto maxZ = cascade_aabb_ls.max().z;
-#endif
-
-#if 0
 		auto light_projection = glm::ortho(cascade_aabb_ls.min().x, cascade_aabb_ls.max().x,
 										   cascade_aabb_ls.min().y, cascade_aabb_ls.max().y,
 										   minZ, maxZ);
@@ -709,10 +718,30 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 										   mid_y - max_dim, mid_y + max_dim,
 										   minZ, maxZ);
 #endif
+#endif
+
+#if BOUNDS_MODE == BOUNDS_RADIUS
+		const auto max_extents = glm::vec3(cascade_radius);
+		const auto min_extents = -max_extents;
+
+		auto minZ = min_extents.z;
+		auto maxZ = max_extents.z;
+		// extend Z outwards (but seems to ruin bias of cascade 0)
+		minZ *= minZ < 0? z_offset: 1/z_offset;
+		// maxZ *= maxZ < 0? 1/z_offset: z_offset;
+
+		// TODO: maybe move light far enough back so the AABBs of the objects fit in the ortho box ?
+		auto light_projection_distance = minZ;
+
+		auto light_view = glm::lookAt(cascade_center_ws - sun.direction * -light_projection_distance, cascade_center_ws, AXIS_Y);
+		auto light_projection = glm::ortho(min_extents.x, max_extents.x, min_extents.y, max_extents.y, 0.f, maxZ - minZ);
+#endif
+
 		auto light_vp = light_projection * light_view;
 
-#if 1
+#if defined(STABLE_PROJECTION)
 		// apply "stabilization" logic; to reduce pixel "swimming" when camera moves
+		// this seems to only work using the "radius" bounds method above
 		const auto shadow_size = float(atlas_light.slots[cascade].size);
 		auto shadow_origin = light_vp * glm::vec4(0, 0, 0, 1);
 		shadow_origin *= shadow_size / 2.f;
@@ -729,16 +758,26 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 
 		_csm_params.view[cascade] = light_view;
 		_csm_params.view_projection[cascade] = light_vp;
+
 #if 0
-		Log::debug("   extent: {:>5.2f}⯈{:>5.2f} x {:>5.2f}⯈{:>5.2f} x {:>6.2f}⯈{:>6.2f}",
-				   cascade_aabb_ls.min().x, cascade_aabb_ls.max().x,
-				   cascade_aabb_ls.min().y, cascade_aabb_ls.max().y,
-				   cascade_aabb_ls.min().z, cascade_aabb_ls.max().z
+		// Log::debug("cascade {}  (F: {:5.1f}):  extent: {:>5.2f}⯈{:>5.2f} x {:>5.2f}⯈{:>5.2f} x {:>6.2f}⯈{:>6.2f}  C: {:.1f}; {:.1f}; {:.1f}  R: {:.1f}",
+		// 		   cascade,
+		// 		   split_far,
+		// 		   cascade_aabb_ls.min().x, cascade_aabb_ls.max().x,
+		// 		   cascade_aabb_ls.min().y, cascade_aabb_ls.max().y,
+		// 		   cascade_aabb_ls.min().z, cascade_aabb_ls.max().z,
+		// 		   cascade_center_ws.x, cascade_center_ws.y, cascade_center_ws.z,
+		// 		   );
+		Log::debug("cascade {}  F:{:>5.1f}  C:{:>5.1f};{:>5.1f};{:>5.1f}  R:{:>5.1f}",
+				   cascade,
+				   split_far,
+				   cascade_center_ws.x, cascade_center_ws.y, cascade_center_ws.z,
+				   cascade_radius
 				   );
 #endif
 		_csm_params.depth_range[cascade] = { cascade_aabb_ls.min().z, cascade_aabb_ls.max().z };
 
-		last_split_depth = split_depth;
+		previous_split_far = split_far;
 	}
 
 	// std::exit(42);

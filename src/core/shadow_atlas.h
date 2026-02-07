@@ -119,6 +119,8 @@ public:
 		assert(num_cascades >= 1 and num_cascades <= MAX_CASCADES);
 		_sun_num_cascades = num_cascades;
 	}
+	inline float csm_backoff() const { return _csm_cascade_backoff; }
+	inline void set_csm_backoff(float backoff) { _csm_cascade_backoff = backoff; }
 
 	size_t eval_lights(const std::vector<LightIndex> &relevant_lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward);
 
@@ -207,9 +209,10 @@ private:
 	dense_map<LightID, AtlasLight> _id_to_allocated;
 
 	size_t _total_num_slots;
-	uint_fast8_t _sun_num_cascades { 4 };
+	uint_fast8_t _sun_num_cascades { 3 };
 	LightID _sun_id { NO_LIGHT_ID };
-	float _csm_frustum_split_mix = 0.7f;  // 0 = linear, 1 = logarithic
+	float _csm_frustum_split_mix { 0.7f };  // 0 = linear, 1 = logarithic
+	float _csm_cascade_backoff { 10.f };
 	CSMParams _csm_params;
 
 	float _min_light_radius { .5f };

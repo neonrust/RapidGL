@@ -387,6 +387,10 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 		{
 			ImGui::Checkbox("Colorize shadow slots", &_debug_colorize_shadows);
 			ImGui::SliderFloat("Shadow occlusion",   &m_shadow_occlusion,            0.f,    1.f,   "%.2f");
+			auto backoff = _shadow_atlas.csm_backoff();
+			if(ImGui::SliderFloat("CSM backoff distance", &backoff, 1.f, 100.f, "%.1f"))
+				_shadow_atlas.set_csm_backoff(backoff);
+			ImGui::SliderFloat("Shadow occlusion",   &m_shadow_occlusion,            0.05f,  1.f,   "%.2f");
 			ImGui::SliderFloat("Bias constant",      &m_shadow_bias_constant,       -0.03f,  0.03f, "%.4f");
 			ImGui::SliderFloat("Bias slope scale",   &m_shadow_bias_slope_scale,    -5.f,    5.f,   "%.2f");
 			ImGui::SliderFloat("Bias slope power",   &m_shadow_bias_slope_power,     0.01f,  5.f,   "%.3f");
