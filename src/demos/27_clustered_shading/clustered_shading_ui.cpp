@@ -188,91 +188,14 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			ImGui::SliderFloat("Animation Speed",   &m_animation_speed, 0.0f, 15.0f, "%.1f");
 
 			ImGui::PopItemWidth();
-
-			static std::string selected_light_label = "< select light >";
-			static LightID selected_light_id = NO_LIGHT_ID;
-			static GPULight Lmut;
-			if(ImGui::BeginCombo("Properties", selected_light_label.c_str()))
-			{
-				for(auto idx = 0u; idx < _light_mgr.size(); ++idx)
-				{
-					const auto &[light_id, L] = _light_mgr.at(idx);
-					static std::string label;
-					label.reserve(32);
-					label.clear();
-					std::format_to(std::back_inserter(label), "[{}] {}", light_id, _light_mgr.type_name(L));
-					if(light_id == _pov_light_id)
-						label.append(" POV");
-					const auto is_selected = selected_light_id == light_id;
-					if(ImGui::Selectable(label.c_str(), is_selected))
-					{
-						selected_light_id = light_id;
-						selected_light_label = label;
-						Lmut = _light_mgr.get_by_id(selected_light_id); // a copy, to modify it
-					}
-
-					if(is_selected)
-						ImGui::SetItemDefaultFocus();
-				}
-				ImGui::EndCombo();
-			}
-
-			if(selected_light_id != NO_LIGHT_ID)
-			{
-				// NOTE: this will not be updated by changes to lights made elsewhere
-
-				if(ImGui::ColorEdit3("Color", glm::value_ptr(Lmut.color)))
-				{
-					const auto color = Lmut.color;
-					Lmut = _light_mgr.get_by_id(selected_light_id); // a copy, to modify it
-					Lmut.color = color;
-					_light_mgr.set(selected_light_id, Lmut);
-				}
-				if(ImGui::SliderFloat("Intensity", &Lmut.intensity, 1, 1000, "%.0f"))
-				{
-					const auto intensity = Lmut.intensity;
-					Lmut = _light_mgr.get_by_id(selected_light_id); // a copy, to modify it
-					_light_mgr.set_intensity(Lmut, intensity);
-					_light_mgr.set(selected_light_id, Lmut);
-				}
-
-				auto cast_shadows = IS_SHADOW_CASTER(Lmut);
-				if(ImGui::Checkbox("Cast shadow", &cast_shadows))
-				{
-					Lmut = _light_mgr.get_by_id(selected_light_id); // a copy, to modify it
-					if(cast_shadows)
-						Lmut.type_flags |= LIGHT_SHADOW_CASTER;
-					else
-						Lmut.type_flags &= ~LIGHT_SHADOW_CASTER;
-					_light_mgr.set(selected_light_id, Lmut);
-				}
-
-				auto is_volumetric = IS_VOLUMETRIC(Lmut);
-				if(ImGui::Checkbox("Volumetric", &is_volumetric))
-				{
-					Lmut = _light_mgr.get_by_id(selected_light_id); // a copy, to modify it
-					if(is_volumetric)
-						Lmut.type_flags |= LIGHT_VOLUMETRIC;
-					else
-						Lmut.type_flags &= ~LIGHT_VOLUMETRIC;
-					_light_mgr.set(selected_light_id, Lmut);
-				}
-
-				if(selected_light_id == _pov_light_id)
-					ImGui::SliderFloat("Distance", &_pov_light_distance, -5.f, 5.f, "%.1f");
-
-				// more properties...
-
-				if(ImGui::Button("Move / rotate"))
-					Log::info("Not yet");
-			}
-
 		}
 
 		if (ImGui::CollapsingHeader("Tonemapper"))
 		{
 			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.5f);
-			ImGui::SliderFloat("Exposure",             &m_exposure,             0.f, 10.f, "%.1f");
+			static float exposure = m_camera.exposure();
+			if(ImGui::SliderFloat("Exposure",             &exposure,             0.f, 10.f, "%.1f"))
+				m_camera.setExposure(exposure);
 			ImGui::SliderFloat("Gamma",                &m_gamma,                0.f, 10.f, "%.1f");
 			static float saturation { 1.f };
 			if(ImGui::SliderFloat("Saturation",        &saturation,             0.f, 5.0f, "%.1f"))

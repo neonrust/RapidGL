@@ -88,6 +88,9 @@ public:
 
 	inline glm::uvec2 viewportSize() const { return { m_width, m_height }; }
 
+	inline float exposure() const { return _exposure; }
+	inline void setExposure(float exposure) { _exposure = exposure; }
+
 	size_t hash() const;
 
 private:
@@ -117,6 +120,7 @@ private:
 	float _yaw;
 	float _pitch;
 	Frustum _frustum;
+	float _exposure { .4f };
 
 	glm::quat m_orientation;
 	glm::vec3 m_position;
@@ -134,7 +138,6 @@ private:
 	glm::ivec2 m_mouse_pressed_position;
 	bool       m_is_dirty;
 	bool       m_is_mouse_move;
-
 };
 
 } // RGL

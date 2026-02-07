@@ -85,7 +85,6 @@ ClusteredShading::ClusteredShading() :
 	m_affecting_lights_bitfield_ssbo("affecting-lights-bitfield"sv),
 	_relevant_lights_index_ssbo("relevant-lights-index"sv),
 	m_shadow_map_slots_ssbo("shadow-map-slots"sv),
-	m_exposure            (0.4f),
 	m_gamma               (2.2f),
 	_ibl_mip_level(1.2f),
 	m_skybox_vao          (0),
@@ -1580,7 +1579,7 @@ void ClusteredShading::render()
 
 	// Apply tone mapping
 	// TODO: continuously adjust 'm_exposure' depending on how bright the image is (see above)
-	m_tmo_pp.setExposure(m_exposure);
+	m_tmo_pp.setExposure(m_camera.exposure());
 	m_tmo_pp.setGamma(m_gamma);
 	m_tmo_pp.render(_rt, _final_rt);
 

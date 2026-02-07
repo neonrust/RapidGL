@@ -231,7 +231,6 @@ private:
 	RGL::RenderTarget::Texture2d _pp_low_rt;
 	RGL::RenderTarget::Texture2d _pp_full_rt;
 	RGL::PP::Tonemapping m_tmo_pp;
-	float m_exposure;
 	float m_gamma;
 	RGL::PP::Volumetrics m_volumetrics_pp;
 	RGL::RenderTarget::Texture2d _final_rt;
