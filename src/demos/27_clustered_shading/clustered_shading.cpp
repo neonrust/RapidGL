@@ -1747,15 +1747,17 @@ void ClusteredShading::renderLightGeometry()
 	surf_attrs.reserve(_lightsPvs.size());
 	surf_attrs.clear();
 
+	// TODO: (optionally) render point/spots in some way? e.g. a circular glare?
+
 	static_assert(LIGHT_TYPE__COUNT == 7);
 	for(const auto &light_type: { LIGHT_TYPE_RECT, LIGHT_TYPE_TUBE, LIGHT_TYPE_SPHERE, LIGHT_TYPE_DISC })
 	{
-		// collect surface lights
+		// collect lights geometries for this light type
 		surf_attrs.clear();
 		for(auto light_index: _lightsPvs)
 		{
 			const auto &L = _light_mgr[light_index];
-			if(IS_VISIBLE_SURFACE(L) and IS_LIGHT_TYPE(L, light_type))
+			if(IS_ENABLED(L) and IS_VISIBLE_SURFACE(L) and IS_LIGHT_TYPE(L, light_type))
 			{
 				switch(GET_LIGHT_TYPE(L))
 				{
@@ -1833,11 +1835,10 @@ void ClusteredShading::renderLightGeometry()
 	}
 
 	// draw "sun"   (or just draw all directional lights?)
-	if(auto sun_id = _shadow_atlas.sun_id(); sun_id != NO_LIGHT_ID)  // TODO: LightManager should probably keep track of this
+	if(auto sun_id = _shadow_atlas.sun_id(); sun_id != NO_LIGHT_ID and _light_mgr.is_enabled(sun_id))  // TODO: LightManager should probably keep track of this
 	{
 		// draw a "sun" disc (or moon, I suppose); only supports one
 		const auto &L = _light_mgr.get_by_id(sun_id);
-
 		const auto cam_pos = m_camera.position();
 		const auto cam_up = m_camera.upVector();           // e.g. AXIS_Y
 		const auto sun_dir_world = L.direction; // direction light -> scene?
