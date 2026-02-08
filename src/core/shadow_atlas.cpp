@@ -592,8 +592,12 @@ static constexpr std::array<glm::vec4, 8> s_frustum_corners_ndc = {
 
 const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, const Camera &camera)//, float radius_uv)
 {
-	// TODO: move to ShadowAtlas ?
-	//   if so, also move view_projection() ?
+	const auto &sun = _lights.get_by_id(light_id);
+	if(not IS_ENABLED(sun))
+	{
+		_csm_params.clear();
+		return _csm_params;
+	}
 
 	auto found = _id_to_allocated.find(light_id);
 	if(found == _id_to_allocated.end())
