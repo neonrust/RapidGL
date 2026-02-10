@@ -16,11 +16,13 @@ layout (location = 4) out vec3 out_normal;
 
 void main()
 {
-    out_world_pos = vec3(u_model * vec4(in_pos,          1));
-	out_view_pos  = vec3(u_view * u_model * vec4(in_pos, 1));
+	out_world_pos = (u_model * vec4(in_pos, 1)).xyz;
+	out_view_pos  = (u_view * vec4(out_world_pos, 1)).xyz;//u_model * vec4(in_pos, 1));
 	out_clip_pos  = u_mvp * vec4(in_pos, 1);
-    out_texcoord  = in_texcoord;
-    out_normal    = u_normal_matrix * in_normal;
+	out_texcoord  = in_texcoord;
+	out_normal    = u_normal_matrix * in_normal;
 
-    gl_Position = out_clip_pos;
+	gl_Position = out_clip_pos;
+
+
 }
