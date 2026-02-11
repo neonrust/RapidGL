@@ -456,6 +456,15 @@ void Texture3D::copyTo(Texture3D &dest)
 					   depth);
 }
 
+void Texture3D::Upload(void *data, size_t length)
+{
+	assert(length == 2*sizeof(float)*m_metadata.width*m_metadata.height*m_metadata.depth);
+	// TODO: deduce 'format' and 'type' arguments
+	glTextureSubImage3D(_texture_id, 0 /* level */, 0 /* xoffset */, 0 /* yoffset */, 0/* zoffset */,
+						GLsizei(m_metadata.width), GLsizei(m_metadata.height), GLsizei(m_metadata.depth),
+						GL_RG, GL_FLOAT, data);
+}
+
 // --------------------- Texture2D -------------------------
 
 bool Texture2D::Load(const std::filesystem::path& filepath, bool is_srgb, uint32_t num_mipmaps)

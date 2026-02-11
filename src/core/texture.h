@@ -303,6 +303,8 @@ public:
 	bool Create(size_t width, size_t height, size_t depth, GLenum internalFormat, size_t num_mipmaps=DefaultMipmaps);
 
 	void copyTo(Texture3D &dest);
+
+	void Upload(void *data, size_t length);
 };
 
 
