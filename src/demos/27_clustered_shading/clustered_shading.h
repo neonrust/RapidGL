@@ -237,12 +237,13 @@ private:
 
 	float _ibl_mip_level;
 	// TODO: need to test with actual HDR jpeg xl image (converting from hdr wasn't successful)
-	std::string_view m_hdr_maps_names[5] = {
+	std::string_view m_hdr_maps_names[6] = {
 		"../black.hdr",
 		"colorful_studio_2k.hdr",
 		"phalzer_forest_01_2k.hdr",
 		"sunset_fairway_2k.hdr",
 		"rogland_clear_night_2k.hdr",
+		"citrus_orchard_puresky_2k.hdr",
 	};
 	uint8_t m_current_hdr_map_idx = 0;
 
