@@ -1,6 +1,6 @@
 {
 	"asset":{
-		"generator":"Khronos glTF Blender I/O v4.4.55",
+		"generator":"Khronos glTF Blender I/O v5.0.21",
 		"version":"2.0"
 	},
 	"scene":0,
@@ -15,7 +15,12 @@
 	"nodes":[
 		{
 			"mesh":0,
-			"name":"Plane"
+			"name":"Plane",
+			"translation":[
+				0,
+				-0.5,
+				0
+			]
 		}
 	],
 	"materials":[
@@ -43,9 +48,10 @@
 					"attributes":{
 						"POSITION":0,
 						"NORMAL":1,
-						"TEXCOORD_0":2
+						"TEXCOORD_0":2,
+						"TANGENT":3
 					},
-					"indices":3,
+					"indices":4,
 					"material":0
 				}
 			]
@@ -68,79 +74,91 @@
 	"images":[
 		{
 			"mimeType":"image/png",
-			"name":"concrete034_1K_normal",
-			"uri":"concrete034_1K_normal.png"
+			"name":"concrete034_1K_normal.png.001",
+			"uri":"../textures/pbr/concrete034_1k/concrete034_1K_normal.png"
 		},
 		{
 			"mimeType":"image/png",
-			"name":"concrete034_1K_color",
-			"uri":"concrete034_1K_color.png"
+			"name":"concrete034_1K_color.png.001",
+			"uri":"../textures/pbr/concrete034_1k/concrete034_1K_color.png"
 		},
 		{
 			"mimeType":"image/png",
-			"name":"concrete034_1K_metallic-concrete034_1K_roughness.png",
-			"uri":"concrete034_1K_metallic-concrete034_1K_roughness_png.png"
+			"name":"concrete034_1K_roughness.png.001",
+			"uri":"../textures/pbr/concrete034_1k/concrete034_1K_roughness.png"
 		}
 	],
 	"accessors":[
 		{
 			"bufferView":0,
 			"componentType":5126,
-			"count":25,
+			"count":90,
 			"max":[
-				9.999999046325684,
-				0,
-				9.999999046325684
+				20,
+				0.5,
+				20
 			],
 			"min":[
-				-9.999999046325684,
+				-20,
 				0,
-				-9.999999046325684
+				-20
 			],
 			"type":"VEC3"
 		},
 		{
 			"bufferView":1,
 			"componentType":5126,
-			"count":25,
+			"count":90,
 			"type":"VEC3"
 		},
 		{
 			"bufferView":2,
 			"componentType":5126,
-			"count":25,
+			"count":90,
 			"type":"VEC2"
 		},
 		{
 			"bufferView":3,
+			"componentType":5126,
+			"count":90,
+			"type":"VEC4"
+		},
+		{
+			"bufferView":4,
 			"componentType":5123,
-			"count":96,
+			"count":288,
 			"type":"SCALAR"
 		}
 	],
 	"bufferViews":[
 		{
 			"buffer":0,
-			"byteLength":300,
+			"byteLength":1080,
 			"byteOffset":0,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":300,
-			"byteOffset":300,
+			"byteLength":1080,
+			"byteOffset":1080,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":200,
-			"byteOffset":600,
+			"byteLength":720,
+			"byteOffset":2160,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":192,
-			"byteOffset":800,
+			"byteLength":1440,
+			"byteOffset":2880,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":576,
+			"byteOffset":4320,
 			"target":34963
 		}
 	],
@@ -152,7 +170,7 @@
 	],
 	"buffers":[
 		{
-			"byteLength":992,
+			"byteLength":4896,
 			"uri":"floor.bin"
 		}
 	]
