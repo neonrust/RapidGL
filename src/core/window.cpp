@@ -47,11 +47,15 @@ void Window::createWindow(unsigned int width, unsigned int height, const std::st
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, MIN_GL_VERSION_MINOR);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 	glfwWindowHint(GLFW_SAMPLES, 4);
 
 #ifdef _DEBUG
 	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 #endif
+
+	auto screen_w = 0;
+	auto screen_h = 0;
 
 	{
 		int num_monitors { 0 };
@@ -71,6 +75,12 @@ void Window::createWindow(unsigned int width, unsigned int height, const std::st
 					   mode->width, mode->height, bits, mode->refreshRate,
 					   mm_width, mm_height,
 					   is_primary?"  [primary]": "");
+
+			if(is_primary)
+			{
+				screen_w = mode->width;
+				screen_h = mode->height;
+			}
 		}
 		// glfwSetMonitorCallback()
 		// glfwSetGamma()
@@ -88,6 +98,9 @@ void Window::createWindow(unsigned int width, unsigned int height, const std::st
 		glfwTerminate();
 		exit(EXIT_FAILURE);
 	}
+
+	// always open the window in a predictable position (if not full screen)
+	glfwSetWindowPos(m_window, screen_w - int(m_window_size.x) - 4, 40);
 
 	glfwMakeContextCurrent(m_window);
 
@@ -143,11 +156,12 @@ void Window::createWindow(unsigned int width, unsigned int height, const std::st
 
 	glViewport(0, 0, GLsizei(m_viewport_size.x), GLsizei(m_viewport_size.y));
 	setViewportMatrix(m_viewport_size.x, m_viewport_size.y);
+	glEnable(GL_MULTISAMPLE);
 
 	setVSync(false);
 	glfwSetFramebufferSizeCallback(m_window, framebuffer_size_callback);
 
-	/* Init Input & GUI */
+	// Init Input & GUI
 	Input::init(m_window);
 	GUI::init(m_window);
 
