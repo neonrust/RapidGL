@@ -1,3 +1,5 @@
+const uint MAX_CASCADES = 4; // TODO: should be set from ShadowAtlas::MAX_CASCADES
+
 #include "shared-structs.glh"
 #include "rect_light_ltc.glh"
 #include "shapes.glh"
@@ -13,6 +15,9 @@ layout (location = 1) in vec3 in_world_pos;
 layout (location = 2) in vec3 in_view_pos;
 layout (location = 3) in vec4 in_clip_pos;
 layout (location = 4) in vec3 in_normal;
+
+layout (location = 6)  in vec3 in_csm_light_view_pos[MAX_CASCADES];
+layout (location = 10) in vec3 in_csm_light_uv_pos[MAX_CASCADES];
 
 layout(binding = 0) uniform sampler2D u_albedo_map;
 layout(binding = 1) uniform sampler2D u_normal_map;
@@ -43,9 +48,6 @@ uniform float u_emission_strength;
 uniform vec3  u_cam_pos;
 uniform float u_ibl_strength;
 uniform float u_specular_max_distance;
-uniform uint u_csm_num_cascades;
-uniform float u_csm_cascade_far[4];
-
 
 struct MaterialProperties
 {

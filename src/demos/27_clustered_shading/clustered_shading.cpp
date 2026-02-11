@@ -1498,17 +1498,24 @@ void ClusteredShading::render()
 		m_volumetrics_pp.setDensity(_fog_density);
 		m_volumetrics_pp.setTemporalBlendWeight(_fog_blend_weight);  // if blending is enabled
 
-		m_volumetrics_pp.shader().setUniform("u_light_max_distance"sv,  m_camera.farPlane() * s_light_affect_fraction);
-		m_volumetrics_pp.shader().setUniform("u_shadow_max_distance"sv, m_camera.farPlane() * s_light_shadow_affect_fraction);
-		m_volumetrics_pp.shader().setUniform("u_falloff_power"sv, _light_mgr.falloff_power());
+		auto &shader = m_volumetrics_pp.shader();
+		shader.setUniform("u_light_max_distance"sv,  m_camera.farPlane() * s_light_affect_fraction);
+		shader.setUniform("u_shadow_max_distance"sv, m_camera.farPlane() * s_light_shadow_affect_fraction);
+		shader.setUniform("u_falloff_power"sv, _light_mgr.falloff_power());
 
 
 		if(const auto &csm = _shadow_atlas.csm_params(); csm)
 		{
-			m_volumetrics_pp.shader().setUniform("u_csm_num_cascades"sv,     uint32_t(csm.num_cascades));
-			m_volumetrics_pp.shader().setUniform("u_csm_cascade_far"sv,      csm.far_plane);
-			m_volumetrics_pp.shader().setUniform("u_csm_light_view"sv,       csm.view);
+			shader.setUniform("u_csm_num_cascades"sv,     uint32_t(csm.num_cascades));
+			shader.setUniform("u_csm_cascade_near_far"sv, csm.near_far_plane);
+			shader.setUniform("u_csm_light_radius_uv"sv,  csm.light_radius_uv); // PCSS
+			// needed in vertex shader
+			shader.setUniform("u_csm_light_view_space"sv, csm.light_view);
+			shader.setUniform("u_csm_light_clip_space"sv, csm.light_view_projection); // also in SSBO, but we'd like to avoid accessing that from the vertex shader
 		}
+		else
+			shader.setUniform("u_csm_num_cascades"sv,     0);
+
 
 		_shadow_atlas.bindDepthTextureSampler(22); // just using single-sample, no PCF
 		m_depth_pass_rt.bindDepthTextureSampler(2);
@@ -2138,38 +2145,47 @@ void ClusteredShading::renderSceneShading(const Camera &camera)
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 	glDepthFunc(GL_EQUAL);   // only draw pixels which exactly match the depth pre-pass
 
-    m_clustered_pbr_shader->bind();
+	auto &shader = *m_clustered_pbr_shader;
 
-	camera.setUniforms(*m_clustered_pbr_shader);
-	m_clustered_pbr_shader->setUniform("u_cluster_resolution"sv,         m_cluster_resolution);
-	m_clustered_pbr_shader->setUniform("u_cluster_size_ss"sv,            glm::uvec2(m_cluster_block_size));
-	m_clustered_pbr_shader->setUniform("u_log_cluster_res_y"sv,          m_log_cluster_res_y);
-	m_clustered_pbr_shader->setUniform("u_light_max_distance"sv,         m_camera.farPlane() * s_light_affect_fraction);
-	m_clustered_pbr_shader->setUniform("u_shadow_max_distance"sv,        m_camera.farPlane() * s_light_shadow_affect_fraction);
-	//m_clustered_pbr_shader->setUniform("u_specular_max_distance"sv,      m_camera.farPlane() * s_light_specular_fraction);
-	m_clustered_pbr_shader->setUniform("u_ambient_radiance"sv,           _ambient_radiance);
-	m_clustered_pbr_shader->setUniform("u_ibl_strength"sv,               _ibl_strength);
-	m_clustered_pbr_shader->setUniform("u_falloff_power"sv,              _light_mgr.falloff_power());
+	shader.bind();
 
-	m_clustered_pbr_shader->setUniform("u_debug_cluster_geom"sv,         m_debug_cluster_geom);
-	m_clustered_pbr_shader->setUniform("u_debug_clusters_occupancy"sv,   m_debug_clusters_occupancy);
-	m_clustered_pbr_shader->setUniform("u_debug_tile_occupancy"sv,       m_debug_tile_occupancy);
-	m_clustered_pbr_shader->setUniform("u_debug_overlay_blend"sv,        m_debug_coverlay_blend);
+	camera.setUniforms(shader);
+	shader.setUniform("u_cluster_resolution"sv,         m_cluster_resolution);
+	shader.setUniform("u_cluster_size_ss"sv,            glm::uvec2(m_cluster_block_size));
+	shader.setUniform("u_log_cluster_res_y"sv,          m_log_cluster_res_y);
+	shader.setUniform("u_light_max_distance"sv,         m_camera.farPlane() * s_light_affect_fraction);
+	shader.setUniform("u_shadow_max_distance"sv,        m_camera.farPlane() * s_light_shadow_affect_fraction);
+	//shader.setUniform("u_specular_max_distance"sv,      m_camera.farPlane() * s_light_specular_fraction);
+	shader.setUniform("u_ambient_radiance"sv,           _ambient_radiance);
+	shader.setUniform("u_ibl_strength"sv,               _ibl_strength);
+	shader.setUniform("u_falloff_power"sv,              _light_mgr.falloff_power());
 
-	m_clustered_pbr_shader->setUniform("u_shadow_bias_constant"sv,       m_shadow_bias_constant);
-	m_clustered_pbr_shader->setUniform("u_shadow_bias_slope_scale"sv,    m_shadow_bias_slope_scale);
-	m_clustered_pbr_shader->setUniform("u_shadow_bias_slope_power"sv,    m_shadow_bias_slope_power);
-	m_clustered_pbr_shader->setUniform("u_shadow_bias_distance_scale"sv, m_shadow_bias_distance_scale);
-	m_clustered_pbr_shader->setUniform("u_shadow_bias_texel_size_mix"sv, m_shadow_bias_texel_size_mix);
-	m_clustered_pbr_shader->setUniform("u_shadow_bias_scale"sv,          m_shadow_bias_scale);
-	m_clustered_pbr_shader->setUniform("u_shadow_occlusion"sv,           m_shadow_occlusion);
-	m_clustered_pbr_shader->setUniform("u_shadow_colorize"sv,            _debug_colorize_shadows);
+	shader.setUniform("u_shadow_bias_constant"sv,       m_shadow_bias_constant);
+	shader.setUniform("u_shadow_bias_slope_scale"sv,    m_shadow_bias_slope_scale);
+	shader.setUniform("u_shadow_bias_slope_power"sv,    m_shadow_bias_slope_power);
+	shader.setUniform("u_shadow_bias_distance_scale"sv, m_shadow_bias_distance_scale);
+	shader.setUniform("u_shadow_bias_texel_size_mix"sv, m_shadow_bias_texel_size_mix);
+	shader.setUniform("u_shadow_bias_scale"sv,          m_shadow_bias_scale);
+	shader.setUniform("u_shadow_occlusion"sv,           m_shadow_occlusion);
+	shader.setUniform("u_shadow_colorize"sv,            _debug_colorize_shadows);
 
 	if(const auto &csm = _shadow_atlas.csm_params(); csm)
 	{
-		m_clustered_pbr_shader->setUniform("u_csm_num_cascades"sv,     uint32_t(csm.num_cascades));
-		m_clustered_pbr_shader->setUniform("u_csm_cascade_far"sv,      csm.far_plane);
+		shader.setUniform("u_csm_num_cascades"sv,     uint32_t(csm.num_cascades));
+		shader.setUniform("u_csm_split_depth"sv,      csm.split_depth);
+		shader.setUniform("u_csm_cascade_near_far"sv, csm.near_far_plane);
+		shader.setUniform("u_csm_light_radius_uv"sv,  csm.light_radius_uv); // PCSS
+		// needed in vertex shader
+		shader.setUniform("u_csm_light_view_space"sv, csm.light_view);
+		shader.setUniform("u_csm_light_clip_space"sv, csm.light_view_projection); // also in SSBO, but we'd like to avoid accessing that from the vertex shader
 	}
+	else
+		shader.setUniform("u_csm_num_cascades"sv,     0u);
+
+	shader.setUniform("u_debug_cluster_geom"sv,       m_debug_cluster_geom);
+	shader.setUniform("u_debug_clusters_occupancy"sv, m_debug_clusters_occupancy);
+	shader.setUniform("u_debug_tile_occupancy"sv,     m_debug_tile_occupancy);
+	shader.setUniform("u_debug_overlay_blend"sv,      m_debug_coverlay_blend);
 
     m_irradiance_cubemap_rt->bindTexture(6);
     m_prefiltered_env_map_rt->bindTexture(7);

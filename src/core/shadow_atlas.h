@@ -87,10 +87,12 @@ public:
 	struct CSMParams
 	{
 		size_t num_cascades { 0 };  // valid items in arrays
-		std::array<float, MAX_CASCADES> far_plane;
-		std::array<glm::mat4, MAX_CASCADES> view;
-		std::array<glm::mat4, MAX_CASCADES> view_projection;
+		std::array<float, MAX_CASCADES> split_depth;
+		std::array<glm::mat4, MAX_CASCADES> light_view;
+		std::array<glm::mat4, MAX_CASCADES> light_view_projection;
 		std::array<glm::vec2, MAX_CASCADES> depth_range;
+		std::array<glm::vec2, MAX_CASCADES> near_far_plane;
+		float light_radius_uv;
 
 		inline operator bool () const { return num_cascades >= 1 and num_cascades <= 4; }
 		inline void clear() { num_cascades = 0; }

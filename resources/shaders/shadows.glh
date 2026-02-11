@@ -13,6 +13,11 @@ uniform float u_shadow_bias_slope_power;
 uniform float u_shadow_bias_scale;
 uniform float u_shadow_bias_texel_size_mix;
 
+uniform float u_csm_light_radius_uv;  // PCSS
+uniform uint  u_csm_num_cascades;
+uniform float u_csm_split_depth[MAX_CASCADES];
+uniform vec2  u_csm_cascade_near_far[MAX_CASCADES];
+
 vec2 shadow_atlas_texel_size;
 
 uint detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 view_proj, out vec4 rect, out float texel_size)
@@ -116,7 +121,7 @@ uint detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 v
 	return face;
 }
 
-vec2 calculateShadowUV(vec3 clip_pos, vec4 rect, out vec4 rect_uv)
+vec2 calculateShadowUV(vec3 uv_pos, vec4 rect, out vec4 rect_uv)
 {
 	// rect     : slot square in atlas pixel-space; x,y & w,h
 	// rect_uv  : slot square in atlas UV-space; x,y & w,h
@@ -127,7 +132,7 @@ vec2 calculateShadowUV(vec3 clip_pos, vec4 rect, out vec4 rect_uv)
 	// to light space
 	// vec4 light_space = view_proj * vec4(world_pos, 1);
 	// light_space.xyz /= light_space.w; // NDC
-	vec2 face_uv = clip_pos.xy * 0.5 + 0.5; // [0, 1]
+	vec2 face_uv = uv_pos.xy;// * 0.5 + 0.5; // [0, 1]
 	rect_uv = rect * vec4(shadow_atlas_texel_size, shadow_atlas_texel_size);
 	return rect_uv.xy + face_uv * (rect_uv.zw + shadow_atlas_texel_size);
 }
@@ -150,17 +155,131 @@ float sampleShadow(float camera_distance, float frag_depth, vec2 atlas_uv, vec2 
 float computeBias(float normalized_depth, vec3 light_dir, vec2 normalv, float texel_radius);
 
 float sampleShadow1(float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max);
-float shadowVisibility(vec3 clip_pos, float camera_distance, GPULight light, vec4 rect, float texel_size, float bias)
+
+float shadowVisibility(vec3 uv_pos, float camera_distance, GPULight light, vec4 rect, float texel_size, float bias)
 {
 	vec4 rect_uv;
-	vec2 atlas_uv = calculateShadowUV(clip_pos, rect, rect_uv);
+	vec2 atlas_uv = calculateShadowUV(uv_pos, rect, rect_uv);
 
-	float frag_depth = clip_pos.z * 0.5 + 0.5;
-	frag_depth += bias;
+	float uv_depth = uv_pos.z;
+	uv_depth += bias;
 
 	vec2 uv_min = rect_uv.xy;
 	vec2 uv_max = rect_uv.xy + rect_uv.zw - shadow_atlas_texel_size;
-	return sampleShadow(camera_distance, frag_depth, atlas_uv, uv_min, uv_max);
+	return sampleShadow(camera_distance, uv_depth, atlas_uv, uv_min, uv_max);
+}
+/*
+float pcssSearchRadiusUV(float z_world);
+void pcssFindBlocker(vec2 uv_pos, float uv_depth, float bias, float radius, uint cascade_index, out float accum_blocker_depth, out float num_blockers);
+float zClipToEye(float z, float near, float far);
+float penumbraRadiusUV(float z_receiver, float z_blocker, float light_radius);
+float projectToLightUV(float size_uv, float z_world);
+
+float shadowVisibilityPCSS(vec2 uv_pos, float uv_depth, float depth_ls, GPULight light, vec4 rect, float texel_size, float bias, float light_radius)
+{
+	// 1: blocker search
+	float accum_blocker_depth, num_blockers;
+	float radius = pcssSearchRadiusUV(depth_ls);
+	pcssFindBlocker(uv_pos, uv_depth, bias, radius, cascade_index, accum_blocker_depth, num_blockers);
+
+	if(num_blockers == 0)
+	    return 1;
+
+
+	float near_plane = u_csm_cascade_near_far[cascade_index].x;
+	float far_plane = u_csm_cascade_near_far[cascade_index].y;
+
+	// 2: penumbra size
+	float avg_blocker_depth    = accum_blocker_depth / num_blockers;
+	float avg_blocker_depth_vs = zClipToEye(avg_blocker_depth, near_plane, far_plane);
+	float penumbra_radius      = penumbraRadiusUV(uv_depth, avg_blocker_depth_vs, light_radius);
+	float filter_radius        = projectToLightUV(penumbra_radius, z_vs, near_plane);
+
+	return shadowVisibility(clip_pos, light, rect, texel_size, bias);
+}
+
+// Returns average blocker depth in the search region, as well as the number of found blockers.
+// Blockers are defined as shadow-map samples between the surface point and the light.
+void pcssFindBlocker(vec2     uv_pos,
+	                float     uv_depth,
+	                float     bias,
+	                float     radius,
+	                uint      cascade_index,
+	                out float accum_blocker_depth,
+					out float num_blockers)
+{
+	float correction_factor = 1;
+	// NOTE: can the "blue noise" texture can be used here as well?
+    vec2 random_angle = texture(s_random_angles, in_world_pos * correction_factor).xy;
+    float angle_cos = random_angle.x;
+    float angle_sin = random_angle.y;
+    mat2 rendom_rotation = mat2(angle_xos, -angle_sin, angle_sin, angle_cos);
+
+    accum_blocker_depth = 0;
+    num_blockers        = 0;
+    float biased_depth  = uv_depth - bias;
+
+    for(int idx = 0; idx < u_blocker_search_samples; ++idx)
+    {
+        vec2 offset;
+
+        if(u_blocker_search_samples == 25)
+            offset = Poisson25[idx];
+        else if(u_blocker_search_samples == 32)
+            offset = Poisson32[idx];
+        // else if(u_blocker_search_samples == 64)
+        //     offset = Poisson64[idx];
+        // else if(u_blocker_search_samples == 100)
+        //     offset = Poisson100[idx];
+        // else if(u_blocker_search_samples == 128)
+        //     offset = Poisson128[idx];
+
+        // add random rotation to the offset
+        // offset = vec2(angle_cos * offset.x - angle_sin * offset.y,
+        //               angle_sin * offset.x + angle_cos * offset.y);
+        offset = offset * random_rotation;
+
+        offset *= radius;
+        vec2 sample_uv = pos_uv + offset;
+        float shadow_map_depth = texture(u_shadow_atlas_single, vec3(sample_uv, cascade_index)).r;
+
+        if(shadow_map_depth < biased_depth)
+        {
+            accum_blocker_depth += shadow_map_depth;
+            num_blockers++;
+        }
+    }
+}
+
+float pcssSearchRadiusUV(float z_world)
+{
+    return light_radius * (z_world - light_near_plane) / z_world;
+}
+
+float zClipToEye(float z, float near, float far)
+{
+    return light_far_plane * light_near_plane / (light_far_plane - z * (light_far_plane - light_near_plane));
+}
+
+float penumbraRadiusUV(float z_receiver, float z_blocker, float light_radius)
+{
+    return light_radius * (z_receiver - z_blocker) / z_blocker;
+}
+
+float projectToLightUV(float size_uv, float z_world, float near_plane)
+{
+    return size_uv * near_plane / z_world;
+}
+*/
+float computeReceiverPlaneDepthBias(vec3 pos_dx, vec3 pos_dy)
+{
+	vec2 receiver_bias;
+    receiver_bias.x = pos_dy.y * pos_dx.z - pos_dx.y * pos_dy.z;
+    receiver_bias.y = pos_dx.x * pos_dy.z - pos_dy.x * pos_dx.z;
+    receiver_bias *= 1 / ((pos_dx.x * pos_dy.y) - (pos_dx.y * pos_dy.x));
+
+	float sampling_error = 2 * dot(shadow_atlas_texel_size, abs(receiver_bias));
+	return min(sampling_error, 0.01)*u_shadow_bias_slope_scale;
 }
 
 float computeSlopeBias(vec3 light_dir, vec3 normal)

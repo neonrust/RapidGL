@@ -303,9 +303,18 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 	uint cube_face = detectCubeFaceSlot(light_to_frag, slot_info, view_proj, slot_rect, texel_size);
 
 	vec4 clip_pos = view_proj * vec4(world_pos, 1);
-	clip_pos /= clip_pos.w;
-	float bias = computeBias(clip_pos.z * 0.5 + 0.5, normalize(light_to_frag), in_normal, texel_size);
-	float shadow_visibility = shadowVisibility(clip_pos.xyz, camera_distance, light, slot_rect, texel_size, bias);
+	vec3 ndc_pos = clip_pos.xyz / clip_pos.w; // [-1, 1]
+	vec3 uv_pos = ndc_pos * 0.5 + 0.5; // [0, 1]
+	float uv_depth = uv_pos.z;
+	if(uv_depth > 1)
+		return vec3(light_fade); // shadow_fade and u_shadow_occlusion
+
+	// vec3 pos_dx = dFdx(clip_pos.xyz);
+	// vec3 pos_dy = dFdy(clip_pos.xyz);
+	// float bias = computeReceiverPlaneDepthBias(pos_dx, pos_dy);
+	float bias = computeBias(uv_pos.z, normalize(light_to_frag), in_normal, texel_size);
+
+	float shadow_visibility = shadowVisibility(uv_pos, camera_distance, light, slot_rect, texel_size, bias);
 
 	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade * u_shadow_occlusion;
 	float visible = light_fade * shadow_faded;

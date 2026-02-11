@@ -496,7 +496,7 @@ void ShadowAtlas::update_shadow_params()
 
 			if(IS_DIR_LIGHT(light))
 			{
-				projs[idx] = _csm_params.view_projection[idx];
+				projs[idx] = _csm_params.light_view_projection[idx];
 				texel_sizes[idx] = (_csm_params.depth_range[idx].y - _csm_params.depth_range[idx].x) / float(rects[idx].z);
 			}
 			else
@@ -606,10 +606,10 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 		return _csm_params;
 	}
 	const auto &atlas_light = found->second;
+
 	assert(atlas_light.num_slots >= 1 and atlas_light.num_slots <= 6);
 	const auto num_cascades = atlas_light.num_slots;
 
-	const auto &sun = _lights.get_by_id(light_id);
 
 	_csm_params.num_cascades = num_cascades;
 
@@ -645,7 +645,7 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 
 		const auto split_near = previous_split_far;
 		const float split_far = camera.nearPlane() + (d_mix - camera.nearPlane())*range_scale;
-		_csm_params.far_plane[cascade] = -split_far;  // store depth to the far side of the split
+		_csm_params.split_depth[cascade] = -split_far; // store depth to the far side of the split (to deduce cascade index in the shader)
 
 		//   also the center point as we go
 		auto cascade_center_ws = glm::vec3(0);
@@ -739,6 +739,8 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 
 		auto light_view = glm::lookAt(cascade_center_ws - sun.direction * -light_projection_distance, cascade_center_ws, AXIS_Y);
 		auto light_projection = glm::ortho(min_extents.x, max_extents.x, min_extents.y, max_extents.y, 0.f, maxZ - minZ);
+
+		_csm_params.near_far_plane[cascade] = { minZ, maxZ };  // store depth to the far side of the split
 #endif
 
 		auto light_vp = light_projection * light_view;
@@ -760,8 +762,8 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 		light_vp = light_projection * light_view;
 #endif
 
-		_csm_params.view[cascade] = light_view;
-		_csm_params.view_projection[cascade] = light_vp;
+		_csm_params.light_view[cascade] = light_view;
+		_csm_params.light_view_projection[cascade] = light_vp;
 
 #if 0
 		// Log::debug("cascade {}  (F: {:5.1f}):  extent: {:>5.2f}⯈{:>5.2f} x {:>5.2f}⯈{:>5.2f} x {:>6.2f}⯈{:>6.2f}  C: {:.1f}; {:.1f}; {:.1f}  R: {:.1f}",
