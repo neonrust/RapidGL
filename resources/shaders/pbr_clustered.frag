@@ -1,8 +1,9 @@
 #version 460 core
+
 #include "light.glh"
 #include "pbr_lighting.glh"
 #include "shadows.glh"
-#include "volumetrics.glh"
+#include "volumetrics.glh"  // 'tile_grid' for the debug mode
 
 out vec4 frag_color;
 
@@ -193,6 +194,7 @@ void main()
     radiance += indirectLightingIBL(in_world_pos, material);
     radiance += material.emission;
 
+    // TODO: these "debug modes" should be separate shaders; overlays drawn using FSQ
     if (u_debug_cluster_geom)
     {
     	vec3 cluster_color = vec3(debug_colors[cluster_coord.z % 8]);
@@ -322,11 +324,6 @@ vec3 dirLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 
 	ShadowSlotInfo slot_info = ssbo_shadow_slots[shadow_idx];
 
-	mat4 view_proj_0 = slot_info.view_proj[0];
-	mat4 view_proj_1 = slot_info.view_proj[1];
-	mat4 view_proj_2 = slot_info.view_proj[2];
-	mat4 view_proj_3 = slot_info.view_proj[3];
-
 	uvec4 slot_rect_0 = slot_info.atlas_rect[0];
 	uvec4 slot_rect_1 = slot_info.atlas_rect[1];
 	uvec4 slot_rect_2 = slot_info.atlas_rect[2];
@@ -341,61 +338,72 @@ vec3 dirLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 	//   that index corresponds to which slot to use
 	//   note that values are negative; X > Y means X is closer to camera than Y
 	uint cascade_index = u_csm_num_cascades - 1;
- 	if(in_view_pos.z > u_csm_cascade_far[0])
+ 	if(in_view_pos.z > u_csm_split_depth[0])
   		cascade_index = 0;
-   	else if(in_view_pos.z > u_csm_cascade_far[1])
+   	else if(in_view_pos.z > u_csm_split_depth[1])
    		cascade_index = 1;
-   	else if(in_view_pos.z > u_csm_cascade_far[2])
+   	else if(in_view_pos.z > u_csm_split_depth[2])
    		cascade_index = 2;
 
-	mat4 view_proj;
 	uvec4 slot_rect;
 	float texel_size;
+	float near_plane;
+	float far_plane;
 	if(cascade_index == 0)
 	{
-		view_proj = view_proj_0;
 		slot_rect = slot_rect_0;
 		texel_size = texel_size_0;
 	}
 	else if(cascade_index == 1)
 	{
-		view_proj = view_proj_1;
 		slot_rect = slot_rect_1;
 		texel_size = texel_size_1;
 	}
 	else if(cascade_index == 2)
 	{
-		view_proj = view_proj_2;
 		slot_rect = slot_rect_2;
 		texel_size = texel_size_2;
 	}
 	else if(cascade_index == 3)
 	{
-		view_proj = view_proj_3;
 		slot_rect = slot_rect_3;
 		texel_size = texel_size_3;
 	}
 
-	vec4 clip_pos = view_proj * vec4(world_pos, 1);
-	clip_pos /= clip_pos.w;
+	vec3 uv_pos = in_csm_light_uv_pos[cascade_index]; // [0, 1]
+	float uv_depth = uv_pos.z;
+	if(uv_depth > 1)
+		return vec3(1);
+
+	// vec3 pos_ls = in_csm_light_view_pos[cascade_index];
 
 	// a bit cascade-specific bias stuff; this probably depends on number of cascades (and a number of other parameters)
-    float bias = 0;//
-    if(cascade_index == 0)
-    {
-		// directional-light specific bias calculation; only slope sensitive
-		float slope = dot(in_normal, light.direction);
-		slope = sqrt(1 - slope * slope);
+    float bias = 0;
+ //    if(cascade_index == 0)
+ //    {
+	// 	// directional-light specific bias calculation; only slope sensitive
+	// 	float slope = dot(in_normal, light.direction);
+	// 	slope = sqrt(1 - slope * slope);
+	// 	bias = 0.001 + pow(slope, u_shadow_bias_slope_power) * u_shadow_bias_slope_scale * texel_size * 0.1;
+	// }
+	// else
+	// bias = 0.01 * (1.0 - dot(normalize(in_normal), -light.direction))*u_shadow_bias_slope_scale;
+	// if(cascade_index == 2)
+	// 	bias *= -0.03;
+	// else if(cascade_index == 1)
+	// 	bias = 0.0001;
+	// else
+	// 	bias = -0.001 / float(cascade_index - 1);
+	// bias = 0;
 
-		bias = -0.001 - pow(slope, u_shadow_bias_slope_power) * u_shadow_bias_slope_scale * texel_size * 0.1;
-	}
-	else if(cascade_index == 1)
-		bias = -0.0015;
-	else
-		bias = -0.001 / float(cascade_index - 1);
+	// vec3 pos_dx = dFdx(clip_pos);
+	// vec3 pos_dy = dFdy(clip_pos);
+	// bias = u_shadow_bias_constant + computeReceiverPlaneDepthBias(pos_dx, pos_dy);
 
+	// float light_radius = u_csm_light_radius_uv / (pow(float(u_csm_num_cascades), cascade_index) * float(u_csm_num_cascades));
 
-	float shadow_visibility = shadowVisibility(clip_pos.xyz, 0/*camera_distance*/, light, slot_rect, texel_size, bias);
+	float shadow_visibility = shadowVisibility(uv_pos, 0, light, slot_rect, texel_size, bias);
+	// float shadow_visibility = shadowVisibilityPCSS(clip_pos.xy, uv_depth, -pos_ls.z, light, slot_rect, texel_size, bias, light_radius);
 	vec3 visible_color = u_shadow_colorize? s_shadow_tints[cascade_index]: vec3(1);
 
 	float shadow_faded = 1 - (1 - shadow_visibility) * u_shadow_occlusion;
@@ -428,9 +436,11 @@ vec3 spotLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 	float texel_size = slot_info.texel_size[0];
 
 	vec4 clip_pos = view_proj * vec4(world_pos, 1);
-	clip_pos /= clip_pos.w;
-	float bias = computeBias(clip_pos.z * 0.5 + 0.5, normalize(light.position - world_pos), in_normal, texel_size);
-	float shadow_visibility = shadowVisibility(clip_pos.xyz, camera_distance, light, slot_rect, texel_size, bias);
+	vec3 ndc_pos = clip_pos.xyz / clip_pos.w; // [-1, 1]
+	vec3 uv_pos = ndc_pos * 0.5 + 0.5; // [0, 1]
+
+	float bias = computeBias(uv_pos.z, normalize(light.position - world_pos), in_normal, texel_size);
+	float shadow_visibility = shadowVisibility(uv_pos, camera_distance, light, slot_rect, texel_size, bias);
 
 	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade * u_shadow_occlusion;
 	float visible = light_fade * shadow_faded;
