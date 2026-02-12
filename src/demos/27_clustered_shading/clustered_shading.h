@@ -115,6 +115,7 @@ private:
 	void draw2d(const RGL::Texture &texture, BlendMode mode=BlendMode::Replace); // TODO: move to CoreApp
 	void draw2d(const RGL::Texture &source, RGL::RenderTarget::Texture2d &target, BlendMode blend=BlendMode::Replace); // TODO: move to CoreApp
 	void draw2d(const RGL::Texture &texture, const glm::uvec2 &top_left, const glm::uvec2 &bottom_right); // TODO: move to CoreApp
+	void loadScene(std::string_view name);
 
 	void debugDrawLine(const glm::vec3 &p1, const glm::vec3 &p2, const glm::vec4 &color={1,1,1,1});
 	void debugDrawLine(const glm::uvec2 &p1, const glm::uvec2 &p2, const glm::vec4 &color={1,1,1,1}, float thickness=1.f);

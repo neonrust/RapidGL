@@ -196,45 +196,6 @@ void ClusteredShading::init_app()
 
 	const auto models_path = FileSystem::getResourcesPath() / "models";
 
-   /// Create scene objects
-	{
-		const auto origin = glm::mat4(1);
-
-		// auto sponza_model = std::make_shared<StaticModel>();
-		// sponza_model->Load(models_path / "sponza2/Sponza2.gltf");
-		// _scene.emplace_back(sponza_model, glm::scale(origin, glm::vec3(sponza_model->GetUnitScaleFactor() * 30.0f)));
-
-		auto testroom_model = std::make_shared<StaticModel>();
-		testroom_model->Load(models_path / "testroom" / "testroom.gltf");
-		assert(*testroom_model);
-		_scene.emplace_back(testroom_model, origin);
-
-		// auto default_cube = std::make_shared<StaticModel>();
-		// default_cube->Load(models_path / "default-cube.gltf");
-		// assert(*default_cube);
-		// _scene.emplace_back(default_cube, origin);
-
-		// auto floor = std::make_shared<StaticModel>();
-		// floor->Load(models_path / "floor.gltf");
-		// _scene.emplace_back(floor, glm::mat4(1));
-	}
-
-	{
-		const auto origin = glm::mat4(1);
-
-		const auto light_meshes = models_path / "lights";
-
-		for(const auto &light_type: { LIGHT_TYPE_RECT, LIGHT_TYPE_TUBE, LIGHT_TYPE_SPHERE, LIGHT_TYPE_DISC })
-		{
-			auto filename = std::format("{}.gltf", _light_mgr.type_name(uint_fast8_t(light_type)));
-			auto model = std::make_shared<StaticModel>();
-			model->Load(light_meshes / filename);
-			assert(*model);
-			_lightModels.emplace_back(model, origin);
-		}
-		Log::info("Loaded {} light geometries", _lightModels.size());
-	}
-
     /// Prepare lights' SSBOs.
 	updateLightsSSBOs();  // initial update will create the GL buffers
 
@@ -443,325 +404,30 @@ void ClusteredShading::init_app()
 	_light_icons.Load(FileSystem::getResourcesPath() / "icons" / "lights.array");
 	assert(_light_icons);
 
-    PrecomputeIndirectLight(FileSystem::getResourcesPath() / "textures/skyboxes/IBL" / m_hdr_maps_names[m_current_hdr_map_idx]);
+	PrecomputeIndirectLight(FileSystem::getResourcesPath() / "textures" / "skyboxes" / "IBL" / m_hdr_maps_names[m_current_hdr_map_idx]);
     PrecomputeBRDF(m_brdf_lut_rt);
 
 	calculateShadingClusterGrid();  // will also call prepareClusterBuffers()
 
 	glGenBuffers(1, &m_debug_draw_vbo);
 
-
-	if(false) // transforming into camera/view space
 	{
-		m_camera.update(0);  // update the internal transforms
+		const auto origin = glm::mat4(1);
 
-		const auto &u_view = m_camera.viewTransform();
-		const auto &u_projection = m_camera.projectionTransform();
-		const auto u_inv_projection = glm::inverse(u_projection);
-		const auto u_inv_view = glm::inverse(u_view);
-		const auto u_cam_pos = m_camera.position();
+		const auto light_meshes = models_path / "lights";
 
-		const glm::uvec2 screen_size { Window::width(), Window::height() };
-		glm::uvec2 screen_pos { 0, 0 };//Window::getWidth()/2 + 1, Window::getHeight()/2 };
-		glm::vec2 coord = {
-			float(screen_pos.x) / float(screen_size.x),
-			float(screen_pos.y) / float(screen_size.y)
-		};
-		coord = coord*2.f - 1.f; // [ -1, 1 ]
-
-
-		auto target = u_inv_projection * glm::vec4(coord.x, coord.y, 1, 1);
-		auto direction = glm::vec3(u_inv_view * glm::vec4(glm::normalize(glm::vec3(target) / target.w), 0)); // World space
-
-		Log::info("        target: {:.5f}; {:.5f}; {:.5f}; {:.5f}", target.x, target.y, target.z, target.w);
-		const auto far_depth = target.z / target.w;
-		target = glm::normalize(target);
-		Log::info("   norm.target: {:.5f}; {:.5f}; {:.5f}   (max depth: {:.1f})", target.x, target.y, target.z, far_depth);
-		Log::info("     direction: {:.5f}; {:.5f}; {:.5f}", direction.x, direction.y, direction.z);
-
-		// Log::info("   u_view: {}", glm::to_string(u_view).c_str());
-
-		const glm::vec3 light_pos { -10, 2.f, 0 };
-		Log::info("  camera[ws]: {:.5f}; {:.5f}; {:.5f}", u_cam_pos.x, u_cam_pos.y, u_cam_pos.z);
-		Log::info("   light[ws]: {:.5f}; {:.5f}; {:.5f}", light_pos.x, light_pos.y, light_pos.z);
-		auto light_pos_cs = glm::vec3(u_view * glm::vec4(light_pos, 1));
-		Log::info("   light[cs]: {:.5f}; {:.5f}; {:.5f}", light_pos_cs.x, light_pos_cs.y, light_pos_cs.z);
-
-
-		std::exit(EXIT_SUCCESS);
-	}
-
-	if(false)  // create space vectors to define transform test
-	{
-		glm::vec3 light_center { 1, 2, 3 };
-		glm::vec3 light_direction { 1, 0, 0 };
-
-		glm::vec3 space_x;
-		glm::vec3 space_y;
-		glm::vec3 space_z = light_direction;
-		if(space_z == AXIS_Y)
+		for(const auto &light_type: { LIGHT_TYPE_RECT, LIGHT_TYPE_TUBE, LIGHT_TYPE_SPHERE, LIGHT_TYPE_DISC })
 		{
-			space_y = glm::cross(AXIS_X, space_z);
-			space_x = glm::cross(space_z, space_y);
+			auto filename = std::format("{}.gltf", _light_mgr.type_name(uint_fast8_t(light_type)));
+			auto model = std::make_shared<StaticModel>();
+			model->Load(light_meshes / filename);
+			assert(*model);
+			_lightModels.emplace_back(model, origin);
 		}
-		else
-		{
-			space_y = glm::cross(AXIS_Y, space_z);
-			space_x = glm::cross(space_z, space_y);
-		}
-		glm::mat4 cone_space{
-			glm::vec4(space_x, 0),
-			glm::vec4(space_y, 0),
-			glm::vec4(space_z, 0),
-			glm::vec4(light_center, 1)
-		};
-
-		Log::info("        X = {:.3f}; {:.3f}; {:.3f}", space_x.x, space_x.y, space_x.z);
-		Log::info("        Y = {:.3f}; {:.3f}; {:.3f}", space_y.x, space_y.y, space_y.z);
-		Log::info("        Z = {:.3f}; {:.3f}; {:.3f}", space_z.x, space_z.y, space_z.z);
-
-		glm::vec3 ray_direction = glm::normalize(glm::vec3(1, 0, 0));
-
-		auto cone_ray = cone_space * glm::vec4(ray_direction, 0);
-
-		Log::info(" cone ray = {:.3f}; {:.3f}; {:.3f}", cone_ray.x, cone_ray.y, cone_ray.z);
-		std::exit(EXIT_SUCCESS);
+		Log::info("Loaded {} light geometries", _lightModels.size());
 	}
 
-	if(false)
-	{
-		const auto space = make_common_space_from_direction({ 0, 0, -1 });
-		Log::info("        X = {:.3f}; {:.3f}; {:.3f}", space[0].x, space[0].y, space[0].z);
-		Log::info("        Y = {:.3f}; {:.3f}; {:.3f}", space[1].x, space[1].y, space[1].z);
-		Log::info("        Z = {:.3f}; {:.3f}; {:.3f}", space[2].x, space[2].y, space[2].z);
-		std::exit(EXIT_SUCCESS);
-	}
-
-	if(false)  // cone intersection test
-	{
-		struct Cone
-		{
-			glm::vec3 center;
-			float radius;
-			glm::vec3 axis;
-			float angle;
-		};
-		const Cone cone {
-			.center = { 0, 0, 0 },
-			.radius = 10,   // not used in this test
-			.axis = glm::vec3{0, 0, 1},
-			.angle = glm::radians(45.f),
-		};
-		const glm::vec3 ray_start { 2, 0, -5 };
-		const auto ray_dir = glm::normalize(glm::vec3{ 0, 0, -1 });
-
-		std::puts("-----------------------------------------------------");
-
-		Log::info("cone center : {:.1f}; {:.1f}; {:.1f}", cone.center.x, cone.center.y, cone.center.z);
-		Log::info("cone axis   : {:.1f}; {:.1f}; {:.1f}", cone.axis.x, cone.axis.y, cone.axis.z);
-		Log::info("cone angle  : {:.1f}", glm::degrees(cone.angle));
-		Log::info("ray start   : {:.1f}; {:.1f}; {:.1f}", ray_start.x, ray_start.y, ray_start.z);
-		Log::info("ray dir     : {:.1f}; {:.1f}; {:.1f}", ray_dir.x, ray_dir.y, ray_dir.z);
-
-		glm::vec3 center_to_ray = ray_start - cone.center; // aka CO
-		float distance_sq = glm::dot(center_to_ray, center_to_ray);
-
-		float cos_theta = std::cos(cone.angle);
-		float cos_theta_sq = cos_theta*cos_theta;
-		float dir_axis_dot = glm::dot(ray_dir, cone.axis);
-		float CO_axis_dot = glm::dot(center_to_ray, cone.axis);
-
-		float A = dir_axis_dot*dir_axis_dot - cos_theta_sq;
-		float B = 2 * (dir_axis_dot*CO_axis_dot - glm::dot(ray_dir, center_to_ray)*cos_theta_sq);
-		float C = CO_axis_dot*CO_axis_dot - distance_sq*cos_theta_sq;
-
-		Log::info("    A = {:.3f}", A);
-		Log::info("    B = {:.3f}", B);
-		Log::info("    C = {:.3f}", C);
-
-		float discriminant = B*B - 4*A*C;
-		if(discriminant < 0)
-			Log::warning("no intersection");
-		else
-		{
-			Log::info("discriminant = {:.3f}", discriminant);
-			float sqrt_discriminant = std::sqrt(discriminant);
-			float t1 = (-B - sqrt_discriminant) / (2*A);
-			float t2 = (-B + sqrt_discriminant) / (2*A);
-
-			auto ray_point = [&ray_start, &ray_dir](float t) {
-				return ray_start + ray_dir*t;
-			};
-			auto p1 = ray_point(t1);
-			Log::info("  t1 = {:.3f}  ->  {:.2f}; {:.2f}; {:.2f}", t1, p1.x, p1.y, p1.z);
-			auto p2 = ray_point(t2);
-			Log::info("  t2 = {:.3f}  ->  {:.2f}; {:.2f}; {:.2f}", t2, p2.x, p2.y, p2.z);
-		}
-
-		std::exit(EXIT_SUCCESS);
-	}
-
-	if(false)  // cone spherical cap intersection test
-	{
-		struct Cone
-		{
-			glm::vec3 center;
-			float radius;
-			glm::vec3 axis;
-			float angle;
-		};
-		const Cone cone {
-			.center = { 0, 0, 0 },
-			.radius = 30,
-			.axis = glm::vec3{0, 0, 1},
-			.angle = glm::radians(30.f),
-		};
-		const glm::vec3 ray_start { -12, 0, -10 };
-		const auto ray_dir = glm::normalize(glm::vec3{ 0, 0, 1 }) * glm::angleAxis(glm::radians(-20.f), AXIS_Y);
-
-		auto ray_point = [&ray_start, &ray_dir](float t)
-		{
-			return ray_start + ray_dir*t;
-		};
-
-		std::puts("-----------------------------------------------------");
-
-		Log::info("cone center  : {:.1f}; {:.1f}; {:.1f}", cone.center.x, cone.center.y, cone.center.z);
-		Log::info("cone axis    : {:.1f}; {:.1f}; {:.1f}", cone.axis.x, cone.axis.y, cone.axis.z);
-		Log::info("cone angle   : {:.1f}   radius: {:.1f}", glm::degrees(cone.angle), cone.radius);
-		Log::info("ray start    : {:.1f}; {:.1f}; {:.1f}", ray_start.x, ray_start.y, ray_start.z);
-		Log::info("ray dir      : {:.1f}; {:.1f}; {:.1f}", ray_dir.x, ray_dir.y, ray_dir.z);
-		const auto ray_end = ray_point(50);
-		Log::info("ray end @ 50 : {:.1f}; {:.1f}; {:.1f}", ray_end.x, ray_end.y, ray_end.z);
-
-		glm::vec3 center_to_ray = ray_start - cone.center; // aka CO
-
-		float A = 1;
-		float B = 2 * glm::dot(center_to_ray, ray_dir);
-		float C = glm::dot(center_to_ray, center_to_ray) - cone.radius*cone.radius;
-
-		Log::info("    A = {:.3f}", A);
-		Log::info("    B = {:.3f}", B);
-		Log::info("    C = {:.3f}", C);
-
-		float discriminant = B*B - 4*A*C;
-		if(discriminant < 0)
-			Log::warning("NO INTERSECTION");
-		else
-		{
-			Log::info("discriminant = {:.3f}", discriminant);
-			float sqrt_discriminant = std::sqrt(discriminant);
-			float t1 = (-B - sqrt_discriminant) / (2*A);
-			float t2 = (-B + sqrt_discriminant) / (2*A);
-
-			auto point_inside_cone = [&cone](const glm::vec3 &point)
-			{
-				//    point
-				//   /
-				//  C--------| axis
-				//           ^ radius
-
-				glm::vec3 to_center = point - cone.center;
-				float len = length(to_center);
-
-					   // outside the entire sphere?
-				if(len > cone.radius)
-					return false;
-
-					   // cos of the angle between the vector and the cone's axis
-				float cos_theta = glm::dot(to_center, cone.axis) / len;
-
-					   // compare with the cosine of the cone's half-angle (i.e. must be less than 90 degrees)
-					   // (larger cos value means sharper angle)
-				return cos_theta >= std::cos(cone.angle);
-			};
-
-			bool got_point = false;
-
-			if(t1 >= 0)
-			{
-				auto p1 = ray_point(t1);
-				if(point_inside_cone(p1))
-				{
-					Log::info("  t1 = {:.3f}  ->  {:.2f}; {:.2f}; {:.2f}", t1, p1.x, p1.y, p1.z);
-					got_point = true;
-				}
-			}
-			if(t2 >= 0)
-			{
-				auto p2 = ray_point(t2);
-				if(point_inside_cone(p2))
-				{
-					Log::info("  t2 = {:.3f}  ->  {:.2f}; {:.2f}; {:.2f}", t2, p2.x, p2.y, p2.z);
-					got_point = true;
-				}
-			}
-			if(got_point)
-				Log::warning("INTERSECTION");
-			else
-				Log::warning("NO INTERSECTION");
-		}
-
-		std::exit(EXIT_SUCCESS);
-	}
-
-	if(false)
-	{
-		const float u_near_z = 0.1f;
-		const float u_far_z = 200.f;
-		auto linear_depth = [u_near_z, u_far_z](float depth) -> float {
-			// convert a depth texture sample in range (-1, 1) to linear depth, ranged (near_z, far_z).
-			float ndc          = depth * 2.f - 1.f;
-			float linear_depth = 2.f * u_near_z * u_far_z / (u_far_z + u_near_z - ndc * (u_far_z - u_near_z));
-
-			return linear_depth;
-		};
-
-		const auto inv_projection = glm::inverse(m_camera.projectionTransform());
-		float linearDepth = linear_depth(-1.f);
-		glm::vec2 texCoord { 0.25f, 0.25f };
-		auto pos = glm::vec4(texCoord * 2.f - 1.f, linearDepth * 2.f - 1.f, 1);
-		glm::vec4 wpos = inv_projection * pos;
-		wpos /= wpos.w;
-
-		Log::info("depth pos  : {:.1f}; {:.1f}; {:.1f}", pos.x, pos.y, pos.z);
-		Log::info("world  pos : {:.5f}; {:.5f}; {:.5f}", wpos.x, wpos.y, wpos.z);
-
-		std::exit(EXIT_SUCCESS);
-	}
-
-	if(false)
-	{
-		glm::vec3 spot_pos { 0, 0, 0 };
-		glm::vec3 spot_dir { 0, 0, 1 };
-		glm::vec3 point { 0.f, 0, 5.f };
-		float outer_angle = glm::radians(45.f);
-		float inner_angle = glm::radians(22.5f);
-
-		auto spot_angle_att = [](glm::vec3 to_point, glm::vec3 spot_dir, float outer_angle, float inner_angle) {
-			float cos_outer   = std::cos(outer_angle);
-			float spot_scale  = 1.f / std::max(std::cos(inner_angle) - cos_outer, 1e-5f);
-			float spot_offset = -cos_outer * spot_scale;
-
-			float cd          = glm::dot(spot_dir, to_point);
-			float attenuation = glm::clamp(cd * spot_scale + spot_offset, 0.f, 1.f);
-
-			return attenuation * attenuation;
-		};
-
-
-		Log::info("spot  : {:.1f}; {:.1f}; {:.1f}  {:.0f}° - {:.0f}°", spot_pos.x, spot_pos.y, spot_pos.z, glm::degrees(inner_angle), glm::degrees(outer_angle));
-
-		for(auto idx = 0; idx <= 8; ++idx)
-		{
-			point.x = float(idx) * 0.2f;
-			auto to_point = glm::normalize(point - spot_pos);
-			float att = spot_angle_att(to_point, spot_dir, outer_angle, inner_angle);
-			Log::info("point : {:.1f}; {:.1f}; {:.1f}  --> {:f}", point.x, point.y, point.z, att);
-		}
-
-		std::exit(EXIT_SUCCESS);
-	}
+	loadScene("test");
 }
 
 void ClusteredShading::calculateShadingClusterGrid()
@@ -2256,4 +1922,30 @@ void ClusteredShading::debug_message(GLenum type, std::string_view severity, std
 			}
 		}
 	}
+}
+
+void ClusteredShading::loadScene(std::string_view name)
+{
+	// Create scene objects
+	const auto origin = glm::mat4(1);
+
+	// auto sponza_model = std::make_shared<StaticModel>();
+	// sponza_model->Load(models_path / "sponza2" / "Sponza2.gltf");
+	// assert(*sponza_model);
+	// _scene.emplace_back(sponza_model, origin);
+
+	// auto testroom_model = std::make_shared<StaticModel>();
+	// testroom_model->Load(models_path / "testroom" / "testroom.gltf");
+	// assert(*testroom_model);
+	// _scene.emplace_back(testroom_model, origin);
+
+	auto cathedral_model = std::make_shared<StaticModel>();
+	cathedral_model->Load("/dl/necropolisfantasygraveyardkit/cathedral.gltf");
+	assert(*cathedral_model);
+	_scene.emplace_back(cathedral_model, origin);
+
+	auto floor_model = std::make_shared<StaticModel>();
+	floor_model->Load(FileSystem::getResourcesPath() / "models" / "floor.gltf");
+	assert(*floor_model);
+	_scene.emplace_back(floor_model, origin);
 }
