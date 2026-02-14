@@ -159,6 +159,7 @@ void ClusteredShading::init_app()
 	glClearColor(0.05f, 0.05f, 0.05f, 1);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
+	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 
 	// glLineWidth(2.f); // for wireframes (but >1 not commonly supported)
@@ -1279,11 +1280,13 @@ void ClusteredShading::renderShadowMaps()
 {
 	// render shadow-maps if light or meshes within its radius/frustum moved (the latter is TODO)
 
-	glCullFace(GL_FRONT);  // render only back faces
-	glEnable(GL_SCISSOR_TEST);
+	glCullFace(GL_FRONT);       // render only back faces
+	glEnable(GL_SCISSOR_TEST);  // for slot slicing
 	glDepthMask(GL_TRUE);
 	glColorMask(GL_TRUE, GL_TRUE, GL_FALSE, GL_FALSE);  // writing 2-component normals
 	glDepthFunc(GL_LESS);
+
+	assert(glIsEnabled(GL_CULL_FACE));
 
 	const auto now = steady_clock::now();
 
