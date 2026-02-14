@@ -189,8 +189,8 @@ private:
 	float m_shadow_occlusion             = 0.8f;
 	float _ibl_strength                  = 1.f;
 	float m_shadow_bias_constant         = -0.0001f;
-	float m_shadow_bias_slope_scale      = 0.09f;
-	float m_shadow_bias_slope_power      = 0.02f;
+	float m_shadow_bias_slope_scale      = -0.06f;
+	float m_shadow_bias_slope_power      = 1.f;
 	float m_shadow_bias_distance_scale   = 0.0004f;
 	float m_shadow_bias_texel_size_mix   = 0.48f;
 	float m_shadow_bias_scale            = -0.3f;
