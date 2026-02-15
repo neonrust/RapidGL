@@ -142,21 +142,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			if(ImGui::SliderFloat("Specular distance", &spec_distance, .5f, 100.f, "%.1f"))
 				m_clustered_pbr_shader->setUniform("u_specular_max_distance"sv, spec_distance);
 			if(auto sun_id = _shadow_atlas.sun_id(); sun_id != NO_LIGHT_ID)
-			{
-				static glm::vec2 sun_angles{ 45.f, 45.f };
-				if(ImGui::SliderFloat2("Sun direction", glm::value_ptr(sun_angles), -90.f, 90.f, "%.1f"))
-				{
-					auto sun = _light_mgr.get_by_id(sun_id);
-					const auto direction = glm::normalize(glm::angleAxis(glm::radians(sun_angles.x), AXIS_X) *
-						glm::angleAxis(glm::radians(sun_angles.y), AXIS_Z) * (-AXIS_Y));
-					Log::debug("sun direction: {}; {}  ->  {:.1f}; {:.1f}; {:.1f}", sun_angles.x, sun_angles.y,
-							   direction.x, direction.y, direction.z);
-					_light_mgr.set_direction(sun, direction);
-					_light_mgr.set(sun_id, sun);
-				}
-
 				ImGui::SliderFloat("Sun size", &_sun_size, 0.1f, 5.f, "%.1f");
-			}
 			ImGui::Text("Cluster  resolution: %u x %u x %u", m_cluster_resolution.x, m_cluster_resolution.y, m_cluster_resolution.z);
 			ImGui::Checkbox("Draw cluster grid (slow!)  [c]", &m_debug_draw_cluster_grid);
 			if(ImGui::Checkbox("Show cluster geom", &m_debug_cluster_geom) and m_debug_cluster_geom)
@@ -567,6 +553,117 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 		}
 	}
 	ImGui::End();
+
+	ImGui::Begin("Lights");
+	{
+		static std::string selected_light_label = "< select light >";
+		static LightID selected_light_id = NO_LIGHT_ID;
+		static GPULight Lmut;
+
+		if(ImGui::BeginCombo("Properties", selected_light_label.c_str()))
+		{
+			for(auto idx = 0u; idx < _light_mgr.size(); ++idx)
+			{
+				const auto &[light_id, L] = _light_mgr.at(idx);
+				static std::string label;
+				label.reserve(32);
+				label.clear();
+				std::format_to(std::back_inserter(label), "[{}] {}", light_id, _light_mgr.type_name(L));
+				if(light_id == _pov_light_id)
+					label.append(" POV");
+				const auto is_selected = selected_light_id == light_id;
+				if(ImGui::Selectable(label.c_str(), is_selected))
+				{
+					selected_light_id = light_id;
+					selected_light_label = label;
+					Lmut = _light_mgr.get_by_id(selected_light_id); // a copy, to modify it
+				}
+
+				if(is_selected)
+					ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndCombo();
+		}
+
+		if(selected_light_id != NO_LIGHT_ID)
+		{
+			// NOTE: this will not be updated by changes to lights made elsewhere
+
+			auto enabled = IS_ENABLED(Lmut);
+			if(ImGui::Checkbox("Enabled", &enabled))
+			{
+				_light_mgr.set_enabled(selected_light_id, enabled);
+				Lmut = _light_mgr.get_by_id(selected_light_id);
+			}
+
+			if(ImGui::ColorEdit3("Color", glm::value_ptr(Lmut.color)))
+			{
+				const auto color = Lmut.color;
+				Lmut = _light_mgr.get_by_id(selected_light_id); // a copy, to modify it
+				Lmut.color = color;
+				_light_mgr.set(selected_light_id, Lmut);
+			}
+			if(ImGui::SliderFloat("Intensity", &Lmut.intensity, 1, 1000, "%.0f"))
+			{
+				const auto intensity = Lmut.intensity;
+				Lmut = _light_mgr.get_by_id(selected_light_id); // a copy, to modify it
+				_light_mgr.set_intensity(Lmut, intensity);
+				_light_mgr.set(selected_light_id, Lmut);
+			}
+			if(IS_DIR_LIGHT(Lmut))
+			{
+				auto direction = Lmut.direction;
+				float elevation = -glm::degrees(std::asin(direction.y));
+				float azimuth   =  glm::degrees(std::atan2(direction.x, direction.z));
+
+				auto changed =  ImGui::SliderFloat("Azimuth",   &azimuth,    -180.f, 180.f, "%.1f");
+					 changed |= ImGui::SliderFloat("Elevation", &elevation,  -15.f,  89.9f, "%.1f");
+
+				if(changed)
+				{
+					elevation   = glm::radians(-elevation);
+					azimuth     = glm::radians(azimuth);
+					direction.x = std::sin(azimuth) * std::cos(elevation);
+					direction.y = std::sin(elevation);
+					direction.z = std::cos(azimuth) * std::cos(elevation);
+					_light_mgr.set_direction(Lmut, direction);
+					_light_mgr.set(selected_light_id, Lmut);
+				}
+			}
+
+			auto cast_shadows = IS_SHADOW_CASTER(Lmut);
+			if(ImGui::Checkbox("Cast shadow", &cast_shadows))
+			{
+				Lmut = _light_mgr.get_by_id(selected_light_id); // a copy, to modify it
+				if(cast_shadows)
+					Lmut.type_flags |= LIGHT_SHADOW_CASTER;
+				else
+					Lmut.type_flags &= ~LIGHT_SHADOW_CASTER;
+				_light_mgr.set(selected_light_id, Lmut);
+			}
+
+			auto is_volumetric = IS_VOLUMETRIC(Lmut);
+			if(ImGui::Checkbox("Volumetric", &is_volumetric))
+			{
+				Lmut = _light_mgr.get_by_id(selected_light_id); // a copy, to modify it
+				if(is_volumetric)
+					Lmut.type_flags |= LIGHT_VOLUMETRIC;
+				else
+					Lmut.type_flags &= ~LIGHT_VOLUMETRIC;
+				_light_mgr.set(selected_light_id, Lmut);
+			}
+
+			if(selected_light_id == _pov_light_id)
+				ImGui::SliderFloat("Distance", &_pov_light_distance, -5.f, 5.f, "%.1f");
+
+				   // more properties...
+
+			if(ImGui::Button("Move / rotate"))
+				Log::info("Not yet");
+		}
+	}
+	ImGui::End();
+
 }
 
 void ImGui_ImageEx(ImTextureID texture_id, ImVec2 size, ImVec2 uv0, ImVec2 uv1, GLuint shader_id)
