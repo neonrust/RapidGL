@@ -156,7 +156,6 @@ void Window::createWindow(unsigned int width, unsigned int height, const std::st
 
 	glViewport(0, 0, GLsizei(m_viewport_size.x), GLsizei(m_viewport_size.y));
 	setViewportMatrix(m_viewport_size.x, m_viewport_size.y);
-	glEnable(GL_MULTISAMPLE);
 
 	setVSync(false);
 	glfwSetFramebufferSizeCallback(m_window, framebuffer_size_callback);
