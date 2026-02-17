@@ -250,10 +250,7 @@ size_t LightManager::num_lights() const
 // 	return to_typed<LT>(L, light_id);
 // }
 
-namespace
-{
-static LightID s_light_id { 0 };
-}
+extern LightID s_light_id;
 
 template<_private::LightParamsType LTP>
 auto LightManager::add(const LTP &ltp) -> _private::return_type<LTP>

@@ -14,6 +14,8 @@ using namespace std::literals;
 namespace RGL
 {
 
+LightID s_light_id { 0 };
+
 // textual names for each light type, see light_constants.h
 static const std::string_view s_light_type_names[] {
 	"point"sv,
