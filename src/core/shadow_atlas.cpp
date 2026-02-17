@@ -706,7 +706,7 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 		auto minZ = cascade_aabb_ls.min().z;
 		auto maxZ = cascade_aabb_ls.max().z;
 		minZ *= minZ < 0? z_offset: 1/z_offset;
-		maxZ *= maxZ < 0? 1/z_offset: z_offset;
+		// maxZ *= maxZ < 0? 1/z_offset: z_offset;
 		auto light_projection = glm::ortho(cascade_aabb_ls.min().x, cascade_aabb_ls.max().x,
 										   cascade_aabb_ls.min().y, cascade_aabb_ls.max().y,
 										   minZ, maxZ);
