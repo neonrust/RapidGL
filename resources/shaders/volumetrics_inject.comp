@@ -761,8 +761,9 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos)
 	detectCubeFaceSlot(light_to_frag, slot_info, view_proj, slot_rect, texel_size_unused);
 
 	vec4 clip_pos = view_proj * vec4(world_pos, 1);
-	clip_pos /= clip_pos.w;
-	float shadow_visibility = shadowVisibility(clip_pos.xyz, light, slot_rect);
+	vec3 ndc_pos = clip_pos.xyz / clip_pos.w; // [-1, 1]
+	vec3 uv_pos = ndc_pos * 0.5 + 0.5; // [0, 1]
+	float shadow_visibility = shadowVisibility(uv_pos, light, slot_rect);
 
 	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade;
 	float visible = light_fade * shadow_faded;
@@ -853,8 +854,9 @@ vec3 dirLightVisibility(GPULight light, vec3 world_pos)
 	}
 
 	vec4 clip_pos = view_proj * vec4(world_pos, 1);
-	clip_pos /= clip_pos.w;
-	float shadow_visibility = shadowVisibility(clip_pos.xyz, light, slot_rect);
+	vec3 ndc_pos = clip_pos.xyz; // b/c .w = 1
+	vec3 uv_pos = ndc_pos * 0.5 + 0.5; // [0, 1]
+	float shadow_visibility = shadowVisibility(uv_pos, light, slot_rect);
 
 	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade;
 	vec3 visible = vec3(shadow_faded);
@@ -888,8 +890,9 @@ vec3 spotLightVisibility(GPULight light, vec3 world_pos)
 	// float texel_size = slot_info.texel_size[0];
 
 	vec4 clip_pos = view_proj * vec4(world_pos, 1);
-	clip_pos /= clip_pos.w;
-	float shadow_visibility = shadowVisibility(clip_pos.xyz, light, slot_rect);
+	vec3 ndc_pos = clip_pos.xyz / clip_pos.w; // [-1, 1]
+	vec3 uv_pos = ndc_pos * 0.5 + 0.5; // [0, 1]
+	float shadow_visibility = shadowVisibility(uv_pos, light, slot_rect);
 
 	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade;
 	float visible = light_fade * shadow_faded;
@@ -902,17 +905,15 @@ float sampleShadow(float current_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
 	return texture(u_shadow_atlas_single, atlas_uv).r > current_depth? 1: 0;
 }
 
-float shadowVisibility(vec3 clip_pos, GPULight light, vec4 slot_rect)
+float shadowVisibility(vec3 uv_pos, GPULight light, vec4 slot_rect)
 {
 	vec4 rect_uv;
-	vec2 atlas_uv = calculateShadowUV(clip_pos, slot_rect, rect_uv);
+	vec2 atlas_uv = calculateShadowUV(uv_pos, slot_rect, rect_uv);
 
 	vec2 encoded_normal = textureLod(u_shadow_atlas_normals, atlas_uv, 0).xy;
 	vec3 normal = unpackNormal(encoded_normal);
 
-	float frag_depth = clip_pos.z * 0.5 + 0.5;
-
-	// TODO: computeBias() not necessary?
+	float frag_depth = uv_pos.z;
 
 	vec2 uv_min = rect_uv.xy;
 	vec2 uv_max = rect_uv.xy + rect_uv.zw - shadow_atlas_texel_size;
