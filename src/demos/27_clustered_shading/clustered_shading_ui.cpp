@@ -556,6 +556,31 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 
 	ImGui::Begin("Lights");
 	{
+		if(ImGui::Button("+ point"))
+		{
+			_light_mgr.add(PointLightParams{
+				.color = { 1, 1, 1 },
+				.intensity = 50.f,
+				.fog = 1.f,
+				.shadow_caster = true,
+				.position = m_camera.position(),
+			});
+		}
+		ImGui::SameLine();
+		if(ImGui::Button("+ spot"))
+		{
+			_light_mgr.add(SpotLightParams{
+				.color = { 1, 1, 1 },
+				.intensity = 50.f,
+				.fog = 1.f,
+				.shadow_caster = true,
+				.position = m_camera.position(),
+				.direction = m_camera.forwardVector(),
+				.outer_angle = glm::radians(m_camera.verticalFov() - 10) / 2,
+				.inner_angle = glm::radians(m_camera.verticalFov() - 10) / 3,
+			});
+		}
+
 		static std::string selected_light_label = "< select light >";
 		static LightID selected_light_id = NO_LIGHT_ID;
 		static GPULight Lmut;
@@ -627,6 +652,21 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 					direction.y = std::sin(elevation);
 					direction.z = std::cos(azimuth) * std::cos(elevation);
 					_light_mgr.set_direction(Lmut, direction);
+					_light_mgr.set(selected_light_id, Lmut);
+				}
+			}
+			if(IS_SPOT_LIGHT(Lmut))
+			{
+				float outer_angle = glm::degrees(Lmut.outer_angle);
+				if(ImGui::SliderFloat("Angle", &outer_angle, 0.1f, 89.9f, "%.1f"))
+				{
+					_light_mgr.set_spot_angle(Lmut, glm::radians(outer_angle));
+					_light_mgr.set(selected_light_id, Lmut);
+				}
+				float inner_angle = 100.f * glm::degrees(Lmut.inner_angle) / outer_angle;
+				if(ImGui::SliderFloat("Inner angle", &inner_angle, 0, 100, "%.1f%%"))
+				{
+					Lmut.inner_angle = glm::radians(outer_angle * inner_angle / 100.f);
 					_light_mgr.set(selected_light_id, Lmut);
 				}
 			}
