@@ -176,13 +176,8 @@ private:
 	float _radius_power  { 0.6f };
 	float _falloff_power { 50.f };
 
-	size_t _num_point_lights  { 0 };
-	size_t _num_dir_lights    { 0 };
-	size_t _num_spot_lights   { 0 };
-	size_t _num_rect_lights   { 0 };
-	size_t _num_tube_lights   { 0 };
-	size_t _num_sphere_lights { 0 };
-	size_t _num_disc_lights   { 0 };
+	size_t _num_light_type[LIGHT_TYPE__COUNT];
+	size_t _light_type_limit[LIGHT_TYPE__COUNT];
 };
 
 template<_private::LightType LT>
@@ -206,22 +201,22 @@ inline void LightManager::set(const LT &l)
 template<typename LT>  requires (std::same_as<LT, GPULight> || _private::LightType<LT>)
 size_t LightManager::num_lights() const
 {
-	if constexpr (std::same_as<LT, GPULight>)
-		return _lights.size();
-	else if constexpr (std::same_as<LT, PointLight>)
-		return _num_point_lights;
+	if constexpr (std::same_as<LT, PointLight>)
+		return _num_light_type[LIGHT_TYPE_POINT];
 	else if constexpr (std::same_as<LT, DirectionalLight>)
-		return _num_dir_lights;
+		return _num_light_type[LIGHT_TYPE_DIRECTIONAL];
 	else if constexpr (std::same_as<LT, SpotLight>)
-		return _num_spot_lights;
+		return _num_light_type[LIGHT_TYPE_SPOT];
 	else if constexpr (std::same_as<LT, RectLight>)
-		return _num_rect_lights;
+		return _num_light_type[LIGHT_TYPE_RECT];
 	else if constexpr (std::same_as<LT, TubeLight>)
-		return _num_tube_lights;
+		return _num_light_type[LIGHT_TYPE_TUBE];
 	else if constexpr (std::same_as<LT, SphereLight>)
-		return _num_sphere_lights;
+		return _num_light_type[LIGHT_TYPE_SPHERE];
 	else if constexpr (std::same_as<LT, DiscLight>)
-		return _num_disc_lights;
+		return _num_light_type[LIGHT_TYPE_DISC];
+
+	return _lights.size();
 }
 
 // template<_private::LightType LT>

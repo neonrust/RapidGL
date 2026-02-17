@@ -8,6 +8,7 @@
 #include "hash_combine.h"
 #include "hash_vec3.h"  // IWYU pragma: keep
 #include "hash_vec4.h"  // IWYU pragma: keep
+#include "log.h"
 
 using namespace std::literals;
 
@@ -38,6 +39,13 @@ LightManager::LightManager(/* entt registry */) :
 	_dirty_list.reserve(1024);
 	_id_to_index.reserve(1024);
 	_index_to_id.reserve(1024);
+
+	// byt default, no limits on number of lights
+	for(auto idx = 0u; idx < LIGHT_TYPE__COUNT; ++idx)
+	{
+		_light_type_limit[idx] = 0;
+		_num_light_type[idx] = 0;
+	}
 }
 
 void LightManager::reserve(size_t count)
@@ -59,13 +67,8 @@ void LightManager::clear()
 	_dirty.clear();
 	_dirty_list.clear();
 
-	_num_point_lights = 0;
-	_num_dir_lights = 0;
-	_num_spot_lights = 0;
-	_num_rect_lights = 0;
-	_num_tube_lights = 0;
-	_num_sphere_lights = 0;
-	_num_disc_lights = 0;
+	for(auto idx = 0u; idx < LIGHT_TYPE__COUNT; ++idx)
+		_num_light_type[idx] = 0;
 }
 
 const GPULight &LightManager::get_by_id(LightID light_id) const
@@ -325,6 +328,16 @@ void LightManager::add(const GPULight &L, LightID light_id)
 {
 	const auto next_index = LightIndex(_lights.size());
 
+	const auto light_type = GET_LIGHT_TYPE(L);
+
+	const auto limit = _light_type_limit[light_type];
+	if(limit and _num_light_type[light_type] == limit)
+	{
+		Log::warning("Only {} {} light supported; add ignored", _light_type_limit[light_type], type_name(L));
+		assert(false);
+		return;
+	}
+
 	if(IS_SPOT_LIGHT(L))
 	{
 		auto Lspot = L;
@@ -339,20 +352,7 @@ void LightManager::add(const GPULight &L, LightID light_id)
 	// TODO: support contiguous ranges
 	_dirty.insert(next_index);
 
-	if(IS_POINT_LIGHT(L))
-		++_num_point_lights;
-	else if(IS_DIR_LIGHT(L))
-		++_num_dir_lights;
-	else if(IS_SPOT_LIGHT(L))
-		++_num_spot_lights;
-	else if(IS_RECT_LIGHT(L))
-		++_num_rect_lights;
-	else if(IS_TUBE_LIGHT(L))
-		++_num_tube_lights;
-	else if(IS_SPHERE_LIGHT(L))
-		++_num_sphere_lights;
-	else if(IS_DISC_LIGHT(L))
-		++_num_disc_lights;
+	++_num_light_type[light_type];
 }
 
 void LightManager::compute_spot_bounds(GPULight &L)
