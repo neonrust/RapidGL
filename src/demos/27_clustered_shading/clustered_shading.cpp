@@ -156,7 +156,7 @@ void ClusteredShading::init_app()
 	}
 
     /// Initialize all the variables, buffers, etc. here.
-	glClearColor(0.05f, 0.05f, 0.05f, 1);
+	glClearColor(0, 0, 0, 1);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 	glEnable(GL_CULL_FACE);
