@@ -161,6 +161,7 @@ void ClusteredShading::init_app()
     glDepthFunc(GL_LESS);
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
+	glFrontFace(GL_CCW);
 
 	// glLineWidth(2.f); // for wireframes (but >1 not commonly supported)
 
