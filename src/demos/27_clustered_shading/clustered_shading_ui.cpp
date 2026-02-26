@@ -365,8 +365,8 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			// const bool is_cube = current_image >= 1 and current_image <= 3;
 			// const bool is_depth = current_image == 4;
 
-			static ImVec2 default_top_left { 0, 0 };
-			static ImVec2 default_bottom_right { 1, 1 };
+			static ImVec2 default_top_left { 0, 1 };
+			static ImVec2 default_bottom_right { 1, 0 };
 
 			static ImVec2 top_left = default_top_left;
 			static ImVec2 bottom_right = default_bottom_right;
