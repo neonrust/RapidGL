@@ -61,6 +61,7 @@ set(HEADER_FILES_CORE
 	core_app.h
 	debug_output_gl.h
 	filesystem.h
+	formatters_glm.h
 	frustum.h
 	gl_lookup.h
 	gl_timer.h
