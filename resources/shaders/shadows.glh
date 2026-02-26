@@ -188,18 +188,17 @@ uint detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 v
 
 vec2 calculateShadowUV(vec3 uv_pos, vec4 rect, out vec4 rect_uv)
 {
-	// rect     : slot square in atlas pixel-space; x,y & w,h
-	// rect_uv  : slot square in atlas UV-space; x,y & w,h
-	// face_uv  : fragment position within the point light's cube face (facing the direction of the fragment)
-	//            0,0 of that cube face corresponds to the "top-lect" corner of the slot square
-	// atlas_uv : combination of above; the rect_uv + offset by face_uv, in atlas UV-space.
+	// in:  face_uv  : position within the shadow map slot (i.e. a regular shadow map uv)
+	// in:  rect     : slot square in atlas pixel-space; x,y & w,h
+	// out: rect_uv  : slot square in atlas UV-space; x,y & w,h
+	// out: atlas_uv : resulting UV into the (full) atlas
 
-	// to light space
-	// vec4 light_space = view_proj * vec4(world_pos, 1);
-	// light_space.xyz /= light_space.w; // NDC
-	vec2 face_uv = uv_pos.xy;// * 0.5 + 0.5; // [0, 1]
+	// TODO: add 1-texl border around the rect
+	//   this requires the shadow rendering to also do this (in renderShadowMaps())
+
+	vec2 face_uv = uv_pos.xy;
 	rect_uv = rect * vec4(shadow_atlas_texel_size, shadow_atlas_texel_size);
-	return rect_uv.xy + face_uv * (rect_uv.zw + shadow_atlas_texel_size);
+	return rect_uv.xy + face_uv * rect_uv.zw;
 }
 
 vec3 unpackNormal(vec2 f)
@@ -223,11 +222,11 @@ float sampleShadow1(float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max);
 
 float shadowVisibility(vec3 uv_pos, float camera_distance, GPULight light, vec4 rect, float texel_size, float bias)
 {
-	vec4 rect_uv;
-	vec2 atlas_uv = calculateShadowUV(uv_pos, rect, rect_uv);
-
 	float uv_depth = uv_pos.z;
 	uv_depth += bias;
+
+	vec4 rect_uv;
+	vec2 atlas_uv = calculateShadowUV(uv_pos, rect, rect_uv);
 
 	vec2 uv_min = rect_uv.xy;
 	vec2 uv_max = rect_uv.xy + rect_uv.zw - shadow_atlas_texel_size;
