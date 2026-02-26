@@ -19,46 +19,7 @@
 
 #include "buffer_binds.h"
 #include "log.h"
-
-template <>
-struct std::formatter<glm::mat4> {
-	std::formatter<float> elem_fmt;
-	bool pad_positive = false;
-
-	constexpr auto parse(std::format_parse_context &ctx)
-	{
-		auto it = ctx.begin();
-		if(it != ctx.end() and *it == ' ')
-		{
-			pad_positive = true;
-			++it;
-		}
-		ctx.advance_to(it);
-		return elem_fmt.parse(ctx);
-	}
-
-	auto format(const glm::mat4 &m, std::format_context &ctx) const
-	{
-		auto out = ctx.out();
-		for(int row = 0; row < 4; ++row)
-		{
-			*out++ = '{';
-			for(int col = 0; col < 4; ++col)
-			{
-				float val = m[row][col];
-				if(pad_positive and not std::signbit(val))
-					*out++ = ' ';
-				out = elem_fmt.format(val, ctx);
-				if(col < 3)
-					*out++ = ';';
-			}
-			*out++ = '}';
-			if(row < 3)
-				*out++ = '\n';
-		}
-		return out;
-	}
-};
+#include "formatters_glm.h" // IWYU pragma: keep
 
 namespace RGL
 {
