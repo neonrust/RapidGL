@@ -452,25 +452,21 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 								label.append(" pov");
 							ImGui::Selectable(label.c_str(), is_selected, ImGuiSelectableFlags_Disabled);
 
-							static const char *face_names[] = {
-								" left",
-								" right",
-								" up",
-								" down",
-								" forw.",
-								" backw.",
-
-							};
+							static const char *face_names[] = { " left", " right", " up", " down", " forw.", " backw." };
 
 							for(auto slot = 0u; slot < atlas_light.num_slots; ++slot)
 							{
 								// ImGui::PushID(123);
 								auto is_slot_selected = is_selected and slot == selected_slot;
 								label.clear();
-								// TODO: instead of "slot", use "cascade N" or "+X", etc. (depending on light type)
-								std::format_to(std::back_inserter(label), "  {}: slot {} ({})", light_id, slot, atlas_light.slots[slot].size);
+
+								if(uint(atlas_light.slot_config) == 3u) // i.e. SlotConfig::Cascaded (we're not including shadow_atlas.h)
+									std::format_to(std::back_inserter(label), "  {}: cascade {} ({})", light_id, slot, atlas_light.slots[slot].size);
+								else
+									std::format_to(std::back_inserter(label), "  {}: slot {} ({})", light_id, slot, atlas_light.slots[slot].size);
 								if(IS_POINT_LIGHT(L))
 									label.append(face_names[slot]);
+
 								if(ImGui::Selectable(label.c_str(), is_slot_selected))
 								{
 									selected_light = light_id;
