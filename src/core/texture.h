@@ -60,14 +60,14 @@ enum class TextureCompareMode
 
 enum class TextureCompareFunc
 {
-	Never        = GL_NEVER,
-	Always       = GL_ALWAYS,
-	LessEqual    = GL_LEQUAL,
-	GreaterEqual = GL_GEQUAL,
-	Less         = GL_LESS,
-	Greater      = GL_GREATER,
-	Equal        = GL_EQUAL,
-	NotEqual     = GL_NOTEQUAL
+	Never          = GL_NEVER,
+	Always         = GL_ALWAYS,
+	LessOrEqual    = GL_LEQUAL,
+	GreaterOrEqual = GL_GEQUAL,
+	Less           = GL_LESS,
+	Greater        = GL_GREATER,
+	Equal          = GL_EQUAL,
+	NotEqual       = GL_NOTEQUAL
 };
 
 enum class CubeFace : uint32_t
