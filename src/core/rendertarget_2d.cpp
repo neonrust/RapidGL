@@ -71,8 +71,9 @@ void Texture2d::create(const char *name, size_t width, size_t height, Color::Con
 
 		_depth_texture.SetFiltering(TextureFiltering::Minify,  TextureFilteringParam::Nearest);
 		_depth_texture.SetFiltering(TextureFiltering::Magnify, TextureFilteringParam::Nearest);
-		_depth_texture.SetWrapping (TextureWrappingAxis::U,    TextureWrappingParam::ClampToEdge);
-		_depth_texture.SetWrapping (TextureWrappingAxis::V,    TextureWrappingParam::ClampToEdge);
+		_depth_texture.SetWrapping(TextureWrappingAxis::U, TextureWrappingParam::ClampToBorder);
+		_depth_texture.SetWrapping(TextureWrappingAxis::V, TextureWrappingParam::ClampToBorder);
+		_depth_texture.SetBorderColor(1, 1, 1, 1);
 	}
 
 	glCreateFramebuffers(1, &_fbo_id);
@@ -248,9 +249,12 @@ bool Texture2d::create_shadow_view()
 
 	_shadow_view.set(descr);
 	_shadow_view.SetCompareMode(TextureCompareMode::Ref);
-	_shadow_view.SetCompareFunc(TextureCompareFunc::Less);
+	_shadow_view.SetCompareFunc(TextureCompareFunc::LessOrEqual);
 	_shadow_view.SetFiltering(TextureFiltering::Minify,  TextureFilteringParam::Linear);
 	_shadow_view.SetFiltering(TextureFiltering::Magnify, TextureFilteringParam::Linear);
+	_shadow_view.SetWrapping(TextureWrappingAxis::U, TextureWrappingParam::ClampToBorder);
+	_shadow_view.SetWrapping(TextureWrappingAxis::V, TextureWrappingParam::ClampToBorder);
+	_shadow_view.SetBorderColor(1, 1, 1, 1);
 
 	return true;
 }
