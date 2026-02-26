@@ -306,6 +306,9 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			ImGui::SliderFloat("Bias dist. scale",   &m_shadow_bias_distance_scale, -0.01f,  0.01f, "%.4f");
 			ImGui::SliderFloat("Bias texel sz mix",  &m_shadow_bias_texel_size_mix,  0.f,    1.f,   "%.2f");
 			ImGui::SliderFloat("Bias scale",         &m_shadow_bias_scale,          -2.f,    2.f,   "%.2f");
+			static auto stabilize = _shadow_atlas.csm_stabilization();
+			ImGui::Checkbox("Stabilize light view", &stabilize);
+			_shadow_atlas.set_csm_stabilization(stabilize);
 
 			static std::string size_line(64, ' ');
 			size_line.clear();

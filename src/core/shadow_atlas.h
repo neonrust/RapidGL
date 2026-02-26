@@ -123,6 +123,8 @@ public:
 	}
 	inline float csm_backoff() const { return _csm_cascade_backoff; }
 	inline void set_csm_backoff(float backoff) { _csm_cascade_backoff = backoff; }
+	inline bool csm_stabilization() const { return _csm_stabilization; }
+	inline void set_csm_stabilization(float enabled) { _csm_stabilization = enabled; }
 
 	size_t eval_lights(const std::vector<LightIndex> &relevant_lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward);
 
@@ -215,6 +217,7 @@ private:
 	LightID _sun_id { NO_LIGHT_ID };
 	float _csm_frustum_split_mix { 0.55f };  // 0 = linear, 1 = logarithic
 	float _csm_cascade_backoff { 5.f };
+	bool _csm_stabilization { true };
 	CSMParams _csm_params;
 
 	float _min_light_radius { .5f };

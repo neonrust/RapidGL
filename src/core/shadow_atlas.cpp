@@ -687,21 +687,22 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 
 		auto light_vp = light_projection * light_view;
 
-#if defined(STABLE_PROJECTION)
-		// apply "stabilization" logic; to reduce pixel "swimming" when camera moves
-		const auto shadow_size = float(atlas_light.slots[cascade].size);
-		auto shadow_origin = light_vp * glm::vec4(0, 0, 0, 1);
-		shadow_origin *= shadow_size / 2.f;
+		if(_csm_stabilization)
+		{
+			// apply "stabilization" logic; to reduce pixel "swimming" when camera moves
+			const auto shadow_size = float(atlas_light.slots[cascade].size);
+			auto shadow_origin = light_vp * glm::vec4(0, 0, 0, 1);
+			shadow_origin *= shadow_size / 2.f;
 
-		auto rounded_origin = glm::round(shadow_origin);
-		auto round_offset = rounded_origin - shadow_origin;
-		round_offset *= 2.f / shadow_size;
-		round_offset.z = 0.f;
-		round_offset.w = 0.f;
+			auto rounded_origin = glm::round(shadow_origin);
+			auto round_offset = rounded_origin - shadow_origin;
+			round_offset *= 2.f / shadow_size;
+			round_offset.z = 0.f;
+			round_offset.w = 0.f;
 
-		light_projection[3] += round_offset; // inject into projection matrix
-		light_vp = light_projection * light_view;
-#endif
+			light_projection[3] += round_offset; // inject into projection matrix
+			light_vp = light_projection * light_view;
+		}
 
 		_csm_params.light_view[cascade] = light_view;
 		_csm_params.light_view_projection[cascade] = light_vp;
