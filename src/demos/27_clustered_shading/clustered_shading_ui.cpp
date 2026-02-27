@@ -128,11 +128,27 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 				m_frame_time = 1.f / target_fps;
 		}
 
-		if (ImGui::CollapsingHeader("Lights", ImGuiTreeNodeFlags_DefaultOpen))
+		if (ImGui::CollapsingHeader("Lighting", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.5f); // less wide sliders
 
 			ImGui::ColorEdit3("Ambient", glm::value_ptr(_ambient_radiance));
+			if(ImGui::BeginCombo("IBL", m_hdr_maps_names[m_current_hdr_map_idx].data()))
+			{
+				for (uint8_t idx = 0; idx < std::size(m_hdr_maps_names); ++idx)
+				{
+					const bool is_selected = (m_current_hdr_map_idx == idx);
+					if (ImGui::Selectable(m_hdr_maps_names[idx].data(), is_selected))
+					{
+						m_current_hdr_map_idx = idx;
+						PrecomputeIndirectLight(FileSystem::getResourcesPath() / "textures/skyboxes/IBL" / m_hdr_maps_names[m_current_hdr_map_idx]);
+					}
+
+					if (is_selected)
+						ImGui::SetItemDefaultFocus();
+				}
+				ImGui::EndCombo();
+			}
 			ImGui::SliderFloat("IBL strength", &_ibl_strength, 0.f, 2.f, "%.1f");
 
 			static float falloff_power { _light_mgr.falloff_power() };
@@ -189,23 +205,6 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 
 			// TODO: move these settings somewhere else?  (not actually tonemapping settings)
 			ImGui::SliderFloat("IBL MIP level", &_ibl_mip_level, 0.0, glm::log2(float(m_env_cubemap_rt->width())), "%.1f");
-
-			if (ImGui::BeginCombo("HDR map", m_hdr_maps_names[m_current_hdr_map_idx].data()))
-			{
-				for (uint8_t idx = 0; idx < std::size(m_hdr_maps_names); ++idx)
-				{
-					const bool is_selected = (m_current_hdr_map_idx == idx);
-					if (ImGui::Selectable(m_hdr_maps_names[idx].data(), is_selected))
-					{
-						m_current_hdr_map_idx = idx;
-						PrecomputeIndirectLight(FileSystem::getResourcesPath() / "textures/skyboxes/IBL" / m_hdr_maps_names[m_current_hdr_map_idx]);
-					}
-
-					if (is_selected)
-						ImGui::SetItemDefaultFocus();
-				}
-				ImGui::EndCombo();
-			}
 			ImGui::PopItemWidth();
 		}
 
@@ -495,7 +494,6 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 					bottom_right = default_bottom_right;
 					Log::debug("  no region");
 				}
-
 
 				const ImVec2 img_size { win_width, float(win_width)/aspect };
 
