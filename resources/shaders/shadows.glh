@@ -220,13 +220,13 @@ float computeBias(float normalized_depth, vec3 light_dir, vec2 normalv, float te
 
 float sampleShadow1(float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max);
 
-float shadowVisibility(vec3 uv_pos, float camera_distance, GPULight light, vec4 rect, float texel_size, float bias)
+float shadowVisibility(vec3 uv_pos, float camera_distance, GPULight light, vec4 slot_rect, float texel_size, float bias)
 {
 	float uv_depth = uv_pos.z;
 	uv_depth += bias;
 
 	vec4 rect_uv;
-	vec2 atlas_uv = calculateShadowUV(uv_pos, rect, rect_uv);
+	vec2 atlas_uv = calculateShadowUV(uv_pos, slot_rect, rect_uv);
 
 	vec2 uv_min = rect_uv.xy;
 	vec2 uv_max = rect_uv.xy + rect_uv.zw - shadow_atlas_texel_size;
