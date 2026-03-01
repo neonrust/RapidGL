@@ -1169,14 +1169,15 @@ void ClusteredShading::render()
 		if(const auto &csm = _shadow_atlas.csm_params(); csm)
 		{
 			shader.setUniform("u_csm_num_cascades"sv,     uint32_t(csm.num_cascades));
-			shader.setUniform("u_csm_cascade_near_far"sv, csm.near_far_plane);
+			shader.setUniform("u_csm_split_depth"sv,      csm.split_depth);
+			// shader.setUniform("u_csm_cascade_near_far"sv, csm.near_far_plane); // PCSS
 			shader.setUniform("u_csm_light_radius_uv"sv,  csm.light_radius_uv); // PCSS
 			// needed in vertex shader
 			shader.setUniform("u_csm_light_view_space"sv, csm.light_view);
 			shader.setUniform("u_csm_light_clip_space"sv, csm.light_view_projection); // also in SSBO, but we'd like to avoid accessing that from the vertex shader
 		}
 		else
-			shader.setUniform("u_csm_num_cascades"sv,     0);
+			shader.setUniform("u_csm_num_cascades"sv,     0u);
 
 
 		_shadow_atlas.bindDepthTextureSampler(22); // just using single-sample, no PCF
