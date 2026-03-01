@@ -293,8 +293,6 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 
 		if(ImGui::CollapsingHeader("Shadows"))//, ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			ImGui::Checkbox("Colorize shadow slots", &_debug_colorize_shadows);
-			ImGui::SliderFloat("Shadow occlusion",   &m_shadow_occlusion,            0.f,    1.f,   "%.2f");
 			auto backoff = _shadow_atlas.csm_backoff();
 			if(ImGui::SliderFloat("CSM backoff distance", &backoff, 1.f, 100.f, "%.1f"))
 				_shadow_atlas.set_csm_backoff(backoff);
@@ -308,6 +306,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			static auto stabilize = _shadow_atlas.csm_stabilization();
 			ImGui::Checkbox("Stabilize light view", &stabilize);
 			_shadow_atlas.set_csm_stabilization(stabilize);
+			ImGui::Checkbox("Colorize shadow slots", &_debug_colorize_shadows);
 
 			static std::string size_line(64, ' ');
 			size_line.clear();
