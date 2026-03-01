@@ -459,7 +459,8 @@ float shadow_mid_sampling_distance  = u_shadow_max_distance / 8; // closer -> hi
 
 float sampleShadow(float camera_distance, float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
 {
-	// TODO: use PCSS for the closest range ?
+	// TODO: use PCSS for the closest range?
+	//        or a poisson disc of samples?
 
 	// select samplinmg algorithm basec on distance to camera
 	if(camera_distance > shadow_low_sampling_distance)
