@@ -185,8 +185,8 @@ private:
 	float m_debug_coverlay_blend         = 0.7f;
 	bool _debug_colorize_shadows         = false;
 
-	glm::vec3 _ambient_radiance            { 0.023f, 0.023f, 0.023f };
 	float m_shadow_occlusion             = 0.8f;
+	glm::vec3 _ambient_radiance          = { 0.f, 0.f, 0.f };
 	float _ibl_strength                  = 1.f;
 	float m_shadow_bias_constant         = -0.0001f;
 	float m_shadow_bias_slope_scale      = -0.06f;
