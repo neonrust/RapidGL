@@ -6,6 +6,7 @@
 #include <stb_image.h>
 #include <glad/glad.h>
 #include <glm/vec3.hpp>
+#include <WFLCG.hh>
 
 #include <filesystem>
 #include <random>
@@ -26,6 +27,8 @@ namespace RGL
 		GLenum channel_format = GL_RGB;
 		GLenum channel_type = GL_UNSIGNED_INT;
     };
+
+	extern WFLCG s_rng;
 
     class Util
     {
@@ -88,34 +91,52 @@ namespace RGL
 
         static double RandomDouble()
         {
-            // Returns a random real in [0,1).
-            static std::uniform_real_distribution<double> distribution(0.0, 1.0);
-            static std::mt19937 generator;
-            return distribution(generator);
+			// Returns a random real in range [0,1).
+			return s_rng.getDouble() - 1.f;
         }
+
+		static float RandomFloat()
+		{
+			// Returns a random real in range [0,1).
+			return s_rng.getFloat() - 1.f;
+		}
 
         static double RandomDouble(double min, double max)
         {
-            // Returns a random real in [min, max).
+			// Returns a random real in [min, max).
+			assert(min < max);
             return min + (max - min) * RandomDouble();
         }
 
-        static int RandomInt(int min, int max)
+		static float RandomFloat(float min, float max)
+		{
+			// Returns a random real in range [min, max).
+			assert(min < max);
+			return min + (max - min) * RandomFloat();
+		}
+
+		static uint32_t RandomInt()
+		{
+			return s_rng();
+		}
+
+		static uint32_t RandomInt(uint32_t min, uint32_t max)
         {
-            // Returns a random integer in [min, max].
-            return static_cast<int>(RandomDouble(min, max + 1));
+			// Returns a random integer in range [min, max].
+			assert(min < max);
+			return min + (RandomInt() % (max - min));
         }
 
-        static glm::vec3 RandomVec3(double min, double max)
+		static glm::vec3 RandomVec3(float min, float  max)
         {
             // Returns a random vec3 in [min, max).
-            return glm::vec3(RandomDouble(min, max), RandomDouble(min, max), RandomDouble(min, max));
+			return { RandomFloat(min, max), RandomFloat(min, max), RandomFloat(min, max) };
         }
 
 		static glm::vec3 RandomVec3(const glm::vec3 &min, const glm::vec3 &max)
 		{
 			// Returns a random vec3 inside the box defined by [min, max).
-			return glm::vec3(RandomDouble(min.x, max.x), RandomDouble(min.y, max.y), RandomDouble(min.z, max.z));
+			return { RandomFloat(min.x, max.x), RandomFloat(min.y, max.y), RandomFloat(min.z, max.z) };
 		}
 
 	private:

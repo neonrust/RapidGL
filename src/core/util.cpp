@@ -23,6 +23,8 @@ namespace RGL
 
 static std::vector<fs::path> s_shader_include_paths;
 
+WFLCG s_rng; // TODO seed(s)
+
 bool Util::FileExist(const std::filesystem::path &filepath)
 {
 	return std::filesystem::exists(filepath);
