@@ -15,7 +15,6 @@
 
 #include "filesystem.h"
 
-#include <print>
 using namespace std::literals;
 
 namespace RGL
