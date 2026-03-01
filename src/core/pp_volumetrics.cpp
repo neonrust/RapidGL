@@ -164,14 +164,14 @@ void Volumetrics::inject()
 
 	_inject_shader.setUniform("u_volumetric_max_distance"sv, _camera.farPlane());
 
+	_inject_shader.setUniform("u_view"sv, _camera.viewTransform());
 	const auto view_projection = _camera.projectionTransform() * _camera.viewTransform();
 	const auto inv_view_projection = glm::inverse(view_projection);
 	_inject_shader.setUniform("u_inv_view_projection"sv, inv_view_projection);
 
 	static glm::mat4 prev_view = _camera.viewTransform();  // use current view the first frame
-	// use current for the first frame (there's no "previous" yet)
 	_inject_shader.setUniform("u_prev_view"sv, prev_view);
-	prev_view = _camera.viewTransform();
+	prev_view = _camera.viewTransform(); // next frame: "prev" is from this frame
 
 	_blue_noise.BindLayer(_frame % _blue_noise.num_layers(), 3);
 
