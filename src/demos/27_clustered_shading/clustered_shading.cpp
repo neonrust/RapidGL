@@ -1805,7 +1805,7 @@ void ClusteredShading::renderSceneShading(const Camera &camera)
 {
 	glDepthMask(GL_FALSE);
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-	glDepthFunc(GL_EQUAL);   // only draw pixels which exactly match the depth pre-pass
+	glDepthFunc(GL_LEQUAL);   // only draw pixels which exactly match the depth pre-pass
 
 	auto &shader = *m_clustered_pbr_shader;
 
