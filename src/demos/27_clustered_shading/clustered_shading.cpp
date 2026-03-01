@@ -1419,6 +1419,13 @@ void ClusteredShading::renderLightGeometry()
 	surf_attrs.reserve(_lightsPvs.size());
 	surf_attrs.clear();
 
+	auto config_attrs = [](InstanceAttributes &inst_attrs) {
+		inst_attrs.skip(4);  // TODO: query the mesh to find how many locations are used. Also, this must match the shader
+		inst_attrs.add<glm::mat4>("transform"sv);
+		inst_attrs.add<glm::vec3>("color-intensity"sv);
+		inst_attrs.add<uint32_t>("double-sided");
+	};
+
 	// TODO: (optionally) render point/spots in some way? e.g. a circular glare?
 
 	static_assert(LIGHT_TYPE__COUNT == 7);
@@ -1494,12 +1501,7 @@ void ClusteredShading::renderLightGeometry()
 
 		auto &inst_attrs = model->instance_attributes(sizeof(SurfaceLightAttrs));
 		if(not inst_attrs)
-		{
-			inst_attrs.skip(4);  // TODO: query the mesh to find how many locations are used. Also, this must match the shader
-			inst_attrs.add<glm::mat4>("transform"sv);
-			inst_attrs.add<glm::vec3>("color-intensity"sv);
-			inst_attrs.add<uint32_t>("double-sided");
-		}
+			config_attrs(inst_attrs);
 
 		inst_attrs.load<SurfaceLightAttrs>(surf_attrs);
 
@@ -1546,12 +1548,7 @@ void ClusteredShading::renderLightGeometry()
 		auto &model = _lightModels[2].model;  // render as a disc  (but currently as a sphere, for testing)
 		auto &inst_attrs = model->instance_attributes(sizeof(SurfaceLightAttrs));
 		if(not inst_attrs)
-		{
-			inst_attrs.skip(4);  // TODO: query the mesh to find how many locations are used. Also, this must match the shader
-			inst_attrs.add<glm::mat4>("transform"sv);
-			inst_attrs.add<glm::vec3>("color-intensity"sv);
-			inst_attrs.add<uint32_t>("double-sided");
-		}
+			config_attrs(inst_attrs);
 
 		inst_attrs.load<SurfaceLightAttrs>(surf_attrs);
 
