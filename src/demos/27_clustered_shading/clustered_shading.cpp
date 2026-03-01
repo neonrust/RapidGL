@@ -716,8 +716,8 @@ void ClusteredShading::createLights()
 	for(auto idx = 0u; idx < 0; ++idx)
 	{
 		const auto rand_color= hsv2rgb(
-			float(Util::RandomDouble(1, 360)),       // hue
-			float(Util::RandomDouble(0.2f, 0.8f)),   // saturation
+			Util::RandomFloat(1, 360),   // hue
+			Util::RandomFloat(0.2f, 0.8f),   // saturation
 			1.f                                      // value (brightness)
 		);
 		// const auto rand_pos = Util::RandomVec3(room_min, room_max);
@@ -730,7 +730,7 @@ void ClusteredShading::createLights()
 			x_offset += 22.f;
 		}
 
-		const auto rand_intensity = 100.f;//float(Util::RandomDouble(10, 100));
+		const auto rand_intensity = 100.f;//Util::RandomFloat(10, 100);
 
 		auto light_type = 3 + (idx % 4);
 		// light_type = LIGHT_TYPE_DISC;
