@@ -197,49 +197,10 @@ void ClusteredShading::init_app()
 	// m_light_counts_ubo.clear();
 	createLights();
 
-	const auto models_path = FileSystem::getResourcesPath() / "models";
-
     /// Prepare lights' SSBOs.
 	updateLightsSSBOs();  // initial update will create the GL buffers
 
-    /// Prepare SSBOs related to the clustering (light-culling) algorithm.
-	// Stores the screen-space clusters
 
-	// represent all the below stuff into a "render method"
-	// init:
-	//   m_renderMethod.init(m_clusters_count);
-	// render:
-	//   m_renderMethod.render(_scenePvs);
-	//   howevr, api surface-area would be pretty big; e.g. lights, shaders (& pbr), etc
-	// step 1: gather all these ssbo into a struct; clusterRendering.cluster_ssbo
-
-
-	/// Load LTC look-up-tables for rect lights rendering
-	const auto ltc_lut_path     = FileSystem::getResourcesPath() / "lut";
-	const auto ltc_lut_mat_path = ltc_lut_path / "ltc_mat.dds";
-	const auto ltc_lut_amp_path = ltc_lut_path / "ltc_amp.dds";
-
-	m_ltc_mat_lut = std::make_shared<Texture2D>();
-    if (m_ltc_mat_lut->LoadDds(ltc_lut_mat_path))
-    {
-		m_ltc_mat_lut->SetWrapping (TextureWrappingAxis::U,    TextureWrappingParam::ClampToEdge);
-		m_ltc_mat_lut->SetWrapping (TextureWrappingAxis::V,    TextureWrappingParam::ClampToEdge);
-		m_ltc_mat_lut->SetFiltering(TextureFiltering::Minify,  TextureFilteringParam::Nearest);
-		m_ltc_mat_lut->SetFiltering(TextureFiltering::Magnify, TextureFilteringParam::Linear);
-    }
-    else
-		Log::error("Could not load texture {}", ltc_lut_mat_path.string());
-
-	m_ltc_amp_lut = std::make_shared<Texture2D>();
-    if (m_ltc_amp_lut->LoadDds(ltc_lut_amp_path))
-    {
-		m_ltc_amp_lut->SetWrapping (TextureWrappingAxis::U,    TextureWrappingParam::ClampToEdge);
-		m_ltc_amp_lut->SetWrapping (TextureWrappingAxis::V,    TextureWrappingParam::ClampToEdge);
-		m_ltc_amp_lut->SetFiltering(TextureFiltering::Minify,  TextureFilteringParam::Nearest);
-		m_ltc_amp_lut->SetFiltering(TextureFiltering::Magnify, TextureFilteringParam::Linear);
-    }
-    else
-		Log::error("Could not load texture %s", ltc_lut_amp_path.string());
 
     /// Create shaders.
 	const fs::path core_shaders = "resources/shaders/";
@@ -279,6 +240,7 @@ void ClusteredShading::init_app()
 	m_clustered_pbr_shader = std::make_shared<Shader>(core_shaders/"pbr_lighting.vert", core_shaders/"pbr_clustered.frag");
     m_clustered_pbr_shader->link();
 	assert(*m_clustered_pbr_shader);
+	// set some defaults
 	m_clustered_pbr_shader->setUniform("u_specular_max_distance"sv, m_camera.farPlane()*s_light_specular_fraction);
 	m_clustered_pbr_shader->setUniform("u_debug_unshaded_clusters"sv, false);
 
@@ -365,6 +327,34 @@ void ClusteredShading::init_app()
 	const auto shader_init_time = duration_cast<microseconds>(T1 - T0);
 	Log::info("Shader init time: {:.1f} ms", float(shader_init_time.count())/1000.f);
 
+
+	/// Load LTC look-up-tables for rect lights rendering
+	const auto ltc_lut_path     = FileSystem::getResourcesPath() / "lut";
+	const auto ltc_lut_mat_path = ltc_lut_path / "ltc_mat.dds";
+	const auto ltc_lut_amp_path = ltc_lut_path / "ltc_amp.dds";
+
+	m_ltc_mat_lut = std::make_shared<Texture2D>();
+	if (m_ltc_mat_lut->LoadDds(ltc_lut_mat_path))
+	{
+		m_ltc_mat_lut->SetWrapping (TextureWrappingAxis::U,    TextureWrappingParam::ClampToEdge);
+		m_ltc_mat_lut->SetWrapping (TextureWrappingAxis::V,    TextureWrappingParam::ClampToEdge);
+		m_ltc_mat_lut->SetFiltering(TextureFiltering::Minify,  TextureFilteringParam::Nearest);
+		m_ltc_mat_lut->SetFiltering(TextureFiltering::Magnify, TextureFilteringParam::Linear);
+	}
+	else
+		Log::error("Could not load texture {}", ltc_lut_mat_path.string());
+
+	m_ltc_amp_lut = std::make_shared<Texture2D>();
+	if (m_ltc_amp_lut->LoadDds(ltc_lut_amp_path))
+	{
+		m_ltc_amp_lut->SetWrapping (TextureWrappingAxis::U,    TextureWrappingParam::ClampToEdge);
+		m_ltc_amp_lut->SetWrapping (TextureWrappingAxis::V,    TextureWrappingParam::ClampToEdge);
+		m_ltc_amp_lut->SetFiltering(TextureFiltering::Minify,  TextureFilteringParam::Nearest);
+		m_ltc_amp_lut->SetFiltering(TextureFiltering::Magnify, TextureFilteringParam::Linear);
+	}
+	else
+		Log::error("Could not load texture %s", ltc_lut_amp_path.string());
+
 	namespace C = RenderTarget::Color;
 	namespace D = RenderTarget::Depth;
 
@@ -413,6 +403,9 @@ void ClusteredShading::init_app()
 	calculateShadingClusterGrid();  // will also call prepareClusterBuffers()
 
 	glGenBuffers(1, &m_debug_draw_vbo);
+
+
+	const auto models_path = FileSystem::getResourcesPath() / "models";
 
 	{
 		const auto origin = glm::mat4(1);
