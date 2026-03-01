@@ -1857,6 +1857,7 @@ void ClusteredShading::renderSceneShading(const Camera &camera)
 
 	_shadow_atlas.bindShadowSampler(20);
 	_shadow_atlas.bindTextureSampler(21);   // encoded normals
+	_shadow_atlas.bindDepthTextureSampler(22);
 
 	// we need updated textures (shadow maps) and SSBO data
 	glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
