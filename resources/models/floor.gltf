@@ -3,6 +3,9 @@
 		"generator":"Khronos glTF Blender I/O v5.0.21",
 		"version":"2.0"
 	},
+	"extensionsUsed":[
+		"KHR_materials_specular"
+	],
 	"scene":0,
 	"scenes":[
 		{
@@ -15,17 +18,21 @@
 	"nodes":[
 		{
 			"mesh":0,
-			"name":"Plane",
-			"translation":[
-				0,
-				-0.5,
-				0
-			]
+			"name":"Plane"
 		}
 	],
 	"materials":[
 		{
 			"doubleSided":true,
+			"extensions":{
+				"KHR_materials_specular":{
+					"specularColorFactor":[
+						0.0,
+						0.44583842158317566,
+						0.07785007357597351
+					]
+				}
+			},
 			"name":"plane",
 			"normalTexture":{
 				"index":0
@@ -92,73 +99,73 @@
 		{
 			"bufferView":0,
 			"componentType":5126,
-			"count":90,
+			"count":714,
 			"max":[
-				20,
-				0.5,
-				20
+				85.39336395263672,
+				11.31406307220459,
+				81.83526611328125
 			],
 			"min":[
-				-20,
-				0,
-				-20
+				-83.1316909790039,
+				-4.5,
+				-84.23814392089844
 			],
 			"type":"VEC3"
 		},
 		{
 			"bufferView":1,
 			"componentType":5126,
-			"count":90,
+			"count":714,
 			"type":"VEC3"
 		},
 		{
 			"bufferView":2,
 			"componentType":5126,
-			"count":90,
+			"count":714,
 			"type":"VEC2"
 		},
 		{
 			"bufferView":3,
 			"componentType":5126,
-			"count":90,
+			"count":714,
 			"type":"VEC4"
 		},
 		{
 			"bufferView":4,
 			"componentType":5123,
-			"count":288,
+			"count":3456,
 			"type":"SCALAR"
 		}
 	],
 	"bufferViews":[
 		{
 			"buffer":0,
-			"byteLength":1080,
+			"byteLength":8568,
 			"byteOffset":0,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":1080,
-			"byteOffset":1080,
+			"byteLength":8568,
+			"byteOffset":8568,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":720,
-			"byteOffset":2160,
+			"byteLength":5712,
+			"byteOffset":17136,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":1440,
-			"byteOffset":2880,
+			"byteLength":11424,
+			"byteOffset":22848,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":576,
-			"byteOffset":4320,
+			"byteLength":6912,
+			"byteOffset":34272,
 			"target":34963
 		}
 	],
@@ -170,7 +177,7 @@
 	],
 	"buffers":[
 		{
-			"byteLength":4896,
+			"byteLength":41184,
 			"uri":"floor.bin"
 		}
 	]
