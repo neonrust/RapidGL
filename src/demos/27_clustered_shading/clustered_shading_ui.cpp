@@ -282,6 +282,9 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 					m_volumetrics_pp.setTemporalBlending(blend_enabled);
 				if(blend_enabled)
 					ImGui::SliderFloat("Temporal blend", &_fog_blend_weight, 0.f, 0.99f, "%.2f");  // lerp: <current> - <previous>
+				float shadow_bias = m_volumetrics_pp.shadowBias();
+				if(ImGui::SliderFloat("Shadow bias", &shadow_bias, -0.01f, 0.01f, "%.4f"))
+					m_volumetrics_pp.setShadowBias(shadow_bias);
 				static bool blur3_enabled { true };
 				if(ImGui::Checkbox("3D Blur", &blur3_enabled))
 					m_volumetrics_pp.setFroxelBlurEnabled(blur3_enabled);

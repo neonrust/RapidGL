@@ -161,6 +161,7 @@ void Volumetrics::inject()
 	_inject_shader.setUniform("u_fog_noise_frequency"sv, _noise_freq);
 	_inject_shader.setUniform("u_froxel_blend_previous"sv, _blend_previous);
 	_inject_shader.setUniform("u_froxel_blend_weight"sv, _blend_weight);
+	_inject_shader.setUniform("u_inject_shadow_bias"sv, _shadow_bias);
 
 	_inject_shader.setUniform("u_volumetric_max_distance"sv, _camera.farPlane());
 

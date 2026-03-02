@@ -9,6 +9,7 @@ const uint MAX_CASCADES = 4; // TODO: should be set from ShadowAtlas::MAX_CASCAD
 #include "light.glh"
 #include "noise.glh"
 
+uniform float u_inject_shadow_bias;
 
 layout(local_size_x = FROXEL_THREADS_X, local_size_y = FROXEL_THREADS_Y, local_size_z = FROXEL_THREADS_Z) in;
 
@@ -715,9 +716,10 @@ float getSpotAngleAttenuation(vec3 to_light, vec3 spot_dir, float outer_angle, f
     return attenuation * attenuation;
 }
 
-float sampleShadow(float current_depth, vec2 atlas_uv)
+float sampleShadow(float frag_depth, vec2 atlas_uv)
 {
-	return texture(u_shadow_atlas_single, atlas_uv).r > current_depth? 1: 0;
+	float shadow_map_depth = texture(u_shadow_atlas_single, atlas_uv).r;
+	return shadow_map_depth - u_inject_shadow_bias > frag_depth? 1: 0;
 }
 
 float fadeLightByDistance(GPULight light)

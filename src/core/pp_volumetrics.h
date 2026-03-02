@@ -27,6 +27,9 @@ public:
 
 	inline Shader &shader() { return _inject_shader; }
 
+	inline void setShadowBias(float bias) { _shadow_bias = bias; }
+	inline float shadowBias() const { return _shadow_bias; }
+
 	// multiplier for the volumetrics effect
 	inline void setStrength(float strength) { _strength = strength; }
 	inline void setFroxelNoiseEnabled(bool enabled) { _z_noise_enabled = enabled; }
@@ -83,6 +86,7 @@ private:
 	float _density { 0.1f };    // small values, less than ~0.2
 	bool _blend_previous { true };
 	float _blend_weight { 0.95f };
+	float _shadow_bias { 0.003f };
 	bool _z_noise_enabled { true };
 	bool _3dblur_enabled { true };
 	bool _2dblur_enabled { false };
