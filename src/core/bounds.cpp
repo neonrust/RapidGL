@@ -243,13 +243,23 @@ bool check(const bounds::AABB &box, const glm::vec3 &point)
 		point.z < box.max().z;
 }
 
+bool check(const bounds::Sphere &sphereA, const bounds::Sphere &sphereB)
+{
+	const auto a_to_b = sphereA.center() - sphereB.center();
+	// distance between centers, squared
+	const auto distance_sq = glm::dot(a_to_b, a_to_b);
+	// both radius, squared
+	const auto radius_sq_ab = (sphereA.radius() + sphereB.radius()) * (sphereA.radius() + sphereB.radius());
+
+	return distance_sq < radius_sq_ab;
+}
+
 bool check(const bounds::Sphere &sphere, const glm::vec3 &point)
 {
 	const auto offset = sphere.center() - point;
 	const auto sqDistance = glm::dot(offset, offset);
 	return sqDistance < sphere.squaredRadius();
 }
-
 
 } // intersect
 
