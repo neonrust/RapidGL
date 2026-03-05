@@ -109,6 +109,18 @@ AABB AABB::transform(const glm::mat4 &tfm) const
 	return aabb;
 }
 
+void AABB::from(const Sphere &sphere)
+{
+	if(not sphere.empty()) [[likely]]
+	{
+		const auto radius_vec = glm::vec3(sphere.radius());
+		_min = sphere.center() - radius_vec;
+		_max = sphere.center() + radius_vec;
+	}
+	else
+		clear();
+}
+
 
 // =======================================================================
 
@@ -169,6 +181,18 @@ void Sphere::setRadius(float radius)
 {
     _radius = radius;
 	_squaredRadius = radius * radius;
+}
+
+void Sphere::from(const AABB &aabb)
+{
+	if(not aabb.empty()) [[likely]]
+	{
+		_center = aabb.center();
+		_radius = std::max(aabb.width(), std::max(aabb.height(), aabb.depth()));
+		_squaredRadius = _radius * _radius;
+	}
+	else
+		clear();
 }
 
 void bounds::Sphere::clear()

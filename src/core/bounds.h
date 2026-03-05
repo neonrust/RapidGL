@@ -38,6 +38,8 @@ public:
 
 	AABB transform(const glm::mat4 &tfm) const;
 
+	void from(const Sphere &sphere);
+
 protected:
 	glm::vec3 _min;
 	glm::vec3 _max;
@@ -75,6 +77,8 @@ public:
 	inline float squaredRadius() const { return _squaredRadius; };
 
 	inline operator bool () const { return not empty(); }
+
+	void from(const AABB &aabb);
 
 protected:
 	glm::vec3 _center;
