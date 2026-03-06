@@ -21,24 +21,24 @@ public:
 
 	bool empty() const;
 	void clear();
-	glm::vec3 center() const;
-	float volume() const;
+	[[nodiscard]] glm::vec3 center() const;
+	[[nodiscard]] float volume() const;
 
-    float width() const;     // X-axis
-    float height() const;    // Y-axis
-    float depth() const;     // Z-axis
+	[[nodiscard]] float width() const;     // X-axis
+	[[nodiscard]] float height() const;    // Y-axis
+	[[nodiscard]] float depth() const;     // Z-axis
 
-	inline const glm::vec3 &min() const { return _min; };
-	inline const glm::vec3 &max() const { return _max; };
+	[[nodiscard]] inline const glm::vec3 &min() const { return _min; };
+	[[nodiscard]] inline const glm::vec3 &max() const { return _max; };
 
-	inline glm::vec3 &min() { return _min; };
-	inline glm::vec3 &max() { return _max; };
+	[[nodiscard]] inline glm::vec3 &min() { return _min; };
+	[[nodiscard]] inline glm::vec3 &max() { return _max; };
 
-	std::array<glm::vec3, 8> corners() const;
+	[[nodiscard]] std::array<glm::vec3, 8> corners() const;
 
-	AABB transform(const glm::mat4 &tfm) const;
+	[[nodiscard]] AABB transform(const glm::mat4 &tfm) const;
 
-	static AABB from(const Sphere &sphere);
+	[[nodiscard]] static AABB from(const Sphere &sphere);
 
 protected:
 	glm::vec3 _min;
@@ -66,19 +66,19 @@ public:
 	Sphere(const glm::vec3 &center, float radius);
 
 	void expand(const glm::vec3 &vertex);
-    float volume() const;
-	inline bool empty() const { return _radius < 0; }
+	[[nodiscard]] float volume() const;
+	[[nodiscard]] inline bool empty() const { return _radius < 0; }
     void clear();
 	void setCenter(const glm::vec3 &center);
 	void setRadius(float radius);
 
-	inline glm::vec3 center() const { return _center; }
-	inline float radius() const { return empty()? 0: _radius; };
-	inline float squaredRadius() const { return _squaredRadius; };
+	[[nodiscard]] inline glm::vec3 center() const { return _center; }
+	[[nodiscard]] inline float radius() const { return empty()? 0: _radius; };
+	[[nodiscard]] inline float squaredRadius() const { return _squaredRadius; };
 
-	inline operator bool () const { return not empty(); }
+	[[nodiscard]] inline operator bool () const { return not empty(); }
 
-	static Sphere from(const AABB &aabb);
+	[[nodiscard]] static Sphere from(const AABB &aabb);
 
 protected:
 	glm::vec3 _center;
