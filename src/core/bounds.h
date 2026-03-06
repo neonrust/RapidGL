@@ -38,7 +38,7 @@ public:
 
 	AABB transform(const glm::mat4 &tfm) const;
 
-	void from(const Sphere &sphere);
+	static AABB from(const Sphere &sphere);
 
 protected:
 	glm::vec3 _min;
@@ -78,7 +78,7 @@ public:
 
 	inline operator bool () const { return not empty(); }
 
-	void from(const AABB &aabb);
+	static Sphere from(const AABB &aabb);
 
 protected:
 	glm::vec3 _center;
