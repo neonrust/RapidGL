@@ -15,6 +15,8 @@ public:
 	AABB();
 	AABB(const glm::vec3 &min, const glm::vec3 &max);
 
+	explicit AABB(const Sphere &sphere);
+
 	void expand(const glm::vec3 &point);
 	void expand(const AABB &aabb);
 	void expand(const Sphere &sphere);
@@ -37,8 +39,6 @@ public:
 	[[nodiscard]] std::array<glm::vec3, 8> corners() const;
 
 	[[nodiscard]] AABB transform(const glm::mat4 &tfm) const;
-
-	[[nodiscard]] static AABB from(const Sphere &sphere);
 
 protected:
 	glm::vec3 _min;
@@ -65,6 +65,8 @@ public:
     Sphere();
 	Sphere(const glm::vec3 &center, float radius);
 
+	explicit Sphere(const AABB &aabb);
+
 	void expand(const glm::vec3 &vertex);
 	[[nodiscard]] float volume() const;
 	[[nodiscard]] inline bool empty() const { return _radius < 0; }
@@ -77,8 +79,6 @@ public:
 	[[nodiscard]] inline float squaredRadius() const { return _squaredRadius; };
 
 	[[nodiscard]] inline operator bool () const { return not empty(); }
-
-	[[nodiscard]] static Sphere from(const AABB &aabb);
 
 protected:
 	glm::vec3 _center;
