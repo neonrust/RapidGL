@@ -57,6 +57,9 @@ set(HEADER_FILES_CORE
 	buffer.h
 	camera.h
 	common.h
+	component_model.h
+	component_bounds.h
+	component_transform.h
 	container_types.h
 	core_app.h
 	debug_output_gl.h
