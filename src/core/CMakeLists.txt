@@ -36,6 +36,7 @@ set(SOURCE_FILES_CORE
 	rendertarget_2d.cpp
 	rendertarget_common.cpp
 	rendertarget_cube.cpp
+	scene.cpp
 	shader.cpp
 	shadow_atlas.cpp
 	static_model.cpp
@@ -97,6 +98,7 @@ set(HEADER_FILES_CORE
 	rendertarget_cube.h
 	ringbuffer.h
 	sample_window.h
+	scene.h
 	shader.h
 	shadow_atlas.h
 	spatial_allocator.h
@@ -139,6 +141,7 @@ target_include_directories(${CORE_LIB_NAME}
 target_link_libraries(${CORE_LIB_NAME}
 	${OPENGL_LIBRARIES}
 	glad
+	EnTT::EnTT
 	stb_image
 	jxl
 	jxl_threads

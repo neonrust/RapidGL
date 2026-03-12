@@ -4,6 +4,7 @@
 
 #include "camera.h"
 #include "sample_window.h"
+#include "scene.h"
 #include "ssbo.h"
 #include "static_object.h"
 #include "shader.h"
@@ -103,11 +104,12 @@ private:
 	void PrecomputeBRDF             (const std::shared_ptr<RGL::RenderTarget::Texture2d>& rt);
     void GenSkyboxGeometry();
 
-	const std::vector<StaticObject> &cullScene(const RGL::Camera &camera);
+	void collectRelevantLights(const RGL::Camera &view);
+	void cullScene(const RGL::Camera &camera, RGL::QueryResult &pvs);
 	void renderScene(const glm::mat4 &view_projection, RGL::Shader &shader, MaterialCtrl matCtrl=UseMaterials);
 	void renderDepth(const glm::mat4 &view_projection, RGL::RenderTarget::Texture2d &target, const glm::ivec4 &rect={0,0,0,0});
 	void renderShadowMaps();
-	void renderSceneShadow(LightID light_id, uint_fast16_t shadow_idx, uint_fast8_t slot_idx, bool dynamic_only=false);
+	void renderSceneShadow(const RGL::QueryResult &objects, uint_fast16_t shadow_idx, uint_fast8_t slot_idx, bool dynamic_only=false);
 	void renderSceneShading(const RGL::Camera &camera);
 	void renderSkybox();
 	void renderLightGeometry();
@@ -206,8 +208,9 @@ private:
 	GLuint    m_debug_draw_vbo             = 0;
 
 
-	std::vector<StaticObject> _scene;  // TODO: Scene _scene;
-	std::vector<StaticObject> _scenePvs;  // potentially visible set
+	RGL::Scene _scene;
+	RGL::QueryResult _cameraPvs;
+
 	std::vector<LightIndex>   _lightsPvs;  // basically all lights within theoretical range
 	std::vector<StaticObject> _lightModels;
 	float _sun_size { 1.f };               // only affects the visible disc in the sky

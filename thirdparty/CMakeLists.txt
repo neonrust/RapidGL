@@ -47,6 +47,8 @@ if (tinyddsloader_ADDED)
     target_include_directories(tinyddsloader INTERFACE "${tinyddsloader_SOURCE_DIR}")
 endif()
 
+CPMAddPackage("gh:skypjack/entt@3.16.0")
+
 CPMAddPackage("gh:ocornut/imgui@1.92.3-docking")
 if(imgui_ADDED)
   set(imgui_SOURCE_DIR ${imgui_SOURCE_DIR} CACHE INTERNAL "")

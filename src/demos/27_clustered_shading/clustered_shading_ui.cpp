@@ -116,7 +116,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 						cam_fwd.x, cam_fwd.y, cam_fwd.z, glm::degrees(heading_angle),
 						cam_right.x, cam_right.y, cam_right.z,
 						cam_up.x, cam_up.y, cam_up.z);
-			ImGui::Text("PVS size : %lu", _scenePvs.size());
+			ImGui::Text("PVS size : %lu", _cameraPvs.size());
 			ImGui::Text("Lights PVS size : %lu", _lightsPvs.size());
 
 			ImGui::Checkbox("Draw AABB", &m_debug_draw_aabb);
@@ -443,7 +443,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 							selected_label = label;
 							top_left = default_top_left;
 							bottom_right = default_bottom_right;
-							Log::debug("  no region");
+							// Log::debug("  no region");
 						}
 
 						for(const auto &[light_id, atlas_light]: _shadow_atlas.allocated_lights())
@@ -494,7 +494,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 				{
 					top_left = default_top_left;
 					bottom_right = default_bottom_right;
-					Log::debug("  no region");
+					// Log::debug("  no region");
 				}
 
 				const ImVec2 img_size { win_width, float(win_width)/aspect };

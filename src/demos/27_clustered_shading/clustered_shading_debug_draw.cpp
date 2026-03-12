@@ -1,5 +1,6 @@
 #include "clustered_shading.h"
 
+#include "component_model.h"
 #include "instance_attributes.h"
 #include "window.h"
 #define GLM_ENABLE_EXPERIMENTAL
@@ -56,13 +57,11 @@ void ClusteredShading::debugDrawSceneBounds()
 	m_line_draw_shader->setUniform("u_line_color"sv, glm::vec4(0.3, 1.0, 0.7, 1));
 	m_line_draw_shader->setUniform("u_mvp"sv, view_projection); // no model transform needed; we'll generate vertices in world-space
 
-	for(const auto &obj: _scene) // _scenePvs
+	for(const auto &[entity_id, tfm, model]: _scene.entities().view<component::Transform, component::Model>().each()) // _scenePvs
 	{
-		// TODO: the transformed AABB should be updated by the model itself, when moved that is.
 		bounds::AABB tfm_aabb;
-		for(const auto &corner: obj.model->aabb().corners())
-			tfm_aabb.expand(obj.transform * glm::vec4(corner, 1));
-
+		for(const auto &corner: model.aabb().corners())
+			tfm_aabb.expand(tfm.transform() * glm::vec4(corner, 1));
 
 		const auto &vertices = tfm_aabb.corners();
 		// TODO: add UV so the shader can draw gradients?
@@ -72,19 +71,20 @@ void ClusteredShading::debugDrawSceneBounds()
 	}
 
 
-		   // restore some states
-	glDepthMask(GL_TRUE);
-	glEnable(GL_DEPTH_TEST);
 	glDisableVertexAttribArray(0);
 
 	const auto &shadow_maps = _shadow_atlas.allocated_lights();
 
 	static const dense_map<uint32_t, size_t> shadow_size_res = {
+		{ 2048, 64 },
 		{ 1024, 32 },
 		{  512, 16 },
 		{  256, 8 },
 		{  128, 4 },
 	};
+
+	// glEnable(GL_DEPTH_TEST);
+	// glDepthFunc(GL_LESS);
 
 	static const glm::vec3 shadow_color { .8f, 0.2f, 0.5f };
 	static const glm::vec3 no_shadow_color { 0.4f, 0.4f, 0.4f };

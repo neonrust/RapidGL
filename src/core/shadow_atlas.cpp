@@ -9,6 +9,7 @@
 #include "glm/ext/matrix_transform.hpp"
 #include "glm/gtc/epsilon.hpp"
 #include "camera.h"
+#include "scene.h"
 
 #include <chrono>
 #include <ranges>
@@ -23,6 +24,8 @@
 
 namespace RGL
 {
+
+#define LIGHT_PVS_KEY(light_id, slot_idx) ((uint32_t(light_id) << 3) | (slot_idx))
 
 using namespace std::literals;
 
@@ -66,6 +69,7 @@ ShadowAtlas::ShadowAtlas(uint32_t size, LightManager &lights) :
 	_shadow_slots_info_ssbo.bindAt(SSBO_BIND_SHADOW_SLOTS_INFO);
 
 	_id_to_allocated.reserve(64);
+	_light_pvs.reserve(64);
 
 	init_slots(24, 64, 256);
 }
@@ -260,31 +264,46 @@ void ShadowAtlas::log_changes(const Counters &counters, size_t num_prio, Time st
 	Log::info("{}", msg);
 }
 
-bool ShadowAtlas::should_render(const AtlasLight &atlas_light, Time now, size_t light_hash, bool has_dynamic) const
+ShadowAtlas::SlotMask ShadowAtlas::need_render(const AtlasLight &atlas_light, Time now, size_t light_hash, const Scene &scene) const
 {
 	// NOTE: see comment in renderShadowMaps() regarding static/dynamic caching
 
-	if(atlas_light.is_dirty())
-		return true;
+	if(atlas_light.is_dirty() or light_hash != atlas_light.hash)
+		return SlotMaskAll;
 
-	if(light_hash == atlas_light.hash and not has_dynamic)
-		return false;
+	// light has changed, check the view for each slot whether there are dynamic objects
+	// render if either:
+	// - there are dynamic objects in view
+	// - enough frames skipped
+	// - enough time has passed
 
+	SlotMask stale_slots { 0 };
 
-	// light has changed or there are dynamic objects within range!
-	//   render if either enough frames skipped or enough time has passed  (AND ?)
+	for(uint_fast8_t slot_idx = 0; slot_idx < atlas_light.num_slots; ++slot_idx)
+	{
+		const auto &objects = pvs(scene, atlas_light.uuid, slot_idx);
 
-	const auto size_idx = slot_size_idx(atlas_light.slots[0].size);
-	assert(size_idx < _render_intervals.size());
-	const auto &[skip_frames, interval] = _render_intervals[size_idx];
+		if(not objects.dynamic_ids.empty())
+		{
+			stale_slots |= 1u << slot_idx;
+			continue;
+		}
 
-	const auto overdue = (skip_frames == 0 or atlas_light._frames_skipped < skip_frames)
-		or (now - atlas_light._last_rendered) >= interval;
+		const auto size_idx = slot_size_idx(atlas_light.slots[slot_idx].size);
+		assert(size_idx < _render_intervals.size());
+		const auto &[skip_frames, interval] = _render_intervals[size_idx];
 
-	if(not overdue and atlas_light._frames_skipped)
-		--atlas_light._frames_skipped;
+		// frames skipped or time elapsed
+		const auto overdue = (skip_frames == 0 or atlas_light._frames_skipped < skip_frames)
+			or (now - atlas_light._last_rendered) >= interval;
 
-	return overdue;
+		if(overdue)
+			stale_slots |= 1u << slot_idx;
+		else if(atlas_light._frames_skipped)
+			--atlas_light._frames_skipped;
+	}
+
+	return stale_slots;
 }
 
 bool ShadowAtlas::remove_allocation(LightID light_id)
@@ -292,6 +311,9 @@ bool ShadowAtlas::remove_allocation(LightID light_id)
 	auto found = _id_to_allocated.find(light_id);
 	if(found == _id_to_allocated.end())
 		return false;
+
+	for(auto slot = 0u; slot < found->second.num_slots; ++slot)
+		_light_pvs.erase(LIGHT_PVS_KEY(light_id, slot));
 
 	const auto &atlas_light = found->second;
 
@@ -432,24 +454,22 @@ void ShadowAtlas::debug_dump_desired(const std::vector<AtlasLight> &desired_slot
 	}
 }
 
-void ShadowAtlas::update_shadow_params()
+void ShadowAtlas::update_slots_ssbo()
 {
-	// NOTE: for directional lights, this uses the separately-updated CSM params (by calling update_csm_params())
+	// NOTE: if a "sun" light has shadow map allocated (see allocated_sun()), update_csm_params() needs to be called before this
 
-	static std::vector<ShadowSlotInfo> shadow_params;
-	static_assert(std::same_as<decltype(_shadow_slots_info_ssbo)::value_type, decltype(shadow_params)::value_type>);
+	static std::vector<decltype(_shadow_slots_info_ssbo)::value_type> slots_params;
 
-	shadow_params.reserve(_id_to_allocated.size());
-	shadow_params.clear();
+	slots_params.reserve(_id_to_allocated.size());
+	slots_params.clear();
 
-	// if a "sun" light has shadow map allocated (see allocated_sun()), update_csm_params() needs to be called before this
 	for(auto &[light_id, atlas_light]: allocated_lights())
 	{
 		const auto &light = _lights.get_by_id(light_id);
 
-		std::array<glm::mat4, 6>  projs;
-		std::array<glm::uvec4, 6> rects;
-		std::array<float, 6>      texel_sizes;
+		std::array<glm::mat4, MAX_SLOTS>  view_projs;
+		std::array<glm::uvec4, MAX_SLOTS> rects;
+		std::array<float, MAX_SLOTS>      texel_sizes;
 
 		for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
 		{
@@ -457,22 +477,23 @@ void ShadowAtlas::update_shadow_params()
 
 			if(IS_DIR_LIGHT(light))
 			{
-				projs[idx] = _csm_params.light_view_projection[idx];
-				texel_sizes[idx] = (_csm_params.depth_range[idx].y - _csm_params.depth_range[idx].x) / float(rects[idx].z);
+				view_projs[idx] = _csm_params.light_view_projection[idx];
+				texel_sizes[idx] = (_csm_params.view_aabb[idx].min().z - _csm_params.view_aabb[idx].max().z) / float(rects[idx].z);
+				// Log::debug(" csm[{}] view proj: {:.4f}", idx, view_projs[idx]);
 			}
 			else
 			{
-				const auto &[proj, nz, fz] = light_view_projection(light, idx);
-				projs[idx] = proj;
+				const auto &[view, proj, nz, fz] = light_view_projection(light, idx);
+				view_projs[idx] = proj * view;
 				texel_sizes[idx] = (fz - nz) / float(rects[idx].z);
 			}
 		}
 
-		_lights.set_shadow_index(light_id, shadow_params.size());
+		_lights.set_shadow_index(light_id, slots_params.size());
 
-		shadow_params.emplace_back(projs, rects, texel_sizes);
+		slots_params.emplace_back(view_projs, rects, texel_sizes);
 	}
-	_shadow_slots_info_ssbo.set(shadow_params);
+	_shadow_slots_info_ssbo.set(slots_params);
 	_lights.flush();
 }
 
@@ -493,7 +514,7 @@ static constexpr glm::vec3 s_cube_face_up[] = {
 	-AXIS_Y,
 };
 
-std::tuple<glm::mat4, float, float> ShadowAtlas::light_view_projection(const GPULight &light, size_t idx)
+std::tuple<glm::mat4, glm::mat4, float, float> ShadowAtlas::light_view_projection(const GPULight &light, size_t idx) const
 {
 	// TODO: this is actually only needed if the light has changed. cache it where?
 
@@ -511,9 +532,8 @@ std::tuple<glm::mat4, float, float> ShadowAtlas::light_view_projection(const GPU
 		assert(glm::epsilonEqual(glm::length(view_forward), 1.f, 0.01f));
 		const auto light_view      = glm::lookAt(light.position, light.position + view_forward, view_up);
 		const auto face_projection = glm::perspective(glm::half_pi<float>(), square, near_z, far_z);
-		const auto light_vp        = face_projection * light_view;
 
-		return { light_vp, near_z, far_z };
+		return { light_view, face_projection, near_z, far_z };
 	}
 	else if(IS_SPOT_LIGHT(light))
 	{
@@ -524,11 +544,10 @@ std::tuple<glm::mat4, float, float> ShadowAtlas::light_view_projection(const GPU
 		// if 'view_forward' is close to Y axis, use X axis as "up"
 		const auto &view_up      = glm::all(glm::lessThan(glm::abs(view_forward) - AXIS_Y, glm::vec3(1e-3f, 1e-3f, 1e-3f))) ? AXIS_X: AXIS_Y;
 
-		const auto light_view    = glm::lookAt(light.position, light.position + view_forward, view_up);
-		const auto projection    = glm::perspective(light.outer_angle*2, square, near_z, far_z);
-		const auto light_vp      = projection * light_view;
+		const auto light_view       = glm::lookAt(light.position, light.position + view_forward, view_up);
+		const auto light_projection = glm::perspective(light.outer_angle*2, square, near_z, far_z);
 
-		return { light_vp, near_z, far_z };
+		return { light_view, light_projection, near_z, far_z };
 	}
 	else
 	{
@@ -536,7 +555,60 @@ std::tuple<glm::mat4, float, float> ShadowAtlas::light_view_projection(const GPU
 		// for directional lights, the necessary stuff is calculated in update_csm_params()
 	}
 
-	return { glm::mat4(1), -1, -1 };
+	return { glm::mat4(1), glm::mat4(1), -1, -1 };
+}
+
+const QueryResult &ShadowAtlas::pvs(const Scene &scene, LightID light_id, uint_fast8_t slot_idx) const
+{
+	QueryResult *result { nullptr };
+	auto found = _light_pvs.find(LIGHT_PVS_KEY(light_id, slot_idx));
+	if(found != _light_pvs.end())
+		result = &found->second;
+	else
+	{
+		QueryResult res;
+		// insert & get address of inserted object
+		// TODO: possibly to do in a cleaner way?
+		result = &((*_light_pvs.insert({ LIGHT_PVS_KEY(light_id, slot_idx), res }).first).second);
+	}
+
+	auto &L = _lights.get_by_id(light_id);
+	switch(GET_LIGHT_TYPE(L))
+	{
+	case LIGHT_TYPE_DIRECTIONAL:
+	{
+		// TODO: use the light-space AABB
+		const auto &view       = _csm_params.light_view[slot_idx];
+		const auto &projection = _csm_params.light_projection[slot_idx];
+		const auto &aabb       = _csm_params.view_aabb[slot_idx];
+
+		scene.query(view, projection, aabb, *result);
+	}
+	break;
+
+	case LIGHT_TYPE_POINT:
+	{
+		const auto &[view, proj, near, far] = light_view_projection(L, slot_idx);
+		Frustum frustum;
+		frustum.setFromView(proj, view, L.position);
+		scene.query(frustum, *result);
+	}
+	break;
+
+	case LIGHT_TYPE_SPOT:
+	{
+		const auto &[view, proj, near, far] = light_view_projection(L);
+		Frustum frustum;
+		frustum.setFromView(proj, view, L.position);
+		scene.query(frustum, *result);
+	}
+	break;
+
+	default:
+		assert(false);
+	}
+
+	return *result;
 }
 
 	   // frustum corners in NFC space (always the same)
@@ -681,6 +753,7 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 		const auto light_pos = cascade_center_ws - sun.direction * -light_projection_distance;
 		auto light_view = glm::lookAt(light_pos, cascade_center_ws, AXIS_Y);
 		auto light_projection = glm::ortho(min_extents.x, max_extents.x, min_extents.y, max_extents.y, 0.f, ortho_depth);
+		_csm_params.view_aabb[cascade] = bounds::AABB({ min_extents.x, min_extents.y, 0.f }, { max_extents.x, max_extents.y, ortho_depth });
 
 		_csm_params.near_far_plane[cascade] = { minZ, maxZ };  // store depth to the far side of the split
 
@@ -704,7 +777,8 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 			light_vp = light_projection * light_view;
 		}
 
-		_csm_params.light_view[cascade] = light_view;
+		_csm_params.light_view[cascade]            = light_view;
+		_csm_params.light_projection[cascade]      = light_projection;
 		_csm_params.light_view_projection[cascade] = light_vp;
 
 #if 0
@@ -718,11 +792,11 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 				   cascade_radius
 				   );
 
-		Log::debug("   view:\n{: 8.4f}", light_view);
-		Log::debug("   proj:\n{: 8.4f}", light_projection);
-		// Log::debug("   view-proj:\n{: 8.4f}", light_vp);
+		// Log::debug("   view:\n{: 8.4f}", light_view);
+		// Log::debug("   proj:\n{: 8.4f}", light_projection);
+		Log::debug("  [{}] view-proj:\n{: 8.4f}", cascade, light_vp);
 #endif
-		_csm_params.depth_range[cascade] = { minZ, maxZ };
+		// _csm_params.depth_range[cascade] = { minZ, maxZ };
 
 		// std::exit(42);
 	}

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "bounds.h"
 #include "rendertarget_2d.h"
 #include "container_types.h"
 #include "spatial_allocator.h"
@@ -17,6 +18,8 @@ namespace RGL
 {
 class LightManager;
 class Camera;
+class Scene;
+struct QueryResult;
 
 using Time = std::chrono::steady_clock::time_point;
 
@@ -27,7 +30,9 @@ public:
 	enum class CubeFace : uint32_t { PosX, NegX, PosY, NegY, PosZ, NegZ };
 
 	static constexpr size_t MAX_CASCADES = 4;
-	static_assert(MAX_CASCADES >= 1 and MAX_CASCADES <= 6);
+	static constexpr size_t MAX_SLOTS= 6;
+	static_assert(MAX_CASCADES >= 1 and MAX_CASCADES <= MAX_SLOTS);
+	static_assert(MAX_SLOTS >= MAX_CASCADES and MAX_SLOTS >= 6);
 
 private:
 	using allocator_t = SpatialAllocator<uint32_t>;
@@ -35,6 +40,8 @@ private:
 public:
 	using SlotSize = allocator_t::SizeT;
 	using SlotID = allocator_t::NodeIndex;
+	using SlotMask = uint_fast8_t;
+	static constexpr SlotMask SlotMaskAll { 0xff };
 
 	struct SlotDef
 	{
@@ -89,9 +96,11 @@ public:
 		size_t num_cascades { 0 };  // valid items in arrays
 		std::array<float, MAX_CASCADES> split_depth;
 		std::array<glm::mat4, MAX_CASCADES> light_view;
+		std::array<glm::mat4, MAX_CASCADES> light_projection;
 		std::array<glm::mat4, MAX_CASCADES> light_view_projection;
-		std::array<glm::vec2, MAX_CASCADES> depth_range;
+		// std::array<glm::vec2, MAX_CASCADES> depth_range;
 		std::array<glm::vec2, MAX_CASCADES> near_far_plane;
+		std::array<bounds::AABB, MAX_CASCADES> view_aabb;
 		float light_radius_uv;
 
 		inline operator bool () const { return num_cascades >= 1 and num_cascades <= 4; }
@@ -124,14 +133,14 @@ public:
 	inline float csm_backoff() const { return _csm_cascade_backoff; }
 	inline void set_csm_backoff(float backoff) { _csm_cascade_backoff = backoff; }
 	inline bool csm_stabilization() const { return _csm_stabilization; }
-	inline void set_csm_stabilization(float enabled) { _csm_stabilization = enabled; }
+	inline void set_csm_stabilization(bool enabled) { _csm_stabilization = enabled; }
 
 	size_t eval_lights(const std::vector<LightIndex> &relevant_lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward);
 
 	[[nodiscard]] const dense_map<LightID, AtlasLight> &allocated_lights() const { return _id_to_allocated; }
-	[[nodiscard]] bool should_render(const AtlasLight &atlas_light, Time now, size_t hash, bool has_dynamic) const;
+	[[nodiscard]] SlotMask need_render(const AtlasLight &atlas_light, Time now, size_t hash, const Scene &scene) const;
 
-	void update_shadow_params();
+	void update_slots_ssbo();
 	const CSMParams &update_csm_params(LightID light_id, const Camera &camera);//, float radius_uv=0.5f);
 	inline const CSMParams &csm_params() const { return _csm_params; }
 
@@ -149,6 +158,8 @@ public:
 	[[nodiscard]] inline size_t slot_size_idx(SlotSize size) const { return _allocator.level_from_size(size) - _allocator.largest_level(); }
 
 	bool remove_allocation(LightID light_id);
+
+	const QueryResult &pvs(const Scene &scene, LightID light_id, uint_fast8_t slot_idx=0) const;
 
 private:
 	float light_value(const GPULight &light, const glm::vec3 &view_pos, const glm::vec3 &view_forward) const;
@@ -203,7 +214,7 @@ private:
 	SlotID alloc_slot(SlotSize size, bool first=true);
 	void free_slot(SlotSize size, SlotID node_index);
 	void free_all_slots(const AtlasLight &atlas_light);
-	std::tuple<glm::mat4, float, float> light_view_projection(const GPULight &light, size_t idx);
+	std::tuple<glm::mat4, glm::mat4, float, float> light_view_projection(const GPULight &light, size_t idx=0) const;
 
 private:
 	LightManager &_lights;  // one could argue that the association should be the other way around...
@@ -216,7 +227,7 @@ private:
 	uint_fast8_t _sun_num_cascades { 3 };
 	LightID _sun_id { NO_LIGHT_ID };
 	float _csm_frustum_split_mix { 0.55f };  // 0 = linear, 1 = logarithic
-	float _csm_cascade_backoff { 5.f };
+	float _csm_cascade_backoff { 4.f };
 	bool _csm_stabilization { true };
 	CSMParams _csm_params;
 
@@ -230,6 +241,8 @@ private:
 
 	buffer::Storage<ShadowSlotInfo> _shadow_slots_info_ssbo;
 	small_vec<size_t, 16> _distribution;  // slot sizes of each of the levels (from max to min)
+
+	mutable dense_map<uint32_t, QueryResult> _light_pvs;
 
 	SpatialAllocator<uint32_t> _allocator;
 };

@@ -9,6 +9,9 @@
 #include "util.h"
 #include "gui/gui.h"   // IWYU pragma: keep
 
+#include "component_model.h"
+#include "component_transform.h"
+
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/random.hpp>
 // #include <glm/gtx/string_cast.hpp>  // glm::to_string
@@ -692,13 +695,13 @@ void ClusteredShading::createLights()
 	static constexpr auto z_step = 12.f;
 	auto x_offset = 0.f;
 
-	// _light_mgr.add(DirectionalLightParams{
-	// 	.color = { 1.f, 1.f, 1.f },
-	// 	.intensity = 50.f,
-	// 	.fog = 1.f,
-	// 	.shadow_caster = true,
-	// 	.direction = glm::normalize(glm::vec3(20, -50, 20)),
-	// });
+	_light_mgr.add(DirectionalLightParams{
+		.color = { 1.f, 0.97f, 0.9f },
+		.intensity = 10.f,
+		.fog = 1.f,
+		.shadow_caster = true,
+		.direction = glm::normalize(glm::vec3(5, -3, 5)),
+	});
 
 	auto l = _light_mgr.add(SpotLightParams{
 		.color = { 1.f, 0.85f, 0.7f },
@@ -708,7 +711,7 @@ void ClusteredShading::createLights()
 		.position = m_camera.position(),  // will be kept up to date in update()
 		.direction = AXIS_X,              // will be kept up to date in update()
 		.outer_angle = glm::radians(45.f),
-		.inner_angle = glm::radians(35.f),
+		.inner_angle = glm::radians(25.f),
 	});
 	_pov_light_id = l.id();
 
@@ -732,8 +735,8 @@ void ClusteredShading::createLights()
 
 		const auto rand_intensity = 100.f;//Util::RandomFloat(10, 100);
 
-		auto light_type = 3 + (idx % 4);
-		// light_type = LIGHT_TYPE_DISC;
+		auto light_type = LIGHT_TYPE_RECT + (idx % 4);
+		light_type = LIGHT_TYPE_POINT;
 
 		LightID l_id;
 		std::string_view type_name;
@@ -1063,14 +1066,10 @@ void ClusteredShading::render()
 	m_camera.setFov(m_camera_fov);
 
 
+	collectRelevantLights(m_camera);
 
 	// determine visible meshes  (only if camera or meshes moved (much))
-	cullScene(m_camera);
-	// TODO: to make it more general, the culling result (_scenePvs)
-	//   could be stored in the 'view' (e.g. camera or a point light shadow map cube face)
-	//   or "in relation to" the view, e.g. a map of ID -> PVS
-	//     _scene_cull_sets[m_camera.entity_id()] = _scenePvs;
-	//     _scene_cull_sets[(light.entity_id() << 3) + face] = _scenePvs;
+	cullScene(m_camera, _cameraPvs);
 
 
 	_gl_timer.start();
@@ -1079,10 +1078,8 @@ void ClusteredShading::render()
 
 	m_shadow_time.add(_gl_timer.elapsed<microseconds>(true));
 
-
 	// Depth pre-pass  (only if camera/meshes moved, probably always)
 	renderDepth(m_camera.projectionTransform() * m_camera.viewTransform(), m_depth_pass_rt);
-
 
 	// Blit depth info to our main render target
 	m_depth_pass_rt.copyTo(_rt, RenderTarget::DepthBuffer, TextureFilteringParam::Nearest);
@@ -1181,7 +1178,7 @@ void ClusteredShading::render()
 
 
 		_shadow_atlas.bindDepthTextureSampler(22); // just using single-sample, no PCF
-		m_depth_pass_rt.bindDepthTextureSampler(2);
+		m_depth_pass_rt.bindDepthTextureSampler(2); // HUH?!?
 
 		m_volumetrics_pp.inject();
 
@@ -1219,8 +1216,6 @@ void ClusteredShading::render()
 	}
 	else
 	{
-		_pp_full_rt.clear();
-
 		m_volumetrics_cull_time.clear();
 		m_volumetrics_inject_time.clear();
 		m_volumetrics_accum_time.clear();
@@ -1237,6 +1232,7 @@ void ClusteredShading::render()
 	// TODO: compute new desired exposure, blend 'm_eposure' over time towards that value
 
 	// Bloom
+
     if (m_bloom_enabled)
     {
 		m_bloom_pp.setThreshold(m_bloom_threshold);
@@ -1305,14 +1301,17 @@ void ClusteredShading::renderShadowMaps()
 		_shadow_atlas.eval_lights(_lightsPvs, m_camera.position(), m_camera.forwardVector());
 		m_shadow_alloc_time.add(duration_cast<microseconds>(steady_clock::now() - T0));
 	}
-	m_shadow_alloc_time.add(microseconds(0));
+	else
+		m_shadow_alloc_time.add(microseconds(0));
 
 	// light projections needs to be updated more often than the atlas allocations.
 	//   it also needs to be updated when the light has moved (new view-projection),
-	// but for simplicity, we're updating all the allocated lights in one go.
-	_shadow_atlas.update_shadow_params();
+	// for simplicity, all allocated light are updated every frame
+	_shadow_atlas.update_slots_ssbo();
 
 
+	// before the first shadow map is rendered, the SSBO content must be in synch,
+	//   but in the case of no shadow maps rendered, no barrier is required (here)
 	bool did_barrier = false;
 	auto barrier = []() {
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
@@ -1338,10 +1337,6 @@ void ClusteredShading::renderShadowMaps()
 		if(IS_DIR_LIGHT(light))  // cascades are also affected by the camera's frustum
 			light_hash = hash_combine(light_hash, m_camera.hash());
 
-		// TODO: check whether scene objects inside the light's sphere or frustum are dynamic (as opposed to static)
-		//   preferably, this should be per slot (cube face for point lights)
-		const auto has_dynamic = false; //_scene_culler.pvs(light_id).has(SceneObjectType::Dynamic);
-
 		// TODO: keep TWO shadow maps, one static-object only (cache) and one active (all objects)
 		//   1. render static objects first, to both maps (copy to active afterwards?)
 		//   2. render dynamic objects to active map only
@@ -1349,18 +1344,20 @@ void ClusteredShading::renderShadowMaps()
 		//   - if dynamic objects moved: copy static to active & render dynamic objects
 		//   - naturally, if light moved/changed, go to step 1.
 
-		if(_shadow_atlas.should_render(atlas_light, now, light_hash, has_dynamic))
+		const auto need_render = _shadow_atlas.need_render(atlas_light, now, light_hash, _scene);
+		if(need_render)
 		{
 			// render shadow map(s) for this light
 
-			const auto shadow_index = GET_SHADOW_IDX(light);
+			const auto shadow_idx = GET_SHADOW_IDX(light);
 
-			for(auto slot_idx = 0u; slot_idx < atlas_light.num_slots; ++slot_idx)
+			for(uint_fast8_t slot_idx = 0u; slot_idx < atlas_light.num_slots; ++slot_idx)
 			{
-				const auto &slot_rect = atlas_light.slots[slot_idx].rect;
+				const auto dynamic_only = false;
 
-				if(true)//_scene_culler.pvs(light_id, idx).has(SceneObjectType::Dynamic))
+				if((need_render & (1u << slot_idx)) > 0)
 				{
+					const auto &slot_rect = atlas_light.slots[slot_idx].rect;
 					_shadow_atlas.bindRenderTarget(slot_rect);
 					if(not did_barrier)
 					{
@@ -1368,7 +1365,9 @@ void ClusteredShading::renderShadowMaps()
 						did_barrier = true;
 					}
 
-					renderSceneShadow(light_id, shadow_index, slot_idx, has_dynamic);
+					const auto &pvs = _shadow_atlas.pvs(_scene, light_id, slot_idx);
+
+					renderSceneShadow(pvs, shadow_idx, slot_idx, dynamic_only);
 					++_shadow_atlas_slots_rendered;
 				}
 			}
@@ -1543,7 +1542,7 @@ void ClusteredShading::renderLightGeometry()
 
 
 		surf_attrs.clear();
-		surf_attrs.emplace_back(sun_model, L.color*L.intensity, false);
+		surf_attrs.emplace_back(sun_model, L.color*L.intensity * 100.f, false);
 
 		auto &model = _lightModels[2].model;  // render as a disc  (but currently as a sphere, for testing)
 		auto &inst_attrs = model->instance_attributes(sizeof(SurfaceLightAttrs));
@@ -1660,20 +1659,35 @@ void ClusteredShading::draw2d(const Texture &texture, const glm::uvec2 &top_left
 	// glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
-const std::vector<StaticObject> &ClusteredShading::cullScene(const Camera &view)
+void ClusteredShading::cullScene(const Camera &view, QueryResult &pvs)
 {
 	const auto T0 = steady_clock::now();
-	// TODO: in theory, this could be done in multiple threads
-	//   however, a space partitioning scheme is probably a better (first) step
-
-	_scenePvs.clear();
-	_scenePvs.reserve(256); // a guesstimate how many objects are visible (maybe a % of total count?)
 
 	// perform frustum culling of all objects in the scene (or a partition thereof)
+	_scene.query(view.frustum(), pvs);
+
+	// TODO: cull invisible objects in the scene, using any method available
+	//   e.g. frustum and/or occlusion culling
+
+	// std::sort(_cameraPvs.begin(), _cameraPvs.end(), [view_pos](const StaticObject &A, const StaticObject &B) {
+	// 	// TODO: sort back-to-front
+	// 	//   e.g. by closest part of AABB/OBB/bounding sphere
+	// 	//   for now, just use AABB center for simplicity
+	// 	const auto offsetA = view_pos - A.model->aabb().center();
+	// 	const auto sqDistanceA = glm::dot(offsetA, offsetA);
+	// 	const auto offsetB = view_pos - B.model->aabb().center();
+	// 	const auto sqDistanceB = glm::dot(offsetB, offsetB);
+	// 	return sqDistanceA < sqDistanceB;
+	// });
+
+	m_cull_scene_time.add(duration_cast<microseconds>(steady_clock::now() - T0));
+}
+
+void ClusteredShading::collectRelevantLights(const Camera &view)
+{
+	const auto T0 = steady_clock::now();
 
 	const auto view_pos = view.position();
-	const auto &frustum = view.frustum();
-
 	const auto max_view_distance = view.farPlane()* s_light_relevant_fraction;
 
 	// this probably doesn't need to be done every frame
@@ -1719,50 +1733,40 @@ const std::vector<StaticObject> &ClusteredShading::cullScene(const Camera &view)
 			// TODO: ideally these should be sorted by distance from camera
 			_relevant_lights_index_ssbo.set(_lightsPvs);
 		}
-
 	}
-
-	// TODO do something like:
-	//    view.near(_scene)  i.e. everything in range of the view
-	for(const auto &obj: _scene)
-	{
-		auto visible = intersect::check(frustum, obj.model->aabb(), obj.transform);
-		if(visible)
-			_scenePvs.push_back(obj);
-	}
-
-	// TODO: cull invisible objects in the scene, using any method available
-	//   e.g. frustum and/or occlusion culling
-
-	std::sort(_scenePvs.begin(), _scenePvs.end(), [view_pos](const StaticObject &A, const StaticObject &B) {
-		// TODO: sort back-to-front
-		//   e.g. by closest part of AABB/OBB/bounding sphere
-		//   for now, just use AABB center for simplicity
-		const auto offsetA = view_pos - A.model->aabb().center();
-		const auto sqDistanceA = glm::dot(offsetA, offsetA);
-		const auto offsetB = view_pos - B.model->aabb().center();
-		const auto sqDistanceB = glm::dot(offsetB, offsetB);
-		return sqDistanceA < sqDistanceB;
-	});
-
-
-	m_cull_scene_time.add(duration_cast<microseconds>(steady_clock::now() - T0));
-
-	return _scenePvs;
 }
 
 void ClusteredShading::renderScene(const glm::mat4 &view_projection, Shader &shader, MaterialCtrl materialCtrl)
 {
-	for(const auto &obj: _scenePvs)
+	// TODO: in c++26: std::views::concat(_cameraPvs.static_ids, _cameraPvs.dynamic_ids)
+	for(const auto &entity_id: _cameraPvs.dynamic_ids)
 	{
-		shader.setUniform("u_mvp"sv,   view_projection * obj.transform);
-		shader.setUniform("u_model"sv, obj.transform);
-		shader.setUniform("u_normal_matrix"sv, glm::transpose(glm::inverse(glm::mat3(obj.transform))));
+		const auto &[model, transform] = _scene.entities().get<component::Model, component::Transform>(entity_id);
+		const auto &tfm = transform.transform();
+
+		shader.setUniform("u_mvp"sv,           view_projection * tfm);
+		shader.setUniform("u_model"sv,         tfm);
+		shader.setUniform("u_normal_matrix"sv, transform.normal_matrix());
 
 		if(materialCtrl == UseMaterials)
-			obj.model->Render(shader);
+			model.Render(shader);
 		else
-			obj.model->Render();
+			model.Render();
+	}
+
+	for(const auto &entity_id: _cameraPvs.static_ids)
+	{
+		const auto &[model, transform] = _scene.entities().get<component::Model, component::Transform>(entity_id);
+		const auto &tfm = transform.transform();
+
+		shader.setUniform("u_mvp"sv,           view_projection * tfm);
+		shader.setUniform("u_model"sv,         tfm);
+		shader.setUniform("u_normal_matrix"sv, transform.normal_matrix());
+
+		if(materialCtrl == UseMaterials)
+			model.Render(shader);
+		else
+			model.Render();
 	}
 }
 
@@ -1774,32 +1778,43 @@ void ClusteredShading::renderDepth(const glm::mat4 &view_projection, RenderTarge
 	glDepthMask(GL_TRUE);
 	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
     glDepthFunc(GL_LESS);
+	glCullFace(GL_BACK);
 
     m_depth_prepass_shader->bind();
 
 	renderScene(view_projection, *m_depth_prepass_shader, NoMaterials);
 }
 
-void ClusteredShading::renderSceneShadow(LightID light_id, uint_fast16_t shadow_idx, uint_fast8_t slot_idx, bool dynamic_only)
+void ClusteredShading::renderSceneShadow(const QueryResult &objects, uint_fast16_t shadow_idx, uint_fast8_t slot_idx, bool dynamic_only)
 {
-	// TODO: ideally, only render objects whose AABB intersects with the light's projection (frustum)
-
 	m_shadow_depth_shader->bind();
 
 	// TODO: probably, it would be better (for perf) to pass the 'light_vp' as a uniform...
 	m_shadow_depth_shader->setUniform("u_light_shadow_index"sv, uint32_t(shadow_idx)); // for 'mvp'
-	m_shadow_depth_shader->setUniform("u_shadow_slot_index"sv, slot_idx);
+	m_shadow_depth_shader->setUniform("u_shadow_slot_index"sv, uint32_t(slot_idx));
 
-	for(const auto &obj: _scenePvs)
+	if(not dynamic_only)
 	{
-		(void)dynamic_only;
-		// if(dynamic_only and not obj.is_dynamic)
-		// 	continue;
-		m_shadow_depth_shader->setUniform("u_model"sv, obj.transform);
-		m_shadow_depth_shader->setUniform("u_normal_matrix"sv, glm::transpose(glm::inverse(glm::mat3(obj.transform))));
+		for(const auto &entity_id: objects.static_ids)
+		{
+			const auto &[transform, model] = _scene.entities().get<component::Transform, component::Model>(entity_id);
+			const auto &tfm = transform.transform();
 
-		obj.model->Render();
+			m_shadow_depth_shader->setUniform("u_model"sv, tfm);
+			m_shadow_depth_shader->setUniform("u_normal_matrix"sv, transform.normal_matrix());
+			model.Render();
+		}
 	}
+	for(const auto &entity_id: objects.dynamic_ids)
+	{
+		const auto &[transform, model] = _scene.entities().get<component::Transform, component::Model>(entity_id);
+		const auto &tfm = transform.transform();
+
+		m_shadow_depth_shader->setUniform("u_model"sv, tfm);
+		m_shadow_depth_shader->setUniform("u_normal_matrix"sv, transform.normal_matrix());
+		model.Render();
+	}
+
 }
 
 void ClusteredShading::renderSceneShading(const Camera &camera)
@@ -1922,7 +1937,7 @@ void ClusteredShading::debug_message(GLenum type, std::string_view severity, std
 	}
 }
 
-void ClusteredShading::loadScene(std::string_view name)
+void ClusteredShading::loadScene([[maybe_unused]] std::string_view name)
 {
 	// Create scene objects
 	const auto origin = glm::mat4(1);
@@ -1937,13 +1952,26 @@ void ClusteredShading::loadScene(std::string_view name)
 	// assert(*testroom_model);
 	// _scene.emplace_back(testroom_model, origin);
 
-	auto cathedral_model = std::make_shared<StaticModel>();
-	cathedral_model->Load("/dl/necropolisfantasygraveyardkit/cathedral.gltf");
-	assert(*cathedral_model);
-	_scene.emplace_back(cathedral_model, origin);
 
-	auto floor_model = std::make_shared<StaticModel>();
-	floor_model->Load(FileSystem::getResourcesPath() / "models" / "floor.gltf");
-	assert(*floor_model);
-	_scene.emplace_back(floor_model, origin);
+
+	// TODO: where should the actual object be stored?
+	//   the "scene" only stores the entity and bounds?  (it's just a "lookup")
+	//   I guess the ECS?
+	//     - model component
+	//     - transform component
+
+	StaticModel cathedral_model;
+	cathedral_model.Load("/dl/necropolisfantasygraveyardkit/cathedral_jxl.gltf");
+	assert(cathedral_model);
+	_scene.add(std::move(cathedral_model));
+
+	StaticModel floor_model;
+	floor_model.Load(FileSystem::getResourcesPath() / "models" / "floor.gltf");
+	assert(floor_model);
+	_scene.add(std::move(floor_model));
+
+	// auto shadow_model = std::make_shared<StaticModel>();
+	// shadow_model->Load(FileSystem::getResourcesPath() / "models" / "shadowtest.gltf");
+	// assert(*shadow_model);
+	// _scene.emplace_back(shadow_model, origin);
 }
