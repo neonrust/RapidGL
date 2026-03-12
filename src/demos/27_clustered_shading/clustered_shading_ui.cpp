@@ -300,10 +300,10 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			if(ImGui::SliderFloat("CSM backoff distance", &backoff, 1.f, 100.f, "%.1f"))
 				_shadow_atlas.set_csm_backoff(backoff);
 			ImGui::SliderFloat("Shadow occlusion",   &m_shadow_occlusion,            0.05f,  1.f,   "%.2f");
-			ImGui::SliderFloat("Bias constant",      &m_shadow_bias_constant,       -0.03f,  0.03f, "%.4f");
-			ImGui::SliderFloat("Bias slope scale",   &m_shadow_bias_slope_scale,    -5.f,    5.f,   "%.2f");
+			ImGui::SliderFloat("Bias constant",      &m_shadow_bias_constant,       -0.02f,  0.02f, "%.4f");
+			ImGui::SliderFloat("Bias slope scale",   &m_shadow_bias_slope_scale,     -.5f,    .5f,  "%.2f");
 			ImGui::SliderFloat("Bias slope power",   &m_shadow_bias_slope_power,     0.01f,  5.f,   "%.3f");
-			ImGui::SliderFloat("Bias dist. scale",   &m_shadow_bias_distance_scale, -0.01f,  0.01f, "%.4f");
+			ImGui::SliderFloat("Bias dist. scale",   &m_shadow_bias_distance_scale, -2.f,    2.f,   "%.4f");
 			ImGui::SliderFloat("Bias texel sz mix",  &m_shadow_bias_texel_size_mix,  0.f,    1.f,   "%.2f");
 			ImGui::SliderFloat("Bias scale",         &m_shadow_bias_scale,          -2.f,    2.f,   "%.2f");
 			static auto stabilize = _shadow_atlas.csm_stabilization();
