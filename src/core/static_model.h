@@ -59,6 +59,8 @@ public:
 		m_vbo_name  (other.m_vbo_name),
 		m_ibo_name  (other.m_ibo_name),
 		m_draw_mode (other.m_draw_mode),
+		_aabb(other._aabb),
+		_sphere(other._sphere),
 		_ok(false)
 	{
 		other.m_vao_name   = 0;
@@ -79,6 +81,8 @@ public:
 			std::swap(m_vbo_name,   other.m_vbo_name);
 			std::swap(m_ibo_name,   other.m_ibo_name);
 			std::swap(m_draw_mode,  other.m_draw_mode);
+			std::swap(_aabb,        other._aabb);
+			std::swap(_sphere,        other._sphere);
 		}
 
 		return *this;
@@ -91,14 +95,14 @@ public:
 
 	// TODO: convert to factory function
 	virtual bool Load(const std::filesystem::path& filepath);
-
-	void BindVAO();
+	
+	void BindVAO() const;
 	inline GLuint VAO() const { return m_vao_name; }
 
 	// TODO: move to a Renderer-thingy class
 	//   _renderer->submit(mesh);
-	virtual void Render(uint32_t num_instances = 0);
-	virtual void Render(Shader &shader, uint32_t num_instances = 0);
+	virtual void Render(uint32_t num_instances = 0) const;
+	virtual void Render(Shader &shader, uint32_t num_instances = 0) const;
 
 	// TODO: convert these to a "mesh primitive factory"
 	virtual void GenCone       (float    height      = 3.0f, float radius         = 1.5f, uint32_t slices = 10, uint32_t stacks = 10);
@@ -113,7 +117,8 @@ public:
 	virtual void GenPQTorusKnot(uint32_t slices      = 256,  uint32_t stacks      = 16,   int p = 2, int q = 3, float knot_r = 0.75, float tube_r = 0.15f);
 	virtual void GenQuad       (float    width       = 1.0f, float    height      = 1.0f);
 
-	inline const bounds::AABB &aabb() const { return _aabb; }
+	inline const bounds::AABB   &aabb()   const { return _aabb; }
+	inline const bounds::Sphere &sphere() const { return _sphere; }
 
 	inline operator bool () const { return _ok; }
 
@@ -147,7 +152,8 @@ protected:
 	DrawMode m_draw_mode;
 	InstanceAttributes m_inst_attrs;
 	bounds::AABB _aabb;
+	bounds::Sphere _sphere;
 	bool _ok;
 };
 
-}
+} // RGL

@@ -19,12 +19,12 @@ using namespace std::chrono;
 namespace RGL
 {
 
-void StaticModel::BindVAO()
+void StaticModel::BindVAO() const
 {
 	glBindVertexArray(m_vao_name);
 }
 
-void StaticModel::Render(uint32_t num_instances)
+void StaticModel::Render(uint32_t num_instances) const
 {
 	BindVAO();
 
@@ -64,7 +64,7 @@ void StaticModel::Render(uint32_t num_instances)
 	glBindTextureUnit(0, 0);
 }
 
-void StaticModel::Render(Shader& shader, uint32_t num_instances)
+void StaticModel::Render(Shader& shader, uint32_t num_instances) const
 {
 	BindVAO();
 
@@ -180,6 +180,7 @@ bool StaticModel::ParseScene(const aiScene *scene, const std::filesystem::path& 
 
 	/* Load mesh parts one by one. */
 	_aabb.clear();
+	_sphere.clear();
 
 	for (uint32_t idx = 0; idx < m_mesh_parts.size(); ++idx)
 	{
@@ -228,6 +229,7 @@ void StaticModel::LoadMeshPart(const aiMesh* mesh, VertexData& vertex_data)
 		auto tangent  = mesh->HasTangentsAndBitangents() ? vec3_cast(mesh->mTangents[idx])         : zero_vec3;
 
 		vertex_data.positions.push_back(pos);
+		_sphere.expand(pos);
 		vertex_data.texcoords.push_back(glm::vec2(texcoord.x, texcoord.y));
 		vertex_data.normals.push_back(normal);
 		vertex_data.tangents.push_back(tangent);
