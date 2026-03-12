@@ -1368,7 +1368,7 @@ void ClusteredShading::renderShadowMaps()
 						did_barrier = true;
 					}
 
-					renderSceneShadow(shadow_index, slot_idx);
+					renderSceneShadow(light_id, shadow_index, slot_idx, has_dynamic);
 					++_shadow_atlas_slots_rendered;
 				}
 			}
@@ -1780,14 +1780,15 @@ void ClusteredShading::renderDepth(const glm::mat4 &view_projection, RenderTarge
 	renderScene(view_projection, *m_depth_prepass_shader, NoMaterials);
 }
 
-void ClusteredShading::renderSceneShadow(uint_fast16_t shadow_index, uint32_t shadow_map_index, bool dynamic_only)
+void ClusteredShading::renderSceneShadow(LightID light_id, uint_fast16_t shadow_idx, uint_fast8_t slot_idx, bool dynamic_only)
 {
 	// TODO: ideally, only render objects whose AABB intersects with the light's projection (frustum)
 
 	m_shadow_depth_shader->bind();
 
-	m_shadow_depth_shader->setUniform("u_shadow_slot_index"sv, uint32_t(shadow_index)); // for 'mvp'
-	m_shadow_depth_shader->setUniform("u_shadow_map_index"sv, shadow_map_index);
+	// TODO: probably, it would be better (for perf) to pass the 'light_vp' as a uniform...
+	m_shadow_depth_shader->setUniform("u_light_shadow_index"sv, uint32_t(shadow_idx)); // for 'mvp'
+	m_shadow_depth_shader->setUniform("u_shadow_slot_index"sv, slot_idx);
 
 	for(const auto &obj: _scenePvs)
 	{

@@ -12,8 +12,8 @@ layout(location = 2) out vec3 out_normal;
 uniform mat4 u_model;
 uniform mat3 u_normal_matrix;
 
+uniform uint u_light_shadow_index;
 uniform uint u_shadow_slot_index;
-uniform uint u_shadow_map_index;
 
 layout(std430, binding = SSBO_BIND_SHADOW_SLOTS_INFO) readonly buffer ShadowSlotsInfoSSBO
 {
@@ -26,9 +26,9 @@ void main()
 	out_world_pos = vec3(u_model * vec4(in_pos, 1));
 	out_normal = normalize(u_normal_matrix * in_normal);
 
-	ShadowSlotInfo slot_info = ssbo_shadow_slots[u_shadow_slot_index];
+	ShadowSlotInfo slot_info = ssbo_shadow_slots[u_light_shadow_index];
 
-	mat4 light_vp = slot_info.view_proj[u_shadow_map_index];
+	mat4 light_vp = slot_info.view_proj[u_shadow_slot_index];
 
 	gl_Position = light_vp * u_model * vec4(in_pos, 1);
 }
