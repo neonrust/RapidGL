@@ -86,7 +86,7 @@ ClusteredShading::ClusteredShading() :
 	_relevant_lights_index_ssbo("relevant-lights-index"sv),
 	m_shadow_map_slots_ssbo("shadow-map-slots"sv),
 	m_gamma               (2.2f),
-	_ibl_mip_level(1.2f),
+	_ibl_mip_level        (1.2f),
 	m_skybox_vao          (0),
 	m_skybox_vbo          (0),
 	m_bloom_threshold     (1.5f),
