@@ -25,7 +25,7 @@ bool Buffer::create()
 	Log::debug("Buffer[{}]: created {} -> {}", _name, gl_lookup::enum_name(_buffer_type), _id);
 
 	if(_bind_index != GLuint(-1))
-		glBindBufferBase(_buffer_type, _bind_index, _id);
+		bindAt(_bind_index);
 
 	onCreate();
 	return true;
