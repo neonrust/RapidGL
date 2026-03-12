@@ -59,6 +59,50 @@ void LightManager::reserve(size_t count)
 	_lights.reserve(count);
 }
 
+bool LightManager::remove(LightID light_id)
+{
+	auto found = _id_to_index.find(light_id);
+	if(found != _id_to_index.end())
+	{
+		auto index = found->second;
+		_id_to_index.erase(found);
+		_index_to_id.erase(index);
+
+		shift_indices(index);
+		return true;
+	}
+	return false;
+}
+
+bool LightManager::remove_at(LightIndex light_index)
+{
+	if(light_index >= _id_to_index.size())
+		return false;
+
+	auto found = _index_to_id.find(light_index);
+	if(found != _index_to_id.end())
+	{
+		auto light_id = found->second;
+		_id_to_index.erase(light_id);
+		_index_to_id.erase(found);
+
+		shift_indices(light_index);
+		return true;
+	}
+	return false;
+}
+
+void LightManager::shift_indices(LightIndex after_index)
+{
+	_index_to_id.clear();
+	for(auto &[id, index]: _id_to_index)
+	{
+		if(index > after_index)
+			--index;
+		_index_to_id[index] = id;
+	}
+}
+
 void LightManager::clear()
 {
 	_id_to_index.clear();

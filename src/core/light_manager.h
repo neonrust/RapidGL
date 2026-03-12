@@ -89,6 +89,9 @@ public:
 	inline void set_radius_power(float power=0.6f) { _radius_power = power; }
 	inline float falloff_power() const { return _falloff_power; }
 
+	bool remove(LightID light_id);
+	bool remove_at(LightIndex light_index);
+
 	void clear();
 
 	// template<_private::LightType LT>
@@ -151,6 +154,7 @@ public:
 
 private:
 	void add(const GPULight &L, LightID light_id);
+	void shift_indices(LightIndex after_index);
 
 	// convert any light type to a GPULight
 	template<typename LT> requires _private::LightType<LT> || _private::LightParamsType<LT>
