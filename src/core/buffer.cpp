@@ -3,7 +3,6 @@
 #include "log.h"
 
 #include <cassert>
-#include <print>
 
 namespace RGL::buffer
 {
