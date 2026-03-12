@@ -22,6 +22,13 @@ struct Frustum
 	inline const Plane &near() const   { return _near; }
 	inline const Plane &far() const    { return _far; }
 
+	inline Plane &right()  { return _right; }
+	inline Plane &left()   { return _left; }
+	inline Plane &top()    { return _top; }
+	inline Plane &bottom() { return _bottom; }
+	inline Plane &near()   { return _near; }
+	inline Plane &far()    { return _far; }
+
 	//! world-space AABB
 	inline const bounds::AABB &aabb() const { return _aabb; }
 
