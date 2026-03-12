@@ -481,7 +481,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 									const auto rect = glm::vec4(atlas_light.slots[slot].rect);
 									top_left = ImVec2{ rect.x / atlas_size.x, rect.y / atlas_size.y };
 									bottom_right = ImVec2{ (rect.x + rect.z) / atlas_size.x, (rect.y + rect.w) / atlas_size.y };
-									Log::debug("  region {:.2f}; {:.2f}  {:.2f}x{:.2f}", top_left.x, top_left.y, bottom_right.x, bottom_right.y);
+									// Log::debug("  region {:.2f}; {:.2f}  {:.2f}x{:.2f}", top_left.x, top_left.y, bottom_right.x, bottom_right.y);
 								}
 								if(is_selected)
 									ImGui::SetItemDefaultFocus();
