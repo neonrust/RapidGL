@@ -168,7 +168,7 @@ private:
 
 private:
 	dense_map<LightID, LightIndex> _id_to_index;
-	dense_map<LightIndex, LightID> _index_to_id; // TODO: can this be a vector? store directly in '_lights'?
+	dense_map<LightIndex, LightID> _index_to_id; // TODO: can this be a vector? store id directly in '_lights'?
 
 	dense_set<LightIndex> _dirty;
 	std::vector<LightIndex> _dirty_list;
