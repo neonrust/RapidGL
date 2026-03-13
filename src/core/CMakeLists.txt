@@ -16,7 +16,6 @@ set(SOURCE_FILES_CORE
 	core_app.cpp
 	filesystem.cpp
 	frustum.cpp
-	gl_timer.cpp
 	input.cpp
 	input_bind.cpp
 	instance_attributes.cpp
