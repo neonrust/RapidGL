@@ -116,6 +116,8 @@ ClusteredShading::ClusteredShading() :
 
 	_light_mgr.set_falloff_power(50.f);
 	_light_mgr.set_radius_power(0.6f);
+
+	_gl_timers.reserve(16);
 }
 
 ClusteredShading::~ClusteredShading()
@@ -1072,20 +1074,24 @@ void ClusteredShading::render()
 	cullScene(m_camera, _cameraPvs);
 
 
-	_gl_timer.start();
+	_gl_timers["shadows"].start();
 
 	renderShadowMaps();
 
-	m_shadow_time.add(_gl_timer.elapsed<microseconds>(true));
-
+	if(auto d = _gl_timers["shadows"].elapsed<microseconds>(); d)
+		m_shadow_time.add(*d);
+	// ------------------------------------------------------------------
+	_gl_timers["z-prepass"].start();
 	// Depth pre-pass  (only if camera/meshes moved, probably always)
 	renderDepth(m_camera.projectionTransform() * m_camera.viewTransform(), m_depth_pass_rt);
 
 	// Blit depth info to our main render target
 	m_depth_pass_rt.copyTo(_rt, RenderTarget::DepthBuffer, TextureFilteringParam::Nearest);
 
-	m_depth_time.add(_gl_timer.elapsed<microseconds>(true));
-
+	if(auto d = _gl_timers["z-prepass"].elapsed<microseconds>(); d)
+		m_depth_time.add(*d);
+	// ------------------------------------------------------------------
+	_gl_timers["cluster-find"].start();
 
 	// this is an attempt at avoiding performing cluster discovery and light culling each frame,
 	//   instead, only do it when the camera moves or after a max interval time.
@@ -1112,14 +1118,20 @@ void ClusteredShading::render()
 	m_find_nonempty_clusters_shader->invoke(size_t(glm::ceil(float(m_depth_pass_rt.width()) / 32.f)),
 											size_t(glm::ceil(float(m_depth_pass_rt.height()) / 32.f)));
 
-	m_cluster_find_time.add(_gl_timer.elapsed<microseconds>(true));
+
+	if(auto d = _gl_timers["cluster-find"].elapsed<microseconds>(); d)
+		m_cluster_find_time.add(*d);
 	// ------------------------------------------------------------------
+	_gl_timers["cluster-index"].start();
+
 	m_cull_lights_args_ssbo.clear();
 	m_collect_nonempty_clusters_shader->setUniform("u_num_clusters"sv, m_cluster_count);
 	m_collect_nonempty_clusters_shader->invoke(size_t(std::ceil(float(m_cluster_count) / 1024.f)));
 
-	m_cluster_index_time.add(_gl_timer.elapsed<microseconds>(true));
+	if(auto d = _gl_timers["cluster-index"].elapsed<microseconds>(); d)
+		m_cluster_index_time.add(*d);
 	// ------------------------------------------------------------------
+	_gl_timers["cluster-cull"].start();
 
 	// Assign lights to clusters (cull lights)
 	m_cluster_light_ranges_ssbo.clear();
@@ -1132,26 +1144,40 @@ void ClusteredShading::render()
 	m_cull_lights_shader->setUniform("u_max_cluster_avg_lights"sv, uint32_t(CLUSTER_AVERAGE_LIGHTS));
 	m_cull_lights_shader->invoke(m_cull_lights_args_ssbo);
 
-	m_light_cull_time.add(_gl_timer.elapsed<microseconds>(true));
+	if(auto d = _gl_timers["cluster-cull"].elapsed<microseconds>(); d)
+		m_light_cull_time.add(*d);
 	// ------------------------------------------------------------------
+	_gl_timers["shading"].start();
 
 	_rt.bindRenderTarget(RenderTarget::ColorBuffer);
 
 	renderSceneShading(m_camera);
-	m_shading_time.add(_gl_timer.elapsed<microseconds>(true));
+
+	if(auto d = _gl_timers["shading"].elapsed<microseconds>(); d)
+		m_shading_time.add(*d);
+	// ------------------------------------------------------------------
+	_gl_timers["skybox"].start();
 
 	if(m_draw_surface_lights_geometry)
 		renderLightGeometry(); // to '_rt'
 
 	renderSkybox(); // to '_rt'
 
-	m_skybox_time.add(_gl_timer.elapsed<microseconds>(true));
+	if(auto d = _gl_timers["skybox"].elapsed<microseconds>(); d)
+		m_skybox_time.add(*d);
+	// ------------------------------------------------------------------
 
 	if(_fog_enabled and _fog_density > 0)
 	{
+		_gl_timers["volumetrics-cull"].start();
+
 		m_volumetrics_pp.setViewParams(m_camera, m_camera.farPlane() * s_light_volumetric_fraction);
 		m_volumetrics_pp.cull_lights();
-		m_volumetrics_cull_time.add(_gl_timer.elapsed<microseconds>(true));
+
+		if(auto d = _gl_timers["volumetrics-cull"].elapsed<microseconds>(); d)
+			m_volumetrics_cull_time.add(*d);
+		// ------------------------------------------------------------------
+		_gl_timers["volumetrics-inject"].start();
 
 		m_volumetrics_pp.setStrength(_fog_strength);
 		m_volumetrics_pp.setDensity(_fog_density);
@@ -1182,10 +1208,17 @@ void ClusteredShading::render()
 
 		m_volumetrics_pp.inject();
 
-		m_volumetrics_inject_time.add(_gl_timer.elapsed<microseconds>(true));
+		if(auto d = _gl_timers["volumetrics-inject"].elapsed<microseconds>(); d)
+			m_volumetrics_inject_time.add(*d);
+		// ------------------------------------------------------------------
+		_gl_timers["volumetrics-accum"].start();
 
 		m_volumetrics_pp.accumulate();
-		m_volumetrics_accum_time.add(_gl_timer.elapsed<microseconds>(true));
+
+		if(auto d = _gl_timers["volumetrics-accum"].elapsed<microseconds>(); d)
+			m_volumetrics_accum_time.add(*d);
+		// ------------------------------------------------------------------
+		_gl_timers["volumetrics-render"].start();
 
 		_pp_low_rt.clear();
 		m_volumetrics_pp.render(_rt, _pp_low_rt);  // '_rt' actually isn't used but the API expects an argument
@@ -1212,7 +1245,8 @@ void ClusteredShading::render()
 		draw2d(_pp_full_rt.color_texture(), _rt, BlendMode::Add);  // TODO: should be Alpha bland! no scatter should be just sample fog color
 		// m_pp_blur_time.add(_gl_timer.elapsed<microseconds>());
 
-		m_volumetrics_render_time.add(_gl_timer.elapsed<microseconds>(true));
+		if(auto d = _gl_timers["volumetrics-render"].elapsed<microseconds>(); d)
+			m_volumetrics_render_time.add(*d);
 	}
 	else
 	{
@@ -1231,7 +1265,9 @@ void ClusteredShading::render()
 	// write the result to some SSBO, so tonemapping can pick it up
 	// TODO: compute new desired exposure, blend 'm_eposure' over time towards that value
 
+	// ------------------------------------------------------------------
 	// Bloom
+	_gl_timers["bloom-tonemap"].start();
 
     if (m_bloom_enabled)
     {
@@ -1249,14 +1285,13 @@ void ClusteredShading::render()
 	m_tmo_pp.setGamma(m_gamma);
 	m_tmo_pp.render(_rt, _final_rt);
 
-	m_tonemap_time.add(_gl_timer.elapsed<microseconds>(true));
-
-
 	// draw the final result to the screen
 	draw2d(_final_rt.color_texture(), BlendMode::Replace);
 
-
-	_gl_timer.start();
+	if(auto d = _gl_timers["bloom-tonemap"].elapsed<microseconds>(); d)
+		m_tonemap_time.add(*d);
+	// ------------------------------------------------------------------
+	_gl_timers["debug-draw"].start();
 
 	if(m_debug_draw_aabb)
 		debugDrawSceneBounds();
@@ -1265,7 +1300,8 @@ void ClusteredShading::render()
 	if(m_debug_draw_cluster_grid)
 		debugDrawClusterGrid();
 
-	m_debug_draw_time.add(_gl_timer.elapsed<microseconds>(true));
+	if(auto d = _gl_timers["debug-draw"].elapsed<microseconds>(); d)
+		m_debug_draw_time.add(*d);
 }
 
 void ClusteredShading::renderShadowMaps()

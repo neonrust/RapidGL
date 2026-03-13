@@ -289,7 +289,7 @@ private:
 	size_t _shadow_atlas_slots_rendered;
 	size_t _light_shadow_maps_rendered;
 
-	RGL::GLTimer _gl_timer;
+	string_map<RGL::GLTimer<4>> _gl_timers;
 
 	RGL::Texture2DArray _light_icons;
 };
