@@ -69,9 +69,10 @@ set(HEADER_FILES_CORE
 	frustum.h
 	gl_lookup.h
 	gl_timer.h
-	hash_vec3.h
 	hash_combine.h
 	hash_mat4.h
+	hash_uvec2.h
+	hash_vec3.h
 	hash_vec4.h
 	hash_quat.h
 	input.h
