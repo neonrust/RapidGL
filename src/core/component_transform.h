@@ -8,7 +8,7 @@
 #include <glm/gtx/quaternion.hpp>       // glm::quat_identity
 
 
-namespace component
+namespace RGL::component
 {
 
 static constexpr auto ident_quat = glm::quat_identity<float, glm::defaultp>();
@@ -38,13 +38,20 @@ struct Transform
 	{
 	}
 
+	inline explicit Transform(const glm::vec3 &position, const glm::quat &orientation, const glm::vec3 &scale=glm::vec3(1)) :
+		_position(position),
+		_orientation(orientation),
+		_scale(scale)
+	{
+	}
+
 	inline void set_position   (const glm::vec3 &pos)   { _position = pos;    _dirty = true; }
 	inline void set_orientation(const glm::quat &ori)   { _orientation = ori; _dirty = true; }
 	inline void set_scale      (const glm::vec3 &scale) { _scale= scale;      _dirty = true; }
 
-	inline glm::vec3 position() const    { return _position; }
-	inline glm::quat orientation() const { return _orientation; }
-	inline glm::vec3 scale() const       { return _scale; }
+	inline const glm::vec3 &position() const    { return _position; }
+	inline const glm::quat &orientation() const { return _orientation; }
+	inline const glm::vec3 &scale() const       { return _scale; }
 
 	inline operator const glm::mat4 &() const { return transform(); }
 
@@ -76,4 +83,4 @@ private:
 	mutable bool _dirty          { true };
 };
 
-} // component
+} // RGL::component

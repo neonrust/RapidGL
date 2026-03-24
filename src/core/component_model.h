@@ -2,9 +2,9 @@
 
 #include "static_model.h"
 
-namespace component
+namespace RGL::component
 {
 
 using Model = RGL::StaticModel;
 
-} // component
+} // RGL::component

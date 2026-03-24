@@ -2,10 +2,10 @@
 
 #include "bounds.h"
 
-namespace component
+namespace RGL::component
 {
 
 using SphereBounds = bounds::Sphere;
 using AABounds     = bounds::AABB;
 
-} // component
+} // RGL::component
