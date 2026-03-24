@@ -43,8 +43,22 @@
 #define LIGHT_TYPE_DISC          0x06u
 #define LIGHT_TYPE__COUNT        (1 + LIGHT_TYPE_DISC)
 
+#if defined(__cplusplus)
+#define GET_LIGHT_TYPE(light)      LightType(((light).type_flags & LIGHT_TYPE_MASK))
+#else
 #define GET_LIGHT_TYPE(light)      ((light).type_flags & LIGHT_TYPE_MASK)
+#endif
 #define IS_LIGHT_TYPE(light, type) (GET_LIGHT_TYPE(light) == (type))
+
+#if defined(__cplusplus)
+#define IS_POINT_LIGHT(light)      (IS_LIGHT_TYPE(light, LightType::Point))
+#define IS_DIR_LIGHT(light)        (IS_LIGHT_TYPE(light, LightType::Directional))
+#define IS_SPOT_LIGHT(light)       (IS_LIGHT_TYPE(light, LightType::Spot))
+#define IS_RECT_LIGHT(light)       (IS_LIGHT_TYPE(light, LightType::Rect))
+#define IS_TUBE_LIGHT(light)       (IS_LIGHT_TYPE(light, LightType::Tube))
+#define IS_SPHERE_LIGHT(light)     (IS_LIGHT_TYPE(light, LightType::Shere))
+#define IS_DISC_LIGHT(light)       (IS_LIGHT_TYPE(light, LightType::Disc))
+#else
 #define IS_POINT_LIGHT(light)      (IS_LIGHT_TYPE(light, LIGHT_TYPE_POINT))
 #define IS_DIR_LIGHT(light)        (IS_LIGHT_TYPE(light, LIGHT_TYPE_DIRECTIONAL))
 #define IS_SPOT_LIGHT(light)       (IS_LIGHT_TYPE(light, LIGHT_TYPE_SPOT))
@@ -52,6 +66,7 @@
 #define IS_TUBE_LIGHT(light)       (IS_LIGHT_TYPE(light, LIGHT_TYPE_TUBE))
 #define IS_SPHERE_LIGHT(light)     (IS_LIGHT_TYPE(light, LIGHT_TYPE_SPHERE))
 #define IS_DISC_LIGHT(light)       (IS_LIGHT_TYPE(light, LIGHT_TYPE_DISC))
+#endif
 
 #define LIGHT_ENABLED              0x80000000u
 #define LIGHT_DOUBLE_SIDED         0x10u        // rect & disc lights
