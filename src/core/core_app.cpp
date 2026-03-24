@@ -159,16 +159,14 @@ namespace RGL
             frame_counter += passed_time;
 
 			// don't render until we've accumulated enough "frame time debt"  (as requested to init())
-            while (unprocessed_time > m_frame_time)
+			while(unprocessed_time > m_frame_time)
             {
                 should_render = true;
 
                 unprocessed_time -= m_frame_time;
 
                 if (Window::isCloseRequested())
-                {
                     m_is_running = false;
-                }
 
                 /* Update input, game entities, etc. */
                 input();
@@ -184,7 +182,7 @@ namespace RGL
                 }
             }
 
-            if (should_render)
+			if(should_render and m_is_running)
             {
                 /* Render */
 				const auto T0 = steady_clock::now();
