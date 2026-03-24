@@ -57,8 +57,16 @@ set(HEADER_FILES_CORE
 	buffer.h
 	camera.h
 	common.h
-	component_model.h
 	component_bounds.h
+	component_light_directional.h
+	component_light_disc.h
+	component_light_general.h
+	component_light_point.h
+	component_light_spot.h
+	component_light_rect.h
+	component_light_sphere.h
+	component_light_tube.h
+	component_model.h
 	component_transform.h
 	container_types.h
 	core_app.h
@@ -80,6 +88,7 @@ set(HEADER_FILES_CORE
 	ktx_loader.h
 	light_constants.h
 	light_manager.h
+	light_wrapper.h
 	lights.h
 	log.h
 	material.h
