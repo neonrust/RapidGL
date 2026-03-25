@@ -1551,7 +1551,7 @@ void ClusteredShading::renderLightGeometry()
 		// Make sure sun_dir points from camera toward the sun position. If sun_dir is light direction
 		// (pointing from sun -> scene) use -sun_dir when computing position below.
 
-		const float distance = m_camera.farPlane() * 0.99f;
+		const float distance = m_camera.farPlane() - _sun_size - 1.f;
 		const auto sun_pos_ws = cam_pos -sun_dir_world * distance;
 
 		// Choose sun angular half-angle (physical ~0.00465 rad) or artistic scale
