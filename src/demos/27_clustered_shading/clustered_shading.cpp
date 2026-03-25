@@ -24,9 +24,6 @@
 using namespace std::chrono;
 using namespace std::literals;
 
-#define IMAGE_UNIT_WRITE 0
-
-
 // testing variables
 static float s_spot_outer_angle = 30.f;
 static float s_spot_intensity = 2000.f;
