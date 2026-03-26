@@ -47,7 +47,7 @@ bool Volumetrics::create()
 	assert(_inject_shader);
 	_inject_shader.setPreBarrier(Shader::Barrier::SSBO);
 
-	new (&_3dblur_shader) Shader(shader_dir / "blur_3d.comp");
+	new (&_3dblur_shader) Shader(shader_dir / "blur_3d.comp", string_set{ "BLUR_TAPS_2"s });
 	_3dblur_shader.link();
 	assert(_3dblur_shader);
 	_3dblur_shader.setPreBarrier(Shader::Barrier::Image);
