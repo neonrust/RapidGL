@@ -86,7 +86,7 @@ private:
 	float _density { 0.1f };    // small values, less than ~0.2
 	bool _blend_previous { true };
 	float _blend_weight { 0.95f };
-	float _shadow_bias { 0.003f };
+	float _shadow_bias { 0.002f };
 	bool _z_noise_enabled { true };
 	bool _3dblur_enabled { true };
 	bool _2dblur_enabled { false };
