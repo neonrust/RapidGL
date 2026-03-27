@@ -2,6 +2,8 @@
 
 #include <glm/vec3.hpp>
 
+#include "light_type.h"
+
 namespace RGL
 {
 
@@ -12,16 +14,110 @@ namespace component
 
 struct LightGeneral
 {
-	LightType     light_type;    // LIGHT_TYPE_*
-	bool          enabled;
-	glm::vec3     color;         // { 0, 0, 0 } to { 1, 1, 1 }
-	float         intensity;     // >= 0
-	bool          surface;
-	bool          volumetric;
-	float         fog;           // >= 0
-	bool          cast_shadow;
-	uint_fast16_t shadow_index;
+	static LightGeneral create_point(const glm::vec3 color, float intensity, bool shadows, bool volumetric=true) {
+		return {
+			.light_type = LightType::Point,
+			.color = color,
+			.intensity = intensity,
+			.enabled = true,
+			.shadow_caster = shadows,
+			.is_volumetric = volumetric,
+			.has_surface = false,
+			.fog = 1.f,
+			.shadow_index = LIGHT_NO_SHADOW,
+		};
+	}
+	static LightGeneral create_directional(const glm::vec3 color, float intensity, bool shadows, bool volumetric=true) {
+		return {
+			.light_type = LightType::Directional,
+			.color = color,
+			.intensity = intensity,
+			.enabled = true,
+			.shadow_caster = shadows,
+			.is_volumetric = volumetric,
+			.has_surface = false,
+			.fog = 1.f,
+			.shadow_index = LIGHT_NO_SHADOW,
+		};
+	}
+	static LightGeneral create_spot(const glm::vec3 color, float intensity, bool shadows, bool volumetric=true) {
+		return {
+			.light_type = LightType::Spot,
+			.color = color,
+			.intensity = intensity,
+			.enabled = true,
+			.shadow_caster = shadows,
+			.is_volumetric = volumetric,
+			.has_surface = false,
+			.fog = 1.f,
+			.shadow_index = LIGHT_NO_SHADOW,
+		};
+	}
+	static LightGeneral create_rect(const glm::vec3 color, float intensity, bool volumetric=true) {
+		return {
+			.light_type = LightType::Rect,
+			.color = color,
+			.intensity = intensity,
+			.enabled = true,
+			.shadow_caster = false,
+			.is_volumetric = volumetric,
+			.has_surface = true,
+			.fog = 1.f,
+			.shadow_index = LIGHT_NO_SHADOW,
+		};
+	}
+	static LightGeneral create_tube(const glm::vec3 color, float intensity, bool volumetric=true) {
+		return {
+			.light_type = LightType::Tube,
+			.color = color,
+			.intensity = intensity,
+			.enabled = true,
+			.shadow_caster = false,
+			.is_volumetric = volumetric,
+			.has_surface = true,
+			.fog = 1.f,
+			.shadow_index = LIGHT_NO_SHADOW,
+		};
+	}
+	static LightGeneral create_sphere(const glm::vec3 color, float intensity, bool volumetric=true) {
+		return {
+			.light_type = LightType::Sphere,
+			.color = color,
+			.intensity = intensity,
+			.enabled = true,
+			.shadow_caster = false,
+			.is_volumetric = volumetric,
+			.has_surface = true,
+			.fog = 1.f,
+			.shadow_index = LIGHT_NO_SHADOW,
+		};
+	}
+	static LightGeneral create_disc(const glm::vec3 color, float intensity, bool volumetric=true) {
+		return {
+			.light_type = LightType::Disc,
+			.color = color,
+			.intensity = intensity,
+			.enabled = true,
+			.shadow_caster = false,
+			.is_volumetric = volumetric,
+			.has_surface = true,
+			.fog = 1.f,
+			.shadow_index = LIGHT_NO_SHADOW,
+		};
+	}
+
+	LightType light_type;    // LIGHT_TYPE_*
+	glm::vec3 color;         // { 0, 0, 0 } to { 1, 1, 1 }
+	float     intensity;     // >= 0
+	bool      enabled;
+	bool      shadow_caster;
+	bool      is_volumetric;
+	bool      has_surface;
+	float     fog;           // >= 0
+	uint16_t  shadow_index;  // >= 0   OR  LIGHT_NO_SHADOW
 };
+static_assert(sizeof(LightGeneral) == 32);
+
 
 } // component
 
