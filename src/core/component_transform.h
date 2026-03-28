@@ -1,5 +1,7 @@
 #pragma once
 
+// #include "log.h"
+
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -15,57 +17,77 @@ static constexpr auto ident_quat = glm::quat_identity<float, glm::defaultp>();
 
 struct Transform
 {
-	inline explicit  Transform(const glm::mat4 &tfm=glm::mat4(1)) :
+	static const glm::vec3 direction_reference;
+
+	// from existing transform matrix -> decompose
+	inline explicit  Transform(const glm::mat4 &tfm) :
 		_transform(tfm),
 		_dirty(false)
 	{
+		// Log::debug("Transform (tfm)");
 		glm::vec3 skew;        // not used
 		glm::vec4 perspective; // not used
 
 		glm::decompose(tfm, _scale, _orientation, _position, skew, perspective);
 		// TODO: asserts for non-zero skew or perspective?
 	}
+	// from only position
+	inline explicit Transform(const glm::vec3 &position) :
+		_position(position)
+	{
+		// Log::debug("Transform (pos)");
+	}
+	// from only orientation
 	inline explicit Transform(const glm::quat &orientation) :
-		_position(glm::vec3(0)),
-		_orientation(orientation),
-		_scale(glm::vec3(1))
+		_orientation(orientation)
 	{
+		// Log::debug("Transform (ori)");
 	}
-	inline explicit Transform(const glm::vec3 &position, const glm::vec3 &scale=glm::vec3(1)) :
-		_position(position),
-		_orientation(ident_quat),
-		_scale(scale)
-	{
-	}
-
+	// from position, orientation & scale
 	inline explicit Transform(const glm::vec3 &position, const glm::quat &orientation, const glm::vec3 &scale=glm::vec3(1)) :
 		_position(position),
 		_orientation(orientation),
 		_scale(scale)
 	{
+		// Log::debug("Transform (pos,ori,scale)");
+	}
+	// from only direction (set only orientation)
+	struct Direction {}; // to disambiguate 'direction' argument'
+	inline explicit  Transform(Direction, const glm::vec3 &direction) :
+		_dirty(true)
+	{
+		// Log::debug("Transform (dir)");
+		set_direction(direction);
+	}
+	// from position & direction
+	inline explicit  Transform(const glm::vec3 &position, Direction, const glm::vec3 &direction) :
+		_position(position)
+	{
+		// Log::debug("Transform (pos, dir)");
+		set_direction(direction);
+	}
+	// from position & scale
+	struct Scale {}; // to disambiguate 'scale' argument'
+	inline explicit Transform(const glm::vec3 &position, Scale, const glm::vec3 &scale) :
+		_position(position),
+		_scale(scale)
+	{
+		// Log::debug("Transform (scale)");
 	}
 
 	inline void set_position   (const glm::vec3 &pos)   { _position = pos;    _dirty = true; }
 	inline void set_orientation(const glm::quat &ori)   { _orientation = ori; _dirty = true; }
 	inline void set_scale      (const glm::vec3 &scale) { _scale= scale;      _dirty = true; }
+		   void set_direction  (const glm::vec3 &dir);
 
 	inline const glm::vec3 &position() const    { return _position; }
 	inline const glm::quat &orientation() const { return _orientation; }
 	inline const glm::vec3 &scale() const       { return _scale; }
+		   const glm::vec3  direction() const;
 
 	inline operator const glm::mat4 &() const { return transform(); }
 
-	const glm::mat4 &transform() const
-	{
-		if(_dirty)
-		{
-			_dirty = false;
-			_transform = glm::translate(glm::mat4(1), _position);
-			_transform = _transform * glm::mat4_cast(_orientation);
-			_transform = glm::scale(_transform, _scale);
-		}
-		return _transform;
-	}
+	const glm::mat4 &transform() const;
 
 	inline glm::mat3 normal_matrix() const {
 		return glm::transpose(glm::inverse(glm::mat3_cast(_orientation)));
@@ -74,6 +96,8 @@ struct Transform
 	inline float max_scale() const {
 		return glm::max(_scale.x, glm::max(_scale.y, _scale.z));
 	}
+
+	void look_at(const glm::vec3 &pos, const glm::vec3 &up=glm::vec3(0, 1, 0));
 
 private:
 	glm::vec3 _position          { glm::vec3(0) };
