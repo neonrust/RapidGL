@@ -254,6 +254,7 @@ private:
 
 	buffer::Storage<ShadowSlotInfo> _shadow_slots_info_ssbo;
 	std::array<size_t, 6> _distribution;  // slot sizes of each of the levels (from max to min)
+	size_t _distribution_size { 0 };
 
 	mutable dense_map<uint32_t, QueryResult> _light_pvs;
 

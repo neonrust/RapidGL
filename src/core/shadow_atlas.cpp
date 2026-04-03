@@ -260,7 +260,7 @@ std::vector<std::pair<ShadowAtlas::SlotSize, size_t>> ShadowAtlas::allocated_cou
 {
 	static dense_map<SlotSize, size_t> size_counts_map;
 	if(size_counts_map.empty())
-		size_counts_map.reserve(_distribution.size());
+		size_counts_map.reserve(_distribution_size);
 	size_counts_map.clear();
 
 	for(const auto &[light_id, atlas_light]: _id_to_allocated)
@@ -887,19 +887,19 @@ ShadowAtlas::Counters ShadowAtlas::compute_desired(const std::vector<ValueLight>
 			assert(false); // should never happen; there can be only one! (see above)
 
 			   // based on the light's value, deduce where to start searching for available slots
-		auto size_idx = static_cast<uint32_t>(std::floor(static_cast<float>(distribution.size()) * (1 - std::min(prio_light.value, 1.f))));
+		auto size_idx = static_cast<uint32_t>(std::floor(static_cast<float>(_distribution_size) * (1 - std::min(prio_light.value, 1.f))));
 		// initial slot size for the light's value
 		auto slot_size = _allocator.max_size() >> size_idx;
 
 			   // find a slot size tier that still has room for required slots
-		while(distribution[size_idx] < atlas_light.num_slots and size_idx < distribution.size())
+		while(distribution[size_idx] < atlas_light.num_slots and size_idx < _distribution_size)
 		{
 			// not enough available here, next size
 			++size_idx;
 			slot_size >>= 1;
 		}
 
-		const auto slot_found = size_idx < distribution.size(); // above loop exited early, i.e. found available slots
+		const auto slot_found = size_idx < _distribution_size; // above loop exited early, i.e. found available slots
 		if(slot_found)
 		{
 			// define the desired slot(s)
@@ -1327,6 +1327,7 @@ void ShadowAtlas::generate_slots(std::initializer_list<size_t> distribution)
 	assert(first_zero_idx > 0 and first_zero_idx < _distribution.size() - 1);
 	// write number of smallest-sized slots
 	_distribution[first_zero_idx] = free_slots.size();
+	_distribution_size = first_zero_idx + 1;
 
 	const auto Td = steady_clock::now() - T0;
 
