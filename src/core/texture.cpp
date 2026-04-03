@@ -603,7 +603,7 @@ bool Texture2D::LoadHdr(const std::filesystem::path & filepath, uint32_t num_mip
 
 	Util::ReleaseTextureData(data);
 
-	Log::debug("Loaded HDR texture {}  ({} ms)", filepath.c_str(), duration_cast<milliseconds>(steady_clock::now() - T0));
+	Log::debug("Loaded HDR texture {}  ({})", filepath.c_str(), duration_cast<milliseconds>(steady_clock::now() - T0));
 
 	return true;
 }

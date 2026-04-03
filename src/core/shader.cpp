@@ -238,9 +238,9 @@ bool Shader::link()
 		const auto T1 = steady_clock::now();
 		const auto duration = T1 - T0;
 		if(duration > 4ms)
-			Log::info("Shader[{} / {}]: linked, in {} ms", m_program_id, _name, duration_cast<milliseconds>(duration));
+			Log::info("Shader[{} / {}]: linked, in {}", m_program_id, _name, duration_cast<milliseconds>(duration));
 		else
-			Log::info("Shader[{} / {}]: linked, in {} µs", m_program_id, _name, duration_cast<microseconds>(duration));
+			Log::info("Shader[{} / {}]: linked, in {}", m_program_id, _name, duration_cast<microseconds>(duration));
 	}
 
 	return m_is_linked;

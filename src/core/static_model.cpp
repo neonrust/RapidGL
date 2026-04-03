@@ -212,7 +212,7 @@ bool StaticModel::ParseScene(const aiScene *scene, const std::filesystem::path& 
 
 	const auto T1 = steady_clock::now();
 
-	Log::info("Loaded mesh {}  ({:.1f} x {:.1f} x {:.1f})  ({} ms)", filepath.string().c_str(), _aabb.width(), _aabb.height(), _aabb.depth(), duration_cast<milliseconds>(T1 - T0));
+	Log::info("Loaded mesh {}  ({:.1f} x {:.1f} x {:.1f})  ({})", filepath.string().c_str(), _aabb.width(), _aabb.height(), _aabb.depth(), duration_cast<milliseconds>(T1 - T0));
 
 	return true;
 }
@@ -371,7 +371,7 @@ bool StaticModel::LoadMaterialTextures(const aiScene* scene, const aiMaterial* m
 				else
 				{
 					const auto T1 = steady_clock::now();
-					Log::debug("Loaded texture {}  ({} ms)", full_path, duration_cast<milliseconds>(T1 - T0));
+					Log::debug("Loaded texture {}  ({})", full_path, duration_cast<milliseconds>(T1 - T0));
 					m_materials[material_index].set(texture_type, texture);
 
 					if (texture_map_mode[0] == aiTextureMapMode_Wrap)
