@@ -9,7 +9,7 @@
 
 #include <cstdint>
 
-using LightID = uint32_t;  // entity ID
+using LightID = uint32_t;  // same as entt::entity
 static constexpr LightID NO_LIGHT_ID { std::numeric_limits<LightID>::max() };
 
 using LightIndex = uint32_t;
@@ -52,12 +52,6 @@ struct PointLightParams
 	POINT_LIGHT;
 };
 
-struct PointLight
-{
-	POINT_LIGHT;
-	INTERNAL;
-};
-
 // ------------------------------------------------------------------
 
 #define DIRECTION  \
@@ -70,12 +64,6 @@ struct PointLight
 struct DirectionalLightParams
 {
 	DIR_LIGHT;
-};
-
-struct DirectionalLight
-{
-	DIR_LIGHT;
-	INTERNAL;
 };
 
 // ------------------------------------------------------------------
@@ -94,12 +82,6 @@ struct SpotLightParams
 	SPOT_LIGHT;
 };
 
-struct SpotLight
-{
-	SPOT_LIGHT;
-	INTERNAL;
-};
-
 // ------------------------------------------------------------------
 
 #define RECT_LIGHT                      \
@@ -116,30 +98,18 @@ struct RectLightParams
 	RECT_LIGHT;
 };
 
-struct RectLight
-{
-	RECT_LIGHT;
-	INTERNAL;
-};
-
 // ------------------------------------------------------------------
 
 #define TUBE_LIGHT       \
 	COMMON;              \
 	POINT;               \
-	glm::vec3 half_extent;    /* relative 'position' stored in GPULight shape_data[0] */ \
+	glm::vec3 half_extent;    /* relative 'position' of one end point, stored in GPULight shape_data[0] */ \
 	float thickness;          /* diameter; stored in GPULight shape_data[2].x */ \
 	SURFACE
 
 struct TubeLightParams
 {
 	TUBE_LIGHT;
-};
-
-struct TubeLight
-{
-	TUBE_LIGHT;
-	INTERNAL;
 };
 
 // ------------------------------------------------------------------
@@ -154,12 +124,6 @@ struct TubeLight
 struct SphereLightParams
 {
 	SPHERE_LIGHT;
-};
-
-struct SphereLight
-{
-	SPHERE_LIGHT;
-	INTERNAL;
 };
 
 // ------------------------------------------------------------------
@@ -178,17 +142,12 @@ struct DiscLightParams
 	DISC_LIGHT;
 };
 
-struct DiscLight
-{
-	DISC_LIGHT;
-	INTERNAL;
-};
-
 // ------------------------------------------------------------------
 
 
 #undef COMMON
 #undef POINT
+#undef SURFACE
 #undef INTERNAL
 
 #undef POINT_LIGHT

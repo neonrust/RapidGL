@@ -4,6 +4,8 @@
 #include "hash_combine.h"
 #include "input.h"
 #include "instance_attributes.h"
+#include "constants.h"
+#include "light_wrapper.h"
 #include "log.h"
 #include "postprocess.h"
 #include "util.h"
@@ -11,6 +13,8 @@
 
 #include "component_model.h"
 #include "component_transform.h"
+#include "component_light_general.h"
+#include "component_light_spot.h"
 
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/random.hpp>
@@ -19,7 +23,6 @@
 #include <chrono>
 #include <ranges>
 #include <vector>
-#include "constants.h"
 
 using namespace std::chrono;
 using namespace std::literals;
@@ -76,6 +79,8 @@ glm::mat3 make_common_space_from_direction(const glm::vec3 &direction)
 using namespace RGL;
 
 ClusteredShading::ClusteredShading() :
+	_scene(_entities),
+	_light_mgr(_entities),
 	_shadow_atlas(8192, _light_mgr),
 	m_cluster_aabb_ssbo("cluster-aabb"sv),
 	m_cluster_discovery_ssbo("cluster-discovery"sv),
@@ -93,7 +98,7 @@ ClusteredShading::ClusteredShading() :
 	m_bloom_knee          (0.1f),
 	m_bloom_intensity     (0.9f),
 	m_bloom_dirt_intensity(0),
-	m_bloom_enabled       (true),
+	m_bloom_enabled       (false),
 	_fog_enabled          (false),
 	_fog_strength         (0.3f),
 	_fog_density          (0.1f),    // [ 0, 1 ]
@@ -176,20 +181,20 @@ void ClusteredShading::init_app()
 	// Create camera
 	m_camera = Camera(m_camera_fov, 0.1f, 200);
 	m_camera.setSize(Window::width(), Window::height());
-	m_camera.setPosition({ 0.f, 3.2f, -19.5f });
-	m_camera.setOrientationEuler({ 0, 180, 0 });
-	// rect light fog stuff:
-	// m_camera.setPosition({ 37.5f, 1.7f, 12.4f });
-	// m_camera.setOrientationEuler({ 2.5f, 139.8f, 0 });
+	m_camera.setPosition({ 0.f, 0.f, 0.f });
+	m_camera.setOrientationEuler({ 0, 0, 0 });
 	// shadow bias study:
-	// m_camera.setPosition({ 5.f, 1.0f, 9.8f });
-	// m_camera.setOrientationEuler({ 37.f, 60.f, 0 });
-	// spot light shadow study
-	// m_camera.setPosition({ 10.3f, 2.1f, -3.6f });
-	// m_camera.setOrientationEuler({ 1.6f, -30.4f, 0 });
-	// light falloff study
-	m_camera.setPosition({ 18.f, 3.4f, -12.4f });
-	m_camera.setOrientationEuler({ 3.f, -90.f, 0 });
+	// m_camera.setPosition({ 5.6f, 10.4f, -0.9f });
+	// m_camera.setOrientationEuler({ -19.f, 65.8f, 0 });
+	// rect light fog artifact study
+	// m_camera.setPosition({ -8.6f, 2.4f, 10.5f });
+	// m_camera.setOrientationEuler({ 3.f, -90.f, 0 });
+	// csm shadows study
+	// m_camera.setPosition({ 15.4f, 3.7f, 7.9f });
+	// m_camera.setOrientationEuler({ 9.f, -118.f, 0 });
+	m_camera.setPosition({ 0.f, 8.f, 0.f });
+	m_camera.setOrientationEuler({ 0.f, -90.f, 0 });
+
 
 
 	Log::debug("Horizontal FOV: {}", m_camera.horizontalFov());
@@ -203,6 +208,9 @@ void ClusteredShading::init_app()
 	updateLightsSSBOs();  // initial update will create the GL buffers
 
 
+	// _csm_shadow_maps = std::make_shared<Texture2DArray>();
+	// _csm_shadow_maps->Create(4096, 4096, 4, GL_DEPTH_COMPONENT32F, 0);
+	// assert(*_csm_shadow_maps);
 
     /// Create shaders.
 	const fs::path core_shaders = "resources/shaders/";
@@ -404,6 +412,8 @@ void ClusteredShading::init_app()
 
 	calculateShadingClusterGrid();  // will also call prepareClusterBuffers()
 
+	generateRandomAngles(_random_angles, 64);
+
 	glGenBuffers(1, &m_debug_draw_vbo);
 
 
@@ -414,7 +424,7 @@ void ClusteredShading::init_app()
 
 		const auto light_meshes = models_path / "lights";
 
-		for(const auto &light_type: { LIGHT_TYPE_RECT, LIGHT_TYPE_TUBE, LIGHT_TYPE_SPHERE, LIGHT_TYPE_DISC })
+		for(const auto light_type: { LightType::Rect, LightType::Tube, LightType::Sphere, LightType::Disc })
 		{
 			auto filename = std::format("{}.gltf", _light_mgr.type_name(uint_fast8_t(light_type)));
 			auto model = std::make_shared<StaticModel>();
@@ -540,6 +550,9 @@ void ClusteredShading::input()
 	if (Input::wasKeyPressed(KeyCode::Escape))
         stop();
 
+	if(Input::wasKeyPressed(KeyCode::Backtick))
+		_debug_ui_enabled = not _debug_ui_enabled;
+
 	if(Input::wasKeyPressed(KeyCode::C))
 		m_debug_draw_cluster_grid = not m_debug_draw_cluster_grid;
 
@@ -572,8 +585,8 @@ void ClusteredShading::input()
 			Log::error("Failed screenshot [{}]", filename);
     }
 
-	if (Input::wasKeyReleased(KeyCode::Space))
-        m_animate_lights = !m_animate_lights;
+	// if (Input::wasKeyReleased(KeyCode::Space))
+	// 	m_animate_lights = !m_animate_lights;
 }
 
 void ClusteredShading::update(double delta_time)
@@ -584,10 +597,12 @@ void ClusteredShading::update(double delta_time)
 
 	if(_pov_light_id != NO_LIGHT_ID)
 	{
-		auto L = _light_mgr.get_by_id(_pov_light_id);
-		L.position = m_camera.position() + m_camera.forwardVector() * _pov_light_distance;
-		L.direction = m_camera.forwardVector();
-		_light_mgr.set(_pov_light_id, L);
+		const auto position = m_camera.position() + m_camera.forwardVector() * _pov_light_distance;
+		const auto direction = m_camera.forwardVector();
+		_entities.patch<component::Transform>(entt::entity(_pov_light_id), [position, direction](auto &transform) {
+			transform.set_position(position);
+			transform.set_direction(direction);
+		});
 	}
 
 	const float energy_multiplier = 1.01f;
@@ -616,70 +631,74 @@ void ClusteredShading::update(double delta_time)
 	if(Input::wasKeyPressed(KeyCode::B))
 		m_bloom_enabled = not m_bloom_enabled;
 
-	if(adjust_position != 0 or adjust_angle  != 0 or adjust_energy != 0)
+	if(adjust_position != 0 or adjust_angle != 0 or adjust_energy != 0)
 	{
-		for(LightIndex light_index = 0; light_index <  _light_mgr.size(); ++light_index)
+		auto light_view = _entities.view<component::LightGeneral, component::Transform>();
+		for(const auto &[light_ent, general, transform]: light_view.each())
 		{
-			const auto &[light_id, L] =_light_mgr.at(light_index);
+			const auto light_id = LightID(light_ent);
 			if(light_id == _pov_light_id)
 				continue;
 
-			auto Lmut = L;
-
-			Lmut.position.z += adjust_position;
-
-			if(adjust_angle  != 0 and IS_SPOT_LIGHT(Lmut))
+			if(adjust_position != 0)
 			{
-				float new_angle = std::max(Lmut.outer_angle + adjust_angle, glm::radians(3.f));  // noise becomes apparent at smaller degrees
-				_light_mgr.set_spot_angle(Lmut, new_angle);
-				Log::info("  [{}] spot angle: {:.1f}  {:.1f}   P:{:.0f}   R:{:.0f}", light_id,
-						   glm::degrees(Lmut.outer_angle),
-						   glm::degrees(Lmut.inner_angle),
-						   Lmut.intensity,
-						   Lmut.affect_radius);
+				_entities.patch<component::Transform>(light_ent, [adjust_position](auto &transform) {
+					transform.set_position(transform.position() + glm::vec3(0, 0, adjust_position));
+				});
+			}
+
+			if(adjust_angle  != 0 and general.light_type == LightType::Spot)
+			{
+				const auto &spot = _entities.get<component::SpotLight>(light_ent);
+				float new_angle = std::max(spot.outer_angle + adjust_angle, glm::radians(3.f));  // noise becomes apparent at smaller degrees
+				_light_mgr.set_spot_angle(light_id, new_angle);
+				Log::info("  {{{}}} spot angle: {:.1f}  {:.1f}   P:{:.0f}",
+						  light_id,
+						  glm::degrees(spot.outer_angle),
+						  glm::degrees(spot.inner_angle),
+						  general.intensity);
 			}
 
 			if(adjust_energy != 0)
 			{
+				const auto &general = _entities.get<component::LightGeneral>(entt::entity(light_id));
+				float intensity = general.intensity;
 				if(adjust_energy > 0)
-					_light_mgr.set_intensity(Lmut, Lmut.intensity * adjust_energy);
+					intensity *= adjust_energy;
 				else
-					_light_mgr.set_intensity(Lmut, Lmut.intensity / -adjust_energy);
+					intensity /= -adjust_energy;
+				_light_mgr.set_intensity(light_id, intensity);
 			}
-
-			_light_mgr.set(light_id, Lmut);
 		}
 	}
 	else if (m_animate_lights)
     {
 		// time_accum  += float(delta_time * m_animation_speed);
-		const auto orbit_mat = glm::rotate(glm::mat4(1), glm::radians(float(delta_time)) * 2.f * m_animation_speed, AXIS_Y);
+		const auto orbit_mat = glm::rotate(glm::mat4(1), glm::radians(float(delta_time)) * 10.f * m_animation_speed, AXIS_Y);
 		const auto spin_mat = glm::angleAxis(glm::radians(float(15*delta_time * m_animation_speed)), AXIS_Y);
 
 		// auto spin_mat  = glm::rotate(glm::mat4(1), glm::radians(60.f * float(delta_time)) * 2.f * m_animation_speed, AXIS_Y);
 
 		// TODO: need API to update a specific light OR all lights (by iteration)
 
-		for(LightIndex light_index = 0; light_index <  _light_mgr.size(); ++light_index)
+		auto view = _entities.view<component::LightGeneral>();
+		for(const auto &[light_ent, general]: view.each())
 		{
-			const auto &[light_id, L] =_light_mgr.at(light_index);
+			const auto light_id = LightID(light_ent);
 			if(light_id == _pov_light_id)
 				continue;
-			auto Lmut = L;
 
-			if(IS_POINT_LIGHT(Lmut) or IS_SPHERE_LIGHT(Lmut))
-				Lmut.position = orbit_mat * glm::vec4(L.position, 1); // orbit around the world origin
-			else
-				_light_mgr.transform(Lmut, spin_mat);
-
-			_light_mgr.set(light_id, Lmut);
+			_entities.patch<component::Transform>(light_ent, [light_type=general.light_type, &orbit_mat, &spin_mat](auto &transform) {
+				if(light_type == LightType::Point or light_type == LightType::Sphere)
+					transform.set_position(orbit_mat * glm::vec4(transform.position(), 1)); // orbit around the world origin
+				else
+					transform.set_orientation(spin_mat * transform.orientation());
+			});
 		}
 	}
 
-
 	if(m_animate_lights or adjust_position != 0)
 		updateLightsSSBOs();
-
 }
 
 void ClusteredShading::createLights()
@@ -690,30 +709,42 @@ void ClusteredShading::createLights()
 
 	static constexpr auto ident_quat = glm::quat_identity<float, glm::defaultp>();
 
-	auto z_offset = 0.f;
-	static constexpr auto z_step = 12.f;
-	auto x_offset = 0.f;
-
 	_light_mgr.add(DirectionalLightParams{
 		.color = { 1.f, 0.97f, 0.9f },
-		.intensity = 10.f,
+		.intensity = 20.f,
 		.fog = 1.f,
 		.shadow_caster = true,
 		.direction = glm::normalize(glm::vec3(5, -3, 5)),
 	});
 
-	auto l = _light_mgr.add(SpotLightParams{
-		.color = { 1.f, 0.85f, 0.7f },
-		.intensity = 100.f,
-		.fog = 1.f,
-		.shadow_caster = true,
-		.position = m_camera.position(),  // will be kept up to date in update()
-		.direction = AXIS_X,              // will be kept up to date in update()
-		.outer_angle = glm::radians(45.f),
-		.inner_angle = glm::radians(25.f),
-	});
-	_pov_light_id = l.id();
+	// auto l = _light_mgr.add(SpotLightParams{
+	// 	.color = { 1.f, 0.85f, 0.7f },
+	// 	.intensity = 30.f,
+	// 	.fog = .4f,
+	// 	.shadow_caster = true,
+	// 	.position = m_camera.position(),  // will be kept up to date in update()
+	// 	.direction = AXIS_X,              // will be kept up to date in update()
+	// 	.outer_angle = glm::radians(45.f),
+	// 	.inner_angle = glm::radians(25.f),
+	// });
+	// if(l)
+	// 	_pov_light_id = *l;
 
+
+	glm::vec3 offset { 0.f, 0.f, 0.f };
+	const float step_z = 12.f;
+	const float step_x = 22.f;
+
+	auto light_pos = [&offset, step_z, step_x](auto idx) -> glm::vec3 {
+		glm::vec3 pos { -13.f + offset.x, 2.5f, 12.f - offset.z };
+		offset.z += step_z;
+		if(offset.z > step_z*5 + 1)
+		{
+			offset.z = 0;
+			offset.x += step_x;
+		}
+		return pos;
+	};
 
 	for(auto idx = 0u; idx < 0; ++idx)
 	{
@@ -723,26 +754,19 @@ void ClusteredShading::createLights()
 			1.f                                      // value (brightness)
 		);
 		// const auto rand_pos = Util::RandomVec3(room_min, room_max);
-		const auto rand_pos = glm::vec3(-13.f + x_offset, 2.5f, 12.f - z_offset );
-		z_offset += z_step;
-
-		if(z_offset > z_step*5 + 1)
-		{
-			z_offset = 0;
-			x_offset += 22.f;
-		}
+		const auto rand_pos = light_pos(idx);
 
 		const auto rand_intensity = 100.f;//Util::RandomFloat(10, 100);
 
-		auto light_type = LIGHT_TYPE_RECT + (idx % 4);
-		light_type = LIGHT_TYPE_POINT;
+		auto light_type = LightType(uint_fast8_t(LightType::Rect) + (idx % 4));
+		light_type = LightType::Point;
 
-		LightID l_id;
+		auto light_id { NO_LIGHT_ID };
 		std::string_view type_name;
 		switch(light_type)
 		{
-		case LIGHT_TYPE_POINT:
-		case LIGHT_TYPE_DIRECTIONAL:
+		case LightType::Point:
+		case LightType::Directional:
 		{
 			auto l = _light_mgr.add(PointLightParams{
 				.color = rand_color,
@@ -751,11 +775,14 @@ void ClusteredShading::createLights()
 				.shadow_caster = true,
 				.position = rand_pos,
 			});
-			type_name = _light_mgr.type_name<decltype(l)>();
-			l_id = l.id();
+			if(l)
+			{
+				type_name = _light_mgr.type_name(light_type);
+				light_id = *l;
+			}
 		}
 		break;
-		case LIGHT_TYPE_SPOT:
+		case LightType::Spot:
 		{
 			auto l = _light_mgr.add(SpotLightParams{
 				.color = rand_color,
@@ -767,11 +794,15 @@ void ClusteredShading::createLights()
 				.outer_angle = glm::radians(25.f),
 				.inner_angle = glm::radians(15.f),
 			});
-			type_name = _light_mgr.type_name<decltype(l)>();
-			l_id = l.id();
+			assert(l);
+			if(l)
+			{
+				type_name = _light_mgr.type_name(light_type);
+				light_id = *l;
+			}
 		}
 		break;
-		case LIGHT_TYPE_RECT:
+		case LightType::Rect:
 		{
 			auto l = _light_mgr.add(RectLightParams{
 				.color = rand_color,
@@ -784,11 +815,15 @@ void ClusteredShading::createLights()
 				.double_sided = false,
 				.visible_surface = true,
 			});
-			type_name = _light_mgr.type_name<decltype(l)>();
-			l_id = l.id();
+			assert(l);
+			if(l)
+			{
+				type_name = _light_mgr.type_name(light_type);
+				light_id = *l;
+			}
 		}
 		break;
-		case LIGHT_TYPE_TUBE:
+		case LightType::Tube:
 		{
 			auto l = _light_mgr.add(TubeLightParams{
 				.color = rand_color,
@@ -800,11 +835,15 @@ void ClusteredShading::createLights()
 				.thickness = 0.02f,
 				.visible_surface = true,
 			});
-			type_name = _light_mgr.type_name<decltype(l)>();
-			l_id = l.id();
+			assert(l);
+			if(l)
+			{
+				type_name = _light_mgr.type_name(light_type);
+				light_id = *l;
+			}
 		}
 		break;
-		case LIGHT_TYPE_SPHERE:
+		case LightType::Sphere:
 		{
 			auto l = _light_mgr.add(SphereLightParams{
 				.color = rand_color,
@@ -815,11 +854,15 @@ void ClusteredShading::createLights()
 				.radius = 0.2f,
 				.visible_surface = true,
 			});
-			type_name = _light_mgr.type_name<decltype(l)>();
-			l_id = l.id();
+			assert(l);
+			if(l)
+			{
+				type_name = _light_mgr.type_name(light_type);
+				light_id = *l;
+			}
 		}
 		break;
-		case LIGHT_TYPE_DISC:
+		case LightType::Disc:
 		{
 			auto l = _light_mgr.add(DiscLightParams{
 				.color = rand_color,
@@ -832,23 +875,27 @@ void ClusteredShading::createLights()
 				.double_sided = false,
 				.visible_surface = true,
 			});
-			type_name = _light_mgr.type_name<decltype(l)>();
-			l_id = l.id();
+			assert(l);
+			if(l)
+			{
+				type_name = _light_mgr.type_name(light_type);
+				light_id = *l;
+			}
 		}
 		break;
 		default:
 			assert(false);
 		}
 
-		const auto &L = _light_mgr.get_by_id(l_id);
+		// const auto &L = _light_mgr.gpu_get_by_id(l_id);
 
-		Log::info("light[{:2}] {:5} @ {:5.1f}; {:3.1f}; {:5.1f}  {:3},{:3},{:3}  {:4.0f} (R:{:.1f})",
-				   l_id,
-				   type_name,
-				   rand_pos.x, rand_pos.y, rand_pos.z,
-				   uint(rand_color.r*255), uint(rand_color.g*255), uint(rand_color.b*255),
-				   rand_intensity,
-				   L.affect_radius);
+		Log::info("light{{{:2}}} {:5} @ {:5.1f}; {:3.1f}; {:5.1f}  {:3},{:3},{:3}  {:4.0f}",
+				  light_id,
+				  type_name,
+				  rand_pos.x, rand_pos.y, rand_pos.z,
+				  uint(rand_color.r*255), uint(rand_color.g*255), uint(rand_color.b*255),
+				  rand_intensity);
+				   // L.affect_radius);
 	}
 }
 
@@ -1058,6 +1105,9 @@ void ClusteredShading::downloadAffectingLightSet()
 
 void ClusteredShading::render()
 {
+	// TODO: move (parts of) this stuff to a "renderer" ?
+	//   maybe have a renderer for each "step", and then a "compositor" to combine it all?
+
 	const auto now = steady_clock::now();
 
 	downloadAffectingLightSet();
@@ -1304,6 +1354,7 @@ void ClusteredShading::render()
 void ClusteredShading::renderShadowMaps()
 {
 	// render shadow-maps if light or meshes within its radius/frustum moved (the latter is TODO)
+	// TODO: move this stuff to a "shadow map renderer" ?
 
 	glCullFace(GL_FRONT);       // render only back faces
 	glEnable(GL_SCISSOR_TEST);  // for slot slicing
@@ -1331,7 +1382,7 @@ void ClusteredShading::renderShadowMaps()
 
 		_shadow_atlas.set_max_distance(m_camera.farPlane() * s_light_shadow_max_fraction);
 		const auto T0 = steady_clock::now();
-		_shadow_atlas.eval_lights(_lightsPvs, m_camera.position(), m_camera.forwardVector());
+		_shadow_atlas.update_allocations(_lightsPvs, m_camera.position(), m_camera.forwardVector());
 		m_shadow_alloc_time.add(duration_cast<microseconds>(steady_clock::now() - T0));
 	}
 	else
@@ -1357,17 +1408,31 @@ void ClusteredShading::renderShadowMaps()
 	//    the remaining will still by "dirty" so they will be rendered eventually.
 	//    this implies a 2-pass algo; "allocated_lights() is an unordered mapping.
 
+#if defined(_DEBUG)
+	static dense_set<uint_fast16_t> seen_shadow_idx;
+	seen_shadow_idx.reserve(16);
+	seen_shadow_idx.clear();
+#endif
+
 	for(auto &[light_id, atlas_light]: _shadow_atlas.allocated_lights())
 	{
-		const auto &light = _light_mgr.get_by_id(light_id);
-
-		// if this light did not contribute to the (previous) frame, no need to render its shadow map
 		const auto light_index = _light_mgr.light_index(light_id);
+
+		// if this light did not contribute to the (previous) frame, no need to render its shadow map (yet)
 		if(not _affecting_lights.contains(light_index))
 			continue;
 
-		auto light_hash = _light_mgr.hash(light);
-		if(IS_DIR_LIGHT(light))  // cascades are also affected by the camera's frustum
+		const auto light_ent = entt::entity(light_id);
+
+		const auto &[general, transform] = _entities.get<component::LightGeneral, component::Transform>(light_ent);
+		if(not general.enabled) // disabled lights will remain in the "allocated lights" set for a while (until it's updated)
+		{
+			Log::debug("shmap| {{{}}} not enabled", light_id);
+			continue;
+		}
+
+		auto light_hash = _light_mgr.hash(light_id, general, transform);
+		if(general.light_type == LightType::Directional)  // also affected by the camera's frustum
 			light_hash = hash_combine(light_hash, m_camera.hash());
 
 		// TODO: keep TWO shadow maps, one static-object only (cache) and one active (all objects)
@@ -1382,7 +1447,19 @@ void ClusteredShading::renderShadowMaps()
 		{
 			// render shadow map(s) for this light
 
-			const auto shadow_idx = GET_SHADOW_IDX(light);
+			const auto shadow_idx = general.shadow_index;
+			if(shadow_idx == LIGHT_NO_SHADOW)
+			{
+				Log::warning("{{{}}} no shadow idx set", light_id);
+				continue;
+			}
+			// Log::debug("[{}] -> shadow idx: {}", light_index, shadow_idx);
+#if defined(_DEBUG)
+			assert(not seen_shadow_idx.contains(shadow_idx));
+			seen_shadow_idx.insert(shadow_idx);
+#endif
+
+			uint_fast8_t slots_rendered { 0 };
 
 			for(uint_fast8_t slot_idx = 0u; slot_idx < atlas_light.num_slots; ++slot_idx)
 			{
@@ -1402,8 +1479,10 @@ void ClusteredShading::renderShadowMaps()
 
 					renderSceneShadow(pvs, shadow_idx, slot_idx, dynamic_only);
 					++_shadow_atlas_slots_rendered;
+					++slots_rendered;
 				}
 			}
+			assert(slots_rendered == atlas_light.num_slots);
 
 			atlas_light.on_rendered(now, light_hash);
 			++_light_shadow_maps_rendered;
@@ -1461,73 +1540,71 @@ void ClusteredShading::renderLightGeometry()
 	// TODO: (optionally) render point/spots in some way? e.g. a circular glare?
 
 	static_assert(LIGHT_TYPE__COUNT == 7);
-	for(const auto &light_type: { LIGHT_TYPE_RECT, LIGHT_TYPE_TUBE, LIGHT_TYPE_SPHERE, LIGHT_TYPE_DISC })
+
+	// all the light types with surface
+	for(const auto &light_type: { LightType::Rect, LightType::Tube, LightType::Sphere, LightType::Disc })
 	{
 		// collect lights geometries for this light type
 		surf_attrs.clear();
 		for(auto light_index: _lightsPvs)
 		{
-			const auto &L = _light_mgr[light_index];
-			if(IS_ENABLED(L) and IS_VISIBLE_SURFACE(L) and IS_LIGHT_TYPE(L, light_type))
+			const auto light_id = _light_mgr.light_id(light_index);
+
+			const auto light_ = _light_mgr.get_light(light_id);
+			if(not light_)
+				continue;
+
+			const auto &light = *light_;
+
+			if(light.general.light_type == light_type)
 			{
-				switch(GET_LIGHT_TYPE(L))
+				switch(light.general.light_type)
 				{
-				case LIGHT_TYPE_RECT:
+				case LightType::Rect:
 				{
-					// reconstruct the orientation from direction + outer_angle
-					const auto orientation = glm::mat4_cast(glm::quat{ L.shape_data[4].w, L.shape_data[4].x, L.shape_data[4].y, L.shape_data[4].z });
-					const auto size = glm::vec3{ L.outer_angle, L.inner_angle, 1.f };
+					const auto &rect = std::get<component::RectLight>(light.light);
+					const auto size = glm::vec3{rect.size, 1.f};
+					const auto tfm = glm::scale(light.transform.transform(), size);
 
-					auto tfm = glm::translate(glm::mat4(1), L.position);
-					tfm *= orientation;
-					tfm = glm::scale(tfm, size);
-
-					surf_attrs.emplace_back(tfm, L.color*L.intensity, IS_DOUBLE_SIDED(L));
+					surf_attrs.emplace_back(tfm, light.general.color*light.general.intensity, rect.double_sided);
 				}
 				break;
-				case LIGHT_TYPE_TUBE:
+				case LightType::Tube:
 				{
-					const auto orientation = glm::mat4_cast(glm::quat{ L.shape_data[4].w, L.shape_data[4].x, L.shape_data[4].y, L.shape_data[4].z });
-					const auto thickness = L.shape_data[2].x;
-					const auto size = glm::vec3(thickness, thickness, L.outer_angle);
+					const auto &tube = std::get<component::TubeLight>(light.light);
+					const auto size = glm::vec3(tube.thickness, tube.thickness, glm::length(tube.half_extent)*2);
+					const auto tfm = glm::scale(light.transform.transform(), size);
 
-					auto tfm = glm::translate(glm::mat4(1), L.position);
-					tfm *= orientation;
-					tfm = glm::scale(tfm, size);
-
-					surf_attrs.emplace_back(tfm, L.color*L.intensity, true);
+					surf_attrs.emplace_back(tfm, light.general.color*light.general.intensity, true);
 				}
 				break;
-				case LIGHT_TYPE_SPHERE:
+				case LightType::Sphere:
 				{
-					auto tfm = glm::translate(glm::mat4(1), L.position);
-					const auto radius = L.shape_data[0].x;
-					const auto size = glm::vec3(radius);
-					tfm = glm::scale(tfm, size);
+					const auto &sphere = std::get<component::SphereLight>(light.light);
+					const auto size = glm::vec3(sphere.radius);
+					const auto tfm = glm::scale(light.transform.transform(), size);
 
-					surf_attrs.emplace_back(tfm, L.color*L.intensity, true);
+					surf_attrs.emplace_back(tfm, light.general.color*light.general.intensity, true);
 				}
 				break;
-				case LIGHT_TYPE_DISC:
+				case LightType::Disc:
 				{
-					const auto orientation = glm::mat4_cast(glm::quat{ L.shape_data[4].w, L.shape_data[4].x, L.shape_data[4].y, L.shape_data[4].z });
-					const auto radius = L.shape_data[0].x;
-					const auto size = glm::vec3(1, radius, radius);
+					const auto &disc = std::get<component::DiscLight>(light.light);
+					const auto size = glm::vec3(1, disc.radius, disc.radius);
+					const auto tfm = glm::scale(light.transform.transform(), size);
 
-					auto tfm = glm::translate(glm::mat4(1), L.position);
-					tfm *= orientation;
-					tfm = glm::scale(tfm, size);
-
-					surf_attrs.emplace_back(tfm, L.color*L.intensity, false);
+					surf_attrs.emplace_back(tfm, light.general.color*light.general.intensity, false);
 				}
 				break;
+				default:
+					break;
 				}
 			}
 		}
 		if(surf_attrs.empty())
 			continue;
 
-		auto model_index = light_type - LIGHT_TYPE_RECT;
+		uint_fast8_t model_index = uint_fast8_t(light_type) - uint_fast8_t(LightType::Rect);
 
 		auto &model = _lightModels[model_index].model;
 
@@ -1541,50 +1618,54 @@ void ClusteredShading::renderLightGeometry()
 	}
 
 	// draw "sun"   (or just draw all directional lights?)
-	if(auto sun_id = _shadow_atlas.sun_id(); sun_id != NO_LIGHT_ID and _light_mgr.is_enabled(sun_id))  // TODO: LightManager should probably keep track of this
+	if(auto sun_id = _shadow_atlas.sun_id(); sun_id != NO_LIGHT_ID)
 	{
 		// draw a "sun" disc (or moon, I suppose); only supports one
-		const auto &L = _light_mgr.get_by_id(sun_id);
-		const auto cam_pos = m_camera.position();
-		const auto cam_up = m_camera.upVector();           // e.g. AXIS_Y
-		const auto sun_dir_world = L.direction; // direction light -> scene?
-		// Make sure sun_dir points from camera toward the sun position. If sun_dir is light direction
-		// (pointing from sun -> scene) use -sun_dir when computing position below.
+		// const auto &L = _light_mgr.gpu_get_by_id(sun_id);
+		const auto &[general, transform] = _entities.get<component::LightGeneral, component::Transform>(entt::entity(sun_id));
+		if(general.enabled)
+		{
+			const auto cam_pos = m_camera.position();
+			const auto cam_up = m_camera.upVector();           // e.g. AXIS_Y
+			// const auto sun_dir_world = L.direction; // direction light -> scene?
+			const glm::vec3 sun_dir_world = transform.orientation() * glm::vec4(-AXIS_Z, 1);
+			// Make sure sun_dir points from camera toward the sun position. If sun_dir is light direction
+			// (pointing from sun -> scene) use -sun_dir when computing position below.
 
-		const float distance = m_camera.farPlane() - _sun_size - 1.f;
-		const auto sun_pos_ws = cam_pos -sun_dir_world * distance;
+			const float distance = m_camera.farPlane() - _sun_size - 1.f;
+			const auto sun_pos_ws = cam_pos -sun_dir_world * distance;
 
-		// Choose sun angular half-angle (physical ~0.00465 rad) or artistic scale
-		const float sun_half_angle = 0.03f * _sun_size; // radians
-		float radius_ws = std::tan(sun_half_angle) * distance;
+				   // Choose sun angular half-angle (physical ~0.00465 rad) or artistic scale
+			const float sun_half_angle = 0.03f * _sun_size; // radians
+			float radius_ws = std::tan(sun_half_angle) * distance;
 
-		// Build camera-facing basis
-		glm::vec3 forward = glm::normalize(cam_pos - sun_pos_ws); // points from sun -> camera
-		glm::vec3 right = glm::normalize(glm::cross(forward, cam_up));
-		if(std::abs(glm::dot(forward, cam_up)) > 0.999f)
-			right = glm::normalize(glm::cross(forward, AXIS_X));
-		glm::vec3 up = glm::cross(right, forward);
+				   // Build camera-facing basis
+			glm::vec3 forward = glm::normalize(cam_pos - sun_pos_ws); // points from sun -> camera
+			glm::vec3 right = glm::normalize(glm::cross(forward, cam_up));
+			if(std::abs(glm::dot(forward, cam_up)) > 0.999f)
+				right = glm::normalize(glm::cross(forward, AXIS_X));
+			glm::vec3 up = glm::cross(right, forward);
 
-		// Log::debug("sun pos: {:.0f}; {:.0f}; {:.0f}   R: {:.1f}  F: {:.2f}; {:.2f}; {:.2f}", sun_pos_ws.x, sun_pos_ws.y, sun_pos_ws.z, radius_ws, forward.x, forward.y, forward.z);
+				   // Log::debug("sun pos: {:.0f}; {:.0f}; {:.0f}   R: {:.1f}  F: {:.2f}; {:.2f}; {:.2f}", sun_pos_ws.x, sun_pos_ws.y, sun_pos_ws.z, radius_ws, forward.x, forward.y, forward.z);
 
-		glm::mat4 sun_model;
-		sun_model[0] = glm::vec4(right * radius_ws, 0); // local +X -> world right * scale
-		sun_model[1] = glm::vec4(up    * radius_ws, 0); // local +Y -> world up * scale
-		sun_model[2] = glm::vec4(forward,           0); // local +Z -> world forward (keeps normal facing camera)
-		sun_model[3] = glm::vec4(sun_pos_ws,        1); // translation
+			glm::mat4 sun_model;
+			sun_model[0] = glm::vec4(right * radius_ws, 0); // local +X -> world right * scale
+			sun_model[1] = glm::vec4(up    * radius_ws, 0); // local +Y -> world up * scale
+			sun_model[2] = glm::vec4(forward,           0); // local +Z -> world forward (keeps normal facing camera)
+			sun_model[3] = glm::vec4(sun_pos_ws,        1); // translation
 
+			surf_attrs.clear();
+			surf_attrs.emplace_back(sun_model, general.color*general.intensity * 100.f, false);
 
-		surf_attrs.clear();
-		surf_attrs.emplace_back(sun_model, L.color*L.intensity * 100.f, false);
+			auto &model = _lightModels[2].model;  // render as a disc  (but currently as a sphere, for testing)
+			auto &inst_attrs = model->instance_attributes(sizeof(SurfaceLightAttrs));
+			if(not inst_attrs)
+				config_attrs(inst_attrs);
 
-		auto &model = _lightModels[2].model;  // render as a disc  (but currently as a sphere, for testing)
-		auto &inst_attrs = model->instance_attributes(sizeof(SurfaceLightAttrs));
-		if(not inst_attrs)
-			config_attrs(inst_attrs);
+			inst_attrs.load<SurfaceLightAttrs>(surf_attrs);
 
-		inst_attrs.load<SurfaceLightAttrs>(surf_attrs);
-
-		model->Render(*m_light_geometry_shader, uint32_t(surf_attrs.size()));
+			model->Render(*m_light_geometry_shader, uint32_t(surf_attrs.size()));
+		}
 	}
 }
 
@@ -1699,19 +1780,6 @@ void ClusteredShading::cullScene(const Camera &view, QueryResult &pvs)
 	// perform frustum culling of all objects in the scene (or a partition thereof)
 	_scene.query(view.frustum(), pvs);
 
-	// TODO: cull invisible objects in the scene, using any method available
-	//   e.g. frustum and/or occlusion culling
-
-	// std::sort(_cameraPvs.begin(), _cameraPvs.end(), [view_pos](const StaticObject &A, const StaticObject &B) {
-	// 	// TODO: sort back-to-front
-	// 	//   e.g. by closest part of AABB/OBB/bounding sphere
-	// 	//   for now, just use AABB center for simplicity
-	// 	const auto offsetA = view_pos - A.model->aabb().center();
-	// 	const auto sqDistanceA = glm::dot(offsetA, offsetA);
-	// 	const auto offsetB = view_pos - B.model->aabb().center();
-	// 	const auto sqDistanceB = glm::dot(offsetB, offsetB);
-	// 	return sqDistanceA < sqDistanceB;
-	// });
 
 	m_cull_scene_time.add(duration_cast<microseconds>(steady_clock::now() - T0));
 }
@@ -1742,7 +1810,7 @@ void ClusteredShading::collectRelevantLights(const Camera &view)
 				if(not IS_ENABLED(L))
 					continue;
 
-				if(GET_LIGHT_TYPE(L) == LIGHT_TYPE_DIRECTIONAL)
+				if(IS_DIR_LIGHT(L))
 					_lightsPvs.push_back(light_index);
 				else
 				{
@@ -1772,9 +1840,9 @@ void ClusteredShading::collectRelevantLights(const Camera &view)
 void ClusteredShading::renderScene(const glm::mat4 &view_projection, Shader &shader, MaterialCtrl materialCtrl)
 {
 	// TODO: in c++26: std::views::concat(_cameraPvs.static_ids, _cameraPvs.dynamic_ids)
-	for(const auto &entity_id: _cameraPvs.dynamic_ids)
+	for(const auto &entity_id: _cameraPvs.dynamic_entities)
 	{
-		const auto &[model, transform] = _scene.entities().get<component::Model, component::Transform>(entity_id);
+		const auto &[model, transform] = _entities.get<component::Model, component::Transform>(entity_id);
 		const auto &tfm = transform.transform();
 
 		shader.setUniform("u_mvp"sv,           view_projection * tfm);
@@ -1787,9 +1855,9 @@ void ClusteredShading::renderScene(const glm::mat4 &view_projection, Shader &sha
 			model.Render();
 	}
 
-	for(const auto &entity_id: _cameraPvs.static_ids)
+	for(const auto &entity_id: _cameraPvs.static_entities)
 	{
-		const auto &[model, transform] = _scene.entities().get<component::Model, component::Transform>(entity_id);
+		const auto &[model, transform] = _entities.get<component::Model, component::Transform>(entity_id);
 		const auto &tfm = transform.transform();
 
 		shader.setUniform("u_mvp"sv,           view_projection * tfm);
@@ -1815,10 +1883,17 @@ void ClusteredShading::renderDepth(const glm::mat4 &view_projection, RenderTarge
 
     m_depth_prepass_shader->bind();
 
+	if(_polygon_offset_factor != 0 and _polygon_offset_unit != 0)
+	{
+		glEnable(GL_POLYGON_OFFSET_FILL);
+		glPolygonOffset(_polygon_offset_factor, _polygon_offset_unit);
+	}
+	glDisable(GL_POLYGON_OFFSET_FILL);
+
 	renderScene(view_projection, *m_depth_prepass_shader, NoMaterials);
 }
 
-void ClusteredShading::renderSceneShadow(const QueryResult &objects, uint_fast16_t shadow_idx, uint_fast8_t slot_idx, bool dynamic_only)
+void ClusteredShading::renderSceneShadow(const QueryResult &objects, uint16_t shadow_idx, uint_fast8_t slot_idx, bool dynamic_only)
 {
 	m_shadow_depth_shader->bind();
 
@@ -1828,9 +1903,9 @@ void ClusteredShading::renderSceneShadow(const QueryResult &objects, uint_fast16
 
 	if(not dynamic_only)
 	{
-		for(const auto &entity_id: objects.static_ids)
+		for(const auto &entity_id: objects.static_entities)
 		{
-			const auto &[transform, model] = _scene.entities().get<component::Transform, component::Model>(entity_id);
+			const auto &[transform, model] = _entities.get<component::Transform, component::Model>(entity_id);
 			const auto &tfm = transform.transform();
 
 			m_shadow_depth_shader->setUniform("u_model"sv, tfm);
@@ -1838,9 +1913,9 @@ void ClusteredShading::renderSceneShadow(const QueryResult &objects, uint_fast16
 			model.Render();
 		}
 	}
-	for(const auto &entity_id: objects.dynamic_ids)
+	for(const auto &entity_id: objects.dynamic_entities)
 	{
-		const auto &[transform, model] = _scene.entities().get<component::Transform, component::Model>(entity_id);
+		const auto &[transform, model] = _entities.get<component::Transform, component::Model>(entity_id);
 		const auto &tfm = transform.transform();
 
 		m_shadow_depth_shader->setUniform("u_model"sv, tfm);
@@ -1884,7 +1959,7 @@ void ClusteredShading::renderSceneShading(const Camera &camera)
 	{
 		shader.setUniform("u_csm_num_cascades"sv,     uint32_t(csm.num_cascades));
 		shader.setUniform("u_csm_split_depth"sv,      csm.split_depth);
-		shader.setUniform("u_csm_cascade_near_far"sv, csm.near_far_plane);
+		shader.setUniform("u_csm_cascade_near_far"sv, csm.near_far_plane);  // PCSS
 		shader.setUniform("u_csm_light_radius_uv"sv,  csm.light_radius_uv); // PCSS
 		// needed in vertex shader
 		shader.setUniform("u_csm_light_view_space"sv, csm.light_view);
@@ -1911,21 +1986,60 @@ void ClusteredShading::renderSceneShading(const Camera &camera)
 	// we need updated textures (shadow maps) and SSBO data
 	glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
 
+	if(_polygon_offset_factor != 0 and _polygon_offset_unit != 0)
+	{
+		glEnable(GL_POLYGON_OFFSET_FILL);
+		glPolygonOffset(_polygon_offset_factor, _polygon_offset_unit);
+	}
+
+	glViewport(0, 0, GLsizei(Window::width()), GLsizei(Window::height()));
+
 	const auto view_projection = m_camera.projectionTransform() * m_camera.viewTransform();
 	renderScene(view_projection, *m_clustered_pbr_shader);
 
+	glDisable(GL_POLYGON_OFFSET_FILL);
 	// Enable writing to the depth buffer
 	// glDepthMask(GL_TRUE);
 	// glDepthFunc(GL_LESS);
 }
 
+void ClusteredShading::generateRandomAngles(Texture3D &texture, uint32_t size)
+{
+	const auto T0 = steady_clock::now();
+
+	// create a 3d texture with size^3 random angles: { cos, sin }   (2 floats)
+
+	const auto buffer_size = size * size * size; // 3d cube with side 'size'
+
+	std::vector<glm::vec2> angles;
+	angles.reserve(buffer_size);
+
+	for(auto idx = 0u; idx < buffer_size; ++idx)
+	{
+		const auto angle = Util::RandomFloat(0.f, 2*std::numbers::pi_v<float>);
+		angles.emplace_back(std::cos(angle), std::sin(angle));
+	}
+
+	texture.Create(size, size, size, GL_RG32F);  // 2 float channels
+	// texture.Create(size, size, size, 2, Texture::Float);
+	texture.SetWrapping(TextureWrappingAxis::U, TextureWrappingParam::Repeat);
+	texture.SetWrapping(TextureWrappingAxis::V, TextureWrappingParam::Repeat);
+	texture.SetWrapping(TextureWrappingAxis::W, TextureWrappingParam::Repeat);
+	texture.SetFiltering(TextureFiltering::Magnify, TextureFilteringParam::Nearest);
+	texture.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::Nearest);
+
+	texture.Upload(angles.data(), size*size*size*sizeof(glm::vec2));
+
+	const auto T1 = steady_clock::now();
+	Log::debug("Generated {}k random angles ({}^3), in {}", buffer_size >> 10, size, duration_cast<microseconds>(T1 - T0));
+}
 
 void ClusteredShading::debug_message(GLenum type, std::string_view severity, std::string_view message) const
 {
 	switch(type)
 	{
 	case GL_DEBUG_TYPE_ERROR:
-		Log::error("GL ERROR: {}", severity, message);
+		Log::error("GL ERROR: {} {}", severity, message);
 		break;
 	case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR:
 		Log::error("GL DEPRECATED / {}: {}", severity, message);
@@ -1973,7 +2087,7 @@ void ClusteredShading::debug_message(GLenum type, std::string_view severity, std
 void ClusteredShading::loadScene([[maybe_unused]] std::string_view name)
 {
 	// Create scene objects
-	const auto origin = glm::mat4(1);
+	const auto origin = component::Transform(glm::mat4(1));
 
 	// auto sponza_model = std::make_shared<StaticModel>();
 	// sponza_model->Load(models_path / "sponza2" / "Sponza2.gltf");
@@ -1985,8 +2099,6 @@ void ClusteredShading::loadScene([[maybe_unused]] std::string_view name)
 	// assert(*testroom_model);
 	// _scene.emplace_back(testroom_model, origin);
 
-
-
 	// TODO: where should the actual object be stored?
 	//   the "scene" only stores the entity and bounds?  (it's just a "lookup")
 	//   I guess the ECS?
@@ -1996,15 +2108,17 @@ void ClusteredShading::loadScene([[maybe_unused]] std::string_view name)
 	StaticModel cathedral_model;
 	cathedral_model.Load("/dl/necropolisfantasygraveyardkit/cathedral_jxl.gltf");
 	assert(cathedral_model);
-	_scene.add(std::move(cathedral_model));
+	_scene.add(std::move(cathedral_model), origin);
 
 	StaticModel floor_model;
 	floor_model.Load(FileSystem::getResourcesPath() / "models" / "floor.gltf");
 	assert(floor_model);
-	_scene.add(std::move(floor_model));
+	_scene.add(std::move(floor_model), origin);
 
 	// auto shadow_model = std::make_shared<StaticModel>();
 	// shadow_model->Load(FileSystem::getResourcesPath() / "models" / "shadowtest.gltf");
 	// assert(*shadow_model);
 	// _scene.emplace_back(shadow_model, origin);
+
+	_entities.compact();
 }

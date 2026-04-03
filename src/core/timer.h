@@ -12,13 +12,14 @@ namespace RGL
          */
         static double getTime()
         {
-            auto now = std::chrono::system_clock::now();
+			auto now = std::chrono::steady_clock::now();
+			static const auto start_time = now;
 
-            return std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count() / double(SECOND);
+			return double(std::chrono::duration_cast<std::chrono::nanoseconds>(now - start_time).count()) / double(SECOND);
         }
 
     private:
-        static const long long SECOND = 1000000000L;
+		static const long long SECOND = 1000000000LL;
     };
 }
 

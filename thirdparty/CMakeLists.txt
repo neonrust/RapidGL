@@ -28,19 +28,19 @@ CPMAddPackage("gh:martinus/svector@1.0.3")
 #CPMAddPackage("gh:libjxl/libjxl@0.7.2")   TODO fails with "set_target_properties can not be used on an ALIAS target"
 
 CPMAddPackage(
-  NAME boost-ut
-  GITHUB_REPOSITORY boost-ext/ut
-  GIT_TAG v2.3.1
-  OPTIONS "BOOST_UT_ENABLE_ASSERT=OFF"
+    NAME boost-ut
+    GITHUB_REPOSITORY boost-ext/ut
+    GIT_TAG v2.3.1
+    OPTIONS "BOOST_UT_ENABLE_ASSERT=OFF"
 )
 # seems source dir isn't propagated? setting it manually
 set(boost-ut_SOURCE_DIR "${boost-ut_SOURCE_DIR}" CACHE INTERNAL "")
 
 CPMAddPackage(
-  GITHUB_REPOSITORY benikabocha/tinyddsloader
-  GIT_TAG master
-  GIT_SHALLOW TRUE
-  DOWNLOAD_ONLY TRUE
+    GITHUB_REPOSITORY benikabocha/tinyddsloader
+    GIT_TAG master
+    GIT_SHALLOW TRUE
+    DOWNLOAD_ONLY TRUE
 )
 if (tinyddsloader_ADDED)
     add_library(tinyddsloader INTERFACE)
@@ -51,33 +51,35 @@ CPMAddPackage("gh:skypjack/entt@3.16.0")
 
 CPMAddPackage("gh:ocornut/imgui@1.92.3-docking")
 if(imgui_ADDED)
-  set(imgui_SOURCE_DIR ${imgui_SOURCE_DIR} CACHE INTERNAL "")
-  add_library(imgui
-    STATIC
-    ${imgui_SOURCE_DIR}/imgui.cpp
-    ${imgui_SOURCE_DIR}/imgui_demo.cpp
-    ${imgui_SOURCE_DIR}/imgui_draw.cpp
-    ${imgui_SOURCE_DIR}/imgui_tables.cpp
-    ${imgui_SOURCE_DIR}/imgui_widgets.cpp)
-  target_include_directories(imgui PUBLIC ${imgui_SOURCE_DIR})
+    set(imgui_SOURCE_DIR ${imgui_SOURCE_DIR} CACHE INTERNAL "")
+    add_library(imgui
+        STATIC
+        ${imgui_SOURCE_DIR}/imgui.cpp
+        ${imgui_SOURCE_DIR}/imgui_demo.cpp
+        ${imgui_SOURCE_DIR}/imgui_draw.cpp
+        ${imgui_SOURCE_DIR}/imgui_tables.cpp
+        ${imgui_SOURCE_DIR}/imgui_widgets.cpp)
+    target_include_directories(imgui PUBLIC ${imgui_SOURCE_DIR})
 endif()
 
-CPMAddPackage(
-  NAME implot
-  GITHUB_REPOSITORY epezent/implot
-  GIT_TAG v0.16
-  DOWNLOAD_ONLY TRUE
-)
-if(implot_ADDED)
-  add_library(implot
-    STATIC
-    ${implot_SOURCE_DIR}/implot.cpp
-    ${implot_SOURCE_DIR}/implot_items.cpp)
-  target_include_directories(implot PUBLIC ${implot_SOURCE_DIR})
-
-  # ImPlot needs ImGui, so link that too
-  target_link_libraries(implot PUBLIC imgui)
 endif()
+
+# CPMAddPackage(
+#   NAME implot
+#   GITHUB_REPOSITORY epezent/implot
+#   GIT_TAG v0.16
+#   DOWNLOAD_ONLY TRUE
+# )
+# if(implot_ADDED)
+#   add_library(implot
+#     STATIC
+#     ${implot_SOURCE_DIR}/implot.cpp
+#     ${implot_SOURCE_DIR}/implot_items.cpp)
+#   target_include_directories(implot PUBLIC ${implot_SOURCE_DIR})
+
+#   # ImPlot needs ImGui, so link that too
+#   target_link_libraries(implot PUBLIC imgui)
+# endif()
 
 set_target_properties(glad
                       stb_image 
@@ -85,7 +87,7 @@ set_target_properties(glad
                       glfw 
                       glm 
                       imgui 
-                      implot
+                      # implot
 					  unordered_dense
 					  svector
 					  tinyddsloader

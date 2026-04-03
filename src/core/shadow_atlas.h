@@ -17,6 +17,7 @@ struct GPULight;
 namespace RGL
 {
 class LightManager;
+struct LightWrapper;
 class Camera;
 class Scene;
 struct QueryResult;
@@ -54,7 +55,7 @@ public:
 	{
 		Cube     = 6,
 		Single   = 1,
-		Cascaded = 3,
+		Cascades = 3,
 	};
 	struct AtlasLight
 	{
@@ -135,7 +136,7 @@ public:
 	inline bool csm_stabilization() const { return _csm_stabilization; }
 	inline void set_csm_stabilization(bool enabled) { _csm_stabilization = enabled; }
 
-	size_t eval_lights(const std::vector<LightIndex> &relevant_lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward);
+	size_t update_allocations(const std::vector<LightIndex> &relevant_lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward);
 
 	[[nodiscard]] const dense_map<LightID, AtlasLight> &allocated_lights() const { return _id_to_allocated; }
 	[[nodiscard]] SlotMask need_render(const AtlasLight &atlas_light, Time now, size_t hash, const Scene &scene) const;
@@ -152,6 +153,7 @@ public:
 
 	void debug_dump_allocated(bool details=false) const;
 	void debug_dump_desired(const std::vector<AtlasLight> &desired_slots) const;
+	void debug_dump_available();
 
 	[[nodiscard]] std::vector<std::pair<SlotSize, size_t>> allocated_counts() const;
 
@@ -162,7 +164,6 @@ public:
 	const QueryResult &pvs(const Scene &scene, LightID light_id, uint_fast8_t slot_idx=0) const;
 
 private:
-	float light_value(const GPULight &light, const glm::vec3 &view_pos, const glm::vec3 &view_forward) const;
 	struct Counters
 	{
 		inline Counters() :
@@ -206,15 +207,26 @@ private:
 	};
 	static_assert(sizeof(ValueLight) == 12);
 
-	Counters prioritize_lights(const std::vector<LightIndex> &relevant_lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward, std::vector<ValueLight> &prioritized);
+	void evaluate_lights(const std::vector<LightIndex> &relevant_lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward, std::vector<ValueLight> &prioritized, dense_set<LightID> &seen_lights);
+	float evaluate_light(const bounds::Sphere &light_sphere, const glm::vec3 &view_pos, const glm::vec3 &view_forward) const;
+	Counters compute_desired(const std::vector<ValueLight> &valued_lights, std::vector<AtlasLight> &desired_slots);
 	Counters apply_desired_slots(const std::vector<AtlasLight> &desired_slots, Time now);
 	void log_changes(const Counters &counters, size_t num_prio, Time start_time);
 	void generate_slots(std::initializer_list<size_t> distribution);
-	bool has_slots_available(const AtlasLight &atlas_light, const std::array<size_t, 4> &num_promised) const;
+	bool has_slots_available(const AtlasLight &atlas_light, const std::array<size_t, 6> &num_promised) const;
 	SlotID alloc_slot(SlotSize size, bool first=true);
 	void free_slot(SlotSize size, SlotID node_index);
 	void free_all_slots(const AtlasLight &atlas_light);
-	std::tuple<glm::mat4, glm::mat4, float, float> light_view_projection(const GPULight &light, size_t idx=0) const;
+	struct LightViewProjection
+	{
+		glm::mat4 projection;
+		glm::mat4 view;
+		float near_z;
+		float far_z;
+	};
+	LightViewProjection light_view_projection(const LightWrapper &light, size_t idx=0) const;
+	std::string sizes_count_summary(const AtlasLight &atlas_light) const;
+	std::string sizes_count_summary(const std::array<size_t, 6> &size_counts) const;
 
 private:
 	LightManager &_lights;  // one could argue that the association should be the other way around...
@@ -229,6 +241,7 @@ private:
 	float _csm_frustum_split_mix { 0.55f };  // 0 = linear, 1 = logarithic
 	float _csm_cascade_backoff { 4.f };
 	bool _csm_stabilization { true };
+	float _csm_light_radius_uv { 0.5f };
 	CSMParams _csm_params;
 
 	float _min_light_radius { .5f };
@@ -240,7 +253,7 @@ private:
 	small_vec<std::pair<uint32_t, std::chrono::milliseconds>, 8> _render_intervals;
 
 	buffer::Storage<ShadowSlotInfo> _shadow_slots_info_ssbo;
-	small_vec<size_t, 16> _distribution;  // slot sizes of each of the levels (from max to min)
+	std::array<size_t, 6> _distribution;  // slot sizes of each of the levels (from max to min)
 
 	mutable dense_map<uint32_t, QueryResult> _light_pvs;
 

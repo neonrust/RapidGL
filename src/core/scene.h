@@ -1,7 +1,8 @@
 #pragma once
 
 #include <cstddef>
-#include <entt/entity/registry.hpp>
+#include <entt/fwd.hpp>
+#include <entt/signal/sigh.hpp>
 #include <vector>
 
 #include "bounds.h"
@@ -10,6 +11,8 @@
 
 
 #include "component_transform.h"
+
+class GPULight;
 
 namespace RGL
 {
@@ -27,37 +30,38 @@ struct QueryResult
 	inline QueryResult(std::chrono::milliseconds max_interval_=default_query_max_interval) : max_interval(max_interval_) {}
 	// QueryResult(QueryResult &&that);
 
-	EntityList static_ids;
-	EntityList dynamic_ids;
+	EntityList static_entities;
+	EntityList dynamic_entities;
 	std::chrono::steady_clock::time_point created_at;
 	std::chrono::milliseconds max_interval;
 	size_t hash { 0 };
 
-	inline size_t size() const { return static_ids.size() + dynamic_ids.size(); }
+	enum class SortMode { None, Closest, Farthest } sort_mode { SortMode::None };
+
+	inline size_t size() const { return static_entities.size() + dynamic_entities.size(); }
 };
 
 class Scene
 {
 public:
-
-	struct Item
+	struct SpatialItem
 	{
 		bounds::Sphere bounds;
 		bool is_dynamic;
 	};
-	using ItemMap = dense_map<EntityID, Item>;
+	using ItemMap = dense_map<EntityID, SpatialItem>;
 
 public:
-	Scene(size_t reserve=0);
+	Scene(entt::registry &entities, size_t reserve=0);
 
-	inline const entt::registry &entities() const { return _entities; }
+	EntityID add(StaticModel &&model, const component::Transform &transforn, bool is_dynamic=false);
+	EntityID add(GPULight &&light, const component::Transform &transfor);
 
-	EntityID add(StaticModel &&model, const component::Transform &transform=component::Transform(), bool is_dynamic=false);
 	bool remove(EntityID entity_id);
 
 	void rebalance(const glm::vec3 &origin);
 
-	inline size_t size() const { return _items.size(); }
+	inline size_t size() const { return _spatial_items.size(); }
 	void clear();
 
 	bool closest(const    glm::vec3 &point,   QueryResult &result) const;
@@ -77,19 +81,21 @@ private:
 
 
 	bool start_query_maybe(QueryResult &result) const;
-	inline void add_result_item(QueryResult &result, EntityID entity_id, const Item &item) const {
+	inline void add_result_item(QueryResult &result, EntityID entity_id, const SpatialItem &item) const {
+		// TODO: if sort_mode != None, insert sorted
+		//   use an std::multi_map, with distance as key?  (i.e. not unordered)
 		if(item.is_dynamic)
-			result.dynamic_ids.push_back(entity_id);
+			result.dynamic_entities.push_back(entity_id);
 		else
-			result.static_ids.push_back(entity_id);
+			result.static_entities.push_back(entity_id);
 	}
 
 private:
-	entt::registry _entities;
+	entt::registry &_entities;
 
 	// TODO: some actual acceleration structure here, please :)
 	//   but I assume we need a "flat list" to be able to rebuild the whatever-tree when needed?
-	ItemMap _items;
+	ItemMap _spatial_items;
 
 	size_t _min_result_reserve { 32 };
 

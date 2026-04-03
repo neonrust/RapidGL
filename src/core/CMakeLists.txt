@@ -13,6 +13,7 @@ set(SOURCE_FILES_CORE
 	buffer.cpp
 	buffer_binds.h
 	camera.cpp
+	component_transform.cpp
 	core_app.cpp
 	filesystem.cpp
 	frustum.cpp
@@ -78,7 +79,7 @@ set(HEADER_FILES_CORE
 	gl_timer.h
 	hash_combine.h
 	hash_mat4.h
-	hash_uvec2.h
+	hash_vec2.h
 	hash_vec3.h
 	hash_vec4.h
 	hash_quat.h
@@ -88,6 +89,7 @@ set(HEADER_FILES_CORE
 	ktx_loader.h
 	light_constants.h
 	light_manager.h
+	light_type.h
 	light_wrapper.h
 	lights.h
 	log.h
@@ -108,6 +110,7 @@ set(HEADER_FILES_CORE
 	ringbuffer.h
 	sample_window.h
 	scene.h
+	scoped_timer.h
 	shader.h
 	shadow_atlas.h
 	spatial_allocator.h

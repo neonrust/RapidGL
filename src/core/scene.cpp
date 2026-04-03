@@ -8,25 +8,28 @@
 #include "component_model.h"
 #include "component_bounds.h"
 
+#include <entt/entity/registry.hpp>
+
 using namespace std::chrono;
 
 namespace RGL
 {
 
-Scene::Scene(size_t reserve)
+Scene::Scene(entt::registry &entities, size_t reserve) :
+	_entities(entities)
 {
-	_items.reserve(std::max(256ul, reserve));
+	_spatial_items.reserve(std::max(256ul, reserve));
 	// TODO: init the whatever-tree
 
 	_connect_signals();
 }
 
-EntityID Scene::add(StaticModel &&model, const component::Transform &transform, bool is_dynamic)
+EntityID Scene::add(StaticModel &&model, const component::Transform &transforn, bool is_dynamic)
 {
 	auto model_ent = _entities.create();
 
 	_entities.emplace<component::SphereBounds>(model_ent, model.sphere());
-	_entities.emplace<component::Transform>(model_ent, transform);
+	_entities.emplace<component::Transform>(model_ent, transforn);
 	_entities.emplace<bool>(model_ent, is_dynamic);  // bad idea
 	_entities.emplace<component::Model>(model_ent, std::move(model));
 
@@ -49,9 +52,10 @@ void Scene::clear()
 {
 	// don'y fire the connected signals
 	_disconnect_signals();
+
 	_entities.clear();
 	// TODO: reset the whatever-tree
-	_items.clear();
+	_spatial_items.clear();
 
 	// reconnect signals again
 	_connect_signals();
@@ -63,7 +67,7 @@ bool Scene::query(const bounds::Sphere &sphere, QueryResult &result) const
 	{
 		// TODO: use the whatever-tree instead
 
-		std::for_each(std::execution::par_unseq, _items.begin(), _items.end(), [this, &sphere, &result](const auto &item_pair) {
+		std::for_each(std::execution::par_unseq, _spatial_items.begin(), _spatial_items.end(), [this, &sphere, &result](const auto &item_pair) {
 			const auto &[entity_id, item] = item_pair;
 			if(intersect::check(sphere, item.bounds))
 				add_result_item(result, entity_id, item);
@@ -81,7 +85,7 @@ bool Scene::query(const Frustum &frustum, QueryResult &result) const
 	{
 		// TODO: use the whatever-tree instead
 
-		std::for_each(std::execution::par_unseq, _items.begin(), _items.end(), [this, &frustum, &result](const auto &item_pair) {
+		std::for_each(std::execution::par_unseq, _spatial_items.begin(), _spatial_items.end(), [this, &frustum, &result](const auto &item_pair) {
 			const auto &[entity_id, item] = item_pair;
 			if(intersect::check(frustum, item.bounds))
 				add_result_item(result, entity_id, item);
@@ -99,7 +103,7 @@ bool Scene::query(const bounds::AABB &aabb, QueryResult &result) const
 	{
 		// TODO: use the whatever-tree instead
 
-		std::for_each(std::execution::par_unseq, _items.begin(), _items.end(), [this, &aabb, &result](const auto &item_pair) {
+		std::for_each(std::execution::par_unseq, _spatial_items.begin(), _spatial_items.end(), [this, &aabb, &result](const auto &item_pair) {
 			const auto &[entity_id, item] = item_pair;
 			if(intersect::check(aabb, item.bounds))
 				add_result_item(result, entity_id, item);
@@ -119,7 +123,7 @@ bool Scene::query(const glm::mat4 &view, const glm::mat4 &ortho, const bounds::A
 
 		const auto view_proj = ortho * view;
 
-		std::for_each(std::execution::par_unseq, _items.begin(), _items.end(), [this, &view_proj, &aabb, &result](const auto &item_pair) {
+		std::for_each(std::execution::par_unseq, _spatial_items.begin(), _spatial_items.end(), [this, &view_proj, &aabb, &result](const auto &item_pair) {
 			const auto &[entity_id, item] = item_pair;
 
 			// transform the bounds into given space
@@ -141,10 +145,10 @@ bool Scene::start_query_maybe(QueryResult &result) const
 
 	if(result.created_at.time_since_epoch().count() == 0 or now - result.created_at > result.max_interval)
 	{
-		result.static_ids.reserve(_min_result_reserve);
-		result.static_ids.clear();
-		result.dynamic_ids.reserve(_min_result_reserve);
-		result.dynamic_ids.clear();
+		result.static_entities.reserve(_min_result_reserve);
+		result.static_entities.clear();
+		result.dynamic_entities.reserve(_min_result_reserve);
+		result.dynamic_entities.clear();
 		result.created_at = now;
 
 		return true;
@@ -180,19 +184,19 @@ void Scene::_spatial_insert(entt::registry &, EntityID entity_id)
 	// TODO: update the whatever-tree
 
 	// TODO: component with model meta info
-	_items[entity_id] = { world_bounds, is_dynamic };
+	_spatial_items[entity_id] = { world_bounds, is_dynamic };
 }
 
 void Scene::_spatial_update(entt::registry &e, EntityID entity_id)
 {
-	if(not _items.contains(entity_id))  // i.e. transform was updated for something without a model
+	if(not _spatial_items.contains(entity_id))  // i.e. transform was updated for something without a model
 		return;
 	_spatial_insert(e, entity_id);
 }
 
 void Scene::_spatial_remove(entt::registry &, EntityID entity_id)
 {
-	_items.erase(entity_id);
+	_spatial_items.erase(entity_id);
 }
 
 } // RGL

@@ -6,6 +6,18 @@
 namespace std
 {
 template<>
+struct hash<glm::vec2>
+{
+	[[nodiscard]] inline size_t operator()(const glm::vec2 &v) const
+	{
+		size_t h { 0 };
+		h = hash_combine(h, v.x);
+		h = hash_combine(h, v.y);
+		return h;
+	}
+};
+
+template<>
 struct hash<glm::uvec2>
 {
 	[[nodiscard]] inline size_t operator()(const glm::uvec2 &v) const

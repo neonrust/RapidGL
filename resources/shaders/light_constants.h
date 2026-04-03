@@ -78,13 +78,15 @@
 
 #define LIGHT_NO_SHADOW             0xfffu
 
-#define GET_SHADOW_IDX(light)      (((light).type_flags & LIGHT_SHADOW_MASK) >> LIGHT_SHADOW_SHIFT)
-#ifdef __cplusplus
+#if defined(__cplusplus)
+#define GET_SHADOW_IDX(light)      uint_fast16_t(((light).type_flags & LIGHT_SHADOW_MASK) >> LIGHT_SHADOW_SHIFT)
 void SET_SHADOW_IDX(auto &light, auto idx)
 {
-	assert(idx <= LIGHT_NO_SHADOW);
+	assert(idx >= 0 and idx <= LIGHT_NO_SHADOW);
 	light.type_flags = (light.type_flags & ~LIGHT_SHADOW_MASK) | uint32_t(idx << LIGHT_SHADOW_SHIFT);
 }
+#else
+#define GET_SHADOW_IDX(light)      (((light).type_flags & LIGHT_SHADOW_MASK) >> LIGHT_SHADOW_SHIFT)
 #endif
 #define CLR_SHADOW_IDX(light)      SET_SHADOW_IDX(light, LIGHT_NO_SHADOW)
 

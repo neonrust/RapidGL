@@ -109,7 +109,7 @@ private:
 	void renderScene(const glm::mat4 &view_projection, RGL::Shader &shader, MaterialCtrl matCtrl=UseMaterials);
 	void renderDepth(const glm::mat4 &view_projection, RGL::RenderTarget::Texture2d &target, const glm::ivec4 &rect={0,0,0,0});
 	void renderShadowMaps();
-	void renderSceneShadow(const RGL::QueryResult &objects, uint_fast16_t shadow_idx, uint_fast8_t slot_idx, bool dynamic_only=false);
+	void renderSceneShadow(const RGL::QueryResult &objects, uint16_t shadow_idx, uint_fast8_t slot_idx, bool dynamic_only=false);
 	void renderSceneShading(const RGL::Camera &camera);
 	void renderSkybox();
 	void renderLightGeometry();
@@ -117,6 +117,7 @@ private:
 	void draw2d(const RGL::Texture &texture, BlendMode mode=BlendMode::Replace); // TODO: move to CoreApp
 	void draw2d(const RGL::Texture &source, RGL::RenderTarget::Texture2d &target, BlendMode blend=BlendMode::Replace); // TODO: move to CoreApp
 	void draw2d(const RGL::Texture &texture, const glm::uvec2 &top_left, const glm::uvec2 &bottom_right); // TODO: move to CoreApp
+	void generateRandomAngles(RGL::Texture3D &texture, uint32_t size);
 	void loadScene(std::string_view name);
 
 	void debugDrawLine(const glm::vec3 &p1, const glm::vec3 &p2, const glm::vec4 &color={1,1,1,1});
@@ -131,6 +132,17 @@ private:
 	void debugDrawLightMarkers();
 	void debugDrawClusterGrid();
 
+private:
+	entt::registry _entities;
+	RGL::Scene _scene;
+	RGL::QueryResult _cameraPvs;
+
+	RGL::LightManager _light_mgr;
+	RGL::ShadowAtlas _shadow_atlas;
+
+	std::vector<LightIndex>   _lightsPvs;  // basically all lights within theoretical range
+	std::vector<StaticObject> _lightModels;
+
 	RGL::Camera m_camera;
 	float m_camera_fov { 80.f };
 
@@ -139,7 +151,6 @@ private:
 	std::shared_ptr<RGL::RenderTarget::Cube>   m_prefiltered_env_map_rt;
 	std::shared_ptr<RGL::RenderTarget::Texture2d> m_brdf_lut_rt;
 	// RGL::RenderTarget::Texture2d _shadow_atlas;
-	RGL::ShadowAtlas _shadow_atlas;
 
     std::shared_ptr<RGL::Shader> m_equirectangular_to_cubemap_shader;
     std::shared_ptr<RGL::Shader> m_irradiance_convolution_shader;
@@ -187,11 +198,11 @@ private:
 	float m_debug_coverlay_blend         = 0.7f;
 	bool _debug_colorize_shadows         = false;
 
-	float m_shadow_occlusion             = 0.8f;
-	glm::vec3 _ambient_radiance          = { 0.f, 0.f, 0.f };
+	glm::vec3 _ambient_radiance          = { 0.02f, 0.02f, 0.02f };
 	float _ibl_strength                  = 1.f;
+	float m_shadow_occlusion             = 1.f;//0.8f;
 	float m_shadow_bias_constant         = -0.0001f;
-	float m_shadow_bias_slope_scale      = -0.06f;
+	float m_shadow_bias_slope_scale      = 0.0018f;
 	float m_shadow_bias_slope_power      = 1.f;
 	float m_shadow_bias_distance_scale   = 0.0004f;
 	float m_shadow_bias_texel_size_mix   = 0.48f;
@@ -208,11 +219,6 @@ private:
 	GLuint    m_debug_draw_vbo             = 0;
 
 
-	RGL::Scene _scene;
-	RGL::QueryResult _cameraPvs;
-
-	std::vector<LightIndex>   _lightsPvs;  // basically all lights within theoretical range
-	std::vector<StaticObject> _lightModels;
 	float _sun_size { 1.f };               // only affects the visible disc in the sky
 
 	RGL::buffer::Storage<AABB>       m_cluster_aabb_ssbo;
@@ -224,11 +230,12 @@ private:
 	dense_set<uint>                  _affecting_lights;
 	RGL::buffer::Storage<uint>       _relevant_lights_index_ssbo;
 	RGL::buffer::Mapped<ShadowSlotInfo, MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS + MAX_RECT_LIGHTS> m_shadow_map_slots_ssbo;
-	RGL::LightManager _light_mgr;
 
     /// Rect lights variables
     std::shared_ptr<RGL::Texture2D> m_ltc_amp_lut;
     std::shared_ptr<RGL::Texture2D> m_ltc_mat_lut;
+	// std::shared_ptr<RGL::Texture2DArray> _csm_shadow_maps;
+	RGL::Texture3D _random_angles;
 
 	// Tonemapping variables
 	RGL::RenderTarget::Texture2d _rt;
@@ -269,6 +276,9 @@ private:
 	float _fog_density;
 	float _fog_blend_weight;
 
+	float _polygon_offset_factor { 0.f };
+	float _polygon_offset_unit { 0.f };
+
 	SampleWindow<std::chrono::microseconds, 30> m_cull_scene_time;
 	SampleWindow<std::chrono::microseconds, 30> m_depth_time;
 	SampleWindow<std::chrono::microseconds, 30> m_cluster_find_time;
@@ -292,23 +302,6 @@ private:
 	string_map<RGL::GLTimer<4>> _gl_timers;
 
 	RGL::Texture2DArray _light_icons;
+	bool _debug_ui_enabled { true };
 };
 
-namespace hash
-{
-struct glmv
-{
-	inline std::size_t operator() (const glm::uvec2 &v) const noexcept
-	{
-		return std::hash<uint32_t>()(v.x) ^ std::hash<uint32_t>()(v.y);
-	}
-
-	inline bool operator() (const glm::uvec2 &l, const glm::uvec2 &r) const noexcept
-	{
-		return l.x == r.x and l.y == r.y;
-	}
-};
-} // hash
-
-template<typename T>
-using uvec2_map = ankerl::unordered_dense::map<glm::uvec2, T, hash::glmv, hash::glmv>;

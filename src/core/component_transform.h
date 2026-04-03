@@ -22,7 +22,7 @@ struct Transform
 	// from existing transform matrix -> decompose
 	inline explicit  Transform(const glm::mat4 &tfm) :
 		_transform(tfm),
-		_dirty(false)
+		_matrix_dirty(false)
 	{
 		// Log::debug("Transform (tfm)");
 		glm::vec3 skew;        // not used
@@ -54,7 +54,7 @@ struct Transform
 	// from only direction (set only orientation)
 	struct Direction {}; // to disambiguate 'direction' argument'
 	inline explicit  Transform(Direction, const glm::vec3 &direction) :
-		_dirty(true)
+		_matrix_dirty(true)
 	{
 		// Log::debug("Transform (dir)");
 		set_direction(direction);
@@ -75,9 +75,9 @@ struct Transform
 		// Log::debug("Transform (scale)");
 	}
 
-	inline void set_position   (const glm::vec3 &pos)   { _position = pos;    _dirty = true; }
-	inline void set_orientation(const glm::quat &ori)   { _orientation = ori; _dirty = true; }
-	inline void set_scale      (const glm::vec3 &scale) { _scale= scale;      _dirty = true; }
+	inline void set_position   (const glm::vec3 &pos)   { _position = pos;    _matrix_dirty = true; }
+	inline void set_orientation(const glm::quat &ori)   { _orientation = ori; _matrix_dirty = true; }
+	inline void set_scale      (const glm::vec3 &scale) { _scale= scale;      _matrix_dirty = true; }
 		   void set_direction  (const glm::vec3 &dir);
 
 	inline const glm::vec3 &position() const    { return _position; }
@@ -103,8 +103,32 @@ private:
 	glm::vec3 _position          { glm::vec3(0) };
 	glm::quat _orientation       { ident_quat };
 	glm::vec3 _scale             { glm::vec3(1) };
+
 	mutable glm::mat4 _transform { glm::mat4(1) };
-	mutable bool _dirty          { true };
+	mutable bool _matrix_dirty   { true };
 };
 
 } // RGL::component
+
+
+#include "hash_combine.h"
+#include "hash_vec3.h"   // IWYU pragma: keep
+#include "hash_vec4.h"   // IWYU pragma: keep
+
+namespace std
+{
+template<>
+struct hash<RGL::component::Transform>
+{
+	[[nodiscard]] inline size_t operator()(const RGL::component::Transform &t) const
+	{
+		size_t h { 0 };
+		h = hash_combine(h, t.position());
+		const auto &o = t.orientation();
+		h = hash_combine(h, glm::vec4{ o.x, o.y, o.z, o.w });
+		h = hash_combine(h, t.scale());
+		return h;
+	}
+};
+
+} // std

@@ -7,7 +7,11 @@
 
 #include "filesystem.h"
 #include "constants.h"
+#include "component_light_general.h"
+#include "component_light_spot.h"
 #include <ranges>
+
+#include "ImGuizmo.h"
 
 using namespace std::literals;
 
@@ -36,6 +40,8 @@ inline ImVec2 operator / (const ImVec2 &A, float div)
 
 void ClusteredShading::render_gui()
 {
+	ImGuizmo::BeginFrame();
+
 	/* This method is responsible for rendering GUI using ImGUI. */
 
 	/*
@@ -43,6 +49,9 @@ void ClusteredShading::render_gui()
 	 * It renders performance info overlay.
 	 */
 	CoreApp::render_gui();
+
+	if(not _debug_ui_enabled)
+		return;
 
 	/* Create your own GUI using ImGUI here. */
 	ImVec2 window_pos       = ImVec2(float(Window::width()) - 10.f, 10.f);
@@ -78,11 +87,14 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 		TIMING("Shading", m_shading_time.average());
 		TIMING("Skybox", m_skybox_time.average());
 
-		TIMING("Volumetrics", m_volumetrics_cull_time.average() + m_volumetrics_inject_time.average() + m_volumetrics_accum_time.average() + m_volumetrics_render_time.average());
-		TIMING("  cull", m_volumetrics_cull_time.average());
-		TIMING("  inject", m_volumetrics_inject_time.average());
-		TIMING("  accum",  m_volumetrics_accum_time.average());
-		TIMING("  render", m_volumetrics_render_time.average());
+		if(_fog_enabled)
+		{
+			TIMING("Volumetrics", m_volumetrics_cull_time.average() + m_volumetrics_inject_time.average() + m_volumetrics_accum_time.average() + m_volumetrics_render_time.average());
+			TIMING("  cull", m_volumetrics_cull_time.average());
+			TIMING("  inject", m_volumetrics_inject_time.average());
+			TIMING("  accum",  m_volumetrics_accum_time.average());
+			TIMING("  render", m_volumetrics_render_time.average());
+		}
 
 		TIMING("Tonemapping", m_tonemap_time.average());
 		TIMING("Debug draw", m_debug_draw_time.average());
@@ -299,13 +311,15 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			auto backoff = _shadow_atlas.csm_backoff();
 			if(ImGui::SliderFloat("CSM backoff distance", &backoff, 1.f, 100.f, "%.1f"))
 				_shadow_atlas.set_csm_backoff(backoff);
-			ImGui::SliderFloat("Shadow occlusion",   &m_shadow_occlusion,            0.05f,  1.f,   "%.2f");
-			ImGui::SliderFloat("Bias constant",      &m_shadow_bias_constant,       -0.02f,  0.02f, "%.4f");
-			ImGui::SliderFloat("Bias slope scale",   &m_shadow_bias_slope_scale,     -.5f,    .5f,  "%.2f");
-			ImGui::SliderFloat("Bias slope power",   &m_shadow_bias_slope_power,     0.01f,  5.f,   "%.3f");
+			ImGui::SliderFloat("Shadow occlusion",   &m_shadow_occlusion,             .05f,  1.f,   "%.2f");
+			ImGui::SliderFloat("Bias constant",      &m_shadow_bias_constant,        -.02f,   .02f, "%.4f");
+			ImGui::SliderFloat("Bias slope scale",   &m_shadow_bias_slope_scale,     -.05f,   .05f, "%.4f");
+			ImGui::SliderFloat("Bias slope power",   &m_shadow_bias_slope_power,      .01f,  5.f,   "%.3f");
 			ImGui::SliderFloat("Bias dist. scale",   &m_shadow_bias_distance_scale, -2.f,    2.f,   "%.4f");
 			ImGui::SliderFloat("Bias texel sz mix",  &m_shadow_bias_texel_size_mix,  0.f,    1.f,   "%.2f");
 			ImGui::SliderFloat("Bias scale",         &m_shadow_bias_scale,          -2.f,    2.f,   "%.2f");
+			ImGui::SliderFloat("Polygon offset",     &_polygon_offset_factor,        0.f,     .01f, "%.4f");
+			ImGui::SliderFloat("        unit",       &_polygon_offset_unit,          0.f,     .01f, "%.4f");
 			static auto stabilize = _shadow_atlas.csm_stabilization();
 			ImGui::Checkbox("Stabilize light view", &stabilize);
 			_shadow_atlas.set_csm_stabilization(stabilize);
@@ -450,8 +464,10 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 						{
 							auto is_selected = selected_light == light_id;
 							label.clear();
-							const auto &L = _light_mgr.get_by_id(light_id);
-							std::format_to(std::back_inserter(label), "[{}] {}: {} slots", light_id, _light_mgr.type_name(L), atlas_light.num_slots);
+
+							const auto light_ent = entt::entity(light_id);
+							const auto &general = _entities.get<component::LightGeneral>(light_ent);
+							std::format_to(std::back_inserter(label), "{{{}}} {}: {} slots", light_id, _light_mgr.type_name(general.light_type), atlas_light.num_slots);
 							if(light_id == _pov_light_id)
 								label.append(" pov");
 							ImGui::Selectable(label.c_str(), is_selected, ImGuiSelectableFlags_Disabled);
@@ -468,7 +484,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 									std::format_to(std::back_inserter(label), "  {}: cascade {} ({})", light_id, slot, atlas_light.slots[slot].size);
 								else
 									std::format_to(std::back_inserter(label), "  {}: slot {} ({})", light_id, slot, atlas_light.slots[slot].size);
-								if(IS_POINT_LIGHT(L))
+								if(general.light_type == LightType::Point)
 									label.append(face_names[slot]);
 
 								if(ImGui::Selectable(label.c_str(), is_slot_selected))
@@ -581,18 +597,20 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 		}
 
 		static std::string selected_light_label = "< select light >";
-		static LightID selected_light_id = NO_LIGHT_ID;
-		static GPULight Lmut;
+		static auto selected_light_id { NO_LIGHT_ID };
 
-		if(ImGui::BeginCombo("Properties", selected_light_label.c_str()))
+		if(ImGui::BeginCombo("Edit", selected_light_label.c_str()))
 		{
 			for(auto idx = 0u; idx < _light_mgr.size(); ++idx)
 			{
-				const auto &[light_id, L] = _light_mgr.at(idx);
+				const auto light_id = _light_mgr.light_id(idx);
+				const auto light_ent = entt::entity(light_id);
+				const auto &general = _entities.get<component::LightGeneral>(light_ent);
+
 				static std::string label;
 				label.reserve(32);
 				label.clear();
-				std::format_to(std::back_inserter(label), "[{}] {}", light_id, _light_mgr.type_name(L));
+				std::format_to(std::back_inserter(label), "{{{}}} {}", light_id, _light_mgr.type_name(general.light_type));
 				if(light_id == _pov_light_id)
 					label.append(" POV");
 				const auto is_selected = selected_light_id == light_id;
@@ -600,7 +618,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 				{
 					selected_light_id = light_id;
 					selected_light_label = label;
-					Lmut = _light_mgr.get_by_id(selected_light_id); // a copy, to modify it
+					Log::debug("{{{}}} editing light properties", selected_light_id);
 				}
 
 				if(is_selected)
@@ -611,94 +629,117 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 
 		if(selected_light_id != NO_LIGHT_ID)
 		{
-			// NOTE: this will not be updated by changes to lights made elsewhere
+			auto general = _entities.get<component::LightGeneral>(entt::entity(selected_light_id));
 
-			auto enabled = IS_ENABLED(Lmut);
-			if(ImGui::Checkbox("Enabled", &enabled))
+			if(ImGui::Checkbox("Enabled", &general.enabled))
 			{
-				_light_mgr.set_enabled(selected_light_id, enabled);
-				Lmut = _light_mgr.get_by_id(selected_light_id);
+				Log::debug("enable {}", general.enabled);
+				_light_mgr.set_enabled(selected_light_id, general.enabled);
+				// Lsel = _light_mgr.gpu_get_by_id(selected_light_id);
+			}
+			ImGui::SameLine();
+			ImGui::PushStyleColor(ImGuiCol_Button, { 0.7f, 0.2f, 0.1f, 1.f });
+			ImGui::Button("  Delete  ");
+			ImGui::PopStyleColor();
+
+
+			static bool edit { false };
+			if(ImGui::Checkbox("Mvve / rotate", &edit))
+			{
+				Log::debug("edit: {}", edit);
+				// TODO
 			}
 
-			if(ImGui::ColorEdit3("Color", glm::value_ptr(Lmut.color)))
+			if(ImGui::ColorEdit3("Color", glm::value_ptr(general.color)))
 			{
-				const auto color = Lmut.color;
-				Lmut = _light_mgr.get_by_id(selected_light_id); // a copy, to modify it
-				Lmut.color = color;
-				_light_mgr.set(selected_light_id, Lmut);
+				// const auto color = general.color;
+				// Lmut = _light_mgr.get_by_id(selected_light_id); // a copy, to modify it
+				// Lmut.color = color;
+				// _light_mgr.set(selected_light_id, Lmut);
+				_light_mgr.set_color(selected_light_id, general.color);
 			}
-			if(ImGui::SliderFloat("Intensity", &Lmut.intensity, 1, 1000, "%.0f"))
+			if(ImGui::SliderFloat("Intensity", &general.intensity, 1, 1000, "%.0f"))
 			{
-				const auto intensity = Lmut.intensity;
-				Lmut = _light_mgr.get_by_id(selected_light_id); // a copy, to modify it
-				_light_mgr.set_intensity(Lmut, intensity);
-				_light_mgr.set(selected_light_id, Lmut);
+				// const auto intensity = general.intensity;
+				// Lmut = _light_mgr.get_by_id(selected_light_id); // a copy, to modify it
+				// _light_mgr._set_intensity(Lmut, intensity);
+				// _light_mgr.set(selected_light_id, Lmut);
+				_light_mgr.set_intensity(selected_light_id, general.intensity);
 			}
-			if(IS_DIR_LIGHT(Lmut))
+			if(general.light_type == LightType::Directional)
 			{
-				auto direction = Lmut.direction;
-				float elevation = -glm::degrees(std::asin(direction.y));
-				float azimuth   =  glm::degrees(std::atan2(direction.x, direction.z));
+				auto transform = _entities.get<component::Transform>(entt::entity(selected_light_id));
+				auto direction = transform.direction();
+				float elevation = glm::degrees(-std::asin(direction.y));
+				float azimuth   = glm::degrees(std::atan2(direction.x, direction.z));
 
 				auto changed =  ImGui::SliderFloat("Azimuth",   &azimuth,    -180.f, 180.f, "%.1f");
 					 changed |= ImGui::SliderFloat("Elevation", &elevation,  -15.f,  89.9f, "%.1f");
 
 				if(changed)
 				{
-					elevation   = glm::radians(-elevation);
-					azimuth     = glm::radians(azimuth);
-					direction.x = std::sin(azimuth) * std::cos(elevation);
-					direction.y = std::sin(elevation);
-					direction.z = std::cos(azimuth) * std::cos(elevation);
-					_light_mgr.set_direction(Lmut, direction);
-					_light_mgr.set(selected_light_id, Lmut);
+					elevation = glm::radians(-elevation);
+					azimuth   = glm::radians(azimuth);
+					direction = {
+						std::sin(azimuth) * std::cos(elevation),
+						std::sin(elevation),
+						std::cos(azimuth) * std::cos(elevation),
+					};
+					_light_mgr.set_direction(selected_light_id, direction);
 				}
 			}
-			if(IS_SPOT_LIGHT(Lmut))
+			if(general.light_type == LightType::Spot)
 			{
-				float outer_angle = glm::degrees(Lmut.outer_angle);
+				const auto &spot = _entities.get<component::SpotLight>(entt::entity(selected_light_id));
+				float outer_angle = glm::degrees(spot.outer_angle);
+				float inner_angle = glm::degrees(spot.inner_angle);
+				float angle_ratio = inner_angle * 100.f / outer_angle;
 				if(ImGui::SliderFloat("Angle", &outer_angle, 0.1f, 89.9f, "%.1f"))
 				{
-					_light_mgr.set_spot_angle(Lmut, glm::radians(outer_angle));
-					_light_mgr.set(selected_light_id, Lmut);
+					// _light_mgr.set_spot_angle(Lmut, glm::radians(outer_angle));
+					// _light_mgr.set(selected_light_id, Lmut);
+					_light_mgr.set_spot_angle(selected_light_id, glm::radians(outer_angle), glm::radians((angle_ratio / 100.f) * outer_angle));
 				}
-				float inner_angle = 100.f * glm::degrees(Lmut.inner_angle) / outer_angle;
-				if(ImGui::SliderFloat("Inner angle", &inner_angle, 0, 100, "%.1f%%"))
+				// specify inner angle as a percentage of the outer angle
+				if(ImGui::SliderFloat("Inner angle", &angle_ratio, 0, 100, "%.1f%%"))
 				{
-					Lmut.inner_angle = glm::radians(outer_angle * inner_angle / 100.f);
-					_light_mgr.set(selected_light_id, Lmut);
+					// _light_mgr.set(selected_light_id, Lmut);
+					_light_mgr.set_spot_angle(selected_light_id, glm::radians(outer_angle), glm::radians((angle_ratio / 100.f) * outer_angle));
 				}
 			}
 
-			auto cast_shadows = IS_SHADOW_CASTER(Lmut);
+			auto cast_shadows = general.shadow_caster;
 			if(ImGui::Checkbox("Cast shadow", &cast_shadows))
 			{
-				Lmut = _light_mgr.get_by_id(selected_light_id); // a copy, to modify it
-				if(cast_shadows)
-					Lmut.type_flags |= LIGHT_SHADOW_CASTER;
-				else
-					Lmut.type_flags &= ~LIGHT_SHADOW_CASTER;
-				_light_mgr.set(selected_light_id, Lmut);
+				// Lsel = _light_mgr.gpu_get_by_id(selected_light_id); // a copy, to modify it
+				// if(cast_shadows)
+				// 	Lsel.type_flags |= LIGHT_SHADOW_CASTER;
+				// else
+				// 	Lsel.type_flags &= ~LIGHT_SHADOW_CASTER;
+				// _light_mgr.set(selected_light_id, Lsel);
+				_light_mgr.modify_flags(selected_light_id,
+										cast_shadows? LIGHT_SHADOW_CASTER: 0,
+										not cast_shadows? LIGHT_SHADOW_CASTER: 0);
 			}
 
-			auto is_volumetric = IS_VOLUMETRIC(Lmut);
+			auto is_volumetric = general.is_volumetric;
 			if(ImGui::Checkbox("Volumetric", &is_volumetric))
 			{
-				Lmut = _light_mgr.get_by_id(selected_light_id); // a copy, to modify it
-				if(is_volumetric)
-					Lmut.type_flags |= LIGHT_VOLUMETRIC;
-				else
-					Lmut.type_flags &= ~LIGHT_VOLUMETRIC;
-				_light_mgr.set(selected_light_id, Lmut);
+				// Lsel = _light_mgr.gpu_get_by_id(selected_light_id); // a copy, to modify it
+				// if(is_volumetric)
+				// 	Lsel.type_flags |= LIGHT_VOLUMETRIC;
+				// else
+				// 	Lsel.type_flags &= ~LIGHT_VOLUMETRIC;
+				// _light_mgr.set(selected_light_id, Lsel);
+				_light_mgr.modify_flags(selected_light_id,
+										is_volumetric?LIGHT_VOLUMETRIC: 0,
+										not is_volumetric?LIGHT_VOLUMETRIC: 0);
 			}
 
 			if(selected_light_id == _pov_light_id)
 				ImGui::SliderFloat("Distance", &_pov_light_distance, -5.f, 5.f, "%.1f");
 
-				   // more properties...
-
-			if(ImGui::Button("Move / rotate"))
-				Log::info("Not yet");
+			// more properties...
 		}
 	}
 	ImGui::End();
@@ -759,7 +800,7 @@ void ImGui_ImageEx(ImTextureID texture_id, ImVec2 size, ImVec2 uv0, ImVec2 uv1, 
 		glBindSampler(0, 0);
 	}, nullptr);
 
-		   // reset all ImGui state
+	// reset all ImGui state
 	dl->AddCallback(ImDrawCallback_ResetRenderState, nullptr);
 }
 

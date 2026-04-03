@@ -1,7 +1,12 @@
 #include "clustered_shading.h"
 
 #include "component_model.h"
+#include "hash_vec2.h" // IWYU pragma: keep
+
+#include "component_light_general.h"
+#include "component_transform.h"
 #include "instance_attributes.h"
+#include "light_wrapper.h"
 #include "window.h"
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/string_cast.hpp>
@@ -13,6 +18,9 @@ using namespace std::chrono;
 using namespace RGL;
 
 glm::mat3 make_common_space_from_direction(const glm::vec3 &direction);
+
+template<typename T>
+using uvec2_map = ankerl::unordered_dense::map<glm::uvec2, T>;//, hash::glmv, hash::glmv>;
 
 
 void ClusteredShading::debugDrawSceneBounds()
@@ -57,7 +65,7 @@ void ClusteredShading::debugDrawSceneBounds()
 	m_line_draw_shader->setUniform("u_line_color"sv, glm::vec4(0.3, 1.0, 0.7, 1));
 	m_line_draw_shader->setUniform("u_mvp"sv, view_projection); // no model transform needed; we'll generate vertices in world-space
 
-	for(const auto &[entity_id, tfm, model]: _scene.entities().view<component::Transform, component::Model>().each()) // _scenePvs
+	for(const auto &[entity_id, tfm, model]: _entities.view<component::Transform, component::Model>().each()) // _scenePvs
 	{
 		bounds::AABB tfm_aabb;
 		for(const auto &corner: model.aabb().corners())
@@ -91,10 +99,17 @@ void ClusteredShading::debugDrawSceneBounds()
 
 	for(const auto &light_index: _lightsPvs)
 	{
-		const auto &L = _light_mgr[light_index];
+		// const auto &L = _light_mgr[light_index];
+		const auto light_id = _light_mgr.light_id(light_index);
+		const auto light_ = _light_mgr.get_light(light_id);
 
-		if(IS_SPOT_LIGHT(L))
-			debugDrawSpotLight(L, glm::vec4(L.color, 1));
+		if(not light_)
+			continue;
+
+		const auto &light = *light_;
+
+		if(light.general.light_type == LightType::Spot)
+			debugDrawSpotLight(light.gpu_light, glm::vec4(light.general.color, 1));
 		else
 		{
 			const auto light_id = _light_mgr.light_id(LightIndex(light_index));
@@ -104,10 +119,10 @@ void ClusteredShading::debugDrawSceneBounds()
 			{
 				auto res = shadow_size_res.find(found->second.slots[0].size)->second;
 				const auto alpha = std::sqrt(float(res)/32.f);
-				debugDrawSphere(L.position, L.affect_radius, res, size_t(float(res)*1.5f), glm::vec4(shadow_color, alpha));
+				debugDrawSphere(light.gpu_light.position, light.gpu_light.affect_radius, res, size_t(float(res)*1.5f), glm::vec4(shadow_color, alpha));
 			}
 			else
-				debugDrawSphere(L.position, L.affect_radius, glm::vec4(no_shadow_color, 0.5f));
+				debugDrawSphere(light.gpu_light.position, light.gpu_light.affect_radius, glm::vec4(no_shadow_color, 0.5f));
 		}
 	}
 
@@ -145,35 +160,33 @@ void ClusteredShading::debugDrawLightMarkers()
 
 	for(const auto &light_index: _lightsPvs)
 	{
-		const auto &L = _light_mgr[light_index];
 		const auto light_id = _light_mgr.light_id(light_index);
+		const auto light_ent = entt::entity(light_id);
 		if(light_id == _pov_light_id)
 			continue;
 
-		const auto to_light = L.position - m_camera.position();
+		const auto &[general, transform] = _entities.get<component::LightGeneral, component::Transform>(light_ent);
+
+		const auto to_light = transform.position() - m_camera.position();
 		float distance_sq = glm::dot(to_light, to_light);
 
-		Icon icon = Icon::PointLight;
-		if(IS_POINT_LIGHT(L))
-			icon = Icon::PointLight;
-		if(IS_DIR_LIGHT(L))
-			icon = Icon::DirectionalLight;
-		else if(IS_SPOT_LIGHT(L))
-			icon = Icon::SpotLight;
-		else if(IS_RECT_LIGHT(L))
-			icon = Icon::RectLight;
-		else if(IS_TUBE_LIGHT(L))
-			icon  = Icon::TubeLight;
-		else if(IS_SPHERE_LIGHT(L))
-			icon  = Icon::SphereLight;
-		else if(IS_DISC_LIGHT(L))
-			icon  = Icon::DiscLight;
+		Icon icon = Icon::PointLight; // TODO: default should be an <unknown> icon
+		switch(general.light_type)
+		{
+		case LightType::Point: icon = Icon::PointLight; break;
+		case LightType::Directional: icon = Icon::DirectionalLight; break;
+		case LightType::Spot: icon = Icon::SpotLight; break;
+		case LightType::Rect: icon = Icon::RectLight; break;
+		case LightType::Tube: icon  = Icon::TubeLight; break;
+		case LightType::Sphere: icon  = Icon::SphereLight; break;
+		case LightType::Disc: icon  = Icon::DiscLight; break;
+		}
 		static_assert(LIGHT_TYPE__COUNT == 7);
 
 		icons.push_back({
-			.world_pos   = L.position,
+			.world_pos   = transform.position(),
 			.icon        = uint32_t(icon),
-			.color       = L.color,
+			.color       = general.color,
 			.distance_sq = distance_sq,
 		});
 	}
@@ -633,7 +646,7 @@ void ClusteredShading::debugDrawClusterGrid()
 			{
 				const auto light_index = all_light_index[index_offset + idx];
 				light_indices.push_back(light_index);
-				assert(light_index < _light_mgr.num_lights<PointLight>());
+				assert(light_index < _light_mgr.num_lights(LIGHT_TYPE_POINT));
 			}
 			std::sort(light_indices.begin(), light_indices.end());
 			auto first = true;

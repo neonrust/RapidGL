@@ -122,3 +122,24 @@ static_assert(sizeof(LightGeneral) == 32);
 } // component
 
 } // RGL
+
+
+#include "hash_combine.h"
+#include "hash_vec3.h"   // IWYU pragma: keep
+
+namespace std
+{
+template<>
+struct hash<RGL::component::LightGeneral>
+{
+	[[nodiscard]] inline size_t operator()(const RGL::component::LightGeneral &general) const
+	{
+		size_t h { 0 };
+		h = hash_combine(h, general.color);
+		h = hash_combine(h, general.intensity);
+		h = hash_combine(h, general.fog);
+		return h;
+	}
+};
+
+} // std

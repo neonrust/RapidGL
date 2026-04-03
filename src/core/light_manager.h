@@ -1,13 +1,20 @@
 #pragma once
 
 
-#include "bounds.h"
+// #include "bounds.h"
+#include "constants.h"  // IWYU pragma: keep
 #include "container_types.h"
 #include "light_constants.h"
+#include "light_type.h"
 #include "lights.h"
+#include "log.h"
 #include "ssbo.h"
 
 #include "generated/shared-structs.h"
+
+#include <entt/entity/registry.hpp>
+#include <expected>
+
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/compatibility.hpp>
@@ -23,19 +30,31 @@
 namespace RGL
 {
 
+namespace component
 {
+	struct LightGeneral;
+	struct PointLight;
+	struct DirectionalLight;
+	struct SpotLight;
+	struct RectLight;
+	struct TubeLight;
+	struct SphereLight;
+	struct DiscLight;
+	struct Transform;
+}
+struct LightWrapper;
 
 namespace _private
 {
-template<typename T>
-concept LightType = std::is_same_v<PointLight, T>
-	or std::is_same_v<DirectionalLight, T>
-	or std::is_same_v<SpotLight, T>
-	or std::is_same_v<RectLight, T>
-	or std::is_same_v<TubeLight, T>
-	or std::is_same_v<SphereLight, T>
-	or std::is_same_v<DiscLight, T>
-	;
+// template<typename T>
+// concept LightType = std::is_same_v<PointLight, T>
+// 	or std::is_same_v<DirectionalLight, T>
+// 	or std::is_same_v<SpotLight, T>
+// 	or std::is_same_v<RectLight, T>
+// 	or std::is_same_v<TubeLight, T>
+// 	or std::is_same_v<SphereLight, T>
+// 	or std::is_same_v<DiscLight, T>
+// 	;
 
 template<typename T>
 concept LightParamsType = std::is_same_v<PointLightParams, T>
@@ -47,20 +66,33 @@ concept LightParamsType = std::is_same_v<PointLightParams, T>
 	or std::is_same_v<DiscLightParams, T>
 	;
 
+template<typename T>
+concept LightComponent = std::is_same_v<component::PointLight, T>
+	or std::is_same_v<component::DirectionalLight, T>
+	or std::is_same_v<component::SpotLight, T>
+	or std::is_same_v<component::RectLight, T>
+	or std::is_same_v<component::TubeLight, T>
+	or std::is_same_v<component::SphereLight, T>
+	or std::is_same_v<component::DiscLight, T>;
+
 // create "mapping" from type XParams -> type X
 template<typename T>
 struct light_map;
-#define MAP_PARAMS_TYPE(LT) template <> struct light_map<LT ## Params>  { using type = LT; }
-MAP_PARAMS_TYPE(PointLight);
-MAP_PARAMS_TYPE(DirectionalLight);
-MAP_PARAMS_TYPE(SpotLight);
-MAP_PARAMS_TYPE(RectLight);
-MAP_PARAMS_TYPE(TubeLight);
-MAP_PARAMS_TYPE(SphereLight);
-MAP_PARAMS_TYPE(DiscLight);
+#define MAP_PARAMS_TYPE(LT, type_value) template <> struct light_map<LT ## Params>  { \
+static constexpr uint_fast8_t light_type = type_value; }
+MAP_PARAMS_TYPE(PointLight,       LIGHT_TYPE_POINT);
+MAP_PARAMS_TYPE(DirectionalLight, LIGHT_TYPE_DIRECTIONAL);
+MAP_PARAMS_TYPE(SpotLight,        LIGHT_TYPE_SPOT);
+MAP_PARAMS_TYPE(RectLight,        LIGHT_TYPE_RECT);
+MAP_PARAMS_TYPE(TubeLight,        LIGHT_TYPE_TUBE);
+MAP_PARAMS_TYPE(SphereLight,      LIGHT_TYPE_SPHERE);
+MAP_PARAMS_TYPE(DiscLight,        LIGHT_TYPE_DISC);
+static_assert(LIGHT_TYPE__COUNT == 7);
 
+// template <typename LTP>
+// using ReturnT = typename light_map<LTP>::type;
 template <typename LTP>
-using return_type = typename light_map<LTP>::type;
+static constexpr auto LightT = light_map<LTP>::light_type;
 
 static constexpr float s_spot_reference_angle = glm::radians(45.f);
 
@@ -68,6 +100,15 @@ static constexpr float s_spot_reference_angle = glm::radians(45.f);
 
 // TODO: not entirely happy with this API ...
 //   the tricky part is that we need both index-based and ID-based access.
+
+enum class LightError
+{
+	InvalidLightpPrameters,
+	AlreadyExists,
+	NoSuchLight,
+	TooMany,
+	NotEnabled,
+};
 
 class LightManager
 {
@@ -77,7 +118,9 @@ public:
 	using const_iterator = LightList::const_iterator;
 
 public:
-	LightManager(/* ecs registry */);
+	LightManager(entt::registry &entities);
+
+	inline const entt::registry &entities() const { return _entities; }
 
 	void reserve(size_t count);
 
@@ -85,32 +128,25 @@ public:
 	//  add() or create() ?
 
 	template<_private::LightParamsType LTP>
-	auto add(const LTP &ltp) -> _private::return_type<LTP>;
+	auto add(const LTP &ltp) -> std::expected<LightID, LightError>;
 
 	inline void set_falloff_power(float power=1) { _falloff_power = power; }
-	inline void set_radius_power(float power=0.6f) { _radius_power = power; }
+	inline void set_radius_power(float power=0.6f) { s_radius_power = power; }
 	inline float falloff_power() const { return _falloff_power; }
 
 	bool remove(LightID light_id);
-	bool remove_at(LightIndex light_index);
 
 	void clear();
 
 	// template<_private::LightType LT>
 	// std::optional<LT> get(LightID uuid);
 
-	const GPULight &get_by_id(LightID light_id) const;
-
-	std::tuple<LightID, const GPULight &> at(LightIndex light_index) const;
 	// template<_private::LightType LT>
 	// LT typed_at(LightIndex list_index) const;
 
-	inline const GPULight &operator [] (LightIndex light_index) const noexcept { return _lights[light_index]; }
-
-	void set(LightID uuid, const GPULight &L); // sets dirty flag
-
-	template<_private::LightType LT>
-	void set(const LT &l); // needs to have uuid set; sets dirty flag
+	// void set(LightID uuid, const GPULight &L); // sets dirty flag
+	// template<_private::LightType LT>
+	// void set(const LT &l); // needs to have uuid set; sets dirty flag
 
 	inline bool contains(LightID light_id) const { return _id_to_index.contains(light_id); }
 
@@ -128,49 +164,100 @@ public:
 	LightIndex light_index(LightID light_id) const;
 	inline const GPULight &at(size_t light_index) const { return _lights.at(light_index); }
 
-	inline uint_fast16_t shadow_index(LightID light_id) const { return GET_SHADOW_IDX(get_by_id(light_id)); }
-	void set_shadow_index(LightID light_id, uint_fast16_t shadow_index);
+	uint_fast16_t shadow_index(LightID light_id) const;
+	void set_shadow_index(LightID light_id, uint16_t shadow_index);
 	void clear_shadow_index(LightID light_id);
 
-	template<typename LT=GPULight> requires (std::same_as<LT, GPULight> || _private::LightType<LT>)
-	inline size_t num_lights() const;
+	// setters for general properties
+	void set_enabled(LightID light_id, bool enabled=true);
+	void set_color(LightID light_id, const glm::vec3 &color);
+	void set_intensity(LightID light_id, float intensity);
+	void modify_flags(LightID light_id, uint_fast8_t flags, uint_fast8_t clear_flags=0); // LIGHT_SHADOW_CASTER, LIGHT_VOLUMETRIC
+	// transform helpers
+	void set_direction(LightID light_id, const glm::vec3 &direction); // only for lights where "direction" is applicable (i.e. not point and sphere)
+	// light-specific helpers
+	void set_spot_angle(LightID light_id, float outer_angle, float inner_angle=-1.f);
+	// static void transform(GPULight &L, const glm::mat4 &tfm);
+	// static void transform(GPULight &L, const glm::mat3 &rotate);
+	// static void transform(GPULight &L, const glm::quat &rotate);
+	float affect_radius(LightID light_id);
+	float affect_radius(LightID light_id, const component::LightGeneral &general) const;
+	float affect_radius(const component::LightGeneral &general, const component::PointLight &point) const;
+	float affect_radius(const component::LightGeneral &general, const component::SpotLight &spot) const;
+	float affect_radius(const component::LightGeneral &general, const component::RectLight &rect) const;
+	float affect_radius(const component::LightGeneral &general, const component::TubeLight &tube) const;
+	float affect_radius(const component::LightGeneral &general, const component::SphereLight &sphere) const;
+	float affect_radius(const component::LightGeneral &general, const component::DiscLight &disc) const;
 
-	void set_intensity(GPULight &L, float new_intensity) const;  // sets intensity and affect_radius
-	void set_spot_angle(GPULight &L, float new_outer_angle) const; // also sets intensity and affect_radius
-	static void set_direction(GPULight &L, const glm::vec3 &direction);  // spot & disc lights
-	static void transform(GPULight &L, const glm::mat4 &tfm);
-	static void transform(GPULight &L, const glm::mat3 &rotate);
-	static void transform(GPULight &L, const glm::quat &rotate);
+	size_t num_lights(uint_fast8_t light_type) const;
 
 	bool is_enabled(LightID light_id) const;
-	void set_enabled(LightID light_id, bool enabled=true);
 
 	// calculate a hash of its properties
 	size_t hash(const GPULight &L);
-	bounds::Sphere light_bounds(const GPULight &L) const;
+	size_t hash(LightID light_id);
+	size_t hash(LightID light_id, component::LightGeneral &general, const component::Transform &transform);
+	// bounds::Sphere light_bounds(const GPULight &L) const;
 
-	template<_private::LightType LT>
-	static std::string_view type_name();
 	static std::string_view type_name(const GPULight &L);
+	static std::string_view type_name(const component::LightGeneral &general);
 	static std::string_view type_name(uint_fast8_t light_type);
+	static std::string_view type_name(LightType light_type);
+
+	std::expected<LightWrapper, LightError> get_light(LightID light_id) const;
 
 private:
-	void add(const GPULight &L, LightID light_id);
-	void shift_indices(LightIndex after_index);
+	inline const GPULight &operator [] (LightIndex light_index) const noexcept { return _lights[light_index]; }
+
+	void create_components(LightID light_id, const PointLightParams &lp);
+	void create_components(LightID light_id, const DirectionalLightParams &lp);
+	void create_components(LightID light_id, const SpotLightParams &lp);
+	void create_components(LightID light_id, const RectLightParams &lp);
+	void create_components(LightID light_id, const TubeLightParams &lp);
+	void create_components(LightID light_id, const SphereLightParams &lp);
+	void create_components(LightID light_id, const DiscLightParams &lp);
+	inline void _gpu_build(LightIndex index) { _gpu_build(index, index + 1); }
+	void _gpu_build(LightIndex start, LightIndex end);
+	void _gpu_set_properties(GPULight &L, LightID light_id) const;
+	static void _gpu_set_surface(GPULight &L, const component::Transform &transform, const component::RectLight &rect);
+	static void _gpu_set_surface(GPULight &L, const component::Transform &transform, const component::TubeLight &tube);
+	static void _gpu_set_surface(GPULight &L, const component::Transform &transform, const component::SphereLight &sphere);
+	static void _gpu_set_surface(GPULight &L, const component::Transform &transform, const component::DiscLight &disc);
+	static float _surface_area_scalar(const component::RectLight &rect);
+	static float _surface_area_scalar(const component::TubeLight &tube);
+	static float _surface_area_scalar(const component::SphereLight &sphere);
+	static float _surface_area_scalar(const component::DiscLight &disc);
+	static float _intensity_to_range(float intensity, float area=0);
+	static float _scale_spot_intensity(float base_intensity, const component::SpotLight &spot);
+
+	void _disconnect_signals();
+	void _connect_signals();
+	void _light_added(entt::registry &, entt::entity light_ent);
+	void _light_removed(entt::registry &, entt::entity light_ent);
+	void _light_moved(entt::registry &, entt::entity light_ent);
+	void _general_changed(entt::registry &, entt::entity light_ent);
+	void _spot_changed(entt::registry &, entt::entity light_ent);
+	void _rect_changed(entt::registry &, entt::entity light_ent);
+	void _tube_changed(entt::registry &, entt::entity light_ent);
+	void _sphere_changed(entt::registry &, entt::entity light_ent);
+	void _disc_changed(entt::registry &, entt::entity light_ent);
 
 	// convert any light type to a GPULight
-	template<typename LT> requires _private::LightType<LT> || _private::LightParamsType<LT>
-	GPULight to_gpu_light(const LT &l) const;
-	static void compute_spot_bounds(GPULight &L);
-	static float spot_intensity_multiplier(float angle);
+	// template<typename LT> requires _private::LightParamsType<LT>
+	// GPULight to_gpu_light(LightID light_id, const LT &l) const;
+
+	static float _spot_intensity_multiplier(float angle);
 
 	// convert an XParams light type to its corresponding "handle" type (includes LightID)
-	template<_private::LightParamsType LTP>
-	auto to_typed(const LTP &lpt, LightID light_id) const -> _private::return_type<LTP>;
+	// template<_private::LightParamsType LTP>
+	// auto to_typed(const LTP &lpt, LightID light_id) const -> _private::ReturnT<LTP>;
+
+	inline void _set_dirty_index(LightIndex key);
+	inline void _set_dirty_id(LightID light_id);
 
 private:
 	dense_map<LightID, LightIndex> _id_to_index;
-	dense_map<LightIndex, LightID> _index_to_id; // TODO: can this be a vector? store id directly in '_lights'?
+	std::vector<LightID> _index_to_id;
 
 	dense_set<LightIndex> _dirty;
 	std::vector<LightIndex> _dirty_list;
@@ -179,51 +266,52 @@ private:
 
 	buffer::Storage<GPULight> _lights_ssbo;
 
-	float _radius_power  { 0.6f };
+	entt::registry &_entities;
+
+	static float s_radius_power;
 	float _falloff_power { 50.f };
 
 	size_t _num_light_type[LIGHT_TYPE__COUNT];
 	size_t _light_type_limit[LIGHT_TYPE__COUNT];
+
+	std::array<entt::scoped_connection, 6> _signals;
 };
 
-template<_private::LightType LT>
-inline void LightManager::set(const LT &l)
+inline void LightManager::_set_dirty_index(LightIndex light_index)
 {
-	assert(l.id() != NO_LIGHT_ID);
-	auto found = _id_to_index.find(l.id());
-	assert(found != _id_to_index.end());
-
-	const auto L = to_gpu_light(l);
-
-	const auto light_index = found->second;
-
-	_lights[light_index] = L;
-
-	// TODO: compare 'L' and '_lights[light_index]' if they actually differ?
 	if(const auto &[_, ok] =_dirty.insert(light_index); ok)
 		_dirty_list.push_back(light_index);
 }
 
-template<typename LT>  requires (std::same_as<LT, GPULight> || _private::LightType<LT>)
-size_t LightManager::num_lights() const
+inline void LightManager::_set_dirty_id(LightID light_id)
 {
-	if constexpr (std::same_as<LT, PointLight>)
-		return _num_light_type[LIGHT_TYPE_POINT];
-	else if constexpr (std::same_as<LT, DirectionalLight>)
-		return _num_light_type[LIGHT_TYPE_DIRECTIONAL];
-	else if constexpr (std::same_as<LT, SpotLight>)
-		return _num_light_type[LIGHT_TYPE_SPOT];
-	else if constexpr (std::same_as<LT, RectLight>)
-		return _num_light_type[LIGHT_TYPE_RECT];
-	else if constexpr (std::same_as<LT, TubeLight>)
-		return _num_light_type[LIGHT_TYPE_TUBE];
-	else if constexpr (std::same_as<LT, SphereLight>)
-		return _num_light_type[LIGHT_TYPE_SPHERE];
-	else if constexpr (std::same_as<LT, DiscLight>)
-		return _num_light_type[LIGHT_TYPE_DISC];
+	auto found = _id_to_index.find(light_id);
+	assert(found != _id_to_index.end());
+	if(found == _id_to_index.end())
+	{
+		Log::error("{{{}}} Light not found", light_id);
+		return;
+	}
+	_set_dirty_index(found->second);
 
-	return _lights.size();
 }
+
+// template<_private::LightType LT>
+// inline void LightManager::set(const LT &l)
+// {
+// 	assert(l.id() != NO_LIGHT_ID);
+// 	auto found = _id_to_index.find(l.id());
+// 	assert(found != _id_to_index.end());
+
+// 	const auto L = to_gpu_light(l);
+
+// 	const auto light_index = found->second;
+
+// 	_lights[light_index] = L;
+
+// 	// TODO: compare 'L' and '_lights[light_index]' if they actually differ?
+// 	_set_dirty_index(light_index);
+// }
 
 // template<_private::LightType LT>
 // LT LightManager::typed_at(LightIndex light_index) const
@@ -251,24 +339,29 @@ size_t LightManager::num_lights() const
 // 	return to_typed<LT>(L, light_id);
 // }
 
-extern LightID s_light_id;
-
 template<_private::LightParamsType LTP>
-auto LightManager::add(const LTP &ltp) -> _private::return_type<LTP>
+auto LightManager::add(const LTP &ltp) -> std::expected<LightID, LightError>
 {
-	++s_light_id;
+	const auto light_type = _private::LightT<LTP>;
 
-	assert(not _id_to_index.contains(s_light_id));
+	const auto limit = _light_type_limit[light_type];
+	if(limit and _num_light_type[light_type] == limit)
+	{
+		Log::warning("Max {} {} lights reached; add ignored", _light_type_limit[light_type], type_name(light_type));
+		assert(false);
+		return std::unexpected(LightError::TooMany);
+	}
 
-	auto L = to_gpu_light(ltp);
+	const LightID light_id = LightID(_entities.create());
 
-	add(L, s_light_id);
+	create_components(light_id, ltp); // will trigger _light_added
 
-	return to_typed(ltp, s_light_id);
+	return light_id;
 }
 
+/*
 template<typename LT> requires _private::LightType<LT> || _private::LightParamsType<LT>
-GPULight LightManager::to_gpu_light(const LT &l) const
+GPULight LightManager::to_gpu_light(LightID light_id, const LT &l) const
 {
 	GPULight L;
 	L.color         = glm::saturate(l.color);  // 'color' should not contain any intensity
@@ -298,8 +391,8 @@ GPULight LightManager::to_gpu_light(const LT &l) const
 		const auto inner_angle = std::min(l.inner_angle, l.outer_angle);
 		L.inner_angle   = (inner_angle / l.outer_angle) * L.outer_angle;
 
-		set_spot_angle(L, l.outer_angle);
-		compute_spot_bounds(L);
+		_set_spot_angle(L, l.outer_angle);
+		_update_spot_bounds(L);
 	}
 	else if constexpr (std::same_as<LT, RectLight> or std::same_as<LT, RectLightParams>)
 	{
@@ -327,7 +420,7 @@ GPULight LightManager::to_gpu_light(const LT &l) const
 		L.shape_data[2].x = l.thickness;
 
 		const auto extent_dir = glm::normalize(l.half_extent);
-		auto orientation = glm::rotation(glm::vec3(0, 0, 1), extent_dir);//ident_quat;
+		auto orientation = glm::rotation(AXIS_Z, extent_dir);//ident_quat;
 		// const auto cos_angle = glm::dot(glm::vec3(0, 0, 1), extent_dir);
 		// if(cos_angle < 0.999f and cos_angle > -0.999f) // not parallel
 		// 	orientation = glm::rotation(glm::vec3(0, 0, 1), extent_dir);
@@ -356,7 +449,7 @@ GPULight LightManager::to_gpu_light(const LT &l) const
 
 	CLR_SHADOW_IDX(L);
 
-	set_intensity(L, l.intensity);  // also sets affect_range
+	_set_intensity(L, l.intensity);  // also sets affect_range
 
 	// some verifications
 	assert(L.position != glm::vec3(0));  // arguable...
@@ -368,11 +461,12 @@ GPULight LightManager::to_gpu_light(const LT &l) const
 
 	return L;
 }
-
+*/
+/*
 template<_private::LightParamsType LTP>
-auto LightManager::to_typed(const LTP &ltp, LightID light_id) const -> _private::return_type<LTP>
+auto LightManager::to_typed(const LTP &ltp, LightID light_id) const -> _private::ReturnT<LTP>
 {
-	using LT = _private::return_type<LTP>;
+	using LT = _private::ReturnT<LTP>;
 
 	LT lt;
 	lt.color      = ltp.color;
@@ -420,25 +514,25 @@ auto LightManager::to_typed(const LTP &ltp, LightID light_id) const -> _private:
 
 	return lt;
 }
-
-template<_private::LightType LT>
-std::string_view LightManager::type_name()
-{
-	if constexpr (std::is_same_v<LT, PointLight>)
-		return type_name(LIGHT_TYPE_POINT);
-	if constexpr (std::is_same_v<LT, DirectionalLight>)
-		return type_name(LIGHT_TYPE_DIRECTIONAL);
-	if constexpr (std::is_same_v<LT, SpotLight>)
-		return type_name(LIGHT_TYPE_SPOT);
-	if constexpr (std::is_same_v<LT, RectLight>)
-		return type_name(LIGHT_TYPE_RECT);
-	if constexpr (std::is_same_v<LT, TubeLight>)
-		return type_name(LIGHT_TYPE_TUBE);
-	if constexpr (std::is_same_v<LT, SphereLight>)
-		return type_name(LIGHT_TYPE_SPHERE);
-	if constexpr (std::is_same_v<LT, DiscLight>)
-		return type_name(LIGHT_TYPE_DISC);
-	return std::string_view("{unknown}");
-}
+*/
+// template<_private::LightType LT>
+// std::string_view LightManager::type_name()
+// {
+// 	if constexpr (std::is_same_v<LT, PointLight>)
+// 		return type_name(LIGHT_TYPE_POINT);
+// 	if constexpr (std::is_same_v<LT, DirectionalLight>)
+// 		return type_name(LIGHT_TYPE_DIRECTIONAL);
+// 	if constexpr (std::is_same_v<LT, SpotLight>)
+// 		return type_name(LIGHT_TYPE_SPOT);
+// 	if constexpr (std::is_same_v<LT, RectLight>)
+// 		return type_name(LIGHT_TYPE_RECT);
+// 	if constexpr (std::is_same_v<LT, TubeLight>)
+// 		return type_name(LIGHT_TYPE_TUBE);
+// 	if constexpr (std::is_same_v<LT, SphereLight>)
+// 		return type_name(LIGHT_TYPE_SPHERE);
+// 	if constexpr (std::is_same_v<LT, DiscLight>)
+// 		return type_name(LIGHT_TYPE_DISC);
+// 	return std::string_view("{unknown}");
+// }
 
 } // RGL

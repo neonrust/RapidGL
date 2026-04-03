@@ -12,3 +12,22 @@ struct TubeLight
 };
 
 } // RGL::component
+
+#include "hash_combine.h"
+#include "hash_vec3.h"   // IWYU pragma: keep
+
+namespace std
+{
+template<>
+struct hash<RGL::component::TubeLight>
+{
+	[[nodiscard]] inline size_t operator()(const RGL::component::TubeLight &tube) const
+	{
+		size_t h { 0 };
+		h = hash_combine(h, tube.half_extent);
+		h = hash_combine(h, tube.thickness);
+		return h;
+	}
+};
+
+} // std

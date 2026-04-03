@@ -17,9 +17,9 @@ const glm::vec3 RGL::component::Transform::direction() const
 
 const glm::mat4 &Transform::transform() const
 {
-	if(_dirty)
+	if(_matrix_dirty)
 	{
-		_dirty = false;
+		_matrix_dirty = false;
 		_transform = glm::translate(glm::mat4(1), _position);
 		_transform = _transform * glm::mat4_cast(_orientation);
 		_transform = glm::scale(_transform, _scale);
@@ -30,7 +30,7 @@ const glm::mat4 &Transform::transform() const
 void Transform::look_at(const glm::vec3 &pos, const glm::vec3 &up)
 {
 	_orientation = glm::quat_cast(glm::lookAt(_position, pos, up));
-	_dirty = true;
+	_matrix_dirty = true;
 }
 
 } // RGL::component

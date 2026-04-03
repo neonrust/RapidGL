@@ -309,10 +309,12 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 	if(uv_depth > 1)
 		return vec3(light_fade); // shadow_fade and u_shadow_occlusion
 
-	// vec3 pos_dx = dFdx(clip_pos.xyz);
-	// vec3 pos_dy = dFdy(clip_pos.xyz);
-	// float bias = computeReceiverPlaneDepthBias(pos_dx, pos_dy);
-	float bias = computeBias(uv_pos.z, normalize(light_to_frag), in_normal, texel_size);
+	float bias = 0;
+
+	vec3 pos_dx = dFdx(clip_pos.xyz);
+	vec3 pos_dy = dFdy(clip_pos.xyz);
+	bias = computeReceiverPlaneDepthBias(pos_dx, pos_dy);
+	// bias = computeBias(uv_pos.z, normalize(light_to_frag), in_normal, texel_size);
 
 	float shadow_visibility = shadowVisibility(uv_pos, camera_distance, light, slot_rect, texel_size, bias);
 
@@ -405,9 +407,13 @@ vec3 dirLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 	// 	bias = -0.001 / float(cascade_index - 1);
 	// bias = 0;
 
-	// vec3 pos_dx = dFdx(clip_pos);
-	// vec3 pos_dy = dFdy(clip_pos);
+	// vec3 pos_dx = dFdx(uv_pos);
+	// vec3 pos_dy = dFdy(uv_pos);
 	// bias = u_shadow_bias_constant + computeReceiverPlaneDepthBias(pos_dx, pos_dy);
+
+	float slope_fraction = dot(in_normal, -light.direction);
+	bias = mix(0.01, 0.0, slope_fraction)*u_shadow_bias_slope_scale;
+	bias /= float(cascade_index + 1);
 
 	// float light_radius = u_csm_light_radius_uv / (pow(float(u_csm_num_cascades), cascade_index) * float(u_csm_num_cascades));
 
@@ -448,7 +454,13 @@ vec3 spotLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 	vec3 ndc_pos = clip_pos.xyz / clip_pos.w; // [-1, 1]
 	vec3 uv_pos = ndc_pos * 0.5 + 0.5; // [0, 1]
 
-	float bias = computeBias(uv_pos.z, normalize(light.position - world_pos), in_normal, texel_size);
+	float bias = 0;
+
+	vec3 pos_dx = dFdx(clip_pos.xyz);
+	vec3 pos_dy = dFdy(clip_pos.xyz);
+	// bias = computeReceiverPlaneDepthBias(pos_dx, pos_dy);
+	// bias = computeBias(uv_pos.z, normalize(light.position - world_pos), in_normal, texel_size);
+
 	float shadow_visibility = shadowVisibility(uv_pos, camera_distance, light, slot_rect, texel_size, bias);
 
 	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade * u_shadow_occlusion;
