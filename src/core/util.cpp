@@ -419,7 +419,7 @@ Util::TextureData Util::jxl_load(const fs::path &filepath, ImageMeta &image_meta
 			break;
 		}
 		case JXL_DEC_COLOR_ENCODING:
-			// std::print("[{}] JXL_DEC_COLOR_ENCODING\n", short_name.c_str());
+			Log::warning("[{}] JXL_DEC_COLOR_ENCODING", short_name.string());
 			// // Get the ICC color profile of the pixel data
 			// size_t icc_size;
 			// res = JxlDecoderGetICCProfileSize(dec.get(), nullptr, JXL_COLOR_PROFILE_TARGET_DATA, &icc_size);
@@ -437,9 +437,9 @@ Util::TextureData Util::jxl_load(const fs::path &filepath, ImageMeta &image_meta
 			// }
 			break;
 		case JXL_DEC_NEED_IMAGE_OUT_BUFFER:
-			// std::print("[{}] JXL_DEC_NEED_IMAGE_OUT_BUFFER\n", short_name.string());
 			size_t buffer_size;
 			res = JxlDecoderImageOutBufferSize(dec.get(), &format, &buffer_size);
+			assert(format.data_type == JXL_TYPE_UINT8);
 			if(res != JXL_DEC_SUCCESS)
 			{
 				Log::error("[{}] Jxl: JxlDecoderImageOutBufferSize failed: {}", short_name.string(), int(res));
@@ -453,7 +453,6 @@ Util::TextureData Util::jxl_load(const fs::path &filepath, ImageMeta &image_meta
 					return {};
 				}
 			}
-			// std::fprint(stderr, "[{}] Jxl: buffer size: {}\n", short_name.string(), buffer_size);
 			data = ::malloc(buffer_size);
 			res = JxlDecoderSetImageOutBuffer(dec.get(), &format, data, buffer_size);
 			if(res != JXL_DEC_SUCCESS)
@@ -463,7 +462,6 @@ Util::TextureData Util::jxl_load(const fs::path &filepath, ImageMeta &image_meta
 			}
 			break;
 		case JXL_DEC_FULL_IMAGE:
-			// std::print("[{}] JXL_DEC_FULL_IMAGE\n", short_name.string());
 			// Nothing to do. Do not yet return. If the image is an animation, more
 			// full frames may be decoded. This example only keeps the last one.
 			break;
