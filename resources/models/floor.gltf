@@ -80,19 +80,19 @@
 	],
 	"images":[
 		{
-			"mimeType":"image/png",
+			"mimeType":"image/jxl",
 			"name":"concrete034_1K_normal.png.001",
-			"uri":"../textures/pbr/concrete034_1k/concrete034_1K_normal.png"
+			"uri":"../textures/pbr/concrete034_1k/concrete034_1K_normal.jxl"
 		},
 		{
-			"mimeType":"image/png",
+			"mimeType":"image/jxl",
 			"name":"concrete034_1K_color.png.001",
-			"uri":"../textures/pbr/concrete034_1k/concrete034_1K_color.png"
+			"uri":"../textures/pbr/concrete034_1k/concrete034_1K_color.jxl"
 		},
 		{
-			"mimeType":"image/png",
+			"mimeType":"image/jxl",
 			"name":"concrete034_1K_roughness.png.001",
-			"uri":"../textures/pbr/concrete034_1k/concrete034_1K_roughness.png"
+			"uri":"../textures/pbr/concrete034_1k/concrete034_1K_roughness.jxl"
 		}
 	],
 	"accessors":[
