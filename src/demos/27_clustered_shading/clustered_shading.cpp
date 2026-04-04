@@ -2040,12 +2040,15 @@ void ClusteredShading::debug_message(GLenum type, std::string_view severity, std
 	{
 	case GL_DEBUG_TYPE_ERROR:
 		Log::error("GL ERROR: {} {}", severity, message);
+		assert(false);
 		break;
 	case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR:
 		Log::error("GL DEPRECATED / {}: {}", severity, message);
+		assert(false);
 		break;
 	case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:
 		Log::error("GL U.B. / {}: {}", severity, message);
+		assert(false);
 		break;
 	case GL_DEBUG_TYPE_PORTABILITY:
 		Log::warning("GL PORTING / {}: {}", severity, message);
