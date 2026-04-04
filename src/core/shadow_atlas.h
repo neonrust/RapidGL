@@ -213,9 +213,9 @@ private:
 	Counters apply_desired_slots(const std::vector<AtlasLight> &desired_slots, Time now);
 	void log_changes(const Counters &counters, size_t num_prio, Time start_time);
 	void generate_slots(std::initializer_list<size_t> distribution);
-	bool has_slots_available(const AtlasLight &atlas_light, const std::array<size_t, 6> &num_promised) const;
-	SlotID alloc_slot(SlotSize size, bool first=true);
-	void free_slot(SlotSize size, SlotID node_index);
+	bool has_slots_available(const AtlasLight &atlas_light, const small_vec<size_t, 6> &num_promised) const;
+	SlotID alloc_slot(SlotSize slot_size, bool first=true);
+	void free_slot(SlotSize slot_size, SlotID node_index);
 	void free_all_slots(const AtlasLight &atlas_light);
 	struct LightViewProjection
 	{
@@ -226,12 +226,13 @@ private:
 	};
 	LightViewProjection light_view_projection(const LightWrapper &light, size_t idx=0) const;
 	std::string sizes_count_summary(const AtlasLight &atlas_light) const;
-	std::string sizes_count_summary(const std::array<size_t, 6> &size_counts) const;
+	std::string sizes_count_summary(const small_vec<size_t, 6> &size_counts) const;
 
 private:
 	LightManager &_lights;  // one could argue that the association should be the other way around...
 
-	dense_map<SlotSize, std::vector<SlotID>> _slot_sets;
+	small_vec<size_t, 6> _distribution;  // slot sizes of each of the levels (from max to min)
+	small_vec<std::vector<SlotID>, 6> _available_slots;
 
 	dense_map<LightID, AtlasLight> _id_to_allocated;
 
@@ -253,8 +254,6 @@ private:
 	small_vec<std::pair<uint32_t, std::chrono::milliseconds>, 8> _render_intervals;
 
 	buffer::Storage<ShadowSlotInfo> _shadow_slots_info_ssbo;
-	std::array<size_t, 6> _distribution;  // slot sizes of each of the levels (from max to min)
-	size_t _distribution_size { 0 };
 
 	mutable dense_map<uint32_t, QueryResult> _light_pvs;
 
