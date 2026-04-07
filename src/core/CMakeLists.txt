@@ -26,7 +26,6 @@ set(SOURCE_FILES_CORE
 	material.cpp
 	plane.cpp
 	postprocess.cpp
-	postprocess_chain.cpp
 	pp_bloom.cpp
 	pp_gaussian_blur.cpp
 	pp_gaussian_blur_fixed.cpp
@@ -97,7 +96,6 @@ set(HEADER_FILES_CORE
 	mesh_part.h
 	plane.h
 	postprocess.h
-	postprocess_chain.h
 	pp_bloom.h
 	pp_gaussian_blur.h
 	pp_gaussian_blur_fixed.h
