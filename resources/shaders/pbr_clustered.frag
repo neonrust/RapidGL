@@ -317,6 +317,8 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 	// bias = computeBias(uv_pos.z, normalize(light_to_frag), in_normal, texel_size);
 
 	float shadow_visibility = shadowVisibility(uv_pos, camera_distance, light, slot_rect, texel_size, bias);
+	const float lit_threshold = SHADOW_COMPRESSION(light);
+	shadow_visibility = clamp((shadow_visibility - lit_threshold) / (1 - lit_threshold), 0, 1);
 
 	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade * u_shadow_occlusion;
 	float visible = light_fade * shadow_faded;
@@ -418,6 +420,9 @@ vec3 dirLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 	// float light_radius = u_csm_light_radius_uv / (pow(float(u_csm_num_cascades), cascade_index) * float(u_csm_num_cascades));
 
 	float shadow_visibility = shadowVisibility(uv_pos, 0, light, slot_rect, texel_size, bias);
+	const float lit_threshold = SHADOW_COMPRESSION(light);
+	shadow_visibility = clamp((shadow_visibility - lit_threshold) / (1 - lit_threshold), 0, 1);
+
 	// float shadow_visibility = shadowVisibilityPCSS(clip_pos.xy, uv_depth, -pos_ls.z, light, slot_rect, texel_size, bias, light_radius);
 	vec3 visible_color = u_shadow_colorize? s_shadow_tints[cascade_index]: vec3(1);
 
@@ -462,6 +467,8 @@ vec3 spotLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 	// bias = computeBias(uv_pos.z, normalize(light.position - world_pos), in_normal, texel_size);
 
 	float shadow_visibility = shadowVisibility(uv_pos, camera_distance, light, slot_rect, texel_size, bias);
+	const float lit_threshold = SHADOW_COMPRESSION(light);
+	shadow_visibility = clamp((shadow_visibility - lit_threshold) / (1 - lit_threshold), 0, 1);
 
 	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade * u_shadow_occlusion;
 	float visible = light_fade * shadow_faded;

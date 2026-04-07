@@ -9,6 +9,8 @@ namespace RGL
 
 enum class LightType : uint_fast8_t;
 
+static constexpr float s_default_shadow_compression = 0.5f;
+
 namespace component
 {
 
@@ -24,6 +26,7 @@ struct LightGeneral
 			.is_volumetric = volumetric,
 			.has_surface = false,
 			.fog = 1.f,
+			.shadow_compression = s_default_shadow_compression,
 			.shadow_index = LIGHT_NO_SHADOW,
 		};
 	}
@@ -37,6 +40,7 @@ struct LightGeneral
 			.is_volumetric = volumetric,
 			.has_surface = false,
 			.fog = 1.f,
+			.shadow_compression = s_default_shadow_compression,
 			.shadow_index = LIGHT_NO_SHADOW,
 		};
 	}
@@ -50,6 +54,7 @@ struct LightGeneral
 			.is_volumetric = volumetric,
 			.has_surface = false,
 			.fog = 1.f,
+			.shadow_compression = s_default_shadow_compression,
 			.shadow_index = LIGHT_NO_SHADOW,
 		};
 	}
@@ -63,6 +68,7 @@ struct LightGeneral
 			.is_volumetric = volumetric,
 			.has_surface = true,
 			.fog = 1.f,
+			.shadow_compression = 0,
 			.shadow_index = LIGHT_NO_SHADOW,
 		};
 	}
@@ -76,6 +82,7 @@ struct LightGeneral
 			.is_volumetric = volumetric,
 			.has_surface = true,
 			.fog = 1.f,
+			.shadow_compression = 0,
 			.shadow_index = LIGHT_NO_SHADOW,
 		};
 	}
@@ -89,6 +96,7 @@ struct LightGeneral
 			.is_volumetric = volumetric,
 			.has_surface = true,
 			.fog = 1.f,
+			.shadow_compression = 0,
 			.shadow_index = LIGHT_NO_SHADOW,
 		};
 	}
@@ -102,21 +110,24 @@ struct LightGeneral
 			.is_volumetric = volumetric,
 			.has_surface = true,
 			.fog = 1.f,
+			.shadow_compression = 0,
 			.shadow_index = LIGHT_NO_SHADOW,
 		};
 	}
 
-	LightType light_type;    // LIGHT_TYPE_*
-	glm::vec3 color;         // { 0, 0, 0 } to { 1, 1, 1 }
-	float     intensity;     // >= 0
+	LightType light_type;       // LIGHT_TYPE_*
+	glm::vec3 color;            // { 0, 0, 0 } to { 1, 1, 1 }
+	float     intensity;        // >= 0
 	bool      enabled;
 	bool      shadow_caster;
+	bool      contact_shadows;
 	bool      is_volumetric;
 	bool      has_surface;
-	float     fog;           // >= 0
-	uint16_t  shadow_index;  // >= 0   OR  LIGHT_NO_SHADOW
+	float     fog;              // >= 0
+	float     shadow_compression; // [0, 1) (0 = full range)
+	uint16_t  shadow_index;     // >= 0   OR  LIGHT_NO_SHADOW
 };
-static_assert(sizeof(LightGeneral) == 32);
+static_assert(sizeof(LightGeneral) == 40);
 
 
 } // component
