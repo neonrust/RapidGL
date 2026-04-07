@@ -162,6 +162,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 				ImGui::EndCombo();
 			}
 			ImGui::SliderFloat("IBL strength", &_ibl_strength, 0.f, 2.f, "%.1f");
+			ImGui::SliderFloat("IBL MIP level", &_ibl_mip_level, 0.0, glm::log2(float(m_env_cubemap_rt->width())), "%.1f");
 
 			static float falloff_power { _light_mgr.falloff_power() };
 			if(ImGui::SliderFloat("Falloff power", &falloff_power, 10.f, 1000.f, "%.0f"))
@@ -214,9 +215,6 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			static float saturation { 1.f };
 			if(ImGui::SliderFloat("Saturation",        &saturation,             0.f, 5.0f, "%.1f"))
 				m_tmo_pp.setSaturation(saturation);
-
-			// TODO: move these settings somewhere else?  (not actually tonemapping settings)
-			ImGui::SliderFloat("IBL MIP level", &_ibl_mip_level, 0.0, glm::log2(float(m_env_cubemap_rt->width())), "%.1f");
 			ImGui::PopItemWidth();
 		}
 
