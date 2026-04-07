@@ -36,6 +36,9 @@ public:
 	inline void setFroxelBlurEnabled(bool enabled) { _3dblur_enabled = enabled; }
 	inline void setPostBlurEnabled(bool enabled) { _2dblur_enabled = enabled; }
 
+	inline void setFroxelZBackoff(float backoff) { _froxel_z_backoff = backoff; }
+	inline float froxelZBackoff() const { return _froxel_z_backoff; }
+
 	// = 0: isotropic scattering; light is scattered equally in all directions (like fog or smoke).
 	// > 0: forward scattering; light tends to keep going the same way it was headed (like mist, clouds, water droplets).
 	// < 0: backward scattering; light tends to scatter back toward the source (rare in nature, but can approximate retroreflective effects).
@@ -87,6 +90,7 @@ private:
 	bool _blend_previous { true };
 	float _blend_weight { 0.95f };
 	float _shadow_bias { 0.002f };
+	float _froxel_z_backoff { 1.f };
 	bool _z_noise_enabled { true };
 	bool _3dblur_enabled { true };
 	bool _2dblur_enabled { false };

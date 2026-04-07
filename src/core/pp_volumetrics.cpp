@@ -204,6 +204,8 @@ void Volumetrics::accumulate()
 	// for later :)
 	_bake_shader.setUniform("u_near_z"sv, _camera.nearPlane());
 	_bake_shader.setUniform("u_far_z"sv, _camera.farPlane());
+	_bake_shader.setUniform("u_froxel_z_backoff"sv, _froxel_z_backoff);
+
 
 	const auto num_groups = glm::uvec3(
 		size_t(std::ceil(float(s_froxels.x) / float(s_local_size.x))),

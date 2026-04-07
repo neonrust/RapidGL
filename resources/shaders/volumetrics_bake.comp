@@ -16,6 +16,7 @@ uniform float u_effect_scale;
 uniform float u_near_z;
 uniform float u_far_z;
 uniform float u_froxel_zexp;
+uniform float u_froxel_z_backoff;
 
 layout(binding = 5)          uniform           sampler3D u_in_accumulation;
 layout(binding = 2)          uniform           sampler2D u_in_depth;
@@ -43,6 +44,7 @@ void main()
 	ndc.w  = 1;
 
 	vec3 froxel_uv = ndc_to_uv(ndc.xyz, u_near_z, u_far_z, u_froxel_zexp);
+	froxel_uv.z -= u_froxel_z_backoff/float(FROXEL_GRID_D); // truncate sampling depth-wide; avoid bleeding through walls
 
 	vec4 accumulated_transmittance = texture_tricubic(u_in_accumulation, froxel_uv);
 	vec3 accumulated = accumulated_transmittance.rgb;

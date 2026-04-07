@@ -297,6 +297,9 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 				float shadow_bias = m_volumetrics_pp.shadowBias();
 				if(ImGui::SliderFloat("Shadow bias", &shadow_bias, -0.01f, 0.05f, "%.4f"))
 					m_volumetrics_pp.setShadowBias(shadow_bias);
+				auto z_backoff = m_volumetrics_pp.froxelZBackoff();
+				if(ImGui::SliderFloat("Z backoff", &z_backoff, 0.f, 4.f, "%.1f"))
+					m_volumetrics_pp.setFroxelZBackoff(z_backoff);
 				static bool blur3_enabled { true };
 				if(ImGui::Checkbox("3D Blur", &blur3_enabled))
 					m_volumetrics_pp.setFroxelBlurEnabled(blur3_enabled);
