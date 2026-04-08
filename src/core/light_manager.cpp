@@ -893,7 +893,10 @@ void LightManager::_gpu_set_properties(GPULight &L, LightID light_id) const
 	L.intensity     = general.intensity;
 	L.fog_intensity = general.fog;
 
-	L.shape_data[4].x = general.shadow_compression; // only used by lights supporting shadows
+	if(general.shadow_caster)
+		SET_SHADOW_COMPRESSION(L, general.shadow_compression);
+	else
+		SET_SHADOW_COMPRESSION(L, 0);
 
 	if(general.light_type != LightType::Directional)
 		L.position = transform.position();

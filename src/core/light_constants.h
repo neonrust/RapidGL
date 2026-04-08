@@ -96,6 +96,7 @@ void SET_SHADOW_IDX(auto &light, auto idx)
 #define IS_VISIBLE_SURFACE(light)  (((light).type_flags & LIGHT_VISIBLE_SURFACE) > 0)
 #define IS_ENABLED(light)          (((light).type_flags & LIGHT_ENABLED) > 0)
 #define SHADOW_COMPRESSION(light)  ((light).shape_data[4].x)
+#define SET_SHADOW_COMPRESSION(light, sc)  ((light).shape_data[4].x = (sc))
 
 #define FROXEL_GRID_W      160
 #define FROXEL_GRID_H      90
