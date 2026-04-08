@@ -640,7 +640,6 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			{
 				Log::debug("enable {}", general.enabled);
 				_light_mgr.set_enabled(selected_light_id, general.enabled);
-				// Lsel = _light_mgr.gpu_get_by_id(selected_light_id);
 			}
 			ImGui::SameLine();
 			ImGui::PushStyleColor(ImGuiCol_Button, { 0.7f, 0.2f, 0.1f, 1.f });
@@ -656,21 +655,9 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			}
 
 			if(ImGui::ColorEdit3("Color", glm::value_ptr(general.color)))
-			{
-				// const auto color = general.color;
-				// Lmut = _light_mgr.get_by_id(selected_light_id); // a copy, to modify it
-				// Lmut.color = color;
-				// _light_mgr.set(selected_light_id, Lmut);
 				_light_mgr.set_color(selected_light_id, general.color);
-			}
 			if(ImGui::SliderFloat("Intensity", &general.intensity, 1, 1000, "%.0f"))
-			{
-				// const auto intensity = general.intensity;
-				// Lmut = _light_mgr.get_by_id(selected_light_id); // a copy, to modify it
-				// _light_mgr._set_intensity(Lmut, intensity);
-				// _light_mgr.set(selected_light_id, Lmut);
 				_light_mgr.set_intensity(selected_light_id, general.intensity);
-			}
 			if(general.light_type == LightType::Directional)
 			{
 				auto transform = _entities.get<component::Transform>(entt::entity(selected_light_id));
@@ -701,41 +688,35 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 				float angle_ratio = inner_angle * 100.f / outer_angle;
 				if(ImGui::SliderFloat("Angle", &outer_angle, 0.1f, 89.9f, "%.1f"))
 				{
-					// _light_mgr.set_spot_angle(Lmut, glm::radians(outer_angle));
-					// _light_mgr.set(selected_light_id, Lmut);
 					_light_mgr.set_spot_angle(selected_light_id, glm::radians(outer_angle), glm::radians((angle_ratio / 100.f) * outer_angle));
 				}
 				// specify inner angle as a percentage of the outer angle
 				if(ImGui::SliderFloat("Inner angle", &angle_ratio, 0, 100, "%.1f%%"))
-				{
-					// _light_mgr.set(selected_light_id, Lmut);
 					_light_mgr.set_spot_angle(selected_light_id, glm::radians(outer_angle), glm::radians((angle_ratio / 100.f) * outer_angle));
-				}
 			}
 
 			auto cast_shadows = general.shadow_caster;
 			if(ImGui::Checkbox("Cast shadow", &cast_shadows))
 			{
-				// Lsel = _light_mgr.gpu_get_by_id(selected_light_id); // a copy, to modify it
-				// if(cast_shadows)
-				// 	Lsel.type_flags |= LIGHT_SHADOW_CASTER;
-				// else
-				// 	Lsel.type_flags &= ~LIGHT_SHADOW_CASTER;
-				// _light_mgr.set(selected_light_id, Lsel);
 				_light_mgr.modify_flags(selected_light_id,
 										cast_shadows? LIGHT_SHADOW_CASTER: 0,
 										not cast_shadows? LIGHT_SHADOW_CASTER: 0);
 			}
 
+			if(cast_shadows)
+			{
+				auto contact_shadows = general.contact_shadows;
+				if(ImGui::Checkbox("Contact shadows", &contact_shadows))
+				{
+					_light_mgr.modify_flags(selected_light_id,
+											contact_shadows? LIGHT_CONTACT_SHADOWS: 0,
+											not contact_shadows? LIGHT_CONTACT_SHADOWS: 0);
+				}
+			}
+
 			auto is_volumetric = general.is_volumetric;
 			if(ImGui::Checkbox("Volumetric", &is_volumetric))
 			{
-				// Lsel = _light_mgr.gpu_get_by_id(selected_light_id); // a copy, to modify it
-				// if(is_volumetric)
-				// 	Lsel.type_flags |= LIGHT_VOLUMETRIC;
-				// else
-				// 	Lsel.type_flags &= ~LIGHT_VOLUMETRIC;
-				// _light_mgr.set(selected_light_id, Lsel);
 				_light_mgr.modify_flags(selected_light_id,
 										is_volumetric?LIGHT_VOLUMETRIC: 0,
 										not is_volumetric?LIGHT_VOLUMETRIC: 0);
