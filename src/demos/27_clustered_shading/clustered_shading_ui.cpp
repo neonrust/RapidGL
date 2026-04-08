@@ -583,6 +583,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 				.intensity = 50.f,
 				.fog = 1.f,
 				.shadow_caster = true,
+				.contact_shadows = true,
 				.position = m_camera.position(),
 			});
 		}
@@ -594,6 +595,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 				.intensity = 50.f,
 				.fog = 1.f,
 				.shadow_caster = true,
+				.contact_shadows = true,
 				.position = m_camera.position(),
 				.direction = m_camera.forwardVector(),
 				.outer_angle = glm::radians(m_camera.verticalFov() - 10) / 2,
