@@ -98,8 +98,6 @@ ClusteredShading::ClusteredShading() :
 	m_bloom_knee          (0.1f),
 	m_bloom_intensity     (0.9f),
 	m_bloom_dirt_intensity(0),
-	m_bloom_enabled       (false),
-	_fog_enabled          (false),
 	_fog_strength         (0.3f),
 	_fog_density          (0.1f),    // [ 0, 1 ]
 	_fog_blend_weight     (0.95f)    // [ 0, 1 ]
@@ -115,6 +113,9 @@ ClusteredShading::ClusteredShading() :
 
 	_affecting_lights.reserve(256);
 	_lightsPvs.reserve(1024);
+
+	m_volumetrics_pp.setEnabled(false);
+	m_bloom_pp.setEnabled(false);
 
 	_light_mgr.set_falloff_power(50.f);
 	_light_mgr.set_radius_power(0.6f);
@@ -627,9 +628,9 @@ void ClusteredShading::update(double delta_time)
 		adjust_angle  = -angle_amount;
 
 	if(Input::wasKeyPressed(KeyCode::F))
-		_fog_enabled = not _fog_enabled;
+		m_volumetrics_pp.setEnabled(not m_volumetrics_pp.enabled());
 	if(Input::wasKeyPressed(KeyCode::B))
-		m_bloom_enabled = not m_bloom_enabled;
+		m_bloom_pp.setEnabled(not m_bloom_pp.enabled());
 
 	if(adjust_position != 0 or adjust_angle != 0 or adjust_energy != 0)
 	{
@@ -1218,7 +1219,7 @@ void ClusteredShading::render()
 		m_skybox_time.add(*d);
 	// ------------------------------------------------------------------
 
-	if(_fog_enabled and _fog_density > 0)
+	if(m_volumetrics_pp.enabled() and _fog_density > 0)
 	{
 		_gl_timers["volumetrics-cull"].start();
 
@@ -1320,7 +1321,7 @@ void ClusteredShading::render()
 	// Bloom
 	_gl_timers["bloom-tonemap"].start();
 
-    if (m_bloom_enabled)
+	if (m_bloom_pp.enabled())
     {
 		m_bloom_pp.setThreshold(m_bloom_threshold);
 		m_bloom_pp.setIntensity(m_bloom_intensity);
