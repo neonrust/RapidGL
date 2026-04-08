@@ -29,9 +29,9 @@ EntityID Scene::add(StaticModel &&model, const component::Transform &transforn, 
 	auto model_ent = _entities.create();
 
 	_entities.emplace<component::SphereBounds>(model_ent, model.sphere());
-	_entities.emplace<component::Transform>(model_ent, transforn);
+	_entities.emplace<component::Transform>   (model_ent, transforn);
 	_entities.emplace<bool>(model_ent, is_dynamic);  // bad idea
-	_entities.emplace<component::Model>(model_ent, std::move(model));
+	_entities.emplace<component::Model>       (model_ent, std::move(model));
 
 	return model_ent;
 }
