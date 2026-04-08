@@ -172,7 +172,7 @@ public:
 	void set_enabled(LightID light_id, bool enabled=true);
 	void set_color(LightID light_id, const glm::vec3 &color);
 	void set_intensity(LightID light_id, float intensity);
-	void modify_flags(LightID light_id, uint_fast8_t flags, uint_fast8_t clear_flags=0); // LIGHT_SHADOW_CASTER, LIGHT_VOLUMETRIC
+	void modify_flags(LightID light_id, uint32_t flags, uint32_t clear_flags=0); // LIGHT_SHADOW_CASTER, LIGHT_VOLUMETRIC
 	// transform helpers
 	void set_direction(LightID light_id, const glm::vec3 &direction); // only for lights where "direction" is applicable (i.e. not point and sphere)
 	// light-specific helpers

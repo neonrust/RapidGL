@@ -253,21 +253,27 @@ void LightManager::set_intensity(LightID light_id, float intensity)
 	}
 }
 
-void LightManager::modify_flags(LightID light_id, uint_fast8_t set_flags, uint_fast8_t clear_flags)
+void LightManager::modify_flags(LightID light_id, uint32_t set_flags, uint32_t clear_flags)
 {
 	assert(_id_to_index.contains(light_id) and _entities.all_of<component::LightGeneral>(entt::entity(light_id)));
 	const auto light_ent = entt::entity(light_id);
 
 	auto &general = _entities.get<component::LightGeneral>(light_ent);
 
-	static constexpr uint_fast8_t shadow_bits = LIGHT_SHADOW_CASTER;
-	static constexpr uint_fast8_t volume_bits = LIGHT_VOLUMETRIC;
+	static constexpr uint32_t shadow_bits = LIGHT_SHADOW_CASTER;
+	static constexpr uint32_t contact_bits = LIGHT_CONTACT_SHADOWS;
+	static constexpr uint32_t volume_bits = LIGHT_VOLUMETRIC;
+
 	const auto cast_shadow = (((general.shadow_caster? shadow_bits: 0) | (set_flags & shadow_bits)) & (~clear_flags & shadow_bits)) > 0;
+	const auto contact_shadows = (((general.contact_shadows? contact_bits: 0) | (set_flags & contact_bits)) & (~clear_flags & contact_bits)) > 0;
 	const auto volumetric = (((general.is_volumetric? volume_bits: 0) | (set_flags & volume_bits)) & (~clear_flags & volume_bits)) > 0;
 
-	if(general.shadow_caster != cast_shadow or general.is_volumetric != volumetric)
+	if(general.shadow_caster != cast_shadow
+		or general.contact_shadows != contact_shadows
+		or general.is_volumetric != volumetric)
 	{
 		general.shadow_caster = cast_shadow;
+		general.contact_shadows = contact_shadows;
 		general.is_volumetric = volumetric;
 		if(general.enabled)
 			_general_changed(_entities, light_ent);
@@ -690,7 +696,7 @@ void LightManager::create_components(LightID light_id, const PointLightParams &l
 	_entities.emplace<component::Transform>(light_ent, lp.position);
 	_entities.emplace<component::PointLight>(light_ent);
 	// LightGeneral must be added last; it's used as trigger (see: _light_added())
-	_entities.emplace<component::LightGeneral>(light_ent, component::LightGeneral::create_point(lp.color, lp.intensity, lp.shadow_caster, lp.fog > 0));
+	_entities.emplace<component::LightGeneral>(light_ent, component::LightGeneral::create_point(lp.color, lp.intensity, lp.shadow_caster, lp.contact_shadows, lp.fog > 0));
 }
 
 void LightManager::create_components(LightID light_id, const DirectionalLightParams &lp)
@@ -700,7 +706,7 @@ void LightManager::create_components(LightID light_id, const DirectionalLightPar
 	_entities.emplace<component::Transform>(light_ent, component::Transform::Direction{}, lp.direction);
 	_entities.emplace<component::DirectionalLight>(light_ent);
 	// LightGeneral must be added last; it's used as trigger (see: _light_added())
-	_entities.emplace<component::LightGeneral>(light_ent, component::LightGeneral::create_directional(lp.color, lp.intensity, lp.shadow_caster, lp.fog > 0));
+	_entities.emplace<component::LightGeneral>(light_ent, component::LightGeneral::create_directional(lp.color, lp.intensity, lp.shadow_caster, lp.contact_shadows, lp.fog > 0));
 }
 
 void LightManager::create_components(LightID light_id, const SpotLightParams &lp)
@@ -712,7 +718,7 @@ void LightManager::create_components(LightID light_id, const SpotLightParams &lp
 	_entities.emplace<component::Transform>(light_ent, lp.position, component::Transform::Direction{}, lp.direction);
 	_entities.emplace<component::SpotLight>(light_ent, lp.outer_angle, lp.inner_angle);
 	// LightGeneral must be added last; it's used as trigger (see: _light_added())
-	_entities.emplace<component::LightGeneral>(light_ent, component::LightGeneral::create_spot(lp.color, lp.intensity, lp.shadow_caster, lp.fog > 0));
+	_entities.emplace<component::LightGeneral>(light_ent, component::LightGeneral::create_spot(lp.color, lp.intensity, lp.shadow_caster, lp.contact_shadows, lp.fog > 0));
 }
 
 void LightManager::create_components(LightID light_id, const RectLightParams &lp)
@@ -885,6 +891,7 @@ void LightManager::_gpu_set_properties(GPULight &L, LightID light_id) const
 	L.type_flags = uint32_t(general.light_type) \
 		| (general.enabled? LIGHT_ENABLED : 0) \
 		| (general.shadow_caster? LIGHT_SHADOW_CASTER: 0) \
+		| (general.contact_shadows? LIGHT_CONTACT_SHADOWS: 0) \
 		| (general.is_volumetric? LIGHT_VOLUMETRIC: 0);
 
 	SET_SHADOW_IDX(L, general.shadow_index); // might be LIGHT_NO_SHADOW

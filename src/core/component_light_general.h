@@ -16,13 +16,14 @@ namespace component
 
 struct LightGeneral
 {
-	static LightGeneral create_point(const glm::vec3 color, float intensity, bool shadows, bool volumetric=true) {
+	static LightGeneral create_point(const glm::vec3 color, float intensity, bool shadows, bool contact, bool volumetric=true) {
 		return {
 			.light_type = LightType::Point,
 			.color = color,
 			.intensity = intensity,
 			.enabled = true,
 			.shadow_caster = shadows,
+			.contact_shadows = contact,
 			.is_volumetric = volumetric,
 			.has_surface = false,
 			.fog = 1.f,
@@ -30,13 +31,14 @@ struct LightGeneral
 			.shadow_index = LIGHT_NO_SHADOW,
 		};
 	}
-	static LightGeneral create_directional(const glm::vec3 color, float intensity, bool shadows, bool volumetric=true) {
+	static LightGeneral create_directional(const glm::vec3 color, float intensity, bool shadows, bool contact, bool volumetric=true) {
 		return {
 			.light_type = LightType::Directional,
 			.color = color,
 			.intensity = intensity,
 			.enabled = true,
 			.shadow_caster = shadows,
+			.contact_shadows = contact,
 			.is_volumetric = volumetric,
 			.has_surface = false,
 			.fog = 1.f,
@@ -44,13 +46,14 @@ struct LightGeneral
 			.shadow_index = LIGHT_NO_SHADOW,
 		};
 	}
-	static LightGeneral create_spot(const glm::vec3 color, float intensity, bool shadows, bool volumetric=true) {
+	static LightGeneral create_spot(const glm::vec3 color, float intensity, bool shadows, bool contact, bool volumetric=true) {
 		return {
 			.light_type = LightType::Spot,
 			.color = color,
 			.intensity = intensity,
 			.enabled = true,
 			.shadow_caster = shadows,
+			.contact_shadows = contact,
 			.is_volumetric = volumetric,
 			.has_surface = false,
 			.fog = 1.f,
@@ -65,6 +68,7 @@ struct LightGeneral
 			.intensity = intensity,
 			.enabled = true,
 			.shadow_caster = false,
+			.contact_shadows = false,
 			.is_volumetric = volumetric,
 			.has_surface = true,
 			.fog = 1.f,
@@ -79,6 +83,7 @@ struct LightGeneral
 			.intensity = intensity,
 			.enabled = true,
 			.shadow_caster = false,
+			.contact_shadows = false,
 			.is_volumetric = volumetric,
 			.has_surface = true,
 			.fog = 1.f,
@@ -93,6 +98,7 @@ struct LightGeneral
 			.intensity = intensity,
 			.enabled = true,
 			.shadow_caster = false,
+			.contact_shadows = false,
 			.is_volumetric = volumetric,
 			.has_surface = true,
 			.fog = 1.f,
@@ -107,6 +113,7 @@ struct LightGeneral
 			.intensity = intensity,
 			.enabled = true,
 			.shadow_caster = false,
+			.contact_shadows = false,
 			.is_volumetric = volumetric,
 			.has_surface = true,
 			.fog = 1.f,

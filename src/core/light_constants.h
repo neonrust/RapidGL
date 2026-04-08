@@ -22,7 +22,7 @@
 // 'type_flags' bits:
 //                       16 15
 //     31                 | |                 0
-//      E... .... .... SSSS SSSS SSSS CVs2 TTTT
+//      E... .... ...X SSSS SSSS SSSS CVs2 TTTT
 //
 //   . = unused
 //   E = Enabled
@@ -30,8 +30,9 @@
 //   2 = two-sided (1 bit); rect & disc lights
 //   s = visible surface geometry; rect, tube, sphere & disc
 //   V = volunetric fog (1 bit)
-//   C = shadow caster (1 bit); point, dir & spot (likely)
+//   C = shadow caster (1 bit); point, dir & spot
 //   S = shadw slots info index (12 bits; 4095 values, 0xfff = no slot) - index into SSBO_BIND_SHADOW_SLOTS_INFO)
+//   X = contact shadows (screen-space shadows; SSS) enabled
 //
 #define LIGHT_TYPE_MASK          0x0fu
 #define LIGHT_TYPE_POINT         0x00u
@@ -69,14 +70,15 @@
 #endif
 
 #define LIGHT_ENABLED              0x80000000u
-#define LIGHT_DOUBLE_SIDED         0x10u        // rect & disc lights
-#define LIGHT_VISIBLE_SURFACE      0x20u        // rect, tube, sphere & disc lights
-#define LIGHT_SHADOW_CASTER        0x00000080u
+#define LIGHT_DOUBLE_SIDED         0x00000010u  // rect & disc lights
+#define LIGHT_VISIBLE_SURFACE      0x00000020u  // rect, tube, sphere & disc lights
+#define LIGHT_SHADOW_CASTER        0x00000080u  // point, dir, spot
+#define LIGHT_CONTACT_SHADOWS      0x00100000u  // shadow-casting light types
 #define LIGHT_SHADOW_MASK          0x000fff00u  // max 1023 shadw-casting lights
 #define LIGHT_SHADOW_SHIFT         8u
 #define LIGHT_VOLUMETRIC           0x00000040u
 
-#define LIGHT_NO_SHADOW             0xfffu
+#define LIGHT_NO_SHADOW            0xfffu
 
 #if defined(__cplusplus)
 #define GET_SHADOW_IDX(light)      uint_fast16_t(((light).type_flags & LIGHT_SHADOW_MASK) >> LIGHT_SHADOW_SHIFT)
@@ -91,6 +93,7 @@ void SET_SHADOW_IDX(auto &light, auto idx)
 #define CLR_SHADOW_IDX(light)      SET_SHADOW_IDX(light, LIGHT_NO_SHADOW)
 
 #define IS_SHADOW_CASTER(light)    (((light).type_flags & LIGHT_SHADOW_CASTER) > 0)
+#define HAS_CONTACT_SHADOWS(light) (((light).type_flags & LIGHT_CONTACT_SHADOWS) > 0)
 #define IS_VOLUMETRIC(light)       (((light).type_flags & LIGHT_VOLUMETRIC) > 0)
 #define IS_DOUBLE_SIDED(light)     (((light).type_flags & LIGHT_DOUBLE_SIDED) > 0)
 #define IS_VISIBLE_SURFACE(light)  (((light).type_flags & LIGHT_VISIBLE_SURFACE) > 0)

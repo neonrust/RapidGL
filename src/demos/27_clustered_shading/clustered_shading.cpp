@@ -714,6 +714,7 @@ void ClusteredShading::createLights()
 		.intensity = 20.f,
 		.fog = 1.f,
 		.shadow_caster = true,
+		.contact_shadows = true,
 		.direction = glm::normalize(glm::vec3(5, -3, 5)),
 	});
 
@@ -722,6 +723,7 @@ void ClusteredShading::createLights()
 	// 	.intensity = 30.f,
 	// 	.fog = .4f,
 	// 	.shadow_caster = true,
+	// 	.contact_shadows = true,
 	// 	.position = m_camera.position(),  // will be kept up to date in update()
 	// 	.direction = AXIS_X,              // will be kept up to date in update()
 	// 	.outer_angle = glm::radians(45.f),
@@ -773,6 +775,7 @@ void ClusteredShading::createLights()
 				.intensity = rand_intensity,
 				.fog = 1.f,
 				.shadow_caster = true,
+				.contact_shadows = true,
 				.position = rand_pos,
 			});
 			if(l)
@@ -789,6 +792,7 @@ void ClusteredShading::createLights()
 				.intensity = rand_intensity,
 				.fog = 1.f,
 				.shadow_caster = true,
+				.contact_shadows = true,
 				.position = rand_pos,
 				.direction = AXIS_X, //glm::normalize(Util::RandomVec3(0, 1)),
 				.outer_angle = glm::radians(25.f),
@@ -1941,6 +1945,7 @@ void ClusteredShading::renderSceneShading(const Camera &camera)
 	shader.setUniform("u_log_cluster_res_y"sv,          m_log_cluster_res_y);
 	shader.setUniform("u_light_max_distance"sv,         m_camera.farPlane() * s_light_affect_fraction);
 	shader.setUniform("u_shadow_max_distance"sv,        m_camera.farPlane() * s_light_shadow_affect_fraction);
+	shader.setUniform("u_shadow_contact_max_distance"sv, 10.f);
 	//shader.setUniform("u_specular_max_distance"sv,      m_camera.farPlane() * s_light_specular_fraction);
 	shader.setUniform("u_ambient_radiance"sv,           _ambient_radiance);
 	shader.setUniform("u_ibl_strength"sv,               _ibl_strength);

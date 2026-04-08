@@ -23,11 +23,12 @@ class LightManager;
 // ------------------------------------------------------------------
 
 // properties common to ALL lights
-#define COMMON                              \
-	glm::vec3 color     { 1.f, 1.f, 1.f };  \
-	float intensity     { 10.f };           \
-	float fog           { 0.f };            \
-	bool shadow_caster  { false }
+#define COMMON                               \
+	glm::vec3 color      { 1.f, 1.f, 1.f };  \
+	float intensity      { 10.f };           \
+	float fog            { 0.f };            \
+	bool shadow_caster   { false };          \
+	bool contact_shadows { false }
 
 #define INTERNAL                                \
 	inline LightID id() const { return uuid; }  \
