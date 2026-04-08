@@ -87,7 +87,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 		TIMING("Shading", m_shading_time.average());
 		TIMING("Skybox", m_skybox_time.average());
 
-		if(_fog_enabled)
+		if(m_volumetrics_pp.enabled())
 		{
 			TIMING("Volumetrics", m_volumetrics_cull_time.average() + m_volumetrics_inject_time.average() + m_volumetrics_accum_time.average() + m_volumetrics_render_time.average());
 			TIMING("  cull", m_volumetrics_cull_time.average());
@@ -220,20 +220,22 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 
 		static std::string bloom_label = "Bloom  b:";
 		static const auto bloom_label_size = 9u;
-		if(m_bloom_enabled and bloom_label.size() != bloom_label_size + 5)
+		if(m_bloom_pp.enabled()and bloom_label.size() != bloom_label_size + 5)
 		{
 			bloom_label.resize(bloom_label_size);
 			bloom_label.append(" [ON]");
 		}
-		else if(not m_bloom_enabled and bloom_label.size() != bloom_label_size + 6)
+		else if(not m_bloom_pp.enabled() and bloom_label.size() != bloom_label_size + 6)
 		{
 			bloom_label.resize(bloom_label_size);
 			bloom_label.append(" [off]");
 		}
 		if (ImGui::CollapsingHeader(bloom_label.c_str()))
 		{
-			ImGui::Checkbox("Enabled (b)",        &m_bloom_enabled);
-			if(m_bloom_enabled)
+			bool enabled = m_bloom_pp.enabled();
+			if(ImGui::Checkbox("Enabled (b)", &enabled))
+				m_bloom_pp.setEnabled(enabled);
+			if(enabled)
 			{
 				ImGui::SliderFloat("Threshold",      &m_bloom_threshold,      0, 15.f, "%.1f");
 				ImGui::SliderFloat("Knee",           &m_bloom_knee,           0,  1.f, "%.1f");
@@ -244,20 +246,22 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 
 		static std::string fog_label = "Fog / Volumetrics  f:";
 		static const auto fog_label_size = 21u;
-		if(_fog_enabled and fog_label.size() != fog_label_size + 5)
+		if(m_volumetrics_pp.enabled() and fog_label.size() != fog_label_size + 5)
 		{
 			fog_label.resize(fog_label_size);
 			fog_label.append(" [ON]");
 		}
-		else if(not _fog_enabled and fog_label.size() != fog_label_size + 6)
+		else if(not m_volumetrics_pp.enabled() and fog_label.size() != fog_label_size + 6)
 		{
 			fog_label.resize(fog_label_size);
 			fog_label.append(" [off]");
 		}
 		if(ImGui::CollapsingHeader(fog_label.c_str()))//, ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			ImGui::Checkbox("Enabled (f)",    &_fog_enabled);
-			if(_fog_enabled)
+			auto enabled = m_volumetrics_pp.enabled();
+			if(ImGui::Checkbox("Enabled (f)",    &enabled))
+				m_volumetrics_pp.setEnabled(enabled);
+			if(enabled)
 			{
 				ImGui::SliderFloat("Strength", &_fog_strength, 0.f, 4.f);
 				ImGui::SliderFloat("Density", &_fog_density, 0.f, 1.f);
