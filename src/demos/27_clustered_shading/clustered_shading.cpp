@@ -554,9 +554,6 @@ void ClusteredShading::input()
 	if(Input::wasKeyPressed(KeyCode::Backtick))
 		_debug_ui_enabled = not _debug_ui_enabled;
 
-	if(Input::wasKeyPressed(KeyCode::C))
-		m_debug_draw_cluster_grid = not m_debug_draw_cluster_grid;
-
 	if(Input::isKeyDown(KeyCode::RightArrow))
 		s_spot_outer_angle = std::min(s_spot_outer_angle + 0.3f, 89.9f);
 	else if(Input::isKeyDown(KeyCode::LeftArrow))
