@@ -1998,7 +1998,7 @@ void ClusteredShading::renderSceneShading(const Camera &camera)
 	glViewport(0, 0, GLsizei(Window::width()), GLsizei(Window::height()));
 
 	const auto view_projection = m_camera.projectionTransform() * m_camera.viewTransform();
-	renderScene(view_projection, *m_clustered_pbr_shader);
+	renderScene(view_projection, shader);
 
 	glDisable(GL_POLYGON_OFFSET_FILL);
 	// Enable writing to the depth buffer
