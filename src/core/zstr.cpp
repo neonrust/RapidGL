@@ -4,10 +4,9 @@
 #include <sstream>
 #include <iostream>
 #include <iomanip>
-#include <unordered_map>
-#include <unordered_set>
+#include <format>
 
-#include <cctype>
+#include "container_types.h"
 
 namespace zstr
 {
@@ -405,37 +404,78 @@ bool hasWildcards(const std::string &input)
 
 //---------------------------------------------------------------------------
 
-std::string fileExtension(const std::string &filePath)
+std::string_view fileExtension(std::string_view path)
 {
-	std::string path = filePath;
-	auto lastSlash = path.rfind("/");
-	if(lastSlash != std::string::npos)
-		path.erase(0, lastSlash + 1);
+	auto start = path.rfind("/");
+	if(start == std::string::npos)
+		start = 0;
 
-	auto lastDot = path.rfind(".");
-	if(lastDot != std::string::npos)
-		return path.substr(lastDot + 1);
+	auto dot = path.rfind('.', start);
+	if(dot != std::string::npos)
+		return path.substr(dot);
 	else
-		return "";
+		return {};
 }
 
 //---------------------------------------------------------------------------
 
-std::string makeNameSerial(const char *name)
+std::string makeNameSerial(std::string_view name)
 {
-	static std::unordered_map<std::string, std::size_t> _serials;
+	static dense_map<std::string, std::size_t> _serials;
+	_serials.reserve(8);
 
-	std::stringstream strm;
-	strm << name << '-' << (_serials[name]++);
-	return strm.str();
+	auto entry = _serials.find(std::string(name)); // TODO: set string_view hash & equal to map type above
+	if(entry != _serials.end())
+		return std::format("{}-{}", name, entry->second++);
+
+	_serials[std::string(name)] = 0;
+	return std::format("{}-0", name);
 }
 
 //---------------------------------------------------------------------------
 
-bool boolValue(const std::string &val)
+bool boolValue(std::string_view val)
 {
-	static std::unordered_set<std::string> trueValues { "yes", "1", "on", "true" };
+	static dense_set<std::string_view> trueValues { "yes"sv, "1"sv, "on"sv, "true"sv, "t"sv };
 	return trueValues.find(val) != trueValues.end();
+}
+
+//---------------------------------------------------------------------------
+
+size_t replace(std::string &s, std::string_view find, std::string_view replace)
+{
+	if(replace.size() > find.size())
+		s.reserve(s.size() + 4 * (replace.size() - find.size())); // TODO: do a pre-sweep?
+
+	size_t num_replaced = 0;
+
+	using size_type = std::string::size_type;
+	size_type pos { 0 };
+	while(true)
+	{
+		if(auto found = s.find(find, pos); found != std::string::npos)
+		{
+			// TODO: is there a "less raw" way to do this?
+			replace.copy(s.data() + found, std::min(find.size(), replace.size()));
+
+			const auto longer = std::string::difference_type(replace.size()) - std::string::difference_type(find.size());
+			if(longer > 0)
+			{
+				const auto longer = replace.size() - find.size();
+				s.reserve(s.size() + longer); // but (hopefully) covered by above reserve
+				s.insert(find.size() + found, &replace[find.size()], longer);
+			}
+			else if(longer < 0)
+				s.erase(found + std::min(find.size(), replace.size()), size_type(-longer));
+
+			pos = found + replace.size();
+			++num_replaced;
+		}
+		else
+			break;
+	}
+
+	return num_replaced;
 }
 
 //---------------------------------------------------------------------------

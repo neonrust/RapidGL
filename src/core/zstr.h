@@ -21,6 +21,8 @@ using namespace std::literals;
 //! strip characters (e.g. whitespace) from a string (leading & trailing)
 std::string_view strip(std::string_view s, std::string_view delimiters = " \t\n\r"sv);
 
+size_t replace(std::string &s, std::string_view find, std::string_view replace);
+
 //! split a string on a delimiter into a list
 std::vector<std::string_view> split(std::string_view input, std::string_view delimiters = " \t"sv);
 
@@ -132,11 +134,11 @@ std::string baseName(const std::string &argv0);
 //! return true if the string contains wildcards
 bool hasWildcards(const std::string &input);
 
-std::string fileExtension(const std::string &filePath);
+std::string_view fileExtension(std::string_view path);
 
-std::string makeNameSerial(const char *name);
+std::string makeNameSerial(std::string_view name);
 
-bool boolValue(const std::string &val);
+bool boolValue(std::string_view val);
 
 }
 
