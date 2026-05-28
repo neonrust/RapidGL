@@ -3,6 +3,7 @@
 #include "shader.h"
 #include "util.h"
 #include "log.h"
+#include "zstr.h"
 
 #include <chrono>
 #include <ranges>
@@ -13,7 +14,7 @@ using namespace std::chrono;
 namespace RGL
 {
 
-static constexpr auto s_link_log_threshold = milliseconds(20);
+// static constexpr auto s_link_log_threshold = milliseconds(20);
 
 Shader::Shader() :
 	m_program_id(0),   // allocated in first call to addShader()
@@ -248,6 +249,8 @@ bool Shader::link()
 
 void Shader::logLineErrors(const std::filesystem::path & filepath, const std::string &log, const std::array<std::string_view, 2> &sources, size_t max_errors) const
 {
+	// TODO: highlight names matching "^[a-z]+_[a-z0-9_+]$' (i.e. code symbols, hopefully) + camel case
+
 	auto errors_with_context = 2;
 
 	std::istringstream strm(log);
@@ -294,14 +297,29 @@ void Shader::logLineErrors(const std::filesystem::path & filepath, const std::st
 					{
 						using u32 = uint32_t;
 
-							   // line number width; for alignment
+						// line number width; for alignment
 						const auto width = 1 + u32(std::floor(std::log10(lines.size() - 1 + u32(line_num) - pre_context)));
 
+						// before-context lines
 						for(auto idx = 0u; idx < pre_context; ++idx)
-							Log::error("{:{}}>{}", idx + u32(line_num) - pre_context, width, lines[idx]);
-						Log::error("\x1b[1m{:{}}>{}\x1b[m", line_num, width, lines[pre_context]);
+						{
+							auto line = std::string(lines[idx]);
+							zstr::replace(line, "\t", "    ");
+							Log::error("{:{}}>{}", idx + u32(line_num) - pre_context, width, line);
+						}
+
+						// the offending line itself
+						auto line = std::string(lines[pre_context]);
+						zstr::replace(line, "\t", "    ");
+						Log::error("\x1b[1m{:{}}>{}\x1b[m", line_num, width, line);
+
+						// after-context lines
 						for(auto idx = 0u; idx < context; ++idx)
-							Log::error("{:{}}>{}", idx + u32(line_num) + context, width, lines[pre_context + 1 + idx]);
+						{
+							auto line = std::string(lines[pre_context + 1 + idx]);
+							zstr::replace(line, "\t", "    ");
+							Log::error("{:{}}>{}", idx + u32(line_num) + context, width, line);
+						}
 					}
 				}
 			}
