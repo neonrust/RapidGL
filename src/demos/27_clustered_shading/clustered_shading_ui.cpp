@@ -329,6 +329,12 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			ImGui::Checkbox("Stabilize light view", &stabilize);
 			_shadow_atlas.set_csm_stabilization(stabilize);
 			ImGui::Checkbox("Colorize shadow slots", &_debug_colorize_shadows);
+			ImGui::Checkbox("Contact shadows", &m_shadow_contacts);
+			if(m_shadow_contacts)
+			{
+				ImGui::SliderFloat("Max ray length", &m_shadow_contact_max_ray_length, 0.001f, 0.5f, "%.3f");
+				ImGui::Checkbox("Colorize contact shadows", &_debug_colorize_contact_shadows);
+			}
 
 			static std::string size_line(64, ' ');
 			size_line.clear();

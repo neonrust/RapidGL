@@ -6,6 +6,8 @@
 #include "volumetrics.glh"  // 'tile_grid' for the debug mode
 
 out vec4 frag_color;
+uniform mat4 u_view;
+uniform mat4 u_projection;
 
 uniform float u_near_z;
 uniform uvec3 u_cluster_resolution;
@@ -21,8 +23,6 @@ uniform bool u_debug_tile_occupancy;
 uniform float u_debug_overlay_blend;
 
 uniform uvec2 u_viewport_size;
-uniform float u_shadow_occlusion;
-uniform bool  u_shadow_colorize;
 
 const vec3 s_shadow_tints[6] = vec3[]
 (
@@ -320,6 +320,22 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 	const float lit_threshold = SHADOW_COMPRESSION(light);
 	shadow_visibility = clamp((shadow_visibility - lit_threshold) / (1 - lit_threshold), 0, 1);
 
+	if(u_shadow_contacts && HAS_CONTACT_SHADOWS(light) && shadow_visibility > s_shadow_contact_threshold && camera_distance < u_shadow_contact_max_distance)
+	{
+		vec3 pos_vs = vec3(u_view * vec4(world_pos, 1));
+		vec3 normal_vs = vec3(u_view * vec4(in_normal, 0));
+		pos_vs += normal_vs * u_shadow_contact_offset; // offset along normal to avoid self-shadowing
+		vec3 light_vs = vec3(u_view * vec4(light.position, 1));
+		vec3 dir_to_light_vs = normalize(light_vs - pos_vs);
+
+		if(checkContactShadow(pos_vs, dir_to_light_vs, u_projection))
+		{
+			if(u_shadow_colorize_contact)
+				return vec3(0, 2, 0);
+			shadow_visibility = 0;
+		}
+	}
+
 	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade * u_shadow_occlusion;
 	float visible = light_fade * shadow_faded;
 
@@ -423,6 +439,21 @@ vec3 dirLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 	const float lit_threshold = SHADOW_COMPRESSION(light);
 	shadow_visibility = clamp((shadow_visibility - lit_threshold) / (1 - lit_threshold), 0, 1);
 
+	if(u_shadow_contacts && HAS_CONTACT_SHADOWS(light) && shadow_visibility > s_shadow_contact_threshold && camera_distance < u_shadow_contact_max_distance)
+	{
+		vec3 pos_vs = vec3(u_view * vec4(world_pos, 1));
+		vec3 normal_vs = vec3(u_view * vec4(in_normal, 0));
+		pos_vs += normal_vs * u_shadow_contact_offset; // offset along normal to avoid self-shadowing
+		vec3 dir_vs = vec3(u_view * vec4(light.direction, 0));
+
+		if(checkContactShadow(pos_vs, -dir_vs, u_projection))
+		{
+			if(u_shadow_colorize_contact)
+				return vec3(0, 2, 0);
+			shadow_visibility = 0;
+		}
+	}
+
 	// float shadow_visibility = shadowVisibilityPCSS(clip_pos.xy, uv_depth, -pos_ls.z, light, slot_rect, texel_size, bias, light_radius);
 	vec3 visible_color = u_shadow_colorize? s_shadow_tints[cascade_index]: vec3(1);
 
@@ -469,6 +500,22 @@ vec3 spotLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 	float shadow_visibility = shadowVisibility(uv_pos, camera_distance, light, slot_rect, texel_size, bias);
 	const float lit_threshold = SHADOW_COMPRESSION(light);
 	shadow_visibility = clamp((shadow_visibility - lit_threshold) / (1 - lit_threshold), 0, 1);
+
+	if(u_shadow_contacts && HAS_CONTACT_SHADOWS(light) && shadow_visibility > s_shadow_contact_threshold && camera_distance < u_shadow_contact_max_distance)
+	{
+		vec3 pos_vs = vec3(u_view * vec4(world_pos, 1));
+		vec3 normal_vs = vec3(u_view * vec4(in_normal, 0));
+		pos_vs += normal_vs * u_shadow_contact_offset; // offset along normal to avoid self-shadowing
+		vec3 light_vs = vec3(u_view * vec4(light.position, 1));
+		vec3 light_dir_vs = normalize(light_vs - pos_vs);
+
+		if(checkContactShadow(pos_vs, light_dir_vs, u_projection))
+		{
+			if(u_shadow_colorize_contact)
+				return vec3(0, 2, 0);
+			shadow_visibility = 0;
+		}
+	}
 
 	float shadow_faded = 1 - (1 - shadow_visibility) * shadow_fade * u_shadow_occlusion;
 	float visible = light_fade * shadow_faded;

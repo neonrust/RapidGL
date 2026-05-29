@@ -197,10 +197,13 @@ private:
 	bool  m_debug_tile_occupancy         = false;
 	float m_debug_coverlay_blend         = 0.7f;
 	bool _debug_colorize_shadows         = false;
+	bool _debug_colorize_contact_shadows = false;
 
 	glm::vec3 _ambient_radiance          = { 0.02f, 0.02f, 0.02f };
 	float _ibl_strength                  = 1.f;
 	float m_shadow_occlusion             = 1.f;//0.8f;
+	bool  m_shadow_contacts              = true;
+	float m_shadow_contact_max_ray_length = 0.06f;
 	float m_shadow_bias_constant         = -0.0001f;
 	float m_shadow_bias_slope_scale      = 0.0018f;
 	float m_shadow_bias_slope_power      = 1.f;

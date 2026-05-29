@@ -1957,6 +1957,10 @@ void ClusteredShading::renderSceneShading(const Camera &camera)
 	shader.setUniform("u_shadow_bias_scale"sv,          m_shadow_bias_scale);
 	shader.setUniform("u_shadow_occlusion"sv,           m_shadow_occlusion);
 	shader.setUniform("u_shadow_colorize"sv,            _debug_colorize_shadows);
+	shader.setUniform("u_shadow_contacts"sv,            m_shadow_contacts);
+	shader.setUniform("u_shadow_contact_max_ray_length"sv, m_shadow_contact_max_ray_length);
+	shader.setUniform("u_shadow_colorize_contact"sv,    _debug_colorize_contact_shadows);
+	shader.setUniform("u_shadow_contact_offset"sv,      0.05f);
 
 	if(const auto &csm = _shadow_atlas.csm_params(); csm)
 	{
@@ -1985,6 +1989,8 @@ void ClusteredShading::renderSceneShading(const Camera &camera)
 	_shadow_atlas.bindShadowSampler(20);
 	_shadow_atlas.bindTextureSampler(21);   // encoded normals
 	_shadow_atlas.bindDepthTextureSampler(22);
+	m_depth_pass_rt.bindDepthTextureSampler(23); // for screen-space/contact shadows
+
 
 	// we need updated textures (shadow maps) and SSBO data
 	glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
