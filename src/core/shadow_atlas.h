@@ -27,7 +27,6 @@ using Time = std::chrono::steady_clock::time_point;
 class ShadowAtlas : public RenderTarget::Texture2d
 {
 public:
-	static constexpr size_t PADDING = 1;
 	enum class CubeFace : uint32_t { PosX, NegX, PosY, NegY, PosZ, NegZ };
 
 	static constexpr size_t MAX_CASCADES = 4;

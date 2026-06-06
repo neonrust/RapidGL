@@ -1028,7 +1028,7 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const std::vector<AtlasLi
 			auto node_index = alloc_slot(desired.slots[idx].size);
 			slot.node_index = node_index;
 			slot.size = desired.slots[idx].size;
-			slot.rect = mk_rect(_allocator.rect(node_index), 1);
+			slot.rect = mk_rect(_allocator.rect(node_index));
 		}
 
 		atlas_light._last_size_change = now;
@@ -1079,7 +1079,7 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const std::vector<AtlasLi
 				const auto node_index = alloc_slot(slot_size);
 
 				atlas_light.slots[idx].node_index = node_index;
-				atlas_light.slots[idx].rect = mk_rect(_allocator.rect(node_index), 1);
+				atlas_light.slots[idx].rect = mk_rect(_allocator.rect(node_index));
 			}
 
 			Log::debug("atlas| {{{}}} allocated -> {}", light_id, sizes_count_summary(atlas_light));

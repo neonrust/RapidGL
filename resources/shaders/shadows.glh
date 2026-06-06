@@ -271,7 +271,11 @@ float shadowVisibility(vec3 uv_pos, float camera_distance, GPULight light, vec4 
 	vec2 atlas_uv = calculateShadowUV(uv_pos, slot_rect, rect_uv);
 
 	vec2 uv_min = rect_uv.xy;
-	vec2 uv_max = rect_uv.xy + rect_uv.zw - shadow_atlas_texel_size;
+	// add a half-texel margin; prevents sampler filtering from reading into the (uncleared) margin
+	uv_min += 0.5 * shadow_atlas_texel_size;
+	vec2 uv_max = rect_uv.xy + rect_uv.zw;
+	// and corresponding margin on the max side (total 1 px)
+	uv_max -= shadow_atlas_texel_size;
 	return sampleShadow(camera_distance, uv_depth, atlas_uv, uv_min, uv_max);
 }
 /*
