@@ -1202,7 +1202,7 @@ void ClusteredShading::render()
 
 	_rt.bindRenderTarget(RenderTarget::ColorBuffer);
 
-	renderSceneShading(m_camera);
+	renderShading(m_camera);
 
 	if(auto d = _gl_timers["shading"].elapsed<microseconds>(); d)
 		m_shading_time.add(*d);
@@ -1929,7 +1929,7 @@ void ClusteredShading::renderSceneShadow(const QueryResult &objects, uint16_t sh
 
 }
 
-void ClusteredShading::renderSceneShading(const Camera &camera)
+void ClusteredShading::renderShading(const Camera &camera)
 {
 	glDepthMask(GL_FALSE);
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);

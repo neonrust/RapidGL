@@ -110,7 +110,7 @@ private:
 	void renderDepth(const glm::mat4 &view_projection, RGL::RenderTarget::Texture2d &target, const glm::ivec4 &rect={0,0,0,0});
 	void renderShadowMaps();
 	void renderSceneShadow(const RGL::QueryResult &objects, uint16_t shadow_idx, uint_fast8_t slot_idx, bool dynamic_only=false);
-	void renderSceneShading(const RGL::Camera &camera);
+	void renderShading(const RGL::Camera &camera);
 	void renderSkybox();
 	void renderLightGeometry();
 	void downloadAffectingLightSet();
