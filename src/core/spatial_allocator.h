@@ -72,7 +72,7 @@ public:
 	static constexpr AxisT default_min_size_shift = 6; // i.e. size/64  (128 or 8192)
 
 public:
-	SpatialAllocator(AxisT size, size_t min_block_size_shift=0, size_t max_block_size_shift=0);
+	SpatialAllocator(AxisT size, uint32_t min_block_size_shift=0, uint32_t max_block_size_shift=0);
 
 	void reset();  // free *all* allocated nodes
 
@@ -90,13 +90,11 @@ public:
 	bool free(NodeIndex index);
 
 	[[nodiscard]] inline const AllocatedSlots &num_allocated() const { return _allocated; }
-	[[nodiscard]] size_t num_allocated(AxisT size) const;
+	[[nodiscard]] uint32_t num_allocated(AxisT size) const;
 
 	[[nodiscard]] Rect rect(NodeIndex index);
 	[[nodiscard]] inline AxisT size(NodeIndex index) const { return _size >> level(index); }
 
-	// used as "bad index" in returns
-	[[nodiscard]] inline NodeIndex end() const { return BadIndex; }
 	[[nodiscard]] inline uint32_t level_from_size(AxisT size) const { assert(std::has_single_bit(size) and size < _size); return std::countr_zero(uint32_t(_size / size)); }
 
 private:
@@ -122,7 +120,7 @@ private:
 };
 
 template<IntT AxisT>
-inline SpatialAllocator<AxisT>::SpatialAllocator(AxisT size, size_t min_block_size_shift, size_t max_block_size_shift) :
+inline SpatialAllocator<AxisT>::SpatialAllocator(AxisT size, uint32_t min_block_size_shift, uint32_t max_block_size_shift) :
 	_size(std::bit_ceil(size)),
 	_max_size(max_block_size_shift? _size >> max_block_size_shift: _size >> default_max_size_shift),
 	_min_size(min_block_size_shift? _size >> min_block_size_shift: _size >> default_min_size_shift)
@@ -234,7 +232,7 @@ SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::find_available(uint3
 	if (n.allocated)// or n.children_allocated == num_nodes_in_levels(target_level - current_level))
 	{
 		// std::print("{:{}}  [sa] {}  branch not available ({} + {})\n", "", s_indent, index, n.allocated, n.children_allocated);
-		return end();
+		return BadIndex;
 	}
 	if (current_level == target_level)
 	{
@@ -244,7 +242,7 @@ SpatialAllocator<AxisT>::NodeIndex SpatialAllocator<AxisT>::find_available(uint3
 		// 	std::print("{:{}}  [sa] {} found!\n", "", s_indent, index);
 		if(n.children_allocated == 0)
 			return index;
-		return end();
+		return BadIndex;
 	}
 
 	// if the whole subtree is available, we can skip to the first child at target_level
@@ -299,7 +297,7 @@ bool SpatialAllocator<AxisT>::free(NodeIndex index)
 }
 
 template<IntT AxisT>
-size_t SpatialAllocator<AxisT>::num_allocated(AxisT size) const
+uint32_t SpatialAllocator<AxisT>::num_allocated(AxisT size) const
 {
 	if(auto found = _allocated.find(size); found != _allocated.end())
 		return found->second;

@@ -164,6 +164,8 @@ public:
 	LightIndex light_index(LightID light_id) const;
 	inline const GPULight &at(size_t light_index) const { return _lights.at(light_index); }
 
+	inline LightID sun_id() const { return _sun_light_id; }
+
 	uint_fast16_t shadow_index(LightID light_id) const;
 	void set_shadow_index(LightID light_id, uint16_t shadow_index);
 	void clear_shadow_index(LightID light_id);
@@ -263,6 +265,7 @@ private:
 	std::vector<LightIndex> _dirty_list;
 	// essentially a CPU-side mirror of the SSBO  (otherwise we'd use a mapping container)
 	LightList _lights;
+	LightID _sun_light_id { NO_LIGHT_ID };
 
 	buffer::Storage<GPULight> _lights_ssbo;
 
@@ -355,6 +358,9 @@ auto LightManager::add(const LTP &ltp) -> std::expected<LightID, LightError>
 	const LightID light_id = LightID(_entities.create());
 
 	create_components(light_id, ltp); // will trigger _light_added
+
+	if constexpr (std::is_same_v<LTP, DirectionalLightParams>)
+		_sun_light_id = light_id;
 
 	return light_id;
 }

@@ -16,7 +16,6 @@
 #include <ranges>
 #include <string_view>
 #include <format>
-#include <cstdio>
 #include <cmath> // std::signbit
 
 #include "buffer_binds.h"
@@ -31,6 +30,9 @@ namespace RGL
 using namespace std::literals;
 
 static constexpr float s_min_light_value = 1e-2f;
+
+static const auto s_slot_max_size_shift = 1;
+static constexpr auto s_normal_shadow_shift = 2;  // point & spot shadow maps are shifted N down in size (e.g. from 4096 to 1024)
 
 
 #define SLOT_CONFIG(light_type)   ((light_type) == LightType::Point? SlotConfig::Cube: ((light_type) == LightType::Directional? SlotConfig::Cascades: SlotConfig::Single))
@@ -56,14 +58,12 @@ constexpr T sign_cmp(T a, T b)
 	return sign(a - b);
 }
 
-static const auto s_slot_max_size_shift = 3;
-
 ShadowAtlas::ShadowAtlas(uint32_t size, LightManager &lights) :
 	Texture2d(),
 	_lights(lights),
 	_min_change_interval(1s),
 	_shadow_slots_info_ssbo("shadow-params"),
-	_allocator(size, s_slot_max_size_shift + 3, s_slot_max_size_shift)
+	_allocator(size, s_slot_max_size_shift + s_normal_shadow_shift + 3, s_slot_max_size_shift)
 {
 	assert(_allocator.size() >= 1024 and _allocator.size() <= 16384);
 
@@ -72,20 +72,20 @@ ShadowAtlas::ShadowAtlas(uint32_t size, LightManager &lights) :
 	_id_to_allocated.reserve(64);
 	_light_pvs.reserve(64);
 
-	init_slots(24, 64, 256);
-}
 
-void ShadowAtlas::init_slots(size_t count0, size_t count1, size_t count2)
-{
 	clear();
+	_slots_sets[NoSunSlots].distribution.reserve(_allocator.num_allocatable_levels());
+	_slots_sets[WithSunSlots].distribution.reserve(_allocator.num_allocatable_levels());
 
-	_distribution.clear();
-	_distribution.reserve(_allocator.num_allocatable_levels());
-	generate_slots({ count0, count1, count2 });  // +1 for sun light
+	generate_slots({ 0, 0, 24, 64, 256 }, NoSunSlots);
+	generate_slots({ 1, 2, 18, 32, 192 }, WithSunSlots);
+
 
 	// define minimum render interval for each slot size
 	//                    { skip frames, interval }
 	// TODO: these sohould be configurable
+	_render_intervals.push_back({ 0,   0ms });
+	_render_intervals.push_back({ 0,   0ms });
 	_render_intervals.push_back({ 0,   0ms });
 	_render_intervals.push_back({ 1,  25ms });
 	_render_intervals.push_back({ 2,  50ms });
@@ -111,9 +111,17 @@ bool ShadowAtlas::create()
 	return bool(this);
 }
 
-size_t ShadowAtlas::update_allocations(const std::vector<LightIndex> &relevant_lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward)
+uint32_t ShadowAtlas::update_allocations(const std::vector<LightIndex> &relevant_lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward)
 {
 	const Time T0 = steady_clock::now();
+
+	// has sun appeared or disappeared -> then we need to switch the current slots set
+	const auto has_sun_light = _lights.sun_id() != NO_LIGHT_ID; // TODO: also heed its enablement state?
+	const auto is_using_sun_slots = _current_slot_set == WithSunSlots;
+	if(has_sun_light and not is_using_sun_slots)
+		switch_slots_set(WithSunSlots);
+	else if(not has_sun_light and is_using_sun_slots)
+		switch_slots_set(NoSunSlots);
 
 	static std::vector<ValueLight> valued_lights;
 	valued_lights.reserve(std::max(64ul, relevant_lights.size()));
@@ -123,7 +131,7 @@ size_t ShadowAtlas::update_allocations(const std::vector<LightIndex> &relevant_l
 	seen_lights.reserve(valued_lights.capacity());
 	seen_lights.clear();
 
-	// 1. assign value to all, shadow-casting, lights
+	// 1. assign a "value" to all shadow-casting lights
 	evaluate_lights(relevant_lights, view_pos, view_forward, valued_lights, seen_lights);
 
 	Counters counters;
@@ -140,7 +148,7 @@ size_t ShadowAtlas::update_allocations(const std::vector<LightIndex> &relevant_l
 	if(seen_lights.empty())
 		return counters.dropped;
 
-	// 2. "pour" the valued lights into the sizd -buckets.
+	// 2. "pour" the valued lights into the size-buckets.
 	//    NOTE: this is just a "desire"; not affected by already allocated slots
 
 	static std::vector<AtlasLight> desired_slots;
@@ -257,11 +265,11 @@ bool ShadowAtlas::remove_allocation(LightID light_id)
 	return true;
 }
 
-std::vector<std::pair<ShadowAtlas::SlotSize, size_t>> ShadowAtlas::allocated_counts() const
+std::vector<std::pair<ShadowAtlas::SlotSize, uint32_t>> ShadowAtlas::allocated_counts() const
 {
-	static dense_map<SlotSize, size_t> size_counts_map;
+	static dense_map<SlotSize, uint32_t> size_counts_map;
 	if(size_counts_map.empty())
-		size_counts_map.reserve(_distribution.size());
+		size_counts_map.reserve(curr_distribution().size());
 	size_counts_map.clear();
 
 	for(const auto &[light_id, atlas_light]: _id_to_allocated)
@@ -274,7 +282,7 @@ std::vector<std::pair<ShadowAtlas::SlotSize, size_t>> ShadowAtlas::allocated_cou
 			++found->second;
 	}
 
-	std::vector<std::pair<SlotSize, size_t>> size_counts;
+	std::vector<decltype(size_counts_map)::value_type> size_counts;
 	size_counts.reserve(size_counts_map.size());
 	for(const auto &[size, count]: size_counts_map)
 		size_counts.push_back({ size, count });
@@ -290,8 +298,8 @@ void ShadowAtlas::debug_dump_allocated(bool details) const
 {
 	Log::debug("atlas| === Allocated slots ({}):", _id_to_allocated.size());
 
-	small_vec<size_t, 6> size_counts;
-	size_counts.resize(_distribution.size());
+	small_vec<uint32_t, 6> size_counts;
+	size_counts.resize(curr_distribution().size());
 
 #if defined(_DEBUG)
 	auto num_used = 0u;
@@ -322,21 +330,21 @@ void ShadowAtlas::debug_dump_allocated(bool details) const
 		Log::debug("atlas|   Totals {{ {} }}", sizes_count_summary(size_counts));
 #if defined(_DEBUG)
 		auto num_available = 0u;
-		for(const auto &slot_set: _available_slots)
+		for(const auto &slot_set: curr_available())
 			num_available += slot_set.size();
 
-		assert(num_available + num_used == _total_num_slots);
+		assert(num_available + num_used == _slots_sets[_current_slot_set].total_num_slots);
 #endif
 	}
 }
 
 void ShadowAtlas::debug_dump_available()
 {
-	small_vec<size_t, 6> available_counts;
-	available_counts.resize(_distribution.size());
+	small_vec<uint32_t, 6> available_counts;
+	available_counts.resize(curr_distribution().size());
 
 	auto size_idx = 0u;
-	for(const auto &slot_set: _available_slots)
+	for(const auto &slot_set: curr_available())
 	{
 		available_counts[size_idx] += slot_set.size();
 		++size_idx;
@@ -393,7 +401,7 @@ void ShadowAtlas::update_slots_ssbo()
 			}
 		}
 
-		const auto shadow_idx = slots_params.size();  // i.e. the entry we're about to add
+		const auto shadow_idx = uint16_t(slots_params.size());  // i.e. the entry we're about to add
 		slots_params.emplace_back(view_projs, rects, texel_sizes);
 
 		_lights.set_shadow_index(light_id, shadow_idx);
@@ -419,7 +427,7 @@ static constexpr glm::vec3 s_cube_face_up[] = {
 	-AXIS_Y,
 };
 
-ShadowAtlas::LightViewProjection ShadowAtlas::light_view_projection(const LightWrapper &light, size_t idx) const
+ShadowAtlas::LightViewProjection ShadowAtlas::light_view_projection(const LightWrapper &light, uint32_t idx) const
 {
 	// TODO: this is actually only needed if the light has changed. cache it where?
 
@@ -853,7 +861,7 @@ ShadowAtlas::Counters ShadowAtlas::compute_desired(const std::vector<ValueLight>
 {
 	Counters counters;
 	// make a local copy of the distribution, so we can modify it
-	auto distribution = _distribution;
+	auto distribution = curr_distribution();
 
 	// Log::debug("atlas|  start_size_idx: {}   top value: {}  [{}]", size_idx, top_light_value, prioritized.begin()->light_id);
 
@@ -870,16 +878,27 @@ ShadowAtlas::Counters ShadowAtlas::compute_desired(const std::vector<ValueLight>
 		atlas_light.num_slots   = _sun_num_cascades;
 		atlas_light.slot_config = SlotConfig::Cascades;
 
-			   // allocate cascaded shadow map for the sun (N largest slot sizes)
+		// allocate cascaded shadow map for the sun (N largest slot sizes)
 		const auto slot_size = _allocator.max_size();
-		for(auto cascade = 0u; cascade < _sun_num_cascades; ++cascade)
-			atlas_light.slots[cascade].size = slot_size;
-		distribution[slot_size_idx(slot_size)] -= _sun_num_cascades;
+
+		const uint32_t cascade_slot_shift[] = { 0, 1, 2, 3, 3 };
+
+		atlas_light.slots[0].size = slot_size >> cascade_slot_shift[0];
+		--distribution[slot_size_idx(slot_size)];
+
+		atlas_light.slots[1].size = slot_size >> cascade_slot_shift[1];
+		--distribution[slot_size_idx(slot_size >> cascade_slot_shift[0])];
+
+		for(auto cascade = 2u; cascade < _sun_num_cascades; ++cascade)
+		{
+			atlas_light.slots[cascade].size = slot_size >> cascade_slot_shift[cascade];
+			--distribution[slot_size_idx(slot_size >> cascade_slot_shift[cascade])];
+		}
 
 		desired_slots.push_back(atlas_light);
 	}
 
-		   // handle all "regular" lights
+	// handle all "regular" lights
 	for(; valued_iter != valued_lights.end(); ++valued_iter)
 	{
 		const auto &prio_light = *valued_iter;
@@ -893,20 +912,20 @@ ShadowAtlas::Counters ShadowAtlas::compute_desired(const std::vector<ValueLight>
 		else
 			assert(false); // should never happen; there can be only one! (see above)
 
-			   // based on the light's value, deduce where to start searching for available slots
-		auto size_idx = static_cast<uint32_t>(std::floor(static_cast<float>(_distribution.size()) * (1 - std::min(prio_light.value, 1.f))));
+		// based on the light's value, deduce where to start searching for available slots
+		auto size_idx = s_normal_shadow_shift + static_cast<uint32_t>(std::floor(static_cast<float>(curr_distribution().size() - s_normal_shadow_shift) * (1 - std::min(prio_light.value, 1.f))));
 		// initial slot size for the light's value
 		auto slot_size = _allocator.max_size() >> size_idx;
 
 		// find a slot size tier that still has room for required slots
-		while(distribution[size_idx] < atlas_light.num_slots and size_idx < _distribution.size())
+		while(distribution[size_idx] < atlas_light.num_slots and size_idx < curr_distribution().size())
 		{
 			// not enough available here, next size
 			++size_idx;
 			slot_size >>= 1;
 		}
 
-		const auto slot_found = size_idx < _distribution.size(); // above loop exited early, i.e. found available slots
+		const auto slot_found = size_idx < curr_distribution().size(); // above loop exited early, i.e. found available slots
 		if(slot_found)
 		{
 			// define the desired slot(s)
@@ -946,8 +965,8 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const std::vector<AtlasLi
 	// size changes must be done in two phases; remember which they were
 	small_vec<uint32_t, 120> changed_size;
 
-	small_vec<size_t, 6> size_promised;  // max to min level slot sizes promised (used for pro/demotions)
-	size_promised.resize(_distribution.size());
+	small_vec<uint32_t, 6> size_promised;  // max to min level slot sizes promised (used for pro/demotions)
+	size_promised.resize(curr_distribution().size());
 
 	// deallocate for pro/demotions first, then allocations for pro/demotions, then finally new allocations
 
@@ -1039,7 +1058,7 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const std::vector<AtlasLi
 
 	// no more promises!  (we already delivered on those above)
 	size_promised.clear();
-	size_promised.resize(_distribution.size());
+	size_promised.resize(curr_distribution().size());
 
 	// finally, allocate totally NEW slots
 	for(const auto &desired: desired_slots)
@@ -1096,8 +1115,9 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const std::vector<AtlasLi
 
 std::string ShadowAtlas::sizes_count_summary(const AtlasLight &atlas_light) const
 {
-	small_vec<size_t, 6> size_counts;
-	size_counts.resize(_distribution.size());
+	small_vec<uint32_t, 6> size_counts;
+	size_counts.resize(curr_distribution().size());
+
 	for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
 	{
 		const auto slot_size = atlas_light.slots[idx].size;
@@ -1107,7 +1127,22 @@ std::string ShadowAtlas::sizes_count_summary(const AtlasLight &atlas_light) cons
 	return sizes_count_summary(size_counts);
 }
 
-std::string ShadowAtlas::sizes_count_summary(const small_vec<size_t, 6> &size_counts) const
+void ShadowAtlas::switch_slots_set(SlotSetCategory to)
+{
+	assert(_current_slot_set != to);
+
+#if defined(_DEBUG)
+	if(to == WithSunSlots)
+		Log::debug("atlas| switching slots set -> \x1b[1mWITH sun\x1b[m");
+	else
+		Log::debug("atlas| switching slots set -> \x1b[1mNO sun\x1b[m");
+#endif
+
+	clear();
+	_current_slot_set = to;
+}
+
+std::string ShadowAtlas::sizes_count_summary(const small_vec<uint32_t, 6> &size_counts) const
 {
 	std::string str;
 	str.reserve(32);
@@ -1127,12 +1162,12 @@ std::string ShadowAtlas::sizes_count_summary(const small_vec<size_t, 6> &size_co
 	return str;
 }
 
-bool ShadowAtlas::has_slots_available(const AtlasLight &atlas_light, const small_vec<size_t, 6> &size_promised) const
+bool ShadowAtlas::has_slots_available(const AtlasLight &atlas_light, const small_vec<uint32_t, 6> &size_promised) const
 {
 	struct SizeCount
 	{
 		SlotSize size;
-		size_t count;
+		uint32_t count;
 	};
 
 	small_vec<SizeCount, 3> size_counts;   // at most 3 unique sizes
@@ -1158,11 +1193,12 @@ bool ShadowAtlas::has_slots_available(const AtlasLight &atlas_light, const small
 		}
 	}
 
+	const auto &avail_slots = curr_available();
 	for(const auto &ss: size_counts)
 	{
 		const auto size_idx = slot_size_idx(ss.size);
 		const auto promised = size_promised[size_idx];
-		const auto num_free = _available_slots[size_idx].size();
+		const auto num_free = avail_slots[size_idx].size();
 		if(num_free - promised < ss.count)
 			return false;
 	}
@@ -1223,10 +1259,10 @@ ShadowAtlas::SlotID ShadowAtlas::alloc_slot(SlotSize slot_size, bool first)
 {
 	const auto size_idx = slot_size_idx(slot_size);
 
-	assert(size_idx < _available_slots.size());
+	auto &free_slots = curr_available()[size_idx];
 
-	auto &free_slots = _available_slots[size_idx];
 	assert(not free_slots.empty());
+	assert(size_idx < free_slots.size());
 
 	SlotID node_index;
 	if(first)
@@ -1250,9 +1286,9 @@ void ShadowAtlas::free_slot(SlotSize slot_size, SlotID node_index)
 {
 	const auto size_idx = slot_size_idx(slot_size);
 
-	assert(size_idx < _available_slots.size());
+	auto &free_slots = curr_available()[size_idx];
 
-	auto &free_slots = _available_slots[size_idx];
+	assert(size_idx < free_slots.size());
 	assert(free_slots.capacity() > free_slots.size()); // i.e. should never grow beyond its original size
 
 	// Log::debug("     free {:>4} -- {}    rem: {}", size, node_index, free_slots.size());
@@ -1274,35 +1310,40 @@ void ShadowAtlas::free_all_slots(const AtlasLight &atlas_light)
 	}
 }
 
-void ShadowAtlas::generate_slots(std::initializer_list<size_t> distribution)
+void ShadowAtlas::generate_slots(std::initializer_list<uint32_t> distribution, SlotSetCategory slots_cat)
 {
 	const auto T0 = steady_clock::now();
 
+	_allocator.reset();
+
 	// size of 'distribution' should match number of allocatable levels - 1
 	assert(distribution.size() == _allocator.num_allocatable_levels() - 1);
-	_distribution.clear();
 
-	auto idx = 0u;
+	SlotsSet &slots_set = _slots_sets[slots_cat];
+
+	slots_set.distribution.clear();
 	for(const auto count: distribution)
-		_distribution.push_back(count);   // max_size -> min_size (last is calculated below)
+		slots_set.distribution.push_back(count);   // max_size -> min_size (last is calculated below)
 
-	_total_num_slots = 0;
+	slots_set.total_num_slots = 0;
+
+	// chosen distribution + a "rest" level
+	slots_set.available_slots.resize(slots_set.distribution.size() + 1);
 
 	// use the allocator to calculate how many slots are possible
 	//  e.g. allocate the first N-1 levels of the distribution,
 	//  than ask the allocator to count how many of the last size there is room left for
 	auto slot_size = _allocator.max_size();
+
 	auto size_idx = 0u;
-
-	// chosen distribution + a "rest" level
-	_available_slots.resize(_distribution.size() + 1);
-
-	for(auto count: _distribution)
+	for(; size_idx < slots_set.distribution.size(); ++size_idx, slot_size >>= 1)
 	{
-		if(count == 0)
-			break;
+		const auto count = slots_set.distribution[size_idx];
 
-		auto &free_slots = _available_slots[size_idx];
+		if(count == 0)
+			continue;
+
+		auto &free_slots = slots_set.available_slots[size_idx];
 		free_slots.clear();  // in case we're called more than once
 		if(count > 0)
 		{
@@ -1311,42 +1352,42 @@ void ShadowAtlas::generate_slots(std::initializer_list<size_t> distribution)
 			for(auto idx = 0u; idx < count; ++idx)
 			{
 				const auto index = _allocator.allocate(slot_size);
-				assert(index != _allocator.end());
+				if(index == SpatialAllocator<>::BadIndex)
+					Log::error("slot distribution '{}' specifies over allocation: {} slots of size {}, only {} available", slots_cat == NoSunSlots?"no sun":"with sun", count, slot_size, idx);
+				assert(index != SpatialAllocator<>::BadIndex);
 				// prepend so they're allocated in "correct" order (uses pop_back())
 				free_slots.insert(free_slots.begin(), index);
 			}
-			_total_num_slots += free_slots.size();
+			slots_set.total_num_slots += free_slots.size();
 		}
-
-		slot_size >>= 1;
-		++size_idx;
 	}
 
 	// then the remaining space is allocated using the smallest size
 
-	auto &free_slots = _available_slots[size_idx];
+	auto &free_slots = slots_set.available_slots[size_idx];
 	// unfortunately we don't know how many there will be, but guessing plenty :)
 	free_slots.reserve(256);
 	do
 	{
 		const auto index = _allocator.allocate(slot_size);
-		if(index != _allocator.end())
+		if(index != SpatialAllocator<>::BadIndex)
 			free_slots.push_back(index);
 		else
 			break;
 	}
 	while(true);
 
-	_total_num_slots += free_slots.size();
+	slots_set.total_num_slots += free_slots.size();
+	slots_set.distribution[size_idx] = uint32_t(free_slots.size());
 
 	// write number of smallest-sized slots
-	_distribution.push_back(free_slots.size());
+	slots_set.distribution.push_back(uint32_t(free_slots.size()));
 
 	const auto Td = steady_clock::now() - T0;
 
-	Log::info("atlas| {} slots defined, in {}", _total_num_slots, duration_cast<microseconds>(Td));
+	Log::info("atlas| {} slots defined for '{}', in {}", slots_set.total_num_slots, slots_cat == NoSunSlots?"no sun":"with sun", duration_cast<microseconds>(Td));
 	slot_size = _allocator.max_size();
-	for(auto count: _distribution)
+	for(auto count: slots_set.distribution)
 	{
 		Log::info("atlas|  {:>4}: {} slots", slot_size, count);
 		slot_size >>= 1;

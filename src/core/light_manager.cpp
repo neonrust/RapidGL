@@ -73,13 +73,15 @@ void LightManager::reserve(size_t count)
 
 bool LightManager::remove(LightID light_id)
 {
-	if(_id_to_index.contains(light_id))
-	{
-		_entities.destroy(entt::entity(light_id)); // triggers _light_removed()
-		return true;
-	}
+	if(not _id_to_index.contains(light_id))
+		return false;
 
-	return false;
+	_entities.destroy(entt::entity(light_id)); // triggers _light_removed()
+
+	if(light_id == _sun_light_id)
+		_sun_light_id = NO_LIGHT_ID; // TODO: but also find
+
+	return true;
 }
 
 void LightManager::clear()

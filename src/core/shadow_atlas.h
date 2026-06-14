@@ -29,8 +29,8 @@ class ShadowAtlas : public RenderTarget::Texture2d
 public:
 	enum class CubeFace : uint32_t { PosX, NegX, PosY, NegY, PosZ, NegZ };
 
-	static constexpr size_t MAX_CASCADES = 4;
-	static constexpr size_t MAX_SLOTS= 6;
+	static constexpr uint32_t MAX_CASCADES = 4;
+	static constexpr uint32_t MAX_SLOTS= 6;
 	static_assert(MAX_CASCADES >= 1 and MAX_CASCADES <= MAX_SLOTS);
 	static_assert(MAX_SLOTS >= MAX_CASCADES and MAX_SLOTS >= 6);
 
@@ -67,7 +67,7 @@ public:
 		inline bool is_dirty() const { return _dirty; }
 
 		inline void set_dirty() const { _dirty = true; }       // called from allocated_lights(); const
-		inline void on_rendered(Time t, size_t new_hash) const // called from allocated_lights(); const
+		inline void on_rendered(Time t, uint32_t new_hash) const // called from allocated_lights(); const
 		{
 			_dirty = false;
 			_last_rendered = t;
@@ -79,7 +79,7 @@ public:
 		SlotConfig slot_config { SlotConfig::Single };
 		uint_fast8_t num_slots;
 		std::array<SlotDef, 6> slots; // per slot
-		mutable size_t hash { 0 };
+		mutable uint32_t hash { 0 };
 
 	private:
 		mutable bool _dirty { true };
@@ -89,11 +89,11 @@ public:
 
 		friend class ShadowAtlas;
 	};
-	static_assert(sizeof(AtlasLight) == 192);
+	static_assert(sizeof(AtlasLight) == 184);
 
 	struct CSMParams
 	{
-		size_t num_cascades { 0 };  // valid items in arrays
+		uint32_t num_cascades { 0 };  // valid items in arrays
 		std::array<float, MAX_CASCADES> split_depth;
 		std::array<glm::mat4, MAX_CASCADES> light_view;
 		std::array<glm::mat4, MAX_CASCADES> light_projection;
@@ -135,7 +135,7 @@ public:
 	inline bool csm_stabilization() const { return _csm_stabilization; }
 	inline void set_csm_stabilization(bool enabled) { _csm_stabilization = enabled; }
 
-	size_t update_allocations(const std::vector<LightIndex> &relevant_lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward);
+	uint32_t update_allocations(const std::vector<LightIndex> &relevant_lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward);
 
 	[[nodiscard]] const dense_map<LightID, AtlasLight> &allocated_lights() const { return _id_to_allocated; }
 	[[nodiscard]] SlotMask need_render(const AtlasLight &atlas_light, Time now, size_t hash, const Scene &scene) const;
@@ -147,16 +147,15 @@ public:
 	[[nodiscard]] const AtlasLight &allocated_sun() const;
 	[[nodiscard]] inline LightID sun_id() const { return _sun_id; }
 
-	void init_slots(size_t count0, size_t count1, size_t count2);
 	void clear();
 
 	void debug_dump_allocated(bool details=false) const;
 	void debug_dump_desired(const std::vector<AtlasLight> &desired_slots) const;
 	void debug_dump_available();
 
-	[[nodiscard]] std::vector<std::pair<SlotSize, size_t>> allocated_counts() const;
+	[[nodiscard]] std::vector<std::pair<SlotSize, uint32_t>> allocated_counts() const;
 
-	[[nodiscard]] inline size_t slot_size_idx(SlotSize size) const { return _allocator.level_from_size(size) - _allocator.largest_level(); }
+	[[nodiscard]] inline uint32_t slot_size_idx(SlotSize size) const { return _allocator.level_from_size(size) - _allocator.largest_level(); }
 
 	bool remove_allocation(LightID light_id);
 
@@ -205,14 +204,21 @@ private:
 		inline bool operator > (const ValueLight &that) const { return value > that.value; }
 	};
 	static_assert(sizeof(ValueLight) == 12);
+	struct SlotsSet
+	{
+		small_vec<uint32_t, 6>            distribution;  // slot counts for each of the levels (from largest to smallest)
+		small_vec<std::vector<SlotID>, 6> available_slots;
+		uint32_t total_num_slots { 0 };
+	};
+	enum SlotSetCategory { NoSunSlots, WithSunSlots };
 
 	void evaluate_lights(const std::vector<LightIndex> &relevant_lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward, std::vector<ValueLight> &prioritized, dense_set<LightID> &seen_lights);
 	float evaluate_light(const bounds::Sphere &light_sphere, const glm::vec3 &view_pos, const glm::vec3 &view_forward) const;
 	Counters compute_desired(const std::vector<ValueLight> &valued_lights, std::vector<AtlasLight> &desired_slots);
 	Counters apply_desired_slots(const std::vector<AtlasLight> &desired_slots, Time now);
 	void log_changes(const Counters &counters, size_t num_prio, Time start_time);
-	void generate_slots(std::initializer_list<size_t> distribution);
-	bool has_slots_available(const AtlasLight &atlas_light, const small_vec<size_t, 6> &num_promised) const;
+	void generate_slots(std::initializer_list<uint32_t> distribution, SlotSetCategory slots_cat);
+	bool has_slots_available(const AtlasLight &atlas_light, const small_vec<uint32_t, 6> &num_promised) const;
 	SlotID alloc_slot(SlotSize slot_size, bool first=true);
 	void free_slot(SlotSize slot_size, SlotID node_index);
 	void free_all_slots(const AtlasLight &atlas_light);
@@ -223,19 +229,23 @@ private:
 		float near_z;
 		float far_z;
 	};
-	LightViewProjection light_view_projection(const LightWrapper &light, size_t idx=0) const;
+	LightViewProjection light_view_projection(const LightWrapper &light, uint32_t idx=0) const;
 	std::string sizes_count_summary(const AtlasLight &atlas_light) const;
-	std::string sizes_count_summary(const small_vec<size_t, 6> &size_counts) const;
+	std::string sizes_count_summary(const small_vec<uint32_t, 6> &size_counts) const;
 
 private:
 	LightManager &_lights;  // one could argue that the association should be the other way around...
 
-	small_vec<size_t, 6> _distribution;  // slot sizes of each of the levels (from max to min)
-	small_vec<std::vector<SlotID>, 6> _available_slots;
+	SlotSetCategory _current_slot_set { NoSunSlots };
+	std::array<SlotsSet, 2> _slots_sets;
+	inline small_vec<uint32_t, 6> &curr_distribution() { return _slots_sets[_current_slot_set].distribution; }
+	inline const small_vec<uint32_t, 6> &curr_distribution() const { return _slots_sets[_current_slot_set].distribution; }
+	inline small_vec<std::vector<SlotID>, 6> &curr_available() { return _slots_sets[_current_slot_set].available_slots; }
+	inline const small_vec<std::vector<SlotID>, 6> &curr_available() const { return _slots_sets[_current_slot_set].available_slots; }
+	void switch_slots_set(SlotSetCategory to);
 
 	dense_map<LightID, AtlasLight> _id_to_allocated;
 
-	size_t _total_num_slots;
 	uint_fast8_t _sun_num_cascades { 3 };
 	LightID _sun_id { NO_LIGHT_ID };
 	float _csm_frustum_split_mix { 0.55f };  // 0 = linear, 1 = logarithic
