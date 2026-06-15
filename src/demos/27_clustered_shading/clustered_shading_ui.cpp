@@ -317,7 +317,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			if(ImGui::SliderFloat("CSM backoff distance", &backoff, 1.f, 100.f, "%.1f"))
 				_shadow_atlas.set_csm_backoff(backoff);
 			ImGui::SliderFloat("Shadow occlusion",   &m_shadow_occlusion,             .05f,  1.f,   "%.2f");
-			ImGui::SliderFloat("Bias constant",      &m_shadow_bias_constant,        -.02f,   .02f, "%.4f");
+			ImGui::SliderFloat("Bias constant",      &m_shadow_bias_constant,        -.001f,  .001f, "%.5f");
 			ImGui::SliderFloat("Bias slope scale",   &m_shadow_bias_slope_scale,     -.05f,   .05f, "%.4f");
 			ImGui::SliderFloat("Bias slope power",   &m_shadow_bias_slope_power,      .01f,  5.f,   "%.3f");
 			ImGui::SliderFloat("Bias dist. scale",   &m_shadow_bias_distance_scale, -2.f,    2.f,   "%.4f");
