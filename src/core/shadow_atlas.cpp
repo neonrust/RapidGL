@@ -116,7 +116,7 @@ uint32_t ShadowAtlas::update_allocations(const std::vector<LightIndex> &relevant
 	const Time T0 = steady_clock::now();
 
 	// has sun appeared or disappeared -> then we need to switch the current slots set
-	const auto has_sun_light = _lights.sun_id() != NO_LIGHT_ID; // TODO: also heed its enablement state?
+	const auto has_sun_light = _lights.sun_id() != NO_LIGHT_ID and _lights.is_enabled(_lights.sun_id());
 	const auto is_using_sun_slots = _current_slot_set == WithSunSlots;
 	if(has_sun_light and not is_using_sun_slots)
 		switch_slots_set(WithSunSlots);
