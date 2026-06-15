@@ -170,7 +170,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			static float spec_distance { m_camera.farPlane()*0.1f };
 			if(ImGui::SliderFloat("Specular distance", &spec_distance, .5f, 100.f, "%.1f"))
 				m_clustered_pbr_shader->setUniform("u_specular_max_distance"sv, spec_distance);
-			if(auto sun_id = _shadow_atlas.sun_id(); sun_id != NO_LIGHT_ID)
+			if(auto sun_id = _light_mgr.sun_id(); sun_id != NO_LIGHT_ID)
 				ImGui::SliderFloat("Sun size", &_sun_size, 0.1f, 5.f, "%.1f");
 			ImGui::Text("Cluster  resolution: %u x %u x %u", m_cluster_resolution.x, m_cluster_resolution.y, m_cluster_resolution.z);
 			ImGui::Checkbox("Draw cluster grid (slow!)  [c]", &m_debug_draw_cluster_grid);
