@@ -256,12 +256,6 @@ bool ShadowAtlas::remove_allocation(LightID light_id)
 	_id_to_allocated.erase(found);
 	_lights.clear_shadow_index(light_id);
 
-	if(light_id == _sun_id)
-	{
-		_sun_id = NO_LIGHT_ID;
-		_csm_params.clear();
-	}
-
 	return true;
 }
 
@@ -362,8 +356,6 @@ void ShadowAtlas::debug_dump_desired(const std::vector<AtlasLight> &desired_slot
 
 void ShadowAtlas::update_slots_ssbo()
 {
-	// NOTE: if a "sun" light has shadow map allocated (see allocated_sun()), update_csm_params() needs to be called before this
-
 	static std::vector<decltype(_shadow_slots_info_ssbo)::value_type> slots_params;
 
 	slots_params.reserve(_id_to_allocated.size());
@@ -738,20 +730,6 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 	return _csm_params;
 }
 
-const ShadowAtlas::AtlasLight & ShadowAtlas::allocated_sun() const
-{
-	if(_sun_id == NO_LIGHT_ID)
-	{
-		static const AtlasLight sentinel;
-		return sentinel;
-	}
-
-	assert(_id_to_allocated.contains(_sun_id));
-	assert(_lights.contains(_sun_id));
-
-	return _id_to_allocated.find(_sun_id)->second;
-}
-
 void ShadowAtlas::clear()
 {
 	// Counters counters;
@@ -1104,9 +1082,6 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const std::vector<AtlasLi
 			Log::debug("atlas| {{{}}} allocated -> {}", light_id, sizes_count_summary(atlas_light));
 
 			_id_to_allocated[light_id] = atlas_light;
-
-			if(desired.slot_config == SlotConfig::Cascades)
-				_sun_id = light_id;
 		}
 	}
 

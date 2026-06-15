@@ -76,10 +76,37 @@ bool LightManager::remove(LightID light_id)
 	if(not _id_to_index.contains(light_id))
 		return false;
 
+	const auto general = _entities.get<component::LightGeneral>(entt::entity(light_id));
+	--_num_light_type[uint32_t(general.light_type)];
+
 	_entities.destroy(entt::entity(light_id)); // triggers _light_removed()
 
 	if(light_id == _sun_light_id)
-		_sun_light_id = NO_LIGHT_ID; // TODO: but also find
+	{
+		_sun_light_id = NO_LIGHT_ID;
+		_sun_light_intensity = 0.f;
+
+		if(_num_light_type[uint32_t(LightType::Directional)] > 0)
+		{
+			// use strongest directional light as sun, if any
+			auto dir_lights = _entities.view<component::LightGeneral, component::DirectionalLight>();
+			LightID strongest_id { NO_LIGHT_ID };
+			float strongest { 0.f };
+			for(const auto &[light_id, general, _]: dir_lights.each())
+			{
+				if(general.intensity > strongest)
+				{
+					strongest = general.intensity;
+					strongest_id = LightID(light_id);
+				}
+			}
+			if(strongest_id != NO_LIGHT_ID)
+			{
+				_sun_light_id = strongest_id;
+				_sun_light_intensity = strongest;
+			}
+		}
+	}
 
 	return true;
 }
@@ -91,6 +118,9 @@ void LightManager::clear()
 	_lights.clear();
 	_dirty.clear();
 	_dirty_list.clear();
+
+	_sun_light_id = NO_LIGHT_ID;
+	_sun_light_intensity = 0.f;
 
 	for(auto idx = 0u; idx < LIGHT_TYPE__COUNT; ++idx)
 		_num_light_type[idx] = 0;

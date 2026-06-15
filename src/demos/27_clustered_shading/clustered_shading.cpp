@@ -572,8 +572,8 @@ void ClusteredShading::input()
 	if(_pov_light_id != NO_LIGHT_ID and Input::wasKeyPressed(KeyCode::F3))
 		_light_mgr.set_enabled(_pov_light_id, not _light_mgr.is_enabled(_pov_light_id));
 
-	if(_shadow_atlas.sun_id() != NO_LIGHT_ID and Input::wasKeyPressed(KeyCode::F4))
-		_light_mgr.set_enabled(_shadow_atlas.sun_id(), not _light_mgr.is_enabled(_shadow_atlas.sun_id()));
+	if(_light_mgr.sun_id() != NO_LIGHT_ID and Input::wasKeyPressed(KeyCode::F4))
+		_light_mgr.set_enabled(_light_mgr.sun_id(), not _light_mgr.is_enabled(_light_mgr.sun_id()));
 
 	if (Input::wasKeyReleased(KeyCode::F12))
     {
@@ -1373,7 +1373,7 @@ void ClusteredShading::renderShadowMaps()
 	static steady_clock::time_point last_eval_time;
 
 	// if there's a sun allocated, update its shadow parameters
-	if(const auto &sun_id = _shadow_atlas.sun_id(); sun_id != NO_LIGHT_ID)
+	if(const auto &sun_id = _light_mgr.sun_id(); sun_id != NO_LIGHT_ID)
 	{
 		// technically needed only if/when light's direction or camera changed, or objects moved,
 		//    but it's nearly always
@@ -1622,7 +1622,7 @@ void ClusteredShading::renderLightGeometry()
 	}
 
 	// draw "sun"   (or just draw all directional lights?)
-	if(auto sun_id = _shadow_atlas.sun_id(); sun_id != NO_LIGHT_ID)
+	if(auto sun_id = _light_mgr.sun_id(); sun_id != NO_LIGHT_ID)
 	{
 		// draw a "sun" disc (or moon, I suppose); only supports one
 		// const auto &L = _light_mgr.gpu_get_by_id(sun_id);

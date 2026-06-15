@@ -266,6 +266,7 @@ private:
 	// essentially a CPU-side mirror of the SSBO  (otherwise we'd use a mapping container)
 	LightList _lights;
 	LightID _sun_light_id { NO_LIGHT_ID };
+	float   _sun_light_intensity { 0.f };
 
 	buffer::Storage<GPULight> _lights_ssbo;
 
@@ -360,7 +361,13 @@ auto LightManager::add(const LTP &ltp) -> std::expected<LightID, LightError>
 	create_components(light_id, ltp); // will trigger _light_added
 
 	if constexpr (std::is_same_v<LTP, DirectionalLightParams>)
-		_sun_light_id = light_id;
+	{
+		if(ltp.intensity > _sun_light_intensity)
+		{
+			_sun_light_id = light_id;
+			_sun_light_intensity = ltp.intensity;
+		}
+	}
 
 	return light_id;
 }

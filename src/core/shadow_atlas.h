@@ -144,9 +144,6 @@ public:
 	const CSMParams &update_csm_params(LightID light_id, const Camera &camera);//, float radius_uv=0.5f);
 	inline const CSMParams &csm_params() const { return _csm_params; }
 
-	[[nodiscard]] const AtlasLight &allocated_sun() const;
-	[[nodiscard]] inline LightID sun_id() const { return _sun_id; }
-
 	void clear();
 
 	void debug_dump_allocated(bool details=false) const;
@@ -247,7 +244,6 @@ private:
 	dense_map<LightID, AtlasLight> _id_to_allocated;
 
 	uint_fast8_t _sun_num_cascades { 3 };
-	LightID _sun_id { NO_LIGHT_ID };
 	float _csm_frustum_split_mix { 0.55f };  // 0 = linear, 1 = logarithic
 	float _csm_cascade_backoff { 4.f };
 	bool _csm_stabilization { true };
