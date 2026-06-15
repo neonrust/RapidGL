@@ -205,7 +205,7 @@ private:
 	bool  m_shadow_contacts              = true;
 	float m_shadow_contact_max_ray_length = 0.06f;
 	float m_shadow_bias_constant         = -0.0001f;
-	float m_shadow_bias_slope_scale      = 0.0018f;
+	float m_shadow_bias_slope_scale      = 0.0039f;
 	float m_shadow_bias_slope_power      = 1.f;
 	float m_shadow_bias_distance_scale   = 0.0004f;
 	float m_shadow_bias_texel_size_mix   = 0.48f;
