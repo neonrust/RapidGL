@@ -21,6 +21,7 @@ uniform bool  u_shadow_colorize;
 uniform bool  u_shadow_contacts;
 uniform float u_shadow_contact_offset;
 uniform float u_shadow_contact_max_ray_length;
+uniform float u_shadow_contact_max_zdiff;
 uniform bool  u_shadow_colorize_contact;
 
 uniform float u_csm_light_radius_uv;  // PCSS
@@ -28,7 +29,7 @@ uniform uint  u_csm_num_cascades;
 uniform float u_csm_split_depth[MAX_CASCADES];
 uniform vec2  u_csm_cascade_near_far[MAX_CASCADES];
 
-const float s_shadow_contact_threshold = 0.1;
+const float s_shadow_contact_threshold = 0.01;
 
 vec2 shadow_atlas_texel_size;
 
@@ -237,21 +238,27 @@ bool checkContactShadow(vec3 pos_vs, vec3 to_light_vs, mat4 projection)
 	Ray ray = Ray(pos_vs, to_light_vs, u_shadow_contact_max_ray_length);
 	float ray_stride = ray.max_length/SSCS_NUM_STEPS; // TODO: approx. 1 pixel ?
 
-	for(float ray_t = 0; ray_t < ray.max_length; ray_t += ray_stride)
+	float ray_start = 0; // TODO: randomize start ( 0, ray_stride )
+	for(float ray_t = ray_start; ray_t < ray.max_length; ray_t += ray_stride)
 	{
 		vec3 p = rayPoint(ray, ray_t);
 		vec4 clip_p = projection * vec4(p, 1);
 		if(clip_p.w <= 0)
-			continue;  // went past the camera's near plane; just ignore it
+			return false;  // went past the camera's near plane; just ignore it
 
 		vec3 ndc_p = clip_p.xyz / clip_p.w;
 		vec3 uv_p = ndc_p * 0.5 + 0.5;
 		if(any(lessThan(uv_p.xy, vec2(0))) || any(greaterThan(uv_p.xy, vec2(1))))
-			continue;  // outside the screen; can't sample depth even
+			return false;  // outside the screen; can't sample depth even
 
-		// check whether view depth @ uv_p.xy is less deep than 'uv_p.z'
-		if(sampleViewDepth(uv_p.xy) < uv_p.z)
+		// check whether view depth is closer to the camera than the fragment
+		float frag_depth = uv_p.z;
+		float view_depth = sampleViewDepth(uv_p.xy);
+		if(view_depth < frag_depth && frag_depth - view_depth < u_shadow_contact_max_zdiff)
+		{
+			// TODO: write to separate texture -> apply (slightly) blurred
 			return true;
+		}
 	}
 	return false;
 }

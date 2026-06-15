@@ -432,10 +432,11 @@ vec3 dirLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 	float slope_fraction = dot(in_normal, -light.direction);
 	bias = mix(0.01, 0.0, slope_fraction)*u_shadow_bias_slope_scale;
 	bias /= float(cascade_index + 1);
+	bias += u_shadow_bias_constant;
 
 	// float light_radius = u_csm_light_radius_uv / (pow(float(u_csm_num_cascades), cascade_index) * float(u_csm_num_cascades));
 
-	float shadow_visibility = shadowVisibility(uv_pos, 0, light, slot_rect, texel_size, bias);
+	float shadow_visibility = shadowVisibility(uv_pos, 50000, light, slot_rect, texel_size, bias);
 	const float lit_threshold = SHADOW_COMPRESSION(light);
 	shadow_visibility = clamp((shadow_visibility - lit_threshold) / (1 - lit_threshold), 0, 1);
 

@@ -1959,8 +1959,9 @@ void ClusteredShading::renderShading(const Camera &camera)
 	shader.setUniform("u_shadow_bias_scale"sv,          m_shadow_bias_scale);
 	shader.setUniform("u_shadow_occlusion"sv,           m_shadow_occlusion);
 	shader.setUniform("u_shadow_colorize"sv,            _debug_colorize_shadows);
-	shader.setUniform("u_shadow_contacts"sv,            m_shadow_contacts);
-	shader.setUniform("u_shadow_contact_max_ray_length"sv, m_shadow_contact_max_ray_length);
+	shader.setUniform("u_shadow_contacts"sv,            _shadow_contacts);
+	shader.setUniform("u_shadow_contact_max_ray_length"sv, _shadow_contact_max_ray_length);
+	shader.setUniform("u_shadow_contact_max_zdiff"sv,   _shadow_contact_max_zdiff);
 	shader.setUniform("u_shadow_colorize_contact"sv,    _debug_colorize_contact_shadows);
 	shader.setUniform("u_shadow_contact_offset"sv,      0.05f);
 

@@ -202,8 +202,9 @@ private:
 	glm::vec3 _ambient_radiance          = { 0.02f, 0.02f, 0.02f };
 	float _ibl_strength                  = 1.f;
 	float m_shadow_occlusion             = 1.f;//0.8f;
-	bool  m_shadow_contacts              = true;
-	float m_shadow_contact_max_ray_length = 0.06f;
+	bool  _shadow_contacts               = true;
+	float _shadow_contact_max_ray_length = 0.06f;
+	float _shadow_contact_max_zdiff = 0.05f;
 	float m_shadow_bias_constant         = -0.0001f;
 	float m_shadow_bias_slope_scale      = 0.0039f;
 	float m_shadow_bias_slope_power      = 1.f;
