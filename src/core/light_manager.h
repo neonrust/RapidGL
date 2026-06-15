@@ -275,8 +275,8 @@ private:
 	static float s_radius_power;
 	float _falloff_power { 50.f };
 
-	size_t _num_light_type[LIGHT_TYPE__COUNT];
-	size_t _light_type_limit[LIGHT_TYPE__COUNT];
+	std::array<uint32_t, LIGHT_TYPE__COUNT> _num_light_type;
+	std::array<uint32_t, LIGHT_TYPE__COUNT> _light_type_limit;
 
 	std::array<entt::scoped_connection, 6> _signals;
 };
