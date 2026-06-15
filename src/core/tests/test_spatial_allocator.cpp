@@ -39,7 +39,7 @@ suite<fixed_string("SpatialAllocator")> sa_suite([]{
 		SpatialAllocator a(1024u, 4u, 2u);
 		expect(a.num_allocated(256) == 0);
 		auto node = a.allocate(256);
-		expect(node != a.end()) << std::format("allocated not > {}", node);
+		expect(node != SpatialAllocator<>::BadIndex) << std::format("allocated not > {}", node);
 		expect(a.num_allocated(256) == 1);
 		a.free(node);
 		expect(a.num_allocated(256) == 0);
@@ -47,17 +47,17 @@ suite<fixed_string("SpatialAllocator")> sa_suite([]{
 
 	"allocate_bad_size"_test = [] {
 		SpatialAllocator a(1024u, 4u, 2u);
-		expect(a.allocate(512) == a.end());
-		expect(a.allocate(32) == a.end());
+		expect(a.allocate(512) == SpatialAllocator<>::BadIndex);
+		expect(a.allocate(32) == SpatialAllocator<>::BadIndex);
 	};
 
 	"allocate_full"_test = [] {
 		SpatialAllocator a(1024u, 4u, 2u);
 		for(auto idx = 0u; idx < 16; ++idx)
-			expect(a.allocate(256) != a.end());
+			expect(a.allocate(256) != SpatialAllocator<>::BadIndex);
 		expect(a.num_allocated().size() == 1);
 		expect(a.num_allocated(256) == 16);
-		expect(a.allocate(256) == a.end());
+		expect(a.allocate(256) == SpatialAllocator<>::BadIndex);
 		expect(a.num_allocated().size() == 1);
 		expect(a.num_allocated(256) == 16);
 	};
@@ -65,10 +65,10 @@ suite<fixed_string("SpatialAllocator")> sa_suite([]{
 	"allocate_demote"_test = [] {
 		SpatialAllocator a(1024u, 4u, 2u);
 		for(auto idx = 0u; idx < 15; ++idx)
-			expect(a.allocate(256) != a.end());
-		expect(a.allocate(128) != a.end());
+			expect(a.allocate(256) != SpatialAllocator<>::BadIndex);
+		expect(a.allocate(128) != SpatialAllocator<>::BadIndex);
 		auto demoted = a.allocate(256, 128);
-		expect(demoted != a.end());
+		expect(demoted != SpatialAllocator<>::BadIndex);
 		expect(a.num_allocated().size() == 2); // 2 buckets used
 		expect(a.num_allocated(256) == 15);
 		expect(a.num_allocated(128) == 2);
@@ -78,19 +78,19 @@ suite<fixed_string("SpatialAllocator")> sa_suite([]{
 	"allocate_after_free_many"_test = [] {
 		SpatialAllocator a(1024u, 4u, 2u);
 		for(auto idx = 0u; idx < 15; ++idx)
-			expect(a.allocate(256) != a.end());
+			expect(a.allocate(256) != SpatialAllocator<>::BadIndex);
 		std::vector<decltype(a)::NodeIndex> small;
 		for(auto idx = 0u; idx < 4; ++idx)
 		{
 			auto index = a.allocate(128);
-			expect(index != a.end());
+			expect(index != SpatialAllocator<>::BadIndex);
 			small.push_back(index);
 		}
-		expect(a.allocate(256) == a.end());
-		expect(a.allocate(64) == a.end());
+		expect(a.allocate(256) == SpatialAllocator<>::BadIndex);
+		expect(a.allocate(64) == SpatialAllocator<>::BadIndex);
 		for(const auto &index: small)
 			a.free(index);
-		expect(a.allocate(256) != a.end());
+		expect(a.allocate(256) != SpatialAllocator<>::BadIndex);
 	};
 
 	"rects"_test = [] {
