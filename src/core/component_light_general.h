@@ -9,7 +9,7 @@ namespace RGL
 
 enum class LightType : uint_fast8_t;
 
-static constexpr float s_default_shadow_compression = 0.5f;
+static constexpr float s_default_shadow_compression = 0.3f;
 
 namespace component
 {
