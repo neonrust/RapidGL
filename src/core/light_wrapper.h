@@ -1,14 +1,14 @@
 #pragma once
 
-#include "component_transform.h"
-#include "component_light_general.h"
-#include "component_light_point.h"
-#include "component_light_directional.h"
-#include "component_light_spot.h"
-#include "component_light_rect.h"
-#include "component_light_tube.h"
-#include "component_light_sphere.h"
-#include "component_light_disc.h"
+#include "component/transform.h"
+#include "component/light_general.h"
+#include "component/light_point.h"
+#include "component/light_directional.h"
+#include "component/light_spot.h"
+#include "component/light_rect.h"
+#include "component/light_tube.h"
+#include "component/light_sphere.h"
+#include "component/light_disc.h"
 #include "generated/shared-structs.h"
 #include <variant>
 

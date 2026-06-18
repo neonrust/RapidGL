@@ -1,4 +1,4 @@
-#include "component_transform.h"
+#include "component/transform.h"
 
 namespace RGL::component
 {

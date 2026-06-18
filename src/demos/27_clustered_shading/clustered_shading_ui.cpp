@@ -7,8 +7,8 @@
 
 #include "filesystem.h"
 #include "constants.h"
-#include "component_light_general.h"
-#include "component_light_spot.h"
+#include "component/light_general.h"
+#include "component/light_spot.h"
 #include <ranges>
 
 #include "ImGuizmo.h"

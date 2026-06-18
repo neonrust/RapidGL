@@ -1,10 +1,10 @@
 #include "clustered_shading.h"
 
-#include "component_model.h"
+#include "component/model.h"
 #include "hash_vec2.h" // IWYU pragma: keep
 
-#include "component_light_general.h"
-#include "component_transform.h"
+#include "component/light_general.h"
+#include "component/transform.h"
 #include "instance_attributes.h"
 #include "light_wrapper.h"
 #include "window.h"

@@ -10,7 +10,7 @@
 #include "static_model.h"
 
 
-#include "component_transform.h"
+#include "component/transform.h"
 
 class GPULight;
 

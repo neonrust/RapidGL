@@ -5,8 +5,8 @@
 
 #include <execution>
 
-#include "component_model.h"
-#include "component_bounds.h"
+#include "component/model.h"
+#include "component/bounds.h"
 
 #include <entt/entity/registry.hpp>
 

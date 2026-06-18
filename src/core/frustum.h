@@ -1,3 +1,5 @@
+#pragma once
+
 #include "bounds.h"
 #include "plane.h"
 

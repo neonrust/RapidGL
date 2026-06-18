@@ -11,10 +11,10 @@
 #include "util.h"
 #include "gui/gui.h"   // IWYU pragma: keep
 
-#include "component_model.h"
-#include "component_transform.h"
-#include "component_light_general.h"
-#include "component_light_spot.h"
+#include "component/model.h"
+#include "component/transform.h"
+#include "component/light_general.h"
+#include "component/light_spot.h"
 
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/random.hpp>

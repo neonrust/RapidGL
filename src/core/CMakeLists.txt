@@ -4,6 +4,7 @@ set(CORE_LIB_NAME "RapidGLCore" CACHE STRING "Name of the core library")
 
 # Add source files
 set(SOURCE_FILES_CORE
+	component/transform.cpp
 	gui/font.cpp
 	gui/gui.cpp
 	gui/imgui_impl_glfw.cpp
@@ -13,7 +14,6 @@ set(SOURCE_FILES_CORE
 	buffer.cpp
 	buffer_binds.h
 	camera.cpp
-	component_transform.cpp
 	core_app.cpp
 	filesystem.cpp
 	frustum.cpp
@@ -47,6 +47,19 @@ set(SOURCE_FILES_CORE
 
 # Add header files
 set(HEADER_FILES_CORE
+	component/bounds.h
+	component/camera_general.h
+	component/camera_perspective.h
+	component/light_directional.h
+	component/light_disc.h
+	component/light_general.h
+	component/light_point.h
+	component/light_spot.h
+	component/light_rect.h
+	component/light_sphere.h
+	component/light_tube.h
+	component/model.h
+	component/transform.h
 	gui/font.h
 	gui/gui.h
 	gui/imgui_impl_glfw.h
@@ -57,17 +70,6 @@ set(HEADER_FILES_CORE
 	buffer.h
 	camera.h
 	common.h
-	component_bounds.h
-	component_light_directional.h
-	component_light_disc.h
-	component_light_general.h
-	component_light_point.h
-	component_light_spot.h
-	component_light_rect.h
-	component_light_sphere.h
-	component_light_tube.h
-	component_model.h
-	component_transform.h
 	container_types.h
 	core_app.h
 	debug_output_gl.h
