@@ -17,6 +17,7 @@ set(SOURCE_FILES_CORE
 	core_app.cpp
 	filesystem.cpp
 	frustum.cpp
+	game_time.cpp
 	input.cpp
 	input_bind.cpp
 	instance_attributes.cpp
@@ -47,6 +48,8 @@ set(SOURCE_FILES_CORE
 
 # Add header files
 set(HEADER_FILES_CORE
+	camera_system.h
+	camera_system.cpp
 	component/bounds.h
 	component/camera_general.h
 	component/camera_perspective.h
@@ -73,9 +76,12 @@ set(HEADER_FILES_CORE
 	container_types.h
 	core_app.h
 	debug_output_gl.h
+	dynamic_object.h
+	entity_system.h
 	filesystem.h
 	formatters_glm.h
 	frustum.h
+	game_time.h
 	gl_lookup.h
 	gl_timer.h
 	hash_combine.h
@@ -161,6 +167,7 @@ target_link_libraries(${CORE_LIB_NAME}
 	assimp
 	glfw
 	imgui
+	imguizmo
 	glm::glm
 	tinyddsloader
 )

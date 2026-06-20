@@ -7,7 +7,7 @@ namespace RGL::PP
 
 bool MipmapBlur::create()
 {
-	new (&_downscale_blur) Shader("src/demos/27_clustered_shading/mipmap_blur.comp");
+	new (&_downscale_blur) Shader("resources/shaders/mipmap_blur.comp");
 	_downscale_blur.link();
 	assert(_downscale_blur);
 	_downscale_blur.setPostBarrier(Shader::Barrier::Image);

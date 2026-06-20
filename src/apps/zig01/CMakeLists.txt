@@ -23,15 +23,7 @@ file(GLOB_RECURSE SHADER_FILES
 	${CMAKE_CURRENT_SOURCE_DIR}/*.glh
 )
 set(SHADER_FILES
-	shaders/cubemap.vert
-	shaders/equirectangular_to_cubemap.frag
-	shaders/gaussian_blur_lds.comp
-	shaders/gaussian_blur_parametric.comp
-	shaders/irradiance_convolution.frag
-	shaders/precompute_brdf.frag
-	shaders/prefilter_cubemap.frag
-	shaders/shadow_cube.frag
-	shaders/shadow_cube.vert
+	# nothing, currently
 )
 
 # Define the executable

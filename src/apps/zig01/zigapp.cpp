@@ -217,7 +217,6 @@ void ZigApp::init_app()
 
     /// Create shaders.
 	const fs::path core_shaders = "resources/shaders/";
-	const fs::path shaders = "src/demos/27_clustered_shading/shaders/";
 
 	Util::AddShaderSearchPath(core_shaders);
 
@@ -261,19 +260,19 @@ void ZigApp::init_app()
 	m_light_geometry_shader->link();
 	assert(*m_light_geometry_shader);
 
-	m_equirectangular_to_cubemap_shader = std::make_shared<Shader>(shaders/"cubemap.vert", shaders/"equirectangular_to_cubemap.frag");
+	m_equirectangular_to_cubemap_shader = std::make_shared<Shader>(core_shaders/"cubemap.vert", core_shaders/"equirectangular_to_cubemap.frag");
     m_equirectangular_to_cubemap_shader->link();
 	assert(*m_equirectangular_to_cubemap_shader);
 
-	m_irradiance_convolution_shader = std::make_shared<Shader>(shaders/"cubemap.vert", shaders/"irradiance_convolution.frag");
+	m_irradiance_convolution_shader = std::make_shared<Shader>(core_shaders/"cubemap.vert", core_shaders/"irradiance_convolution.frag");
     m_irradiance_convolution_shader->link();
 	assert(*m_irradiance_convolution_shader);
 
-	m_prefilter_env_map_shader = std::make_shared<Shader>(shaders/"cubemap.vert", shaders/"prefilter_cubemap.frag");
+	m_prefilter_env_map_shader = std::make_shared<Shader>(core_shaders/"cubemap.vert", core_shaders/"prefilter_cubemap.frag");
     m_prefilter_env_map_shader->link();
 	assert(*m_prefilter_env_map_shader);
 
-	m_precompute_brdf = std::make_shared<Shader>(core_shaders/"FSQ.vert", shaders/"precompute_brdf.frag");
+	m_precompute_brdf = std::make_shared<Shader>(core_shaders/"FSQ.vert", core_shaders/"precompute_brdf.frag");
     m_precompute_brdf->link();
 	assert(*m_precompute_brdf);
 
