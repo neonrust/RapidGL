@@ -1,4 +1,4 @@
-#include "clustered_shading.h"
+#include "zigapp.h"
 
 #include "gl_lookup.h"
 #include "gui/gui.h"   // IWYU pragma: keep
@@ -38,7 +38,7 @@ inline ImVec2 operator / (const ImVec2 &A, float div)
 	return { A.x / div, A.y / div };
 }
 
-void ClusteredShading::render_gui()
+void ZigApp::render_gui()
 {
 	ImGuizmo::BeginFrame();
 
@@ -587,7 +587,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 		{
 			_light_mgr.add(PointLightParams{
 				.color = { 1, 1, 1 },
-				.intensity = 50.f,
+				.intensity = 25.f,
 				.fog = 1.f,
 				.shadow_caster = true,
 				.contact_shadows = true,
@@ -599,7 +599,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 		{
 			_light_mgr.add(SpotLightParams{
 				.color = { 1, 1, 1 },
-				.intensity = 50.f,
+				.intensity = 25.f,
 				.fog = 1.f,
 				.shadow_caster = true,
 				.contact_shadows = true,

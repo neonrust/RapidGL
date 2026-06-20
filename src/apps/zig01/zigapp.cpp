@@ -1,4 +1,5 @@
-#include "clustered_shading.h"
+#include "zigapp.h"
+
 #include "filesystem.h"
 #include "gl_lookup.h"
 #include "hash_combine.h"
@@ -78,7 +79,7 @@ glm::mat3 make_common_space_from_direction(const glm::vec3 &direction)
 
 using namespace RGL;
 
-ClusteredShading::ClusteredShading() :
+ZigApp::ZigApp() :
 	_scene(_entities),
 	_light_mgr(_entities),
 	_shadow_atlas(8192, _light_mgr),
@@ -123,7 +124,7 @@ ClusteredShading::ClusteredShading() :
 	_gl_timers.reserve(16);
 }
 
-ClusteredShading::~ClusteredShading()
+ZigApp::~ZigApp()
 {
 	if(m_skybox_vao)
     {
@@ -148,11 +149,11 @@ void opengl_message_callback(GLenum /*source*/, GLenum type, GLuint /*id*/, GLen
 {
 	if(severity == GL_DEBUG_SEVERITY_NOTIFICATION)
 		return;
-	const auto *app = static_cast<const ClusteredShading *>(handler);
+	const auto *app = static_cast<const ZigApp *>(handler);
 	app->debug_message(type, gl_lookup::enum_name(severity).substr(18), message);
 }
 
-void ClusteredShading::init_app()
+void ZigApp::init_app()
 {
 	GLint flags;
 	glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
@@ -185,16 +186,17 @@ void ClusteredShading::init_app()
 	m_camera.setPosition({ 0.f, 0.f, 0.f });
 	m_camera.setOrientationEuler({ 0, 0, 0 });
 	// shadow bias study:
-	// m_camera.setPosition({ 5.6f, 10.4f, -0.9f });
-	// m_camera.setOrientationEuler({ -19.f, 65.8f, 0 });
+	m_camera.setPosition({ 4.1f, 0.4f, 4.9f });
+	m_camera.setOrientationEuler({ 16.8f, -125.2f, 0 });
 	// rect light fog artifact study
 	// m_camera.setPosition({ -8.6f, 2.4f, 10.5f });
 	// m_camera.setOrientationEuler({ 3.f, -90.f, 0 });
 	// csm shadows study
 	// m_camera.setPosition({ 15.4f, 3.7f, 7.9f });
 	// m_camera.setOrientationEuler({ 9.f, -118.f, 0 });
-	m_camera.setPosition({ 0.f, 8.f, 0.f });
-	m_camera.setOrientationEuler({ 0.f, -90.f, 0 });
+	// center cathedral
+	// m_camera.setPosition({ 0.f, 8.f, 0.f });
+	// m_camera.setOrientationEuler({ 0.f, -90.f, 0 });
 
 
 
@@ -393,6 +395,8 @@ void ClusteredShading::init_app()
 	m_env_cubemap_rt->create("env", 2048, 2048);
 
 	_shadow_atlas.create();
+	_contact_shadow_buffer.Create(Window::width(), Window::height(), GL_R16F, 1);
+	assert(_contact_shadow_buffer);
 
 	m_brdf_lut_rt = std::make_shared<RenderTarget::Texture2d>();
 	m_brdf_lut_rt->create("brdf-lut", 512, 512, C::Texture | C::Float2);
@@ -439,7 +443,7 @@ void ClusteredShading::init_app()
 	loadScene("test");
 }
 
-void ClusteredShading::calculateShadingClusterGrid()
+void ZigApp::calculateShadingClusterGrid()
 {
 	const auto cluster_count_before = m_cluster_count;
 
@@ -525,7 +529,7 @@ void ClusteredShading::calculateShadingClusterGrid()
 	}
 }
 
-void ClusteredShading::prepareClusterBuffers()
+void ZigApp::prepareClusterBuffers()
 {
 	m_cluster_aabb_ssbo.resize(m_cluster_count);
 	m_cluster_discovery_ssbo.resize(1 + m_cluster_count*2);  // num_active, nonempty[N], active[N]
@@ -545,7 +549,7 @@ void ClusteredShading::prepareClusterBuffers()
 	m_affecting_lights_bitfield_ssbo.clear();
 }
 
-void ClusteredShading::input()
+void ZigApp::input()
 {
     /* Close the application when Esc is released. */
 	if (Input::wasKeyPressed(KeyCode::Escape))
@@ -589,7 +593,7 @@ void ClusteredShading::input()
 	// 	m_animate_lights = !m_animate_lights;
 }
 
-void ClusteredShading::update(double delta_time)
+void ZigApp::update(double delta_time)
 {
 	_running_time += seconds_f(delta_time);
 
@@ -701,7 +705,7 @@ void ClusteredShading::update(double delta_time)
 		updateLightsSSBOs();
 }
 
-void ClusteredShading::createLights()
+void ZigApp::createLights()
 {
 	[[maybe_unused]] static const glm::vec3 room_min { -18, 0.5f, -18 };
 	// [[maybe_unused]] static const glm::vec3 room_max { 178, 3.5f, 18 };
@@ -737,8 +741,8 @@ void ClusteredShading::createLights()
 	const float step_z = 12.f;
 	const float step_x = 22.f;
 
-	auto light_pos = [&offset, step_z, step_x](auto idx) -> glm::vec3 {
-		glm::vec3 pos { -13.f + offset.x, 2.5f, 12.f - offset.z };
+	auto light_pos = [&offset, step_z, step_x]([[maybe_unused]] auto idx) -> glm::vec3 {
+		glm::vec3 pos { -13.f + offset.x, 2.5f + float(idx % 4), 12.f - offset.z };
 		offset.z += step_z;
 		if(offset.z > step_z*5 + 1)
 		{
@@ -748,7 +752,7 @@ void ClusteredShading::createLights()
 		return pos;
 	};
 
-	for(auto idx = 0u; idx < 0; ++idx)
+	for(auto idx = 0u; idx < 1; ++idx)
 	{
 		const auto rand_color= hsv2rgb(
 			Util::RandomFloat(1, 360),   // hue
@@ -760,8 +764,8 @@ void ClusteredShading::createLights()
 
 		const auto rand_intensity = 100.f;//Util::RandomFloat(10, 100);
 
-		auto light_type = LightType(uint_fast8_t(LightType::Rect) + (idx % 4));
-		light_type = LightType::Point;
+		// auto light_type = LightType(uint_fast8_t(LightType::Rect) + (idx % 4));
+		auto light_type = LightType::Point;
 
 		auto light_id { NO_LIGHT_ID };
 		std::string_view type_name;
@@ -903,12 +907,12 @@ void ClusteredShading::createLights()
 	}
 }
 
-void ClusteredShading::updateLightsSSBOs()
+void ZigApp::updateLightsSSBOs()
 {
 	_light_mgr.flush();
 }
 
-void ClusteredShading::HdrEquirectangularToCubemap(const std::shared_ptr<RenderTarget::Cube>& cubemap_rt, const std::shared_ptr<Texture2D>& equirectangular_map)
+void ZigApp::HdrEquirectangularToCubemap(const std::shared_ptr<RenderTarget::Cube>& cubemap_rt, const std::shared_ptr<Texture2D>& equirectangular_map)
 {
     /* Update all faces per frame */
     m_equirectangular_to_cubemap_shader->bind();
@@ -927,7 +931,7 @@ void ClusteredShading::HdrEquirectangularToCubemap(const std::shared_ptr<RenderT
 	glViewport(0, 0, GLsizei(Window::width()), GLsizei(Window::height()));
 }
 
-void ClusteredShading::IrradianceConvolution(const std::shared_ptr<RenderTarget::Cube>& cubemap_rt)
+void ZigApp::IrradianceConvolution(const std::shared_ptr<RenderTarget::Cube>& cubemap_rt)
 {
     /* Update all faces per frame */
     m_irradiance_convolution_shader->bind();
@@ -946,7 +950,7 @@ void ClusteredShading::IrradianceConvolution(const std::shared_ptr<RenderTarget:
 	glViewport(0, 0, GLsizei(Window::width()), GLsizei(Window::height()));
 }
 
-void ClusteredShading::PrefilterEnvCubemap(const std::shared_ptr<RenderTarget::Cube>& cubemap_rt)
+void ZigApp::PrefilterEnvCubemap(const std::shared_ptr<RenderTarget::Cube>& cubemap_rt)
 {
     m_prefilter_env_map_shader->bind();
 	m_prefilter_env_map_shader->setUniform("u_projection"sv, cubemap_rt->projection());
@@ -980,7 +984,7 @@ void ClusteredShading::PrefilterEnvCubemap(const std::shared_ptr<RenderTarget::C
 	bindScreenRenderTarget();
 }
 
-void ClusteredShading::PrecomputeIndirectLight(const std::filesystem::path& hdri_map_filepath)
+void ZigApp::PrecomputeIndirectLight(const std::filesystem::path& hdri_map_filepath)
 {
 	auto envmap_hdr = std::make_shared<Texture2D>();
     envmap_hdr->LoadHdr(hdri_map_filepath);
@@ -994,7 +998,7 @@ void ClusteredShading::PrecomputeIndirectLight(const std::filesystem::path& hdri
 	PrefilterEnvCubemap(m_prefiltered_env_map_rt);
 }
 
-void ClusteredShading::PrecomputeBRDF(const std::shared_ptr<RenderTarget::Texture2d>& rt)
+void ZigApp::PrecomputeBRDF(const std::shared_ptr<RenderTarget::Texture2d>& rt)
 {
     rt->bindRenderTarget();
     m_precompute_brdf->bind();
@@ -1005,13 +1009,13 @@ void ClusteredShading::PrecomputeBRDF(const std::shared_ptr<RenderTarget::Textur
 	bindScreenRenderTarget();
 }
 
-void ClusteredShading::bindScreenRenderTarget()
+void ZigApp::bindScreenRenderTarget()
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glViewport(0, 0, GLsizei(Window::width()), GLsizei(Window::height()));
 }
 
-void ClusteredShading::GenSkyboxGeometry()
+void ZigApp::GenSkyboxGeometry()
 {
     m_skybox_vao = 0;
     m_skybox_vbo = 0;
@@ -1077,7 +1081,7 @@ void ClusteredShading::GenSkyboxGeometry()
     glVertexArrayVertexBuffer(m_skybox_vao, 0 /*bindingindex*/, m_skybox_vbo, 0 /*offset*/, sizeof(glm::vec3) /*stride*/);
 }
 
-void ClusteredShading::downloadAffectingLightSet()
+void ZigApp::downloadAffectingLightSet()
 {
 	_affecting_lights.clear();
 
@@ -1107,7 +1111,7 @@ void ClusteredShading::downloadAffectingLightSet()
 }
 
 
-void ClusteredShading::render()
+void ZigApp::render()
 {
 	// TODO: move (parts of) this stuff to a "renderer" ?
 	//   maybe have a renderer for each "step", and then a "compositor" to combine it all?
@@ -1131,6 +1135,7 @@ void ClusteredShading::render()
 
 	if(auto d = _gl_timers["shadows"].elapsed<microseconds>(); d)
 		m_shadow_time.add(*d);
+
 	// ------------------------------------------------------------------
 	_gl_timers["z-prepass"].start();
 	// Depth pre-pass  (only if camera/meshes moved, probably always)
@@ -1218,7 +1223,7 @@ void ClusteredShading::render()
 		m_skybox_time.add(*d);
 	// ------------------------------------------------------------------
 
-	if(m_volumetrics_pp.enabled() and _fog_density > 0)
+	if(m_volumetrics_pp.enabled() and _fog_density > 0 and _fog_strength > 0)
 	{
 		_gl_timers["volumetrics-cull"].start();
 
@@ -1355,7 +1360,7 @@ void ClusteredShading::render()
 		m_debug_draw_time.add(*d);
 }
 
-void ClusteredShading::renderShadowMaps()
+void ZigApp::renderShadowMaps()
 {
 	// render shadow-maps if light or meshes within its radius/frustum moved (the latter is TODO)
 	// TODO: move this stuff to a "shadow map renderer" ?
@@ -1472,6 +1477,7 @@ void ClusteredShading::renderShadowMaps()
 				if((need_render & (1u << slot_idx)) > 0)
 				{
 					const auto &slot_rect = atlas_light.slots[slot_idx].rect;
+					// TODO: this doesn't clear the whole slot, just the 'slot_rect' which already has a 1-pixel margin
 					_shadow_atlas.bindRenderTarget(slot_rect);
 					if(not did_barrier)
 					{
@@ -1498,7 +1504,7 @@ void ClusteredShading::renderShadowMaps()
 	glCullFace(GL_BACK);
 }
 
-void ClusteredShading::renderSkybox()
+void ZigApp::renderSkybox()
 {
 	glEnable(GL_DEPTH_TEST);
 	glDepthMask(GL_FALSE);
@@ -1514,7 +1520,7 @@ void ClusteredShading::renderSkybox()
 	glDrawArrays     (GL_TRIANGLES, 0, 36);
 }
 
-void ClusteredShading::renderLightGeometry()
+void ZigApp::renderLightGeometry()
 {
 	glEnable(GL_DEPTH_TEST);
 	glDepthMask(GL_TRUE);
@@ -1675,7 +1681,7 @@ void ClusteredShading::renderLightGeometry()
 
 
 
-void ClusteredShading::draw2d(const Texture &texture, BlendMode blend)
+void ZigApp::draw2d(const Texture &texture, BlendMode blend)
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -1717,7 +1723,7 @@ void ClusteredShading::draw2d(const Texture &texture, BlendMode blend)
 	glDepthMask(GL_TRUE);
 }
 
-void ClusteredShading::draw2d(const Texture &source, RenderTarget::Texture2d &target, BlendMode blend)
+void ZigApp::draw2d(const Texture &source, RenderTarget::Texture2d &target, BlendMode blend)
 {
 	// TODO: this setting blend mode should be a separate function
 
@@ -1761,7 +1767,7 @@ void ClusteredShading::draw2d(const Texture &source, RenderTarget::Texture2d &ta
 	glDepthMask(GL_TRUE);
 }
 
-void ClusteredShading::draw2d(const Texture &texture, const glm::uvec2 &top_left, const glm::uvec2 &bottom_right)
+void ZigApp::draw2d(const Texture &texture, const glm::uvec2 &top_left, const glm::uvec2 &bottom_right)
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -1777,7 +1783,7 @@ void ClusteredShading::draw2d(const Texture &texture, const glm::uvec2 &top_left
 	// glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
-void ClusteredShading::cullScene(const Camera &view, QueryResult &pvs)
+void ZigApp::cullScene(const Camera &view, QueryResult &pvs)
 {
 	const auto T0 = steady_clock::now();
 
@@ -1788,7 +1794,7 @@ void ClusteredShading::cullScene(const Camera &view, QueryResult &pvs)
 	m_cull_scene_time.add(duration_cast<microseconds>(steady_clock::now() - T0));
 }
 
-void ClusteredShading::collectRelevantLights(const Camera &view)
+void ZigApp::collectRelevantLights(const Camera &view)
 {
 	const auto T0 = steady_clock::now();
 
@@ -1841,9 +1847,10 @@ void ClusteredShading::collectRelevantLights(const Camera &view)
 	}
 }
 
-void ClusteredShading::renderScene(const glm::mat4 &view_projection, Shader &shader, MaterialCtrl materialCtrl)
+void ZigApp::renderScene(const glm::mat4 &view_projection, Shader &shader, MaterialCtrl materialCtrl)
 {
 	// TODO: in c++26: std::views::concat(_cameraPvs.static_ids, _cameraPvs.dynamic_ids)
+	// TODO: group by 'component::Model' and render those instanced?
 	for(const auto &entity_id: _cameraPvs.dynamic_entities)
 	{
 		const auto &[model, transform] = _entities.get<component::Model, component::Transform>(entity_id);
@@ -1876,7 +1883,7 @@ void ClusteredShading::renderScene(const glm::mat4 &view_projection, Shader &sha
 }
 
 
-void ClusteredShading::renderDepth(const glm::mat4 &view_projection, RenderTarget::Texture2d &target, const glm::ivec4 &rect)
+void ZigApp::renderDepth(const glm::mat4 &view_projection, RenderTarget::Texture2d &target, const glm::ivec4 &rect)
 {
 	target.bindRenderTarget(rect, RenderTarget::DepthBuffer);
 
@@ -1897,7 +1904,7 @@ void ClusteredShading::renderDepth(const glm::mat4 &view_projection, RenderTarge
 	renderScene(view_projection, *m_depth_prepass_shader, NoMaterials);
 }
 
-void ClusteredShading::renderSceneShadow(const QueryResult &objects, uint16_t shadow_idx, uint_fast8_t slot_idx, bool dynamic_only)
+void ZigApp::renderSceneShadow(const QueryResult &objects, uint16_t shadow_idx, uint_fast8_t slot_idx, bool dynamic_only)
 {
 	m_shadow_depth_shader->bind();
 
@@ -1929,7 +1936,7 @@ void ClusteredShading::renderSceneShadow(const QueryResult &objects, uint16_t sh
 
 }
 
-void ClusteredShading::renderShading(const Camera &camera)
+void ZigApp::renderShading(const Camera &camera)
 {
 	glDepthMask(GL_FALSE);
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
@@ -2015,7 +2022,7 @@ void ClusteredShading::renderShading(const Camera &camera)
 	// glDepthFunc(GL_LESS);
 }
 
-void ClusteredShading::generateRandomAngles(Texture3D &texture, uint32_t size)
+void ZigApp::generateRandomAngles(Texture3D &texture, uint32_t size)
 {
 	const auto T0 = steady_clock::now();
 
@@ -2046,7 +2053,7 @@ void ClusteredShading::generateRandomAngles(Texture3D &texture, uint32_t size)
 	Log::debug("Generated {}k random angles ({}^3), in {}", buffer_size >> 10, size, duration_cast<microseconds>(T1 - T0));
 }
 
-void ClusteredShading::debug_message(GLenum type, std::string_view severity, std::string_view message) const
+void ZigApp::debug_message(GLenum type, std::string_view severity, std::string_view message) const
 {
 	switch(type)
 	{
@@ -2099,41 +2106,44 @@ void ClusteredShading::debug_message(GLenum type, std::string_view severity, std
 	}
 }
 
-void ClusteredShading::loadScene([[maybe_unused]] std::string_view name)
+void ZigApp::loadScene([[maybe_unused]] std::string_view name)
 {
 	// Create scene objects
 	const auto origin = component::Transform(glm::mat4(1));
 
-	// auto sponza_model = std::make_shared<StaticModel>();
-	// sponza_model->Load(models_path / "sponza2" / "Sponza2.gltf");
-	// assert(*sponza_model);
-	// _scene.emplace_back(sponza_model, origin);
+	// StaticModel sponza_model;
+	// sponza_model.Load(FileSystem::getResourcesPath() / "models" / "sponza" / "Sponza.gltf");
+	// assert(sponza_model);
+	// _scene.add(std::move(sponza_model), origin);
 
 	// auto testroom_model = std::make_shared<StaticModel>();
 	// testroom_model->Load(models_path / "testroom" / "testroom.gltf");
 	// assert(*testroom_model);
 	// _scene.emplace_back(testroom_model, origin);
 
-	// TODO: where should the actual object be stored?
-	//   the "scene" only stores the entity and bounds?  (it's just a "lookup")
-	//   I guess the ECS?
-	//     - model component
-	//     - transform component
+	// StaticModel cathedral_model;
+	// cathedral_model.Load("/dl/necropolisfantasygraveyardkit/cathedral_jxl.gltf");
+	// assert(cathedral_model);
+	// _scene.add(std::move(cathedral_model), origin);
+	// {
+	// 	auto tfm = origin;
+	// 	tfm.move({ 50.f, 0,  0 });
+	// 	_scene.add(std::move(cathedral_model), tfm);
+	// 	tfm.move({  0.f, 0, 50.f });
+	// 	_scene.add(std::move(cathedral_model), tfm);
+	// 	tfm.move({-50.f, 0,  0.f });
+	// 	_scene.add(std::move(cathedral_model), tfm);
+	// }
 
-	StaticModel cathedral_model;
-	cathedral_model.Load("/dl/necropolisfantasygraveyardkit/cathedral_jxl.gltf");
-	assert(cathedral_model);
-	_scene.add(std::move(cathedral_model), origin);
+	// StaticModel floor_model;
+	// floor_model.Load(FileSystem::getResourcesPath() / "models" / "floor.gltf");
+	// assert(floor_model);
+	// _scene.add(std::move(floor_model), origin);
 
-	StaticModel floor_model;
-	floor_model.Load(FileSystem::getResourcesPath() / "models" / "floor.gltf");
-	assert(floor_model);
-	_scene.add(std::move(floor_model), origin);
-
-	// auto shadow_model = std::make_shared<StaticModel>();
-	// shadow_model->Load(FileSystem::getResourcesPath() / "models" / "shadowtest.gltf");
-	// assert(*shadow_model);
-	// _scene.emplace_back(shadow_model, origin);
+	StaticModel shadow_model;
+	shadow_model.Load(FileSystem::getResourcesPath() / "models" / "shadowtest.gltf");
+	assert(shadow_model);
+	_scene.add(std::move(shadow_model), origin);
 
 	_entities.compact();
 }

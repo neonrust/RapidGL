@@ -1,4 +1,4 @@
-#include "clustered_shading.h"
+#include "zigapp.h"
 
 #include "component/model.h"
 #include "hash_vec2.h" // IWYU pragma: keep
@@ -23,7 +23,7 @@ template<typename T>
 using uvec2_map = ankerl::unordered_dense::map<glm::uvec2, T>;//, hash::glmv, hash::glmv>;
 
 
-void ClusteredShading::debugDrawSceneBounds()
+void ZigApp::debugDrawSceneBounds()
 {
 	const auto view_projection = m_camera.projectionTransform() * m_camera.viewTransform();
 
@@ -131,7 +131,7 @@ void ClusteredShading::debugDrawSceneBounds()
 	// glEnable(GL_DEPTH_TEST);
 }
 
-void ClusteredShading::debugDrawLightMarkers()
+void ZigApp::debugDrawLightMarkers()
 {
 	enum class Icon : uint32_t
 	{
@@ -219,7 +219,7 @@ void ClusteredShading::debugDrawLightMarkers()
 	glEnable(GL_DEPTH_TEST);
 }
 
-void ClusteredShading::debugDrawLine(const glm::vec3 &p1, const glm::vec3 &p2, const glm::vec4 &color)
+void ZigApp::debugDrawLine(const glm::vec3 &p1, const glm::vec3 &p2, const glm::vec4 &color)
 {
 	const auto view_projection = m_camera.projectionTransform() * m_camera.viewTransform();
 
@@ -248,7 +248,7 @@ void ClusteredShading::debugDrawLine(const glm::vec3 &p1, const glm::vec3 &p2, c
 	glDisableVertexAttribArray(0);
 }
 
-void ClusteredShading::debugDrawLine(const glm::uvec2 &p1, const glm::uvec2 &p2, const glm::vec4 &color, float thickness)
+void ZigApp::debugDrawLine(const glm::uvec2 &p1, const glm::uvec2 &p2, const glm::vec4 &color, float thickness)
 {
 	glDisable(GL_DEPTH_TEST);
 	glDepthMask(GL_FALSE);
@@ -270,7 +270,7 @@ void ClusteredShading::debugDrawLine(const glm::uvec2 &p1, const glm::uvec2 &p2,
 	glDepthMask(GL_TRUE);
 }
 
-void ClusteredShading::debugDrawRect(const glm::uvec2 &top_left, const glm::uvec2 &size, const glm::vec4 &color, float thickness)
+void ZigApp::debugDrawRect(const glm::uvec2 &top_left, const glm::uvec2 &size, const glm::vec4 &color, float thickness)
 {
 	glDisable(GL_DEPTH_TEST);
 	glDepthMask(GL_FALSE);
@@ -292,7 +292,7 @@ void ClusteredShading::debugDrawRect(const glm::uvec2 &top_left, const glm::uvec
 	glDepthMask(GL_TRUE);
 }
 
-void ClusteredShading::debugDrawNumber(uint32_t number, const glm::uvec2 &bottom_right, float height, const glm::vec4 &color, float thickness)
+void ZigApp::debugDrawNumber(uint32_t number, const glm::uvec2 &bottom_right, float height, const glm::vec4 &color, float thickness)
 {
 	glDisable(GL_DEPTH_TEST);
 	glDepthMask(GL_FALSE);
@@ -315,12 +315,12 @@ void ClusteredShading::debugDrawNumber(uint32_t number, const glm::uvec2 &bottom
 	glDepthMask(GL_TRUE);
 }
 
-void ClusteredShading::debugDrawSphere(const glm::vec3 &center, float radius, const glm::vec4 &color)
+void ZigApp::debugDrawSphere(const glm::vec3 &center, float radius, const glm::vec4 &color)
 {
 	debugDrawSphere(center, radius, 8, 10, color);
 }
 
-void ClusteredShading::debugDrawSphere(const glm::vec3 &center, float radius, size_t stacks, size_t slices, const glm::vec4 &color)
+void ZigApp::debugDrawSphere(const glm::vec3 &center, float radius, size_t stacks, size_t slices, const glm::vec4 &color)
 {
 	const auto view_projection = m_camera.projectionTransform() * m_camera.viewTransform();
 	const auto transform = view_projection * glm::translate(glm::mat4(1), center) * glm::scale(glm::mat4(1), { radius, radius, radius });
@@ -421,7 +421,7 @@ void ClusteredShading::debugDrawSphere(const glm::vec3 &center, float radius, si
 	glDisableVertexAttribArray(0);
 }
 
-void ClusteredShading::debugDrawIcon(const glm::vec3 &position, const Texture2D &icon, float size, const glm::vec4 &color)
+void ZigApp::debugDrawIcon(const glm::vec3 &position, const Texture2D &icon, float size, const glm::vec4 &color)
 {
 	(void)position;
 	(void)size;
@@ -434,7 +434,7 @@ void ClusteredShading::debugDrawIcon(const glm::vec3 &position, const Texture2D 
 	glDrawArrays(GL_TRIANGLES, 0, 3);
 }
 
-void ClusteredShading::debugDrawSpotLight(const GPULight &light, const glm::vec4 &color)
+void ZigApp::debugDrawSpotLight(const GPULight &light, const glm::vec4 &color)
 {
 	assert(IS_SPOT_LIGHT(light));
 
@@ -467,7 +467,7 @@ void ClusteredShading::debugDrawSpotLight(const GPULight &light, const glm::vec4
 	// TODO: draw cap
 }
 
-void ClusteredShading::debugDrawClusterGrid()
+void ZigApp::debugDrawClusterGrid()
 {
 	const glm::vec4 grid_color{ 0.1f, 1.f, 0.6f, m_debug_coverlay_blend };
 	const glm::vec4 cluster_color{ 0.7f, 0.3f, 0.2f, m_debug_coverlay_blend };

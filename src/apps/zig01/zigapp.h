@@ -2,6 +2,7 @@
 
 #include "core_app.h"
 
+#include "common.h"
 #include "camera.h"
 #include "sample_window.h"
 #include "scene.h"
@@ -76,11 +77,11 @@ enum struct BlendMode
 	Alpha,
 };
 
-class ClusteredShading : public RGL::CoreApp
+class ZigApp : public RGL::CoreApp
 {
 public:
-    ClusteredShading();
-    ~ClusteredShading();
+	ZigApp();
+	~ZigApp();
 
     void init_app()                override;
     void input()                   override;
@@ -139,6 +140,7 @@ private:
 
 	RGL::LightManager _light_mgr;
 	RGL::ShadowAtlas _shadow_atlas;
+	RGL::Texture2D _contact_shadow_buffer;
 
 	std::vector<LightIndex>   _lightsPvs;  // basically all lights within theoretical range
 	std::vector<StaticObject> _lightModels;

@@ -1,18 +1,18 @@
 # Copyright (C) 2022 Tomasz Gałaj
 
-set(DEMO_NAME "27_clustered_shading")
+set(DEMO_NAME "zig01")
 
 # Add source files
 set(SOURCE_FILES_EXE
-	clustered_shading.cpp
-	clustered_shading_debug_draw.cpp
-	clustered_shading_ui.cpp
+	zigapp.cpp
+	zigapp_debug_draw.cpp
+	zigapp_ui.cpp
 	main.cpp
 )
 
 # Add header files
 set(HEADER_FILES_EXE
-	clustered_shading.h
+	zigapp.h
 )
 
 

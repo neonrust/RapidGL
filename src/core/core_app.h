@@ -1,5 +1,5 @@
 #pragma once
-#include "common.h"
+
 #include "sample_window.h"
 #include <string>
 #include <cstdint>
@@ -7,7 +7,7 @@
 
 namespace RGL
 {
-    class CoreApp
+	class CoreApp
     {
     public:
         CoreApp();
@@ -25,9 +25,9 @@ namespace RGL
         virtual void render_gui();
 
         uint32_t get_fps() const;
-
-        virtual void start() final;
-        virtual void stop()  final;
+		
+		virtual int run() final;
+		virtual void stop() final;
 
         virtual bool take_screenshot_png(const std::string & filename, size_t dst_width = 0, size_t dst_height = 0);
 
@@ -35,7 +35,7 @@ namespace RGL
 		double   m_frame_time;
 
     private:
-        void run();
+		int run_app();
 
         uint32_t m_fps;
         bool     m_is_running;
