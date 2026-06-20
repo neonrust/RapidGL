@@ -10,14 +10,25 @@ Forked from https://github.com/tgalaj/RapidGL but detached so I can use Git LFS.
 
 This framework consists of two major parts:
 * **Core library** - which is used as a static library for all examples. Source files are located in ```src/core```.
-* **Demo**. Source files are located in ```src/demos```.
-  There were 27 demos, but now only one remains (essentially merging them all into one, and more)
+* **Application**. Source files are located in ```src/apps```.
+
+3rd-party dependencies:
+- assimp
+- glad   (vendored)
+- glfw
+- glm
+- imgui
+- stb_image  (vendored)
+- libjxl
 
 ### Rendering features
 
 - Clustered shading (a.k.a. forward+, I think?), PBR.
 - Light types: point, directional, spot, rectangle, tube, sphere and disc.
 - Shadow mapping. Uses one large atlas. Supported by point, directional and spot lights.
+  - CSM
+  - shadow range compression
+  - contact shadows
 - Volumetric light scattering; inject + accumulate method (all lights supported, for better or worse).
   
 

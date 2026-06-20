@@ -79,3 +79,8 @@ add_custom_target(CoreShaders
 	SOURCES
 	${SHADER_FILES}
 )
+
+add_custom_target(Dox
+	SOURCES
+	README.md
+)
