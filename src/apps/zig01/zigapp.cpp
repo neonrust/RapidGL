@@ -10,7 +10,6 @@
 #include "log.h"
 #include "postprocess.h"
 #include "util.h"
-#include "game_time.h"
 #include "gui/gui.h"   // IWYU pragma: keep
 
 #include "component/model.h"
