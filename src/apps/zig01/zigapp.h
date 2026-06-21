@@ -105,7 +105,7 @@ private:
 
 	void collectRelevantLights(const RGL::Camera &view);
 	void cullScene(const RGL::Camera &camera, RGL::QueryResult &pvs);
-	void renderScene(const glm::mat4 &view_projection, RGL::Shader &shader, MaterialCtrl matCtrl=UseMaterials);
+	void renderScene(const glm::mat4 &view_projection, RGL::Shader &shader, RGL::MaterialCtrl matCtrl=RGL::UseMaterials);
 	void renderDepth(const glm::mat4 &view_projection, RGL::RenderTarget::Texture2d &target, const glm::ivec4 &rect={0,0,0,0});
 	void renderShadowMaps();
 	void renderSceneShadow(const RGL::QueryResult &objects, uint16_t shadow_idx, uint_fast8_t slot_idx, bool dynamic_only=false);

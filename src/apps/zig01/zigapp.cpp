@@ -1847,7 +1847,7 @@ void ZigApp::collectRelevantLights(const Camera &view)
 	}
 }
 
-void ZigApp::renderScene(const glm::mat4 &view_projection, Shader &shader, MaterialCtrl materialCtrl)
+void ZigApp::renderScene(const glm::mat4 &view_projection, Shader &shader, RGL::MaterialCtrl materialCtrl)
 {
 	// TODO: in c++26: std::views::concat(_cameraPvs.static_ids, _cameraPvs.dynamic_ids)
 	// TODO: group by 'component::Model' and render those instanced?
