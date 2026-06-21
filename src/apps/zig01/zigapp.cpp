@@ -754,10 +754,10 @@ void ZigApp::createLights()
 
 	for(auto idx = 0u; idx < 1; ++idx)
 	{
-		const auto rand_color= hsv2rgb(
-			Util::RandomFloat(1, 360),   // hue
-			Util::RandomFloat(0.2f, 0.8f),   // saturation
-			1.f                                      // value (brightness)
+		const auto rand_color= color::hsv(
+			Util::RandomFloat(1, 360),      // hue
+			Util::RandomFloat(0.2f, 0.8f),  // saturation
+			1.f                             // value (brightness)
 		);
 		// const auto rand_pos = Util::RandomVec3(room_min, room_max);
 		const auto rand_pos = light_pos(idx);
