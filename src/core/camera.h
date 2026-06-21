@@ -84,7 +84,7 @@ public:
 	void setUniforms(Shader &shader) const;
 
 	// TODO: this shouldn't be here (better in a controller-type thing)
-	void update(double dt);
+	void update(std::chrono::nanoseconds dt);
 
 	inline glm::uvec2 viewportSize() const { return { m_width, m_height }; }
 

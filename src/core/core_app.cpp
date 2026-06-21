@@ -143,6 +143,8 @@ int CoreApp::run_app()
 
 	bool should_render = false;
 
+	steady_clock::time_point last_frame_time = steady_clock::now();
+
 	while (m_is_running)
 	{
 		should_render = false;
@@ -155,7 +157,7 @@ int CoreApp::run_app()
 		unprocessed_time += passed_time;
 		frame_counter += passed_time;
 
-			   // don't render until we've accumulated enough "frame time debt"  (as requested to init())
+		// don't render until we've accumulated enough "frame time debt"  (as requested to init())
 		while(unprocessed_time > m_frame_time)
 		{
 			should_render = true;
@@ -167,7 +169,12 @@ int CoreApp::run_app()
 
 			/* Update input, game entities, etc. */
 			input();
-			update(m_frame_time);
+
+			const auto now = steady_clock::now();
+			const auto frame_duration = now - last_frame_time;
+			last_frame_time = now;
+			update(duration_cast<nanoseconds>(frame_duration));//m_frame_time);
+
 			Input::update();
 
 			if (frame_counter >= 1.0)

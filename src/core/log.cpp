@@ -4,6 +4,8 @@
 #include <cstdio>
 #include <chrono>
 
+#include "game_time.h"
+
 using namespace std::literals;
 using namespace std::chrono;
 namespace fs = std::filesystem;
@@ -95,7 +97,7 @@ void _private::stamp(FILE *fp)
 		std::print(fp, "\x1b[34;1m{:%H:%M:%S} ", now);
 	if(output_since)
 	{
-		const auto since = duration_cast<seconds_f>(steady_clock::now() - start_time);
+		const auto since = duration_cast<RGL::seconds_f>(steady_clock::now() - start_time);
 		std::print(fp, "\x1b[32;1m{:.3f} ", since.count());
 	}
 }

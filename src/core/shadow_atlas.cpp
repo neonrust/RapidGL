@@ -113,7 +113,7 @@ bool ShadowAtlas::create()
 
 uint32_t ShadowAtlas::update_allocations(const std::vector<LightIndex> &relevant_lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward)
 {
-	const Time T0 = steady_clock::now();
+	const TimeT T0 = steady_clock::now();
 
 	// has sun appeared or disappeared -> then we need to switch the current slots set
 	const auto has_sun_light = _lights.sun_id() != NO_LIGHT_ID and _lights.is_enabled(_lights.sun_id());
@@ -175,7 +175,7 @@ uint32_t ShadowAtlas::update_allocations(const std::vector<LightIndex> &relevant
 	return num_changes;
 }
 
-void ShadowAtlas::log_changes(const Counters &counters, size_t num_prio, Time start_time)
+void ShadowAtlas::log_changes(const Counters &counters, size_t num_prio, TimeT start_time)
 {
 	std::string msg;
 	msg.reserve(32);
@@ -198,7 +198,7 @@ void ShadowAtlas::log_changes(const Counters &counters, size_t num_prio, Time st
 	Log::info("atlas| {}", msg);
 }
 
-ShadowAtlas::SlotMask ShadowAtlas::need_render(const AtlasLight &atlas_light, Time now, size_t light_hash, const Scene &scene) const
+ShadowAtlas::SlotMask ShadowAtlas::need_render(const AtlasLight &atlas_light, TimeT now, size_t light_hash, const Scene &scene) const
 {
 	// NOTE: see comment in renderShadowMaps() regarding static/dynamic caching
 
@@ -932,7 +932,7 @@ ShadowAtlas::Counters ShadowAtlas::compute_desired(const std::vector<ValueLight>
 	return counters;
 }
 
-ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const std::vector<AtlasLight> &desired_slots, const Time now)
+ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const std::vector<AtlasLight> &desired_slots, const TimeT now)
 {
 	// std::puts("-- apply_desired_slots()");
 

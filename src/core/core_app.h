@@ -20,7 +20,7 @@ namespace RGL
 
         virtual void init_app()                = 0;
         virtual void input()                   = 0;
-        virtual void update(double delta_time) = 0;
+		virtual void update(std::chrono::nanoseconds delta_time) = 0;
         virtual void render()                  = 0;
         virtual void render_gui();
 

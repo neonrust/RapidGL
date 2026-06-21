@@ -24,8 +24,6 @@
 #include <memory>
 #include <vector>
 
-using seconds_f = std::chrono::duration<float, std::ratio<1>>;
-
 namespace
 {
     // Convert HSV to RGB:
@@ -85,7 +83,7 @@ public:
 
     void init_app()                override;
     void input()                   override;
-    void update(double delta_time) override;
+	void update(std::chrono::nanoseconds delta_time) override;
     void render()                  override;
     void render_gui()              override;
 
@@ -269,7 +267,7 @@ private:
 	RGL::PP::Bloom m_bloom_pp;
 	RGL::PP::BlurFixed<3.f> m_blur3_pp;
 
-	seconds_f _running_time { 0 };
+	RGL::seconds_f _running_time { 0 };
 
 	float m_bloom_threshold;
 	float m_bloom_knee;

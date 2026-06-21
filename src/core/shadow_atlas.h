@@ -22,11 +22,11 @@ class Camera;
 class Scene;
 struct QueryResult;
 
-using Time = std::chrono::steady_clock::time_point;
 
 class ShadowAtlas : public RenderTarget::Texture2d
 {
 public:
+	using TimeT = std::chrono::steady_clock::time_point;
 	enum class CubeFace : uint32_t { PosX, NegX, PosY, NegY, PosZ, NegZ };
 
 	static constexpr uint32_t MAX_CASCADES = 4;
@@ -83,9 +83,9 @@ public:
 
 	private:
 		mutable bool _dirty { true };
-		mutable Time _last_rendered;   // TODO: define a "pixels per second" limit to dictate a limit for how many shadow map slots may be updated (in light-value/age order?)
+		mutable TimeT _last_rendered;   // TODO: define a "pixels per second" limit to dictate a limit for how many shadow map slots may be updated (in light-value/age order?)
 		mutable uint32_t _frames_skipped { 0 };
-		Time _last_size_change;
+		TimeT _last_size_change;
 
 		friend class ShadowAtlas;
 	};
@@ -138,7 +138,7 @@ public:
 	uint32_t update_allocations(const std::vector<LightIndex> &relevant_lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward);
 
 	[[nodiscard]] const dense_map<LightID, AtlasLight> &allocated_lights() const { return _id_to_allocated; }
-	[[nodiscard]] SlotMask need_render(const AtlasLight &atlas_light, Time now, size_t hash, const Scene &scene) const;
+	[[nodiscard]] SlotMask need_render(const AtlasLight &atlas_light, TimeT now, size_t hash, const Scene &scene) const;
 
 	void update_slots_ssbo();
 	const CSMParams &update_csm_params(LightID light_id, const Camera &camera);//, float radius_uv=0.5f);
@@ -212,8 +212,8 @@ private:
 	void evaluate_lights(const std::vector<LightIndex> &relevant_lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward, std::vector<ValueLight> &prioritized, dense_set<LightID> &seen_lights);
 	float evaluate_light(const bounds::Sphere &light_sphere, const glm::vec3 &view_pos, const glm::vec3 &view_forward) const;
 	Counters compute_desired(const std::vector<ValueLight> &valued_lights, std::vector<AtlasLight> &desired_slots);
-	Counters apply_desired_slots(const std::vector<AtlasLight> &desired_slots, Time now);
-	void log_changes(const Counters &counters, size_t num_prio, Time start_time);
+	Counters apply_desired_slots(const std::vector<AtlasLight> &desired_slots, TimeT now);
+	void log_changes(const Counters &counters, size_t num_prio, TimeT start_time);
 	void generate_slots(std::initializer_list<uint32_t> distribution, SlotSetCategory slots_cat);
 	bool has_slots_available(const AtlasLight &atlas_light, const small_vec<uint32_t, 6> &num_promised) const;
 	SlotID alloc_slot(SlotSize slot_size, bool first=true);

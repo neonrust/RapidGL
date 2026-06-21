@@ -10,6 +10,7 @@
 #include "log.h"
 #include "postprocess.h"
 #include "util.h"
+#include "game_time.h"
 #include "gui/gui.h"   // IWYU pragma: keep
 
 #include "component/model.h"
@@ -592,7 +593,7 @@ void ZigApp::input()
 	// 	m_animate_lights = !m_animate_lights;
 }
 
-void ZigApp::update(double delta_time)
+void ZigApp::update(nanoseconds delta_time)
 {
 	_running_time += seconds_f(delta_time);
 
@@ -615,14 +616,14 @@ void ZigApp::update(double delta_time)
 	else if(Input::isKeyDown(KeyCode::DownArrow))
 		adjust_energy  = -energy_multiplier;
 
-	const float move_amount = float(1.0f * delta_time);
+	const float move_amount = float(1.0f * seconds_f(delta_time).count());
 	float adjust_position = 0.f;
 	if(Input::isKeyDown(KeyCode::LeftArrow))
 		adjust_position = -move_amount;
 	else if(Input::isKeyDown(KeyCode::RightArrow))
 		adjust_position = +move_amount;
 
-	const float angle_amount = float(glm::radians(10.f)*delta_time);
+	const float angle_amount = float(glm::radians(10.f)*seconds_f(delta_time).count());
 	float adjust_angle  = 0.f;
 	if(Input::isKeyDown(KeyCode::RightBracket))
 		adjust_angle = angle_amount;
@@ -677,8 +678,8 @@ void ZigApp::update(double delta_time)
 	else if (m_animate_lights)
     {
 		// time_accum  += float(delta_time * m_animation_speed);
-		const auto orbit_mat = glm::rotate(glm::mat4(1), glm::radians(float(delta_time)) * 10.f * m_animation_speed, AXIS_Y);
-		const auto spin_mat = glm::angleAxis(glm::radians(float(15*delta_time * m_animation_speed)), AXIS_Y);
+		const auto orbit_mat = glm::rotate(glm::mat4(1), glm::radians(seconds_f(delta_time).count()) * 10.f * m_animation_speed, AXIS_Y);
+		const auto spin_mat = glm::angleAxis(glm::radians(15*seconds_f(delta_time).count() * m_animation_speed), AXIS_Y);
 
 		// auto spin_mat  = glm::rotate(glm::mat4(1), glm::radians(60.f * float(delta_time)) * 2.f * m_animation_speed, AXIS_Y);
 

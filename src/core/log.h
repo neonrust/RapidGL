@@ -8,8 +8,6 @@
 namespace Log
 {
 
-using seconds_f = std::chrono::duration<float, std::ratio<1>>;
-
 using Level = uint_fast8_t;
 static constexpr Level DEBUG   = 10;
 static constexpr Level INFO    = 20;

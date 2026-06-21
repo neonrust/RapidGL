@@ -7,6 +7,11 @@
 #include "hash_mat4.h"   // IWYU pragma: keep
 #include "hash_quat.h"   // IWYU pragma: keep
 
+#include <chrono>
+using namespace std::chrono;
+
+#include "game_time.h"
+
 using namespace std::literals;
 
 
@@ -110,10 +115,10 @@ void Camera::setUniforms(Shader &shader) const
 	shader.setUniform("u_fov_y"sv,           glm::radians(m_fovy));
 }
 
-void Camera::update(double dt)
+void Camera::update(std::chrono::nanoseconds dt)
 {
 	// Camera Movement
-	auto movement_amount = float(m_move_speed * dt);
+	auto movement_amount = m_move_speed * duration_cast<seconds_f>(dt).count();
 
 	if(Input::isKeyDown(KeyCode::LeftShift))
 		movement_amount *= 0.25f;
