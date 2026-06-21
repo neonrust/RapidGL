@@ -67,7 +67,7 @@ public:
 		inline bool is_dirty() const { return _dirty; }
 
 		inline void set_dirty() const { _dirty = true; }       // called from allocated_lights(); const
-		inline void on_rendered(Time t, uint32_t new_hash) const // called from allocated_lights(); const
+		inline void on_rendered(TimeT t, size_t new_hash) const // called from allocated_lights(); const
 		{
 			_dirty = false;
 			_last_rendered = t;
@@ -79,7 +79,7 @@ public:
 		SlotConfig slot_config { SlotConfig::Single };
 		uint_fast8_t num_slots;
 		std::array<SlotDef, 6> slots; // per slot
-		mutable uint32_t hash { 0 };
+		mutable size_t hash { 0 };
 
 	private:
 		mutable bool _dirty { true };
@@ -89,7 +89,7 @@ public:
 
 		friend class ShadowAtlas;
 	};
-	static_assert(sizeof(AtlasLight) == 184);
+	static_assert(sizeof(AtlasLight) == 192);
 
 	struct CSMParams
 	{
