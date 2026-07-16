@@ -178,12 +178,12 @@ int Window::isCloseRequested()
 	return glfwWindowShouldClose(m_window);
 }
 
-size_t Window::width()
+uint32_t Window::width()
 {
 	return m_viewport_size.x;
 }
 
-size_t Window::height()
+uint32_t Window::height()
 {
 	return m_viewport_size.y;
 }

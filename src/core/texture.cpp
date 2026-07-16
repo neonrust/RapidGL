@@ -398,17 +398,17 @@ bool Texture3D::Load(const std::filesystem::path& filepath)
 	return false;
 }
 
-bool Texture1D::Create(size_t width, GLenum internalFormat, size_t num_mipmaps)
+bool Texture1D::Create(uint32_t width, GLenum internalFormat, uint_fast8_t num_mipmaps)
 {
 	return Texture::Create(width, 0, 0, internalFormat, num_mipmaps);
 }
 
-bool Texture2D::Create(size_t width, size_t height, GLenum internalFormat, size_t num_mipmaps)
+bool Texture2D::Create(uint32_t width, uint32_t height, GLenum internalFormat, uint_fast8_t num_mipmaps)
 {
 	return Texture::Create(width, height, 0, internalFormat, num_mipmaps);
 }
 
-TextureDescriptor Texture2D::CreateView() const
+TextureDescriptor Texture2D::CreateView(uint_fast8_t only_mip_level) const
 {
 	GLuint viewId;
 	glGenTextures(1, &viewId);
@@ -418,11 +418,25 @@ TextureDescriptor Texture2D::CreateView() const
 	GLenum internalFormat { 0 };
 	glGetTextureLevelParameteriv(_texture_id, 0, GL_TEXTURE_INTERNAL_FORMAT, reinterpret_cast<GLint *>(&internalFormat));
 
+	auto min_level = 0u;
+	if(only_mip_level != 255)
+	{
+		assert(only_mip_level < num_levels);
+		min_level = only_mip_level;
+		num_levels = 1;
+	}
+
+	return create_view(viewId, internalFormat, min_level, num_levels);
+}
+
+TextureDescriptor Texture2D::create_view(GLuint viewId, GLenum inrernalFormat, GLuint min_level, GLuint num_levels) const
+{
 	glTextureView(viewId,
 				  GL_TEXTURE_2D,     // target of the *view*
 				  _texture_id,       // source texture
-				  internalFormat,
-				  0, num_levels,     // mip range
+				  inrernalFormat,
+				  min_level,
+				  num_levels,
 				  0, 1);             // layer range
 
 	return {
@@ -432,7 +446,7 @@ TextureDescriptor Texture2D::CreateView() const
 	};
 }
 
-bool Texture3D::Create(size_t width, size_t height, size_t depth, GLenum internalFormat, size_t num_mipmaps)
+bool Texture3D::Create(uint32_t width, uint32_t height, uint32_t depth, GLenum internalFormat, uint_fast8_t num_mipmaps)
 {
 	return Texture::Create(width, height, depth, internalFormat, num_mipmaps);
 }

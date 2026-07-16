@@ -287,6 +287,9 @@ void ZigApp::init_app()
 	m_bloom_pp.create();
 	assert(m_bloom_pp);
 
+	m_gtao_pp.resize(Window::width(), Window::height());
+	assert(m_gtao_pp);
+
 	m_volumetrics_pp.create();
 	assert(m_volumetrics_pp);
 
@@ -382,6 +385,8 @@ void ZigApp::init_app()
 
 	_pp_full_rt.create("pp-full", Window::width(), Window::height(), C::Default, D::None);
 	_pp_full_rt.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipNearest); // not necessary?
+
+	_pp_ao_result.Create(Window::width(), Window::height(), GL_R32F, 1);
 
 	// TODO: final_rt.cloneFrom(_rt);
 	_final_rt.create("final", Window::width(), Window::height(), C::Default, D::None);
@@ -1145,6 +1150,20 @@ void ZigApp::render()
 
 	if(auto d = _gl_timers["z-prepass"].elapsed<microseconds>(); d)
 		m_depth_time.add(*d);
+
+	// ------------------------------------------------------------------
+	// Ambient occlusion (GTA)
+	if(m_gtao_pp.enabled())
+	{
+		_gl_timers["ao"].start();
+
+		m_gtao_pp.setProjection(m_camera.projectionTransform());
+		m_gtao_pp.renderTexture(m_depth_pass_rt.depth_texture(), _pp_ao_result);
+
+		if(auto d = _gl_timers["ao"].elapsed<microseconds>(); d)
+			m_ao_time.add(*d);
+	}
+
 	// ------------------------------------------------------------------
 	_gl_timers["cluster-find"].start();
 
@@ -1963,6 +1982,7 @@ void ZigApp::renderShading(const Camera &camera)
 	shader.setUniform("u_shadow_bias_distance_scale"sv, m_shadow_bias_distance_scale);
 	shader.setUniform("u_shadow_bias_texel_size_mix"sv, m_shadow_bias_texel_size_mix);
 	shader.setUniform("u_shadow_bias_scale"sv,          m_shadow_bias_scale);
+	shader.setUniform("u_ambient_occlusion_scale"sv,    _ambient_occlusion_scale);
 	shader.setUniform("u_shadow_occlusion"sv,           m_shadow_occlusion);
 	shader.setUniform("u_shadow_colorize"sv,            _debug_colorize_shadows);
 	shader.setUniform("u_shadow_contacts"sv,            _shadow_contacts);
@@ -1994,6 +2014,7 @@ void ZigApp::renderShading(const Camera &camera)
 	m_brdf_lut_rt->bindTextureSampler(8);
     m_ltc_mat_lut->Bind(9);
     m_ltc_amp_lut->Bind(10);
+	_pp_ao_result.Bind(11);
 
 	_shadow_atlas.bindShadowSampler(20);
 	_shadow_atlas.bindTextureSampler(21);   // encoded normals

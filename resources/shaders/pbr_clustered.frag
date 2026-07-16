@@ -105,7 +105,9 @@ void main()
 
     float camera_distance = distance(u_cam_pos, in_world_pos);
 
-    vec3 radiance = calcAmbience(u_ambient_radiance, material);
+   	vec2 frag_uv = vec2(gl_FragCoord.x/float(u_viewport_size.x), gl_FragCoord.y/float(u_viewport_size.y));
+    float ambient_occlusion = ambientOcclusion(frag_uv);
+    vec3 radiance = calcAmbience(u_ambient_radiance, material) * ambient_occlusion;
 
     // too many lights?
     if(lights_range.count > CLUSTER_MAX_LIGHTS)
@@ -191,7 +193,7 @@ void main()
        	radiance += visibility * contribution;
     }
 
-    radiance += indirectLightingIBL(in_world_pos, material);
+    radiance += indirectLightingIBL(in_world_pos, material) * ambient_occlusion;
     radiance += material.emission;
 
     // TODO: these "debug modes" should be separate shaders; overlays drawn using FSQ

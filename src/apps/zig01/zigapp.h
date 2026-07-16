@@ -19,6 +19,7 @@
 #include "pp_gaussian_blur_fixed.h"
 #include "pp_volumetrics.h"
 #include "pp_tonemapping.h"
+#include "pp_ao.h"
 #include "shadow_atlas.h"
 #include "light_manager.h"
 
@@ -188,8 +189,9 @@ private:
 	bool _debug_colorize_shadows         = false;
 	bool _debug_colorize_contact_shadows = false;
 
-	glm::vec3 _ambient_radiance          = { 0.02f, 0.02f, 0.02f };
+	glm::vec3 _ambient_radiance          = { 0.2f, 0.2f, 0.2f };
 	float _ibl_strength                  = 1.f;
+	float _ambient_occlusion_scale       = 1.f;
 	float m_shadow_occlusion             = 1.f;//0.8f;
 	bool  _shadow_contacts               = true;
 	float _shadow_contact_max_ray_length = 0.06f;
@@ -234,6 +236,7 @@ private:
 	RGL::RenderTarget::Texture2d _rt;
 	RGL::RenderTarget::Texture2d _pp_low_rt;
 	RGL::RenderTarget::Texture2d _pp_full_rt;
+	RGL::Texture2D _pp_ao_result;
 	RGL::PP::Tonemapping m_tmo_pp;
 	float m_gamma;
 	RGL::PP::Volumetrics m_volumetrics_pp;
@@ -255,6 +258,7 @@ private:
 
 	RGL::PP::Bloom m_bloom_pp;
 	RGL::PP::BlurFixed<3.f> m_blur3_pp;
+	RGL::PP::GroundTruthAmbientOcclusion m_gtao_pp;
 
 	RGL::seconds_f _running_time { 0 };
 
@@ -272,6 +276,7 @@ private:
 
 	SampleWindow<std::chrono::microseconds, 30> m_cull_scene_time;
 	SampleWindow<std::chrono::microseconds, 30> m_depth_time;
+	SampleWindow<std::chrono::microseconds, 30> m_ao_time;
 	SampleWindow<std::chrono::microseconds, 30> m_cluster_find_time;
 	SampleWindow<std::chrono::microseconds, 30> m_cluster_index_time;
 	SampleWindow<std::chrono::microseconds, 30> m_light_cull_time;

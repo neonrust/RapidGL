@@ -229,17 +229,17 @@ class Texture1D : public Texture
 {
 public:
 	Texture1D() = default;
-
-	bool Create(size_t width, GLenum internalFormat, size_t num_mipmaps=DefaultMipmaps);
+	
+	bool Create(uint32_t width, GLenum internalFormat, uint_fast8_t num_mipmaps=DefaultMipmaps);
 };
 
 class Texture2D : public Texture
 {
 public:
 	Texture2D() = default;
-
-	bool Create(size_t width, size_t height, GLenum internalFormat, size_t num_mipmaps=DefaultMipmaps);
-	TextureDescriptor CreateView() const;
+	
+	bool Create(uint32_t width, uint32_t height, GLenum internalFormat, uint_fast8_t num_mipmaps=DefaultMipmaps);
+	TextureDescriptor CreateView(uint_fast8_t mip_level=255) const;
 
 	// TODO: convert to factory function
 	//   also, these should access a shared storage/cache,
@@ -248,6 +248,9 @@ public:
 	bool Load(unsigned char* memory_data, uint32_t data_size, bool is_srgb = false, uint32_t num_mipmaps=DefaultMipmaps);
 	bool LoadHdr(const std::filesystem::path& filepath, uint32_t num_mipmaps=DefaultMipmaps);
 	bool LoadDds(const std::filesystem::path& filepath);
+
+private:
+	TextureDescriptor create_view(GLuint viewId, GLenum inrernalFormat, GLuint min_level, GLuint num_levels) const;
 };
 
 class Texture2DArray : public Texture
@@ -300,7 +303,7 @@ public:
 	Texture3D() = default;
 
 	bool Load(const std::filesystem::path &filepath);
-	bool Create(size_t width, size_t height, size_t depth, GLenum internalFormat, size_t num_mipmaps=DefaultMipmaps);
+	bool Create(uint32_t width, uint32_t height, uint32_t depth, GLenum internalFormat, uint_fast8_t num_mipmaps=DefaultMipmaps);
 
 	void copyTo(Texture3D &dest);
 

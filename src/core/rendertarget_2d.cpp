@@ -199,7 +199,7 @@ void Texture2d::resize(size_t width, size_t height)
 	}
 }
 
-Texture &Texture2d::color_texture()
+Texture2D &Texture2d::color_texture()
 {
 	assert(_color_texture);
 	return _color_texture;
@@ -217,7 +217,7 @@ void Texture2d::bindTextureSampler(GLuint unit) const
 	_color_texture.Bind(unit);
 }
 
-Texture &Texture2d::depth_texture()
+Texture2D &Texture2d::depth_texture()
 {
 	return _depth_texture;
 }

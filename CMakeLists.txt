@@ -45,6 +45,10 @@ set(SHADER_FILES
 	${SHADER_PATH}/FSQ.frag
 	${SHADER_PATH}/FSQ.vert
 	${SHADER_PATH}/gaussian_blur.comp
+	${SHADER_PATH}/gtao_denoise.comp
+	${SHADER_PATH}/gtao_linearize_depth.comp
+	${SHADER_PATH}/gtao_main_pass.comp
+	${SHADER_PATH}/gtao_prefilter_depth.comp
 	${SHADER_PATH}/imgui_3d_texture.frag
 	${SHADER_PATH}/imgui_3d_texture.vert
 	${SHADER_PATH}/imgui_depth_image.frag
@@ -73,6 +77,7 @@ set(SHADER_FILES
 	${SHADER_PATH}/volumetrics_cull.comp
 	${SHADER_PATH}/volumetrics_inject.comp
 	${SHADER_PATH}/volumetrics_select_lights.comp
+	${SHADER_PATH}/xe_gtao_common.glh
 )
 
 add_custom_target(CoreShaders

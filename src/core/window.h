@@ -20,9 +20,9 @@ namespace RGL
         static void endFrame();
 
         static int isCloseRequested();
-
-		static size_t     width();
-		static size_t     height();
+		
+		static uint32_t width();
+		static uint32_t height();
 		static glm::uvec2 center();
 		static glm::uvec2 size();
 		static float      aspectRatio();

@@ -40,13 +40,13 @@ struct Texture2d
 
 	inline bool has_color() const { return _has_color; }
 	// might be invalid (if not a texture)
-	Texture &color_texture();
+	Texture2D &color_texture();
 	const Texture &color_texture() const;
 	inline GLenum color_format() const { return _color_format; }
 
 	inline bool has_depth() const { return _has_depth; }
 	// might be invalid (if not a texture)
-	Texture &depth_texture();
+	Texture2D &depth_texture();
 	const Texture &depth_texture() const;
 	inline GLenum depth_format() const { return _depth_format; }
 

@@ -74,6 +74,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 
 		TIMING("Culling",  m_cull_scene_time.average());
 		TIMING("Z-pass", m_depth_time.average());
+		TIMING("AO", m_ao_time.average());
 
 		TIMING("Shadow", m_shadow_time.average() + m_shadow_alloc_time.average());
 		TIMING("  alloc", m_shadow_alloc_time.average());
@@ -161,6 +162,19 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 				}
 				ImGui::EndCombo();
 			}
+			if(ImGui::BeginCombo("AO Quality", PP::qualityName(m_gtao_pp.quality()).data()))
+			{
+				for(const auto &q: { PP::Quality::PissPoor, PP::Quality::Low, PP::Quality::Medium, PP::Quality::High, PP::Quality::Super, PP::Quality::Insane })
+				{
+					const auto is_selected = q == m_gtao_pp.quality();
+					if (ImGui::Selectable(PP::qualityName(q).data(), is_selected))
+						m_gtao_pp.setQuality(q);
+					if(is_selected)
+						ImGui::SetItemDefaultFocus();
+				}
+				ImGui::EndCombo();
+			}
+			ImGui::SliderFloat("AO strength", &_ambient_occlusion_scale, 0.f, 2.f, "%.1f");
 			ImGui::SliderFloat("IBL strength", &_ibl_strength, 0.f, 2.f, "%.1f");
 			ImGui::SliderFloat("IBL MIP level", &_ibl_mip_level, 0.0, glm::log2(float(m_env_cubemap_rt->width())), "%.1f");
 
@@ -366,8 +380,14 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 				"final_rt",
 				"shadow_atlas",
 
+				"AO: lin-depth", // 10
+				"AO: filter depth",
+				"AO: noisy:0",
+				"AO: noisy:1",
+				"AO: result",
+
 				// 3d
-				"volumetric froxels [3d]",  // 10
+				"volumetric froxels [3d]",  // 15
 				"volumetric froxels back [3d]",
 				"volumetric froxels acc [3d]",
 			};
@@ -376,9 +396,12 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 
 			RenderTarget::Texture2d *rt = nullptr;
 			RenderTarget::Cube *rtc = nullptr;
+			const Texture2D *t2 = nullptr;
 			const Texture3D *t3 = nullptr;
+
 			switch(current_image)
 			{
+			// cube
 			case  1: rtc = m_env_cubemap_rt.get(); break;
 			case  2: rtc = m_irradiance_cubemap_rt.get(); break;
 			case  3: rtc = m_prefiltered_env_map_rt.get(); break;
@@ -388,9 +411,16 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			case  7: rt = &_pp_full_rt; break;
 			case  8: rt = &_final_rt; break;
 			case  9: rt = &_shadow_atlas; break;
-			case 10: t3 = &m_volumetrics_pp.froxel_texture(0); break;
-			case 11: t3 = &m_volumetrics_pp.froxel_texture(1); break;
-			case 12: t3 = &m_volumetrics_pp.froxel_texture(2); break;
+			// 2d
+			case 10: t2 = &m_gtao_pp.linearDepthTexture(); break;
+			case 11: t2 = &m_gtao_pp.filteredDepthTexture(); break;
+			case 12: t2 = &m_gtao_pp.noisyTexture(0); break;
+			case 13: t2 = &m_gtao_pp.noisyTexture(1); break;
+			case 14: t2 = &_pp_ao_result; break;
+			// 3d
+			case 15: t3 = &m_volumetrics_pp.froxel_texture(0); break;
+			case 16: t3 = &m_volumetrics_pp.froxel_texture(1); break;
+			case 17: t3 = &m_volumetrics_pp.froxel_texture(2); break;
 			}
 			// const bool is_cube = current_image >= 1 and current_image <= 3;
 			// const bool is_depth = current_image == 4;
@@ -445,7 +475,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 
 				rt = &tex3d_rt;
 				const auto color_f = meta.channel_format;
-				meta_info = std::format("Color: {} x {} x {}  {}", meta.width, meta.height, meta.depth, gl_lookup::enum_name(color_f).substr(3));
+				std::format_to(std::back_inserter(meta_info), "Color: {} x {} x {}  {}", meta.width, meta.height, meta.depth, gl_lookup::enum_name(color_f).substr(3));
 			}
 
 			if(rt)
@@ -557,6 +587,17 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 					const auto depth_f = rt->depth_format();
 					ImGui::Text("Depth: %u x %u  %s", rt->width(), rt->height(), gl_lookup::enum_name(depth_f).substr(3).data());
 				}
+			}
+
+			if(t2)
+			{
+				const auto &meta = t2->GetMetadata();
+				const float aspect = float(meta.width) / float(meta.height);
+				const ImVec2 img_size { win_width, float(win_width)/aspect };
+				ImGui_ImageEx(t2->texture_id(), img_size, top_left, bottom_right, 0);
+
+				std::format_to(std::back_inserter(meta_info), "Color: {} x {}", meta.width, meta.height);//, gl_lookup::enum_name(color_f).substr(3));
+				ImGui::Text("%s", meta_info.c_str());
 			}
 
 			if(rtc)

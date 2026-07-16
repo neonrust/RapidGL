@@ -34,10 +34,11 @@ public:
 	struct Barrier
 	{
 		using Bits = GLbitfield;
-		static constexpr Bits None    = 0;
-		static constexpr Bits SSBO    = GL_SHADER_STORAGE_BARRIER_BIT;
-		static constexpr Bits Texture = GL_TEXTURE_UPDATE_BARRIER_BIT;
-		static constexpr Bits Image   = GL_SHADER_IMAGE_ACCESS_BARRIER_BIT;
+		static constexpr Bits None         = 0;
+		static constexpr Bits SSBO         = GL_SHADER_STORAGE_BARRIER_BIT;
+		static constexpr Bits Texture      = GL_TEXTURE_UPDATE_BARRIER_BIT;
+		static constexpr Bits TextureFetch = GL_TEXTURE_FETCH_BARRIER_BIT;
+		static constexpr Bits Image        = GL_SHADER_IMAGE_ACCESS_BARRIER_BIT;
 	};
 	// https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetActiveUniform.xhtml
 	enum class UniformType : GLenum

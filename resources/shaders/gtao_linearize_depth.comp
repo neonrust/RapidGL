@@ -1,0 +1,26 @@
+#version 460 core
+
+// Converts raw hardware depth (standard, non-reversed projection, GL_LESS depth test)
+// into positive linear view-space Z (for further processing in the GTAO shaders).
+
+uniform ivec2 u_viewport_size;
+uniform float u_proj_22;
+uniform float u_proj_32;
+
+layout (binding = 0, r32f) uniform writeonly image2D out_linear_depth;
+layout (binding = 1)       uniform sampler2D u_src_depth;
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+void main()
+{
+	ivec2 pixCoord = ivec2(gl_GlobalInvocationID.xy);
+	if (any(greaterThanEqual(pixCoord, u_viewport_size)))
+		return;
+
+	float rawDepth = texelFetch(u_src_depth, pixCoord, 0).r;
+	float ndcZ = rawDepth * 2 - 1;
+	float viewZ = u_proj_32 / (ndcZ + u_proj_22);
+
+	imageStore(out_linear_depth, pixCoord, vec4(viewZ, 0, 0, 0));
+}

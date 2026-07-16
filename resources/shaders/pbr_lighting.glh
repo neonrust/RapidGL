@@ -30,6 +30,7 @@ layout (binding = 6) uniform samplerCube u_irradiance_map;
 layout (binding = 7) uniform samplerCube u_prefiltered_map;
 layout (binding = 8) uniform sampler2D   u_brdf_lut;
 // 9, 10 is in area_light_ltc.glh
+layout (binding = 11) uniform sampler2D u_gtao_map;
 
 uniform bool u_has_albedo_map;
 uniform bool u_has_normal_map;
@@ -44,6 +45,7 @@ uniform float u_roughness;
 uniform float u_ao;
 uniform vec3  u_emission;
 uniform float u_emission_strength;
+uniform float u_ambient_occlusion_scale;
 
 uniform vec3  u_cam_pos;
 uniform float u_ibl_strength;
@@ -265,10 +267,14 @@ vec3 pbr_dir(GPULight light, vec3 direction, vec3 world_pos, float attenuation, 
 	return radiance;
 }
 
-
 vec3 calcAmbience(vec3 radiance, MaterialProperties material)
 {
 	return radiance * material.albedo;
+}
+
+float ambientOcclusion(vec2 frag_uv)
+{
+	return 1 - (u_ambient_occlusion_scale * (1 - texture(u_gtao_map, frag_uv).r));
 }
 
 vec3 calcPointLight(GPULight light, vec3 world_pos, MaterialProperties material)
