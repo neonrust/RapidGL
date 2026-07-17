@@ -85,8 +85,8 @@ private:
 	bool loadShaders() override;
 
 private:
-	float    _radius { 0.5f };                  // EffectRadius, world-space sample radius
-	float    _falloff { 0.615f };               // EffectFalloffRange, fraction of radius over which the weight tapers
+	float    _radius { 1.3f };                  // EffectRadius, world-space sample radius
+	float    _falloff { 0.6f };               // EffectFalloffRange, fraction of radius over which the weight tapers
 	float    _radius_mul { 1.457f };            // RadiusMultiplier, per-MIP scale
 	float    _final_value_power { 2.2f };       // FinalValuePower, non-linear contrast on the final term
 	uint32_t _denoise_pass_count { 3 };         // Total denoise dispatches, >=1 (final apply), clamped to GTAO_MAX_DENOISE_PASSES
