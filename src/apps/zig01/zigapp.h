@@ -252,7 +252,7 @@ private:
 		"rogland_clear_night_2k.hdr",
 		"citrus_orchard_puresky_2k.hdr",
 	};
-	uint8_t m_current_hdr_map_idx = 0;
+	uint8_t m_current_hdr_map_idx = 3;
 
     GLuint m_skybox_vao, m_skybox_vbo;
 
