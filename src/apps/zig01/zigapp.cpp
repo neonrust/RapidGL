@@ -1153,16 +1153,15 @@ void ZigApp::render()
 
 	// ------------------------------------------------------------------
 	// Ambient occlusion (GTA)
+	_gl_timers["ao"].start();
+
 	if(m_gtao_pp.enabled())
 	{
-		_gl_timers["ao"].start();
-
 		m_gtao_pp.setProjection(m_camera.projectionTransform());
 		m_gtao_pp.renderTexture(m_depth_pass_rt.depth_texture(), _pp_ao_result);
-
-		if(auto d = _gl_timers["ao"].elapsed<microseconds>(); d)
-			m_ao_time.add(*d);
 	}
+	if(auto d = _gl_timers["ao"].elapsed<microseconds>(); d)
+		m_ao_time.add(*d);
 
 	// ------------------------------------------------------------------
 	_gl_timers["cluster-find"].start();
