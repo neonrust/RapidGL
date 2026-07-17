@@ -105,8 +105,12 @@ void main()
 
     float camera_distance = distance(u_cam_pos, in_world_pos);
 
-   	vec2 frag_uv = vec2(gl_FragCoord.x/float(u_viewport_size.x), gl_FragCoord.y/float(u_viewport_size.y));
-    float ambient_occlusion = ambientOcclusion(frag_uv);
+    float ambient_occlusion = 1;
+    if(u_ambient_occlusion_scale > 0)
+    {
+	   	vec2 frag_uv = vec2(gl_FragCoord.x/float(u_viewport_size.x), gl_FragCoord.y/float(u_viewport_size.y));
+	    ambient_occlusion = ambientOcclusion(frag_uv);
+    }
     vec3 radiance = calcAmbience(u_ambient_radiance, material) * ambient_occlusion;
 
     // too many lights?

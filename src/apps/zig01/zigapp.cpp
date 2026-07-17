@@ -1981,7 +1981,7 @@ void ZigApp::renderShading(const Camera &camera)
 	shader.setUniform("u_shadow_bias_distance_scale"sv, m_shadow_bias_distance_scale);
 	shader.setUniform("u_shadow_bias_texel_size_mix"sv, m_shadow_bias_texel_size_mix);
 	shader.setUniform("u_shadow_bias_scale"sv,          m_shadow_bias_scale);
-	shader.setUniform("u_ambient_occlusion_scale"sv,    _ambient_occlusion_scale);
+	shader.setUniform("u_ambient_occlusion_scale"sv,    m_gtao_pp.enabled()? _ambient_occlusion_scale: 0);
 	shader.setUniform("u_shadow_occlusion"sv,           m_shadow_occlusion);
 	shader.setUniform("u_shadow_colorize"sv,            _debug_colorize_shadows);
 	shader.setUniform("u_shadow_contacts"sv,            _shadow_contacts);
