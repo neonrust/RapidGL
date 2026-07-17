@@ -26,37 +26,6 @@
 #include <memory>
 #include <vector>
 
-namespace color
-{
-    // Convert HSV to RGB:
-    // Source: https://en.wikipedia.org/wiki/HSL_and_HSV#From_HSV
-    // Retrieved: 28/04/2016
-	// @param H Hue         [0, 360)
-	// @param S Saturation  [0, 1]
-	// @param V Value       [0, 1]
-	[[maybe_unused]] glm::vec3 hsv(float H, float S, float V)
-    {
-		const auto C = V * S;
-		const auto m = V - C;
-		const auto H2 = H / 60.0f;
-		const auto X = C * (1.0f - std::abs(std::fmod(H2, 2.f) - 1.f));
-
-		glm::vec3 RGB { 0 };
-
-		switch (static_cast<int>(H2) % 6)
-        {
-		case 0: return glm::vec3{ C, X, 0 } + m;
-		case 1: return glm::vec3{ X, C, 0 } + m;
-		case 2: return glm::vec3{ 0, C, X } + m;
-		case 3: return glm::vec3{ 0, X, C } + m;
-		case 4: return glm::vec3{ X, 0, C } + m;
-		case 5: return glm::vec3{ C, 0, X } + m;
-        }
-        return RGB + m;
-    }
-
-} // color
-
 enum struct BlendMode
 {
 	Replace,
@@ -301,3 +270,32 @@ private:
 	bool _debug_ui_enabled { true };
 };
 
+namespace color
+{
+// Convert HSV to RGB:
+// https://en.wikipedia.org/wiki/HSL_and_HSV#From_HSV
+// @param Hue         [0, 360)
+// @param Saturation  [0, 1]
+// @param Value       [0, 1]
+inline glm::vec3 hsv(float hue, float sat, float value)
+{
+	const auto C = value * sat;
+	const auto m = value - C;
+	const auto H2 = hue / 60.0f;
+	const auto X = C * (1.0f - std::abs(std::fmod(H2, 2.f) - 1.f));
+
+	glm::vec3 RGB { m };
+
+	switch(static_cast<int>(H2) % 6)
+	{
+	case 0: RGB += glm::vec3{ C, X, 0 }; break;
+	case 1: RGB += glm::vec3{ X, C, 0 }; break;
+	case 2: RGB += glm::vec3{ 0, C, X }; break;
+	case 3: RGB += glm::vec3{ 0, X, C }; break;
+	case 4: RGB += glm::vec3{ X, 0, C }; break;
+	case 5: RGB += glm::vec3{ C, 0, X }; break;
+	}
+	return RGB;
+}
+
+} // color
