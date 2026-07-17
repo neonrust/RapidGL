@@ -14,7 +14,7 @@ namespace RGL::PP
 
 enum class Quality : int_fast8_t
 {
-	Poor       = -2,
+	Terrible   = -2,
 	Low        = -1,
 	Medium     =  0,
 	High       =  1,

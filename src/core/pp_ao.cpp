@@ -73,7 +73,7 @@ void GroundTruthAmbientOcclusion::setQuality(Quality quality)
 
 	switch(quality)
 	{
-	case Quality::PissPoor: _slice_count = 1; _steps_per_slice = 1; break;
+	case Quality::Terrible: _slice_count = 1; _steps_per_slice = 1; break;
 	case Quality::Low:      _slice_count = 2; _steps_per_slice = 1; break;
 	case Quality::Medium:   _slice_count = 2; _steps_per_slice = 2; break;
 	case Quality::High:     _slice_count = 3; _steps_per_slice = 3; break;

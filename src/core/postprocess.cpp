@@ -10,14 +10,14 @@ namespace RGL::PP
 std::string_view qualityName(Quality q)
 {
 	static const std::string_view names[] = {
-		"Poor"sv,
+		"Terrible"sv,
 		"Low"sv,
 		"Medium"sv,
 		"High"sv,
 		"Super"sv,
 		"Insane"sv,
 	};
-	assert(q >= Quality::Poor and q <= Quality::Insane);
+	assert(q >= Quality::Terrible and q <= Quality::Insane);
 	return names[int_fast8_t(q) + 2];
 }
 
