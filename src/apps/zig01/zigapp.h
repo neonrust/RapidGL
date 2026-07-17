@@ -189,7 +189,7 @@ private:
 	bool _debug_colorize_shadows         = false;
 	bool _debug_colorize_contact_shadows = false;
 
-	glm::vec3 _ambient_radiance          = { 0.2f, 0.2f, 0.2f };
+	glm::vec3 _ambient_radiance          = { 0.15f, 0.15f, 0.15f };
 	float _ibl_strength                  = 1.f;
 	float _ambient_occlusion_scale       = 1.f;
 	float m_shadow_occlusion             = 1.f;//0.8f;
