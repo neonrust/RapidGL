@@ -162,19 +162,6 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 				}
 				ImGui::EndCombo();
 			}
-			if(ImGui::BeginCombo("AO Quality", PP::qualityName(m_gtao_pp.quality()).data()))
-			{
-				for(const auto &q: { PP::Quality::PissPoor, PP::Quality::Low, PP::Quality::Medium, PP::Quality::High, PP::Quality::Super, PP::Quality::Insane })
-				{
-					const auto is_selected = q == m_gtao_pp.quality();
-					if (ImGui::Selectable(PP::qualityName(q).data(), is_selected))
-						m_gtao_pp.setQuality(q);
-					if(is_selected)
-						ImGui::SetItemDefaultFocus();
-				}
-				ImGui::EndCombo();
-			}
-			ImGui::SliderFloat("AO strength", &_ambient_occlusion_scale, 0.f, 2.f, "%.1f");
 			ImGui::SliderFloat("IBL strength", &_ibl_strength, 0.f, 2.f, "%.1f");
 			ImGui::SliderFloat("IBL MIP level", &_ibl_mip_level, 0.0, glm::log2(float(m_env_cubemap_rt->width())), "%.1f");
 
@@ -217,6 +204,66 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			ImGui::SliderFloat("Animation Speed",   &m_animation_speed, 0.0f, 15.0f, "%.1f");
 
 			ImGui::PopItemWidth();
+		}
+
+		if (ImGui::CollapsingHeader("Ambient Occlusion (GTAO)"))
+		{
+			bool b = m_gtao_pp.enabled();
+			if(ImGui::Checkbox("Enabled", &b))
+				m_gtao_pp.setEnabled(b);
+
+			if(ImGui::BeginCombo("Quality", PP::qualityName(m_gtao_pp.quality()).data()))
+			{
+				for(const auto &q: { PP::Quality::Terrible, PP::Quality::Low, PP::Quality::Medium, PP::Quality::High, PP::Quality::Super, PP::Quality::Insane })
+				{
+					const auto is_selected = q == m_gtao_pp.quality();
+					if (ImGui::Selectable(PP::qualityName(q).data(), is_selected))
+						m_gtao_pp.setQuality(q);
+					if(is_selected)
+						ImGui::SetItemDefaultFocus();
+				}
+				ImGui::EndCombo();
+			}
+			ImGui::SliderFloat("Strength", &_ambient_occlusion_scale, 0.f, 2.f, "%.2f");
+
+			// TODO: add parameters
+			{
+				float v;
+				int i;
+				// #define AO_PARAM(_label_, _getter_, _setter_, _min_, _max_) \
+				// 			v = m_gtao_pp. # _getter_ (); \
+				// 			if(ImGui::SliderFloat(_label_, &v, _min_, _max_, "%.2f")) \
+				// 				m_gtao_pp. # _setter_ (v);
+
+				// 			AO_PARAM("Effect radius", radius, setRadius, 0.01f, 5.f);
+				v = m_gtao_pp.radius();
+				if(ImGui::SliderFloat("Effect radius", &v, 0.01f, 5.f, "%.2f"))
+					m_gtao_pp.setRadius(v);
+				v = m_gtao_pp.falloff();
+				if(ImGui::SliderFloat("Falloff", &v, 0.01f, 5.f, "%.2f"))
+					m_gtao_pp.setFalloff(v);
+				v = m_gtao_pp.radiusMul();
+				if(ImGui::SliderFloat("Radius Multiplier", &v, 0.1f, 2.f, "%.2f"))
+					m_gtao_pp.setRadiusMul(v);
+				v = m_gtao_pp.finalValuePower();
+				if(ImGui::SliderFloat("Final power", &v, 0.1f, 5.f, "%.2f"))
+					m_gtao_pp.setFinalValuePower(v);
+				i = int(m_gtao_pp.denoisePassCount());
+				if(ImGui::SliderInt("Denoise passes", &i, 1, 5))
+					m_gtao_pp.setDenoisePassCount(uint32_t(i));
+				v = m_gtao_pp.denoiseBlurBeta();
+				if(ImGui::SliderFloat("Denoise beta", &v, 0.1f, 2.f, "%.2f"))
+					m_gtao_pp.setDenoiseBlurBeta(v);
+				v = m_gtao_pp.sampleDistPower();
+				if(ImGui::SliderFloat("Sample dist.", &v, 0.1f, 5.f, "%.2f"))
+					m_gtao_pp.setSampleDistPower(v);
+				v = m_gtao_pp.thinOccluderComp();
+				if(ImGui::SliderFloat("Thin occluder", &v, 0.f, 2.f, "%.2f"))
+					m_gtao_pp.setThinOccluderComp(v);
+				v = m_gtao_pp.depthMipSampleOffset();
+				if(ImGui::SliderFloat("Mip sample offset", &v, 0.5f, 5.f, "%.2f"))
+					m_gtao_pp.setDepthMipSampleOffset(v);
+			}
 		}
 
 		if (ImGui::CollapsingHeader("Tonemapper"))
