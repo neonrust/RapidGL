@@ -162,7 +162,8 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 				}
 				ImGui::EndCombo();
 			}
-			ImGui::SliderFloat("IBL strength", &_ibl_strength, 0.f, 2.f, "%.1f");
+			ImGui::SliderFloat("IBL strength", &_ibl_strength, 0.f, 2.f, "%.2f");
+			ImGui::SliderFloat("IBL specular", &_ibl_specular_strength, 0.f, 2.f, "%.2f");
 			ImGui::SliderFloat("IBL MIP level", &_ibl_mip_level, 0.0, glm::log2(float(m_env_cubemap_rt->width())), "%.1f");
 
 			static float falloff_power { _light_mgr.falloff_power() };

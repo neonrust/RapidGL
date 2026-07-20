@@ -1975,6 +1975,7 @@ void ZigApp::renderShading(const Camera &camera)
 	//shader.setUniform("u_specular_max_distance"sv,      m_camera.farPlane() * s_light_specular_fraction);
 	shader.setUniform("u_ambient_radiance"sv,           _ambient_radiance);
 	shader.setUniform("u_ibl_strength"sv,               _ibl_strength);
+	shader.setUniform("u_ibl_specular_strength"sv,      _ibl_specular_strength);
 	shader.setUniform("u_falloff_power"sv,              _light_mgr.falloff_power());
 
 	shader.setUniform("u_shadow_bias_constant"sv,       m_shadow_bias_constant);

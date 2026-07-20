@@ -49,6 +49,7 @@ uniform float u_ambient_occlusion_scale;
 
 uniform vec3  u_cam_pos;
 uniform float u_ibl_strength;
+uniform float u_ibl_specular_strength;
 uniform float u_specular_max_distance;
 
 struct MaterialProperties
@@ -176,7 +177,7 @@ vec3 indirectLightingIBL(vec3 world_pos, MaterialProperties material)
     // specular IBL term
     vec3 prefiletered_color = textureLod(u_prefiltered_map, r, material.roughness * MAX_REFLECTION_LOD).rgb;
     vec2 brdf               = texture(u_brdf_lut, vec2(max(dot(material.normal, wo), 0.0), material.roughness)).rg;
-    vec3 specular           =  prefiletered_color * (F * brdf.x + brdf.y);
+    vec3 specular           = prefiletered_color * (F * brdf.x + brdf.y) * u_ibl_specular_strength;
 
     // total indirect lighting
     return (kd * diffuse + specular) * material.ao * u_ibl_strength;
