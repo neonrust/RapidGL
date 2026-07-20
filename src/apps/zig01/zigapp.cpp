@@ -593,6 +593,13 @@ void ZigApp::input()
 			Log::error("Failed screenshot [{}]", filename);
     }
 
+	if(Input::wasKeyPressed(KeyCode::F))
+		m_volumetrics_pp.setEnabled(not m_volumetrics_pp.enabled());
+	if(Input::wasKeyPressed(KeyCode::B))
+		m_bloom_pp.setEnabled(not m_bloom_pp.enabled());
+	if(Input::wasKeyPressed(KeyCode::O))
+		m_gtao_pp.setEnabled(not m_gtao_pp.enabled());
+
 	// if (Input::wasKeyReleased(KeyCode::Space))
 	// 	m_animate_lights = !m_animate_lights;
 }
@@ -633,11 +640,6 @@ void ZigApp::update(nanoseconds delta_time)
 		adjust_angle = angle_amount;
 	else if(Input::isKeyDown(KeyCode::LeftBracket))
 		adjust_angle  = -angle_amount;
-
-	if(Input::wasKeyPressed(KeyCode::F))
-		m_volumetrics_pp.setEnabled(not m_volumetrics_pp.enabled());
-	if(Input::wasKeyPressed(KeyCode::B))
-		m_bloom_pp.setEnabled(not m_bloom_pp.enabled());
 
 	if(adjust_position != 0 or adjust_angle != 0 or adjust_energy != 0)
 	{

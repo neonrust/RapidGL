@@ -206,7 +206,19 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			ImGui::PopItemWidth();
 		}
 
-		if (ImGui::CollapsingHeader("Ambient Occlusion (GTAO)"))
+		static std::string ao_label = "Ambient Occlusion (GTAO)  o:";
+		static const auto ao_label_size = 28u;
+		if(m_gtao_pp.enabled() and ao_label.size() != ao_label_size + 5)
+		{
+			ao_label.resize(ao_label_size);
+			ao_label.append(" [ON]");
+		}
+		else if(not m_gtao_pp.enabled() and ao_label.size() != ao_label_size + 6)
+		{
+			ao_label.resize(ao_label_size);
+			ao_label.append(" [off]");
+		}
+		if (ImGui::CollapsingHeader(ao_label.c_str()))
 		{
 			bool b = m_gtao_pp.enabled();
 			if(ImGui::Checkbox("Enabled", &b))
