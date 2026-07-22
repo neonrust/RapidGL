@@ -137,9 +137,10 @@ void Util::AddShaderSearchPath(const std::filesystem::path &path)
 		s_shader_include_paths.push_back(abs_path);
 }
 
+// TODO: move this to a separate class/helper ?
 std::tuple<std::string, bool> Util::PreprocessShaderSource(const fs::path &filepath, const std::string& shader_source, dense_set<fs::path> &visited_files)
 {
-	static const auto phrase_include = "#include "sv;
+	static const auto phrase_include = "#include "sv; // TODO: #pragma rgl @include
 
 	// add current file's directory first in the search paths
 	auto search_paths = s_shader_include_paths;
