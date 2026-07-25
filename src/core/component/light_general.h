@@ -42,7 +42,7 @@ struct LightGeneral
 			.is_volumetric = volumetric,
 			.has_surface = false,
 			.fog = 1.f,
-			.shadow_compression = s_default_shadow_compression,
+			.shadow_compression = 0,//s_default_shadow_compression,
 			.shadow_index = LIGHT_NO_SHADOW,
 		};
 	}
