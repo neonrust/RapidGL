@@ -759,6 +759,8 @@ void ShadowAtlas::evaluate_lights(const std::vector<LightIndex> &relevant_lights
 
 		const auto light_ent = entt::entity(light_id);
 		const auto &[general, transform] = _lights.entities().get<component::LightGeneral, component::Transform>(light_ent);
+		if(not general.enabled)
+			continue;
 
 		seen_lights.insert(light_id);
 
