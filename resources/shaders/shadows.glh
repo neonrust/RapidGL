@@ -2,10 +2,11 @@
 #include "light.glh"
 #include "shapes.glh"
 
-layout (binding = 20) uniform sampler2DShadow u_shadow_atlas;
+layout (binding = 20) uniform sampler2DShadow u_shadow_atlas_shadow;
 layout (binding = 21) uniform sampler2D       u_shadow_atlas_normals;
 layout (binding = 22) uniform sampler2D       u_shadow_atlas_single;
 layout (binding = 23) uniform sampler2D       u_camera_view_depth;
+layout (r16f, binding = 0) uniform image2D    u_shadow_contact_output;
 
 uniform float u_shadow_max_distance;
 uniform float u_shadow_contact_max_distance;
@@ -111,7 +112,7 @@ uint detectCubeFaceSlot(vec3 light_to_frag, ShadowSlotInfo slot_info, out mat4 v
 	if (abs_dir.y > max_axis)
 	{
 	    major_axis = 1;
-	    max_axis = abs_dir.y;
+		max_axis = abs_dir.y;
 	}
 	if (abs_dir.z > max_axis)
 	{
@@ -233,6 +234,14 @@ float sampleViewDepth(vec2 uv)
 	return texture(u_camera_view_depth, uv).r;
 }
 
+void writeContactShadow(vec2 uv)
+{
+	vec2 size = vec2(imageSize(u_shadow_contact_output));
+	ivec2 pos = ivec2(uv * size);
+
+	imageStore(u_shadow_contact_output, pos, vec4(0, 0, 0, 1));
+}
+
 bool checkContactShadow(vec3 pos_vs, vec3 to_light_vs, mat4 projection)
 {
 	Ray ray = Ray(pos_vs, to_light_vs, u_shadow_contact_max_ray_length);
@@ -257,22 +266,19 @@ bool checkContactShadow(vec3 pos_vs, vec3 to_light_vs, mat4 projection)
 		if(view_depth < frag_depth && frag_depth - view_depth < u_shadow_contact_max_zdiff)
 		{
 			// TODO: write to separate texture -> apply (slightly) blurred
+			writeContactShadow(uv_p.xy);
 			return true;
 		}
 	}
 	return false;
 }
 
-float sampleShadow(float camera_distance, float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max);
+float sampleShadow(float sampling_ctrl, float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max, float texel_size, vec2 dzxy);
 
-float computeBias(float normalized_depth, vec3 light_dir, vec2 normalv, float texel_radius);
-
-float sampleShadow1(float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max);
-
-float shadowVisibility(vec3 uv_pos, float camera_distance, GPULight light, vec4 slot_rect, float texel_size, float bias)
+float shadowVisibility(vec3 uv_pos, float sampling_ctrl, GPULight light, vec4 slot_rect, float texel_size, vec2 dzxy, float general_bias)
 {
 	float uv_depth = uv_pos.z;
-	uv_depth += bias;
+	uv_depth += general_bias;
 
 	vec4 rect_uv;
 	vec2 atlas_uv = calculateShadowUV(uv_pos, slot_rect, rect_uv);
@@ -283,8 +289,10 @@ float shadowVisibility(vec3 uv_pos, float camera_distance, GPULight light, vec4 
 	vec2 uv_max = rect_uv.xy + rect_uv.zw;
 	// and corresponding margin on the max side (total 1 px)
 	uv_max -= shadow_atlas_texel_size;
-	return sampleShadow(camera_distance, uv_depth, atlas_uv, uv_min, uv_max);
+
+	return sampleShadow(sampling_ctrl, uv_depth, atlas_uv, uv_min, uv_max, texel_size, dzxy);
 }
+
 /*
 float pcssSearchRadiusUV(float z_world);
 void pcssFindBlocker(vec2 uv_pos, float uv_depth, float bias, float radius, uint cascade_index, out float accum_blocker_depth, out float num_blockers);
@@ -388,55 +396,46 @@ float projectToLightUV(float size_uv, float z_world, float near_plane)
     return size_uv * near_plane / z_world;
 }
 */
-float computeReceiverPlaneDepthBias(vec3 pos_dx, vec3 pos_dy)
-{
-	vec2 receiver_bias;
-    receiver_bias.x = pos_dy.y * pos_dx.z - pos_dx.y * pos_dy.z;
-    receiver_bias.y = pos_dx.x * pos_dy.z - pos_dy.x * pos_dx.z;
-    receiver_bias *= 1 / ((pos_dx.x * pos_dy.y) - (pos_dx.y * pos_dy.x));
-
-	float sampling_error = 2 * dot(shadow_atlas_texel_size, abs(receiver_bias));
-	return min(sampling_error, 0.01)*u_shadow_bias_slope_scale;
-}
 
 float computeSlopeBias(vec3 light_dir, vec3 normal)
 {
-	float angle = dot(normal, light_dir);
-	angle = pow(angle, u_shadow_bias_slope_power);
-	angle = clamp(angle, 0.0, 0.99);
-	return (0.001 / angle) * u_shadow_bias_slope_scale;
+	float fraction = dot(normal, -light_dir);
+	// angle = pow(angle, u_shadow_bias_slope_power);
+	// angle = clamp(angle, 0.0, 0.99);
+	return fraction * u_shadow_bias_slope_scale;
 }
 
-float computeBias(float normalized_depth, vec3 light_dir, vec3 normal, float texel_size)
+float rpdbForSample(vec2 uv_offset, vec2 dzxy, float texel_size)
 {
-	// calculate shadow depth bias by various factors
-	// bias by depth
-	float bias = normalized_depth * u_shadow_bias_distance_scale;
-
-	// bias based on surface normals
-	// bias increases when the angle between normal and light_dir is steep.
-	bias += computeSlopeBias(light_dir, normal);
-
-	bias = clamp(bias, -0.05, 0.05) * u_shadow_bias_scale;
-
-	bias *= mix(1, texel_size, u_shadow_bias_texel_size_mix);
-
-	return bias + u_shadow_bias_constant;
+	return 0;//dot(uv_offset, dzxy) * texel_size;
 }
 
-float sampleShadow1(float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
+float sampleShadow_raw(float frag_depth, vec2 atlas_uv)
+{
+	// return texture(u_shadow_atlas_single, atlas_uv).r < frag_depth? 0: 1;
+	return texture(u_shadow_atlas_shadow, vec3(atlas_uv, frag_depth));
+}
+
+float sampleShadow_single(float frag_depth, vec2 atlas_uv)
+{
+	return texture(u_shadow_atlas_single, atlas_uv).r < frag_depth? 0: 1;
+}
+
+float sampleShadow1(float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max, float texel_size, vec2 dzxy)
 {
 	// only sample within the slot
 	atlas_uv = clamp(atlas_uv, uv_min, uv_max);
-	return texture(u_shadow_atlas, vec3(atlas_uv, frag_depth));
+	// return texture(u_shadow_atlas_shadow, vec3(atlas_uv, frag_depth));
+	return sampleShadow_raw(frag_depth, atlas_uv);
 }
 
-float sampleShadow5(float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
+float sampleShadow5(float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max, float texel_size, vec2 dzxy)
 {
 	// 5-point "kernel", X-shape
 
 	vec2 uv;
 	float shadow = 0;
+	float rpdb = 0;
 	float sample_depth;
 
 	// NOTE: UV is capped to stay withing the single shadow map slot (cube face)
@@ -447,11 +446,12 @@ float sampleShadow5(float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
 	//   except near edges (1-2 texel margin), where sampler2D should be used.
 	//   otherwise, sampler2DShadow will sample outside the slot square (commonly uses 2x2 texels)
 #define SAMPLE(uv_offset, weight) \
-	uv = atlas_uv + uv_offset*shadow_atlas_texel_size; \
-	shadow += sampleShadow1(frag_depth, uv, uv_min, uv_max)*weight;
+	uv = clamp(atlas_uv + uv_offset*texel_size, uv_min, uv_max); \
+	rpdb = rpdbForSample(uv_offset, dzxy, texel_size); \
+	shadow += sampleShadow_raw(frag_depth + rpdb, uv)*weight;
 
 	// cheaper sampling: only center and four corners of the 3x3 box
-	const float weights5[2] = { 0.4, 0.15 };  // total = 1
+	const float weights5[2] = { 0.4, 0.15 };  // 0.4 + 4 * 0.15 = 1.0
 	// top corners
 	SAMPLE(vec2(-1, -1), weights5[1]);
 	SAMPLE(vec2( 1, -1), weights5[1]);
@@ -464,7 +464,7 @@ float sampleShadow5(float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
 	return shadow;
 }
 
-float sampleShadow9(float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
+float sampleShadow9(float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max, float texel_size, vec2 dzxy)
 {
 	// 3x3 gauss kernel
 
@@ -475,6 +475,7 @@ float sampleShadow9(float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
 
 	vec2 uv;
 	float shadow = 0;
+	float rpdb = 0;
 	float sample_depth;
 
 	// NOTE: UV is capped to stay withing the single shadow map slot (cube face)
@@ -486,11 +487,12 @@ float sampleShadow9(float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
 
 	// sample a 3x3 box around the sample
 #define SAMPLE(uv_offset, weight) \
-	uv = atlas_uv + uv_offset*shadow_atlas_texel_size; \
-	shadow += sampleShadow1(frag_depth, uv, uv_min, uv_max)*weight;
+	uv = clamp(atlas_uv + uv_offset*texel_size, uv_min, uv_max); \
+	rpdb = rpdbForSample(uv_offset, dzxy, texel_size); \
+	shadow += sampleShadow_raw(frag_depth + rpdb, uv)*weight;
 
   	// 3x3 gauss box
-  	const float weights9[3] = { 0.25, 0.125, 0.0625 };  // total = 1
+  	const float weights9[3] = { 0.25, 0.125, 0.0625 };  // 0.25 + 4 * 0.125 + 4 * 0.0625 = 1.0
 	// top row
 	SAMPLE(vec2(-1, -1), weights9[2]);
 	SAMPLE(vec2( 0, -1), weights9[1]);
@@ -507,18 +509,17 @@ float sampleShadow9(float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
 	return shadow;
 }
 
-float shadow_low_sampling_distance  = u_shadow_max_distance / 3;
-float shadow_mid_sampling_distance  = u_shadow_max_distance / 8; // closer -> high sampling (3x3)
+float shadow_low_sampling = 0.7;
+float shadow_mid_sampling = 0.85;
 
-float sampleShadow(float camera_distance, float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max)
+float sampleShadow(float sampling_ctrl, float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max, float texel_size, vec2 dzxy)
 {
-	// TODO: use PCSS for the closest range?
-	//        or a poisson disc of samples?
-
 	// select samplinmg algorithm basec on distance to camera
-	if(camera_distance > shadow_low_sampling_distance)
-		return sampleShadow1(frag_depth, atlas_uv, uv_min, uv_max);
-	else if(camera_distance > shadow_mid_sampling_distance)
-		return sampleShadow5(frag_depth, atlas_uv, uv_min, uv_max);
-	return sampleShadow9(frag_depth, atlas_uv, uv_min, uv_max);
+	// if(sampling_ctrl > shadow_mid_sampling)
+	// 	return sampleShadow9(frag_depth, atlas_uv, uv_min, uv_max, texel_size, dzxy);
+	// else if(sampling_ctrl > shadow_low_sampling) // i.e. between 'mid' and 'low'
+	// 	return sampleShadow5(frag_depth, atlas_uv, uv_min, uv_max, texel_size, dzxy);
+	// return sampleShadow1(frag_depth, atlas_uv, uv_min, uv_max, texel_size, dzxy);
+	// return sampleShadow_raw(frag_depth, atlas_uv);
+	return sampleShadow_single(frag_depth, atlas_uv);
 }

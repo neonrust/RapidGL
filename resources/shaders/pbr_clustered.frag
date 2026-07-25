@@ -90,7 +90,7 @@ void main()
 {
 	vec3 normal = normalize(in_normal);
 
-	shadow_atlas_texel_size = 1.0 / vec2(textureSize(u_shadow_atlas, 0));
+	shadow_atlas_texel_size = 1.0 / vec2(textureSize(u_shadow_atlas_single, 0));
 
     MaterialProperties material = getMaterialProperties(normal);
 
@@ -315,14 +315,16 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 	if(uv_depth > 1)
 		return vec3(light_fade); // shadow_fade and u_shadow_occlusion
 
-	float bias = 0;
+	float slope_bias = computeSlopeBias(light.direction, in_normal);
+	slope_bias += u_shadow_bias_constant;
 
-	vec3 pos_dx = dFdx(clip_pos.xyz);
-	vec3 pos_dy = dFdy(clip_pos.xyz);
-	bias = computeReceiverPlaneDepthBias(pos_dx, pos_dy);
-	// bias = computeBias(uv_pos.z, normalize(light_to_frag), in_normal, texel_size);
+	vec3 pos_dx = dFdx(uv_pos);
+	vec3 pos_dy = dFdy(uv_pos);
+	vec2 dzxy = vec2(pos_dx.z, pos_dy.z);
 
-	float shadow_visibility = shadowVisibility(uv_pos, camera_distance, light, slot_rect, texel_size, bias);
+	float sampling_ctrl = 1 - camera_distance / u_shadow_max_distance;
+
+	float shadow_visibility = shadowVisibility(uv_pos, sampling_ctrl, light, slot_rect, shadow_atlas_texel_size.x, dzxy, slope_bias);
 	const float lit_threshold = SHADOW_COMPRESSION(light);
 	shadow_visibility = clamp((shadow_visibility - lit_threshold) / (1 - lit_threshold), 0, 1);
 
@@ -410,39 +412,28 @@ vec3 dirLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 	if(uv_depth > 1)
 		return vec3(1);
 
-	// vec3 pos_ls = in_csm_light_view_pos[cascade_index];
+	float slope_bias = computeSlopeBias(light.direction, in_normal);
+	slope_bias += u_shadow_bias_constant;
 
-	// a bit cascade-specific bias stuff; this probably depends on number of cascades (and a number of other parameters)
-    float bias = 0;
- //    if(cascade_index == 0)
- //    {
-	// 	// directional-light specific bias calculation; only slope sensitive
-	// 	float slope = dot(in_normal, light.direction);
-	// 	slope = sqrt(1 - slope * slope);
-	// 	bias = 0.001 + pow(slope, u_shadow_bias_slope_power) * u_shadow_bias_slope_scale * texel_size * 0.1;
-	// }
-	// else
-	// bias = 0.01 * (1.0 - dot(normalize(in_normal), -light.direction))*u_shadow_bias_slope_scale;
-	// if(cascade_index == 2)
-	// 	bias *= -0.03;
-	// else if(cascade_index == 1)
-	// 	bias = 0.0001;
-	// else
-	// 	bias = -0.001 / float(cascade_index - 1);
-	// bias = 0;
+	float bias = 0;
+	vec3 pos_dx = dFdx(uv_pos);
+	vec3 pos_dy = dFdy(uv_pos);
+	vec2 dzxy = vec2(pos_dx.z, pos_dy.z);
 
-	// vec3 pos_dx = dFdx(uv_pos);
-	// vec3 pos_dy = dFdy(uv_pos);
-	// bias = u_shadow_bias_constant + computeReceiverPlaneDepthBias(pos_dx, pos_dy);
+	float sampling_ctrl = 1 - camera_distance / u_shadow_max_distance;
 
-	float slope_fraction = dot(in_normal, -light.direction);
-	bias = mix(0.01, 0.0, slope_fraction)*u_shadow_bias_slope_scale;
-	bias /= float(cascade_index + 1);
-	bias += u_shadow_bias_constant;
+	if(false){
+		vec4 rect_uv;
+		vec2 atlas_uv = calculateShadowUV(uv_pos, slot_rect, rect_uv);
+		float shadow_depth = texture(u_shadow_atlas_single, atlas_uv).r;
+		shadow_depth = pow(shadow_depth, 2)*5;
+		float frag_depth = pow(uv_pos.z, 2)*5;
+		frag_depth -= slope_bias;
+		// return vec3(1 / (shadow_depth < frag_depth? 1: 0.001));
+		return vec3(0, shadow_depth, 0);
+	}
 
-	// float light_radius = u_csm_light_radius_uv / (pow(float(u_csm_num_cascades), cascade_index) * float(u_csm_num_cascades));
-
-	float shadow_visibility = shadowVisibility(uv_pos, 50000, light, slot_rect, texel_size, bias);
+	float shadow_visibility = shadowVisibility(uv_pos, sampling_ctrl, light, slot_rect, shadow_atlas_texel_size.x, dzxy, slope_bias);
 	const float lit_threshold = SHADOW_COMPRESSION(light);
 	shadow_visibility = clamp((shadow_visibility - lit_threshold) / (1 - lit_threshold), 0, 1);
 
@@ -461,7 +452,6 @@ vec3 dirLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 		}
 	}
 
-	// float shadow_visibility = shadowVisibilityPCSS(clip_pos.xy, uv_depth, -pos_ls.z, light, slot_rect, texel_size, bias, light_radius);
 	vec3 visible_color = u_shadow_colorize? s_shadow_tints[cascade_index]: vec3(1);
 
 	float shadow_faded = 1 - (1 - shadow_visibility) * u_shadow_occlusion;
@@ -497,14 +487,16 @@ vec3 spotLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 	vec3 ndc_pos = clip_pos.xyz / clip_pos.w; // [-1, 1]
 	vec3 uv_pos = ndc_pos * 0.5 + 0.5; // [0, 1]
 
-	float bias = 0;
+	float slope_bias = computeSlopeBias(light.direction, in_normal);
+	slope_bias += u_shadow_bias_constant;
 
-	vec3 pos_dx = dFdx(clip_pos.xyz);
-	vec3 pos_dy = dFdy(clip_pos.xyz);
-	// bias = computeReceiverPlaneDepthBias(pos_dx, pos_dy);
-	// bias = computeBias(uv_pos.z, normalize(light.position - world_pos), in_normal, texel_size);
+	vec3 pos_dx = dFdx(uv_pos);
+	vec3 pos_dy = dFdy(uv_pos);
+	vec2 dzxy = vec2(pos_dx.z, pos_dy.z);
 
-	float shadow_visibility = shadowVisibility(uv_pos, camera_distance, light, slot_rect, texel_size, bias);
+	float sampling_ctrl = 1 - camera_distance / u_shadow_max_distance;
+
+	float shadow_visibility = shadowVisibility(uv_pos, sampling_ctrl, light, slot_rect, shadow_atlas_texel_size.x, dzxy, slope_bias);
 	const float lit_threshold = SHADOW_COMPRESSION(light);
 	shadow_visibility = clamp((shadow_visibility - lit_threshold) / (1 - lit_threshold), 0, 1);
 
