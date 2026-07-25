@@ -20,6 +20,7 @@
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/random.hpp>
 // #include <glm/gtx/string_cast.hpp>  // glm::to_string
+#include "formatters_glm.h"   // IWYU pragma: keep
 
 #include <chrono>
 #include <ranges>
@@ -719,13 +720,15 @@ void ZigApp::createLights()
 
 	static constexpr auto ident_quat = glm::quat_identity<float, glm::defaultp>();
 
+	auto light_dir = glm::normalize(glm::vec3(5, -3, 5));
+	Log::debug("light dir: {:.3f}", light_dir);
 	_light_mgr.add(DirectionalLightParams{
 		.color = { 1.f, 0.97f, 0.9f },
 		.intensity = 20.f,
 		.fog = 1.f,
 		.shadow_caster = true,
-		.direction = glm::normalize(glm::vec3(5, -3, 5)),
 		.contact_shadows = false,
+		.direction = light_dir,
 	});
 
 	// auto l = _light_mgr.add(SpotLightParams{
