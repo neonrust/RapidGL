@@ -711,7 +711,7 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 		_csm_params.light_view_projection[cascade] = light_vp;
 
 #if 0
-		Log::debug("atlas| cascade {}  F:{: >7.3f}  C:{: >8.4f}  +{:6.1f} (D:{:5.1f}) -> L:{: >8.4f}  R:{: >7.3f}",
+		Log::debug("atlas| cascade {}  F:{: >7.3f}  C:{: >5.1f}  +{:6.1f} (D:{:5.1f}) -> L:{: >8.4f}  R:{: >7.3f}",
 				   cascade,
 				   split_far,
 				   light_pos,
