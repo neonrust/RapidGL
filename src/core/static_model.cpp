@@ -137,7 +137,7 @@ bool StaticModel::Load(const std::filesystem::path& filepath)
 
 	if(not _ok)
 	{
-		Log::error("\x1b[97;41;1mError\x1b[m loading mesh failed: {}: {}", filepath.generic_string().c_str(), importer.GetErrorString());
+		Log::error("loading mesh failed: {}: {}", filepath.generic_string().c_str(), importer.GetErrorString());
 		return false;
 	}
 
