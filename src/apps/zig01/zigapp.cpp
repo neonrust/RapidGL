@@ -2143,20 +2143,6 @@ void ZigApp::loadScene([[maybe_unused]] std::string_view name)
 	// assert(*testroom_model);
 	// _scene.emplace_back(testroom_model, origin);
 
-	// StaticModel cathedral_model;
-	// cathedral_model.Load("/dl/necropolisfantasygraveyardkit/cathedral_jxl.gltf");
-	// assert(cathedral_model);
-	// _scene.add(std::move(cathedral_model), origin);
-	// {
-	// 	auto tfm = origin;
-	// 	tfm.move({ 50.f, 0,  0 });
-	// 	_scene.add(std::move(cathedral_model), tfm);
-	// 	tfm.move({  0.f, 0, 50.f });
-	// 	_scene.add(std::move(cathedral_model), tfm);
-	// 	tfm.move({-50.f, 0,  0.f });
-	// 	_scene.add(std::move(cathedral_model), tfm);
-	// }
-
 	// StaticModel floor_model;
 	// floor_model.Load(FileSystem::getResourcesPath() / "models" / "floor.gltf");
 	// assert(floor_model);
