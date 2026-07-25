@@ -693,6 +693,20 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 
 	ImGui::Begin("Lights");
 	{
+		if(ImGui::Button("Load...", { 120, 0 }))
+		{
+			Log::info("TODO: Load lights from file");
+			// _light_mgr.clear();
+			// _light_mgr.create_from(fp);
+		}
+		ImGui::SameLine();
+		if(ImGui::Button("Save...", { 120, 0 }))
+		{
+			Log::info("TODO: Save lights to file");
+			// _light_mgr.write_to(fp);
+		}
+
+
 		if(ImGui::Button("+ point"))
 		{
 			_light_mgr.add(PointLightParams{
