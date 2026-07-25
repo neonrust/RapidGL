@@ -141,7 +141,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 				m_frame_time = 1.f / target_fps;
 		}
 
-		if(ImGui::CollapsingHeader("Lighting", ImGuiTreeNodeFlags_DefaultOpen))
+		if(ImGui::CollapsingHeader("Lighting"))//, ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.5f); // less wide sliders
 
@@ -385,7 +385,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			}
 		}
 
-		if(ImGui::CollapsingHeader("Shadows"))//, ImGuiTreeNodeFlags_DefaultOpen))
+		if(ImGui::CollapsingHeader("Shadows", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			auto backoff = _shadow_atlas.csm_backoff();
 			if(ImGui::SliderFloat("CSM backoff distance", &backoff, 1.f, 100.f, "%.1f"))
