@@ -400,8 +400,8 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			ImGui::SliderFloat("Polygon offset",     &_polygon_offset_factor,        0.f,     .01f, "%.4f");
 			ImGui::SliderFloat("        unit",       &_polygon_offset_unit,          0.f,     .01f, "%.4f");
 			static auto stabilize = _shadow_atlas.csm_stabilization();
-			ImGui::Checkbox("Stabilize light view", &stabilize);
-			_shadow_atlas.set_csm_stabilization(stabilize);
+			if(ImGui::Checkbox("Stabilize light view", &stabilize))
+				_shadow_atlas.set_csm_stabilization(stabilize);
 			ImGui::Checkbox("Colorize shadow slots", &_debug_colorize_shadows);
 			ImGui::Checkbox("Contact shadows", &_shadow_contacts);
 			if(_shadow_contacts)
