@@ -163,15 +163,16 @@ private:
 	float _ibl_specular_strength         = .26f;
 	float _ambient_occlusion_scale       = 1.f;
 	float m_shadow_occlusion             = 1.f;//0.8f;
-	bool  _shadow_contacts               = true;
+	bool  _shadow_contacts               = false;
 	float _shadow_contact_max_ray_length = 0.06f;
-	float _shadow_contact_max_zdiff = 0.05f;
-	float m_shadow_bias_constant         = -0.0001f;
-	float m_shadow_bias_slope_scale      = 0.0039f;
-	float m_shadow_bias_slope_power      = 1.f;
-	float m_shadow_bias_distance_scale   = 0.0004f;
-	float m_shadow_bias_texel_size_mix   = 0.48f;
-	float m_shadow_bias_scale            = -0.3f;
+	float _shadow_contact_max_zdiff      = 0.05f;
+	float _shadow_bias_constant          = 0.0000f;
+	float _shadow_bias_slope_scale       = 0;//-0.0011f;
+	float _shadow_bias_slope_power       = 1.f;
+	float _shadow_bias_distance_scale    = 0.0004f;
+	float _shadow_bias_texel_size_mix    = 0.48f;
+	float _shadow_bias_scale             = 1.f;
+	bool  _shadow_cull_face_front        = true;
 
 	bool      m_animate_lights             = false;
 	float     m_animation_speed            = 0.4f;
