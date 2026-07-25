@@ -278,6 +278,7 @@ float fadeLightByDistance(GPULight light)
 {
 	float light_edge_distance = max(0, distance(light.position, u_cam_pos) - light.affect_radius);
 	// fade the whole light by distance
+	// TODO: different max distance per light type?
 	return fadeByDistance(light_edge_distance, u_light_max_distance);
 }
 
