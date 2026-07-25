@@ -849,8 +849,8 @@ float ShadowAtlas::evaluate_light(const bounds::Sphere &light_sphere, const glm:
 
 	const auto value = glm::clamp(base_weight * type_weight * facing_weight * manual_priority * dynamic_boost, 0.f, 1.f);
 
-		   // std::print("  D {:.0f}%  importance {:4.2f}   base {:4.2f}  facing {:4.2f}  ->  {:4.2f}\n",
-		   // 		   100.f*distance/_max_distance, importance, base_weight, facing_weight, value);
+	// Log::debug("  D {:.0f}%  importance {:4.2f}   base {:4.2f}  facing {:4.2f}  ->  {:4.2f}",
+	// 		   100.f*distance/_max_distance, importance, base_weight, facing_weight, value);
 
 	return value;
 }
@@ -954,8 +954,6 @@ ShadowAtlas::Counters ShadowAtlas::compute_desired(const std::vector<ValueLight>
 
 ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const std::vector<AtlasLight> &desired_slots, const TimeT now)
 {
-	// std::puts("-- apply_desired_slots()");
-
 	// small_vec<decltype(_shadow_params_ssbo)::value_type, 120> shadow_params;
 
 	Counters counters;
@@ -1002,9 +1000,8 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const std::vector<AtlasLi
 				// first deallocate the old size (new size allocated in the loop below)
 
 				// return the previous size slot to the pool
-				// std::print("  [{}]  free {} slots:    {}: {} (-> {})",
+				// Log::debug("  [{}]  free {} slots:    {}: {} (-> {})",
 				// 		   light_id, atlas_light.num_slots, size_diff > 0?"pro":"dem", atlas_light.slots[0].size, desired.slots[0].size);
-				// std::fflush(stdout);
 				auto idx = atlas_light.num_slots;  // loop in reverse to put the slots back in the same order as allocated
 				while(idx-- != 0)
 				{
@@ -1019,7 +1016,7 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const std::vector<AtlasLi
 				//   However, this should only be implemented if really beneficial on a larger scale!
 				//   b/c implies a fair degree of compexity
 
-				// std::print("; {} remaining\n", _slot_sets[atlas_light.slots[0].size].size());
+				// Log::debug("   -- {} remaining", _slot_sets[atlas_light.slots[0].size].size());
 			}
 		}
 	}
@@ -1035,8 +1032,7 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const std::vector<AtlasLi
 
 		auto &atlas_light = found->second;
 
-		// std::print("  [{}] alloc {} slots:  pro/de -> {}", light_id, atlas_light.num_slots, desired.slots[0].size);
-		// std::fflush(stdout);
+		// Log::debug("  [{}] alloc {} slots:  pro/de -> {}", light_id, atlas_light.num_slots, desired.slots[0].size);
 		for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
 		{
 			auto &slot = atlas_light.slots[idx];
@@ -1087,8 +1083,7 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const std::vector<AtlasLi
 
 			auto atlas_light = desired;  // must copy :(   (surely not everything?)
 
-			// std::print("  [{}] alloc {} slots:   new {}", light_id, atlas_light.num_slots, atlas_light.slots[0].size);
-			// std::fflush(stdout);
+			// Log::debug("  [{}] alloc {} slots:   new {}", light_id, atlas_light.num_slots, atlas_light.slots[0].size);
 			for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
 			{
 				const auto slot_size = atlas_light.slots[idx].size;
