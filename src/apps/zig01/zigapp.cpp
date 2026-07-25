@@ -1984,14 +1984,14 @@ void ZigApp::renderShading(const Camera &camera)
 	shader.setUniform("u_ibl_strength"sv,               _ibl_strength);
 	shader.setUniform("u_ibl_specular_strength"sv,      _ibl_specular_strength);
 	shader.setUniform("u_falloff_power"sv,              _light_mgr.falloff_power());
-
-	shader.setUniform("u_shadow_bias_constant"sv,       m_shadow_bias_constant);
-	shader.setUniform("u_shadow_bias_slope_scale"sv,    m_shadow_bias_slope_scale);
-	shader.setUniform("u_shadow_bias_slope_power"sv,    m_shadow_bias_slope_power);
-	shader.setUniform("u_shadow_bias_distance_scale"sv, m_shadow_bias_distance_scale);
-	shader.setUniform("u_shadow_bias_texel_size_mix"sv, m_shadow_bias_texel_size_mix);
-	shader.setUniform("u_shadow_bias_scale"sv,          m_shadow_bias_scale);
 	shader.setUniform("u_ambient_occlusion_scale"sv,    m_gtao_pp.enabled()? _ambient_occlusion_scale: 0);
+
+	shader.setUniform("u_shadow_bias_constant"sv,       _shadow_bias_constant);
+	shader.setUniform("u_shadow_bias_slope_scale"sv,    _shadow_bias_slope_scale);
+	shader.setUniform("u_shadow_bias_slope_power"sv,    _shadow_bias_slope_power);
+	shader.setUniform("u_shadow_bias_distance_scale"sv, _shadow_bias_distance_scale);
+	shader.setUniform("u_shadow_bias_texel_size_mix"sv, _shadow_bias_texel_size_mix);
+	shader.setUniform("u_shadow_bias_scale"sv,          _shadow_bias_scale);
 	shader.setUniform("u_shadow_occlusion"sv,           m_shadow_occlusion);
 	shader.setUniform("u_shadow_colorize"sv,            _debug_colorize_shadows);
 	shader.setUniform("u_shadow_contacts"sv,            _shadow_contacts);
