@@ -1,6 +1,6 @@
 {
 	"asset":{
-		"generator":"Khronos glTF Blender I/O v5.0.21",
+		"generator":"Khronos glTF Blender I/O v5.1.20",
 		"version":"2.0"
 	},
 	"extensionsUsed":[
@@ -41,9 +41,8 @@
 				"baseColorTexture":{
 					"index":1
 				},
-				"metallicRoughnessTexture":{
-					"index":2
-				}
+				"metallicFactor":0.05387205258011818,
+				"roughnessFactor":0.9595959782600403
 			}
 		}
 	],
@@ -72,27 +71,18 @@
 		{
 			"sampler":0,
 			"source":1
-		},
-		{
-			"sampler":0,
-			"source":2
 		}
 	],
 	"images":[
 		{
-			"mimeType":"image/jxl",
-			"name":"concrete034_1K_normal.png.001",
+			"mimeType":"image/png",
+			"name":"concrete034_1K_normal.jxl",
 			"uri":"../textures/pbr/concrete034_1k/concrete034_1K_normal.jxl"
 		},
 		{
-			"mimeType":"image/jxl",
-			"name":"concrete034_1K_color.png.001",
+			"mimeType":"image/png",
+			"name":"concrete034_1K_color.jxl",
 			"uri":"../textures/pbr/concrete034_1k/concrete034_1K_color.jxl"
-		},
-		{
-			"mimeType":"image/jxl",
-			"name":"concrete034_1K_roughness.png.001",
-			"uri":"../textures/pbr/concrete034_1k/concrete034_1K_roughness.jxl"
 		}
 	],
 	"accessors":[
