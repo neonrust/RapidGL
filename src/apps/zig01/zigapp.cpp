@@ -724,8 +724,8 @@ void ZigApp::createLights()
 		.intensity = 20.f,
 		.fog = 1.f,
 		.shadow_caster = true,
-		.contact_shadows = true,
 		.direction = glm::normalize(glm::vec3(5, -3, 5)),
+		.contact_shadows = false,
 	});
 
 	// auto l = _light_mgr.add(SpotLightParams{
