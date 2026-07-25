@@ -242,7 +242,7 @@ private:
 	float _fog_density;
 	float _fog_blend_weight;
 
-	float _polygon_offset_factor { 0.f };
+	float _polygon_offset_factor { 0.6f };
 	float _polygon_offset_unit { 0.f };
 
 	SampleWindow<std::chrono::microseconds, 30> m_cull_scene_time;
