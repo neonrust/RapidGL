@@ -761,7 +761,7 @@ void ZigApp::createLights()
 		return pos;
 	};
 
-	for(auto idx = 0u; idx < 1; ++idx)
+	for(auto idx = 0u; idx < 0; ++idx)
 	{
 		const auto rand_color= color::hsv(
 			Util::RandomFloat(1, 360),      // hue
