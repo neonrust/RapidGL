@@ -539,6 +539,13 @@ static constexpr std::array<glm::vec4, 8> s_frustum_corners_ndc = {
 
 const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, const Camera &camera)//, float radius_uv)
 {
+	auto found = _id_to_allocated.find(light_id);
+	if(found == _id_to_allocated.end())
+	{
+		_csm_params.clear();
+		return _csm_params;
+	}
+
 	const auto light_maybe = _lights.get_light(light_id);
 	if(not light_maybe)
 	{
@@ -555,12 +562,6 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 		return _csm_params;
 	}
 
-	auto found = _id_to_allocated.find(light_id);
-	if(found == _id_to_allocated.end())
-	{
-		assert(false);
-		return _csm_params;
-	}
 	const auto &atlas_light = found->second;
 
 	const auto num_cascades = atlas_light.num_slots;
@@ -660,14 +661,16 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 		// quantize slightly, probably for some good reason :)
 		cascade_radius = std::ceil(cascade_radius * 16.0f) / 16.0f;
 
-		const auto z_offset = _csm_cascade_backoff;
 
 		const auto max_extents = glm::vec3(cascade_radius);
 		const auto min_extents = -max_extents;
 
 		auto minZ = min_extents.z;
 		auto maxZ = max_extents.z;
+
 		// extend Z towrads the camera (might cast shadows into the camera frustum (e.g. a tall ceiling)
+		// TODO: this should move  the far near plane to encompass the nearest object (no closer)
+		const auto z_offset = _csm_cascade_backoff;
 		minZ *= minZ < 0? z_offset: 1/z_offset;
 
 		const auto light_projection_distance = minZ;
