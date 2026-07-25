@@ -390,15 +390,24 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			auto backoff = _shadow_atlas.csm_backoff();
 			if(ImGui::SliderFloat("CSM backoff distance", &backoff, 1.f, 100.f, "%.1f"))
 				_shadow_atlas.set_csm_backoff(backoff);
-			ImGui::SliderFloat("Shadow occlusion",   &m_shadow_occlusion,             .05f,  1.f,   "%.2f");
-			ImGui::SliderFloat("Bias constant",      &m_shadow_bias_constant,        -.001f,  .001f, "%.5f");
-			ImGui::SliderFloat("Bias slope scale",   &m_shadow_bias_slope_scale,     -.05f,   .05f, "%.4f");
-			ImGui::SliderFloat("Bias slope power",   &m_shadow_bias_slope_power,      .01f,  5.f,   "%.3f");
-			ImGui::SliderFloat("Bias dist. scale",   &m_shadow_bias_distance_scale, -2.f,    2.f,   "%.4f");
-			ImGui::SliderFloat("Bias texel sz mix",  &m_shadow_bias_texel_size_mix,  0.f,    1.f,   "%.2f");
-			ImGui::SliderFloat("Bias scale",         &m_shadow_bias_scale,          -2.f,    2.f,   "%.2f");
-			ImGui::SliderFloat("Polygon offset",     &_polygon_offset_factor,        0.f,     .01f, "%.4f");
-			ImGui::SliderFloat("        unit",       &_polygon_offset_unit,          0.f,     .01f, "%.4f");
+			ImGui::SliderFloat("Shadow occlusion",   &m_shadow_occlusion,             .05f,  1.f,    "%.2f");
+			ImGui::SliderFloat("Bias constant",      &_shadow_bias_constant,        -.001f,  .001f, "%.6f");
+			ImGui::SliderFloat("Bias slope scale",   &_shadow_bias_slope_scale,     -.005f,  .005f, "%.6f");
+			ImGui::SliderFloat("Bias slope power",   &_shadow_bias_slope_power,      .01f,  5.f,    "%.3f");
+			ImGui::SliderFloat("Bias dist. scale",   &_shadow_bias_distance_scale, -2.f,    2.f,    "%.4f");
+			ImGui::SliderFloat("Bias texel sz mix",  &_shadow_bias_texel_size_mix,  0.f,    1.f,    "%.2f");
+			ImGui::SliderFloat("Bias scale",         &_shadow_bias_scale,          -2.f,    2.f,    "%.2f");
+			if(ImGui::RadioButton("Cull front faces", _shadow_cull_face_front == true))
+				_shadow_cull_face_front = true;
+			ImGui::SameLine();
+			if(ImGui::RadioButton("Cull back faces",  _shadow_cull_face_front == false))
+				_shadow_cull_face_front = false;
+			if(not _shadow_cull_face_front)
+			{
+				ImGui::SliderFloat("Polygon offset",     &_polygon_offset_factor,       -5.f,    5.f,    "%.4f");
+				ImGui::SliderFloat("        unit",       &_polygon_offset_unit,         -5.f,    5.f,    "%.4f");
+			}
+
 			static auto stabilize = _shadow_atlas.csm_stabilization();
 			if(ImGui::Checkbox("Stabilize light view", &stabilize))
 				_shadow_atlas.set_csm_stabilization(stabilize);
