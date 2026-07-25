@@ -1387,11 +1387,15 @@ void ZigApp::renderShadowMaps()
 	// render shadow-maps if light or meshes within its radius/frustum moved (the latter is TODO)
 	// TODO: move this stuff to a "shadow map renderer" ?
 
-	glCullFace(GL_FRONT);       // render only back faces
+	if(_shadow_cull_face_front)
+		glCullFace(GL_FRONT);       // render only back faces
+	else
+		glCullFace(GL_BACK);
 	glEnable(GL_SCISSOR_TEST);  // for slot slicing
 	glDepthMask(GL_TRUE);
 	glColorMask(GL_TRUE, GL_TRUE, GL_FALSE, GL_FALSE);  // writing 2-component normals
 	glDepthFunc(GL_LESS);
+	glEnable(GL_DEPTH_CLAMP);
 
 	assert(glIsEnabled(GL_CULL_FACE));
 
@@ -1444,6 +1448,12 @@ void ZigApp::renderShadowMaps()
 	seen_shadow_idx.reserve(16);
 	seen_shadow_idx.clear();
 #endif
+
+	if(not _shadow_cull_face_front and (_polygon_offset_factor != 0 or _polygon_offset_unit != 0))
+	{
+		glEnable(GL_POLYGON_OFFSET_FILL);
+		glPolygonOffset(_polygon_offset_factor, _polygon_offset_unit);
+	}
 
 	for(auto &[light_id, atlas_light]: _shadow_atlas.allocated_lights())
 	{
@@ -1523,6 +1533,7 @@ void ZigApp::renderShadowMaps()
 
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);  // back to default; write all color channels
 	glDisable(GL_SCISSOR_TEST);
+	glDisable(GL_POLYGON_OFFSET_FILL); // might've been enabled above
 	glCullFace(GL_BACK);
 }
 
@@ -1916,13 +1927,6 @@ void ZigApp::renderDepth(const glm::mat4 &view_projection, RenderTarget::Texture
 
     m_depth_prepass_shader->bind();
 
-	if(_polygon_offset_factor != 0 and _polygon_offset_unit != 0)
-	{
-		glEnable(GL_POLYGON_OFFSET_FILL);
-		glPolygonOffset(_polygon_offset_factor, _polygon_offset_unit);
-	}
-	glDisable(GL_POLYGON_OFFSET_FILL);
-
 	renderScene(view_projection, *m_depth_prepass_shader, NoMaterials);
 }
 
@@ -2026,15 +2030,8 @@ void ZigApp::renderShading(const Camera &camera)
 	_shadow_atlas.bindDepthTextureSampler(22);
 	m_depth_pass_rt.bindDepthTextureSampler(23); // for screen-space/contact shadows
 
-
 	// we need updated textures (shadow maps) and SSBO data
 	glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
-
-	if(_polygon_offset_factor != 0 and _polygon_offset_unit != 0)
-	{
-		glEnable(GL_POLYGON_OFFSET_FILL);
-		glPolygonOffset(_polygon_offset_factor, _polygon_offset_unit);
-	}
 
 	glViewport(0, 0, GLsizei(Window::width()), GLsizei(Window::height()));
 
