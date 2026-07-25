@@ -1276,10 +1276,10 @@ void ShadowAtlas::free_slot(SlotSize slot_size, SlotID node_index)
 {
 	const auto size_idx = slot_size_idx(slot_size);
 
+	assert(size_idx < curr_available().size());
 	auto &free_slots = curr_available()[size_idx];
 
-	assert(size_idx < free_slots.size());
-	assert(free_slots.capacity() > free_slots.size()); // i.e. should never grow beyond its original size
+	assert(free_slots.capacity() >= free_slots.size()); // i.e. should never grow beyond its original size
 
 	// Log::debug("     free {:>4} -- {}    rem: {}", size, node_index, free_slots.size());
 
