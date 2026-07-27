@@ -30,7 +30,8 @@ This framework consists of two major parts:
   - shadow range compression
   - contact shadows
 - Volumetric light scattering; inject + accumulate method (all lights supported, for better or worse).
-  
+- Ambient Occlusion (GTAO)
+
 
 ## How to build
 After cloning the repository, run one of the *.bat* scripts to generate Visual Studio 2019/2022 solution:
