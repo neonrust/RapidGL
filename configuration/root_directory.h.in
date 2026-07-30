@@ -1,3 +1,0 @@
-#pragma once
-#define RAPIDGL_ROOT "${CMAKE_SOURCE_DIR}/"
-#define RAPIDGL_RESOURCES "${CMAKE_SOURCE_DIR}/resources/"
