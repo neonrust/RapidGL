@@ -1,30 +1,34 @@
 #include "filesystem.h"
-#include "root_directory.h"
+#include "variable.h"
+
+#define DEFAULT_ROOT      "./"
+#define DEFAULT_RESOURCES "./resources/"
 
 namespace RGL
 {
-    fs::path FileSystem::rootPath()
-    {
-        return fs::path(RAPIDGL_ROOT);
-    }
 
-    fs::path FileSystem::getResourcesPath()
-    {
-        return fs::path(RAPIDGL_RESOURCES);
-    }
+Variable var_resourcePath("path.resoures", DEFAULT_RESOURCES);
+Variable var_rootPath("path.root", DEFAULT_ROOT);
 
-    bool FileSystem::directoryExists(const fs::path& path, fs::file_status status)
-    {
-        if (fs::status_known(status) ? fs::exists(status) : fs::exists(path))
-        {
-            return true;
-        }
-
-        return false;
-    }
-
-    void FileSystem::createDirectory(const fs::path& directory_name)
-    {
-        fs::create_directories(directory_name);
-    }
+fs::path FileSystem::rootPath()
+{
+	return fs::path(var_rootPath.string());
 }
+
+fs::path FileSystem::getResourcesPath()
+{
+	// TODO: assert that resources path is contained by root path?
+	return fs::path(var_resourcePath.string());
+}
+
+bool FileSystem::directoryExists(const fs::path& path, fs::file_status status)
+{
+	return fs::status_known(status) ? fs::exists(status) : fs::exists(path);
+}
+
+void FileSystem::createDirectory(const fs::path& directory_name)
+{
+	fs::create_directories(directory_name);
+}
+
+} // RGL
