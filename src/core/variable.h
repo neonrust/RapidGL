@@ -95,16 +95,6 @@ public:
 	bool set(std::string_view value, bool notify=true);
 	bool set(const ColorRgba &value, bool notify=true);
 	
-// 	int operator = (int value);
-// 	float operator = (float value);
-// 	const char *operator = (const char *value);
-// 	const Color &operator = (const Color &value);
-
-// 	bool operator == (int comp);
-// 	bool operator == (float comp);
-// 	bool operator == (const char *comp);
-// 	bool operator == (const Color &comp);
-	
 	inline StorageType type() const { return _type; }
 	inline bool isInteger() const  { return type() == INTEGER; }
 	inline bool isReal() const     { return type() == REAL; }
@@ -114,7 +104,13 @@ public:
 	int64_t integer() const;         // only valid for Integer variables of type integer
 	real_t real() const;             // only valid for variables of type real
 	std::string_view string() const; // only valid for variables of type string
-	const ColorRgba &rgba() const;      // only valid for variables of type string
+	const ColorRgba &rgba() const;   // only valid for variables of type string
+
+	template<typename T> // TODO: requires one of the supported types
+	const T &value() const
+	{
+		return std::get<T>(_current);
+	}
 
 
 	std::string_view toString() const;
@@ -135,7 +131,7 @@ private:
 	static std::pair<std::string_view, std::string_view> name_split(std::string_view name);
 	void set_name(std::string_view name);
 
-	using value_t = std::variant<std::monostate, int_t, real_t, std::string, ColorRgb, ColorRgba, glm::vec3, glm::vec4, glm::mat4>;
+	using value_t = std::variant<int_t, real_t, std::string, ColorRgb, ColorRgba, glm::vec3, glm::vec4, glm::mat4>;
 
 	void value2string(const value_t &value, std::string &s) const;
 
