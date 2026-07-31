@@ -87,31 +87,15 @@ void CoreApp::stop()
 	m_is_running = false;
 }
 
-bool CoreApp::take_screenshot_png(const std::string & filename, size_t dst_width, size_t dst_height)
+bool CoreApp::take_screenshot(const std::string & filename)
 {
-	auto width  = Window::width();
-	auto height = Window::height();
-	bool   resize = true;
-
-	if (dst_width == 0 || dst_height == 0)
-	{
-		resize = false;
-	}
+	const auto width  = Window::width();
+	const auto height = Window::height();
 
 	std::vector<uint8_t> image;
 	image.resize(width * height * 3);
 
 	glReadPixels(0, 0, GLsizei(width), GLsizei(height), GL_RGB, GL_UNSIGNED_BYTE, image.data());
-
-	if (resize)
-	{
-		auto resized_image = image;
-		stbir_resize_uint8_linear(image.data(), GLsizei(width), GLsizei(height), 0, resized_image.data(), int(dst_width), int(dst_height), 0, STBIR_RGB);
-
-		width  = dst_width;
-		height = dst_height;
-		image  = resized_image;
-	}
 
 	auto screenshots_dir = FileSystem::rootPath() / "screenshots";
 	if (!FileSystem::directoryExists(screenshots_dir))

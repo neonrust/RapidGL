@@ -29,7 +29,7 @@ namespace RGL
 		virtual int run() final;
 		virtual void stop() final;
 
-        virtual bool take_screenshot_png(const std::string & filename, size_t dst_width = 0, size_t dst_height = 0);
+		bool take_screenshot(const std::string & filename);
 
 	protected:
 		double   m_frame_time;

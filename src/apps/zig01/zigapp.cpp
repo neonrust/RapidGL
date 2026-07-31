@@ -588,7 +588,7 @@ void ZigApp::input()
     {
 		// TODO: add "slot numer" suffix
         std::string filename = "27_clustered_shading";
-		if (take_screenshot_png(filename, Window::width(), Window::height()))
+		if (take_screenshot(filename))
 			Log::info("Screenshot: {}.png", filename);
         else
 			Log::error("Failed screenshot [{}]", filename);
