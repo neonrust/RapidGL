@@ -1,7 +1,6 @@
 #include "scene.h"
 
 #include "frustum.h"
-#include "log.h"
 
 #include <execution>
 
@@ -24,14 +23,14 @@ Scene::Scene(entt::registry &entities, size_t reserve) :
 	_connect_signals();
 }
 
-EntityID Scene::add(StaticModel &&model, const component::Transform &transforn, bool is_dynamic)
+EntityID Scene::add(std::shared_ptr<const StaticModel> model, const component::Transform &transforn, bool is_dynamic)
 {
 	auto model_ent = _entities.create();
 
-	_entities.emplace<component::SphereBounds>(model_ent, model.sphere());
+	_entities.emplace<component::SphereBounds>(model_ent, model->sphere());
 	_entities.emplace<component::Transform>   (model_ent, transforn);
 	_entities.emplace<bool>(model_ent, is_dynamic);  // bad idea
-	_entities.emplace<component::Model>       (model_ent, std::move(model));
+	_entities.emplace<component::Model>       (model_ent, model);
 
 	return model_ent;
 }
@@ -175,7 +174,7 @@ void Scene::_spatial_insert(entt::registry &, EntityID entity_id)
 	const auto &[transform, model, is_dynamic] = _entities.get<component::Transform, component::Model, bool>(entity_id);
 
 	// transform the local bounds into world-space
-	auto world_bounds = model.sphere(); // local bounds
+	auto world_bounds = model->sphere(); // local bounds
 	world_bounds.setCenter(glm::mat4(transform) * glm::vec4(world_bounds.center(), 1));
 	world_bounds.setRadius(world_bounds.radius() * transform.max_scale());
 

@@ -241,9 +241,6 @@ public:
 	bool Create(uint32_t width, uint32_t height, GLenum internalFormat, uint_fast8_t num_mipmaps=DefaultMipmaps);
 	TextureDescriptor CreateView(uint_fast8_t mip_level=255) const;
 
-	// TODO: convert to factory function
-	//   also, these should access a shared storage/cache,
-	//   if the texture is already loaded, return the existing (a shread_ptr)
 	bool Load(const std::filesystem::path & filepath, bool is_srgb = false, uint32_t num_mipmaps=DefaultMipmaps);
 	bool Load(unsigned char* memory_data, uint32_t data_size, bool is_srgb = false, uint32_t num_mipmaps=DefaultMipmaps);
 	bool LoadHdr(const std::filesystem::path& filepath, uint32_t num_mipmaps=DefaultMipmaps);

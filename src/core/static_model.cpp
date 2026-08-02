@@ -7,14 +7,12 @@
 
 #include <assimp/postprocess.h>
 
-#include "container_types.h"
-#include "log.h"
+#include "shader.h"
+#include "texture.h"  // IWYU pragma: keep
+#include "instance_attributes.h"
 
 #include <string_view>
 using namespace std::literals;
-
-#include <chrono>
-using namespace std::chrono;
 
 namespace RGL
 {
@@ -37,9 +35,7 @@ void StaticModel::Render(uint32_t num_instances) const
 			assert(material_index < m_materials.size());
 
 			for (auto const& [texture_type, texture] : m_materials[material_index].m_texture_map)
-			{
 				texture->Bind(uint32_t(texture_type));
-			}
 		}
 
 		if (num_instances == 0)
@@ -114,390 +110,423 @@ void StaticModel::Render(Shader& shader, uint32_t num_instances) const
 	glBindTextureUnit(0, 0);
 }
 
-bool StaticModel::Load(const std::filesystem::path& filepath)
-{
-	/* Release the previously loaded mesh if it was loaded. */
-	if(m_vao_name)
-		Release();
+// bool StaticModel::Load(const std::filesystem::path& filepath)
+// {
+// 	/* Release the previously loaded mesh if it was loaded. */
+// 	if(m_vao_name)
+// 		Release();
 
-	// Load model
-	Assimp::Importer importer;
-	// TODO: importer.SetIOHandler(compressionLayer);
-	const auto *scene = importer.ReadFile(filepath.generic_string(),
-										  aiProcess_Triangulate              |
-										  aiProcess_GenSmoothNormals         |
-										  aiProcess_GenUVCoords              |
-										  aiProcess_CalcTangentSpace         |
-										  aiProcess_FlipUVs                  |
-										  aiProcess_JoinIdenticalVertices    |
-										  aiProcess_RemoveRedundantMaterials |
-										  aiProcess_GenBoundingBoxes );
+// 	// Load model
+// 	Assimp::Importer importer;
+// 	// TODO: importer.SetIOHandler(compressionLayer);
+// 	const auto *scene = importer.ReadFile(filepath.generic_string(),
+// 										  aiProcess_Triangulate              |
+// 										  aiProcess_GenSmoothNormals         |
+// 										  aiProcess_GenUVCoords              |
+// 										  aiProcess_CalcTangentSpace         |
+// 										  aiProcess_FlipUVs                  |
+// 										  aiProcess_JoinIdenticalVertices    |
+// 										  aiProcess_RemoveRedundantMaterials |
+// 										  aiProcess_GenBoundingBoxes );
 
-	_ok = scene and scene->mFlags != AI_SCENE_FLAGS_INCOMPLETE and scene->mRootNode;
+// 	_ok = scene and scene->mFlags != AI_SCENE_FLAGS_INCOMPLETE and scene->mRootNode;
 
-	if(not _ok)
-	{
-		Log::error("loading mesh failed: {}: {}", filepath.generic_string().c_str(), importer.GetErrorString());
-		return false;
-	}
+// 	if(not _ok)
+// 	{
+// 		Log::error("loading mesh failed: {}: {}", filepath.generic_string().c_str(), importer.GetErrorString());
+// 		return false;
+// 	}
 
-	_ok = ParseScene(scene, filepath);
-	return _ok;
-}
+// 	_ok = ParseScene(scene, filepath);
+// 	return _ok;
+// }
 
-bool StaticModel::ParseScene(const aiScene *scene, const std::filesystem::path& filepath)
-{
-	const auto T0 = steady_clock::now();
+// bool StaticModel::ParseScene(const aiScene *scene, const std::filesystem::path& filepath)
+// {
+// 	const auto T0 = steady_clock::now();
 
-	const auto filename = filepath.filename();
+// 	const auto filename = filepath.filename();
 
-	m_mesh_parts.resize(scene->mNumMeshes);
-	m_materials.resize(scene->mNumMaterials);
+// 	m_mesh_parts.resize(scene->mNumMeshes);
+// 	m_materials.resize(scene->mNumMaterials);
 
-	VertexData vertex_data;
+// 	VertexData vertex_data;
 
-	uint32_t vertices_count = 0;
-	uint32_t indices_count  = 0;
+// 	uint32_t vertices_count = 0;
+// 	uint32_t indices_count  = 0;
 
-	/* Count the number of vertices and indices. */
-	for (uint32_t idx = 0; idx < m_mesh_parts.size(); ++idx)
-	{
-		m_mesh_parts[idx].m_material_index = scene->mNumMaterials > 0 ? scene->mMeshes[idx]->mMaterialIndex : INVALID_MATERIAL;
-		m_mesh_parts[idx].m_indices_count  = scene->mMeshes[idx]->mNumFaces * 3;
-		m_mesh_parts[idx].m_base_vertex    = vertices_count;
-		m_mesh_parts[idx].m_base_index     = indices_count;
+// 	/* Count the number of vertices and indices. */
+// 	for (uint32_t idx = 0; idx < m_mesh_parts.size(); ++idx)
+// 	{
+// 		m_mesh_parts[idx].m_material_index = scene->mNumMaterials > 0 ? scene->mMeshes[idx]->mMaterialIndex : INVALID_MATERIAL;
+// 		m_mesh_parts[idx].m_indices_count  = scene->mMeshes[idx]->mNumFaces * 3;
+// 		m_mesh_parts[idx].m_base_vertex    = vertices_count;
+// 		m_mesh_parts[idx].m_base_index     = indices_count;
 
-		vertices_count += scene->mMeshes[idx]->mNumVertices;
-		indices_count  += m_mesh_parts[idx].m_indices_count;
-	}
+// 		vertices_count += scene->mMeshes[idx]->mNumVertices;
+// 		indices_count  += m_mesh_parts[idx].m_indices_count;
+// 	}
 
-	// Reserve space for the vertex attributes and indices
-	vertex_data.positions.reserve(vertices_count);
-	vertex_data.texcoords.reserve(vertices_count);
-	vertex_data.normals.reserve(vertices_count);
-	vertex_data.tangents.reserve(vertices_count);
-	vertex_data.indices.reserve(indices_count);
+// 	if(scene->mNumCameras > 0)
+// 	{
+// 		_cameras.reserve(scene->mNumCameras);
+// 		for(auto idx = 0u; idx < scene->mNumCameras; ++idx)
+// 		{
+// 			auto *camera = scene->mCameras[idx];
+// 			assert(camera);
+// 			// TODO
+// 			Log::warning("StaticModel::ParseScene() Cameras not implemented");
+// 		}
+// 	}
 
-	/* Load mesh parts one by one. */
-	_aabb.clear();
-	_sphere.clear();
+// 	// Reserve space for the vertex attributes and indices
+// 	vertex_data.positions.reserve(vertices_count);
+// 	vertex_data.texcoords.reserve(vertices_count);
+// 	vertex_data.normals.reserve(vertices_count);
+// 	vertex_data.tangents.reserve(vertices_count);
+// 	vertex_data.indices.reserve(indices_count);
 
-	for (uint32_t idx = 0; idx < m_mesh_parts.size(); ++idx)
-	{
-		auto *mesh = scene->mMeshes[idx];
-		LoadMeshPart(mesh, vertex_data);
+// 	/* Load mesh parts one by one. */
+// 	_aabb.clear();
+// 	_sphere.clear();
 
-		// min = glm::min(min, vec3_cast(mesh->mAABB.mMin));
-		// max = glm::max(max, vec3_cast(mesh->mAABB.mMax));
-		_aabb.expand(vec3_cast(mesh->mAABB.mMin));
-		_aabb.expand(vec3_cast(mesh->mAABB.mMax));
-		Log::info("[{}] added sub-mesh {}: {} vertices  AABB: {:.1f}, {:.1f}, {:.1f}  ->  {:.1f}, {:.1f}, {:.1f}   ({:.1f}x{:.1f}x{:.1f})",
-				   filename.string(),
-				   idx,
-				   mesh->mNumVertices,
-				   float(mesh->mAABB.mMin.x), float(mesh->mAABB.mMin.y), float(mesh->mAABB.mMin.z),
-				   float(mesh->mAABB.mMax.x), float(mesh->mAABB.mMax.y), float(mesh->mAABB.mMax.z),
-				   float(mesh->mAABB.mMax.x - mesh->mAABB.mMin.x), float(mesh->mAABB.mMax.y - mesh->mAABB.mMin.y), float(mesh->mAABB.mMax.z- mesh->mAABB.mMin.z)
-				   );
-	}
+// 	for (uint32_t idx = 0; idx < m_mesh_parts.size(); ++idx)
+// 	{
+// 		auto *mesh = scene->mMeshes[idx];
+// 		LoadMeshPart(mesh, vertex_data);
 
-	if(not LoadMaterials(scene, filepath))
-	{
-		Log::error("\x1b[97;41;1mError\x1b[m loading mesh failed: {}: Could not load the materials", filepath.generic_string());
-		return false;
-	}
+// 		// min = glm::min(min, vec3_cast(mesh->mAABB.mMin));
+// 		// max = glm::max(max, vec3_cast(mesh->mAABB.mMax));
+// 		_aabb.expand(vec3_cast(mesh->mAABB.mMin));
+// 		_aabb.expand(vec3_cast(mesh->mAABB.mMax));
+// 		Log::info("[{}] added sub-mesh {}: {} vertices  AABB: {:.1f}, {:.1f}, {:.1f}  ->  {:.1f}, {:.1f}, {:.1f}   ({:.1f}x{:.1f}x{:.1f})",
+// 				   filename.string(),
+// 				   idx,
+// 				   mesh->mNumVertices,
+// 				   float(mesh->mAABB.mMin.x), float(mesh->mAABB.mMin.y), float(mesh->mAABB.mMin.z),
+// 				   float(mesh->mAABB.mMax.x), float(mesh->mAABB.mMax.y), float(mesh->mAABB.mMax.z),
+// 				   float(mesh->mAABB.mMax.x - mesh->mAABB.mMin.x), float(mesh->mAABB.mMax.y - mesh->mAABB.mMin.y), float(mesh->mAABB.mMax.z- mesh->mAABB.mMin.z)
+// 				   );
+// 	}
 
-	/* Populate buffers on the GPU with the model's data. */
-	CreateBuffers(vertex_data);
+// 	if(not LoadMaterials(scene, filepath))
+// 	{
+// 		Log::error("loading mesh failed: {}: Could not load the materials", filepath.generic_string());
+// 		return false;
+// 	}
 
-	const auto T1 = steady_clock::now();
+// 	// Populate buffers on the GPU with the model's data
+// 	CreateBuffers(vertex_data);
 
-	Log::info("Loaded mesh {}  ({:.1f} x {:.1f} x {:.1f})  ({})", filepath.string().c_str(), _aabb.width(), _aabb.height(), _aabb.depth(), duration_cast<milliseconds>(T1 - T0));
+// 	const auto T1 = steady_clock::now();
 
-	return true;
-}
+// 	Log::info("Loaded mesh {}  ({:.1f} x {:.1f} x {:.1f})  ({})", filepath.string().c_str(), _aabb.width(), _aabb.height(), _aabb.depth(), duration_cast<milliseconds>(T1 - T0));
 
-void StaticModel::LoadMeshPart(const aiMesh* mesh, VertexData& vertex_data)
-{
-	const glm::vec3 zero_vec3 = glm::zero<glm::vec3>();
+// 	return true;
+// }
 
-	for (uint32_t idx = 0; idx < mesh->mNumVertices; ++idx)
-	{
-		auto pos      = vec3_cast(mesh->mVertices[idx]);
-		auto texcoord = mesh->HasTextureCoords(0)        ? vec3_cast(mesh->mTextureCoords[0][idx]) : zero_vec3;
-		auto normal   = mesh->HasNormals()               ? vec3_cast(mesh->mNormals[idx])          : zero_vec3;
-		auto tangent  = mesh->HasTangentsAndBitangents() ? vec3_cast(mesh->mTangents[idx])         : zero_vec3;
+// void StaticModel::LoadMeshPart(const aiMesh* mesh, VertexData& vertex_data)
+// {
+// 	const glm::vec3 zero_vec3 = glm::zero<glm::vec3>();
 
-		vertex_data.positions.push_back(pos);
-		_sphere.expand(pos);
-		vertex_data.texcoords.push_back(glm::vec2(texcoord.x, texcoord.y));
-		vertex_data.normals.push_back(normal);
-		vertex_data.tangents.push_back(tangent);
-	}
+// 	for (uint32_t idx = 0; idx < mesh->mNumVertices; ++idx)
+// 	{
+// 		auto pos      = vec3_cast(mesh->mVertices[idx]);
+// 		auto texcoord = mesh->HasTextureCoords(0)        ? vec3_cast(mesh->mTextureCoords[0][idx]) : zero_vec3;
+// 		auto normal   = mesh->HasNormals()               ? vec3_cast(mesh->mNormals[idx])          : zero_vec3;
+// 		auto tangent  = mesh->HasTangentsAndBitangents() ? vec3_cast(mesh->mTangents[idx])         : zero_vec3;
 
-	for (uint32_t idx = 0; idx < mesh->mNumFaces; ++idx)
-	{
-		const aiFace& face = mesh->mFaces[idx];
-		assert(face.mNumIndices == 3);
+// 		vertex_data.positions.push_back(pos);
+// 		_sphere.expand(pos);
+// 		vertex_data.texcoords.push_back(glm::vec2(texcoord.x, texcoord.y));
+// 		vertex_data.normals.push_back(normal);
+// 		vertex_data.tangents.push_back(tangent);
+// 	}
 
-		for (auto idx = 0u; idx < face.mNumIndices; ++idx)
-		{
-			vertex_data.indices.push_back(face.mIndices[idx]);
-		}
-	}
-}
+// 	for (uint32_t idx = 0; idx < mesh->mNumFaces; ++idx)
+// 	{
+// 		const aiFace& face = mesh->mFaces[idx];
+// 		assert(face.mNumIndices == 3);
 
-bool StaticModel::LoadMaterials(const aiScene* scene, const std::filesystem::path& filepath)
-{
-	// Extract the directory part from the file name
-	auto last_slash_index = filepath.generic_string().rfind("/");
-	std::string dir;
+// 		for (auto idx = 0u; idx < face.mNumIndices; ++idx)
+// 		{
+// 			vertex_data.indices.push_back(face.mIndices[idx]);
+// 		}
+// 	}
+// }
 
-	if (last_slash_index == std::string::npos)
-	{
-		dir = ".";
-	}
-	else if (last_slash_index == 0)
-	{
-		dir = "/";
-	}
-	else
-	{
-		dir = filepath.generic_string().substr(0, last_slash_index);
-	}
+// bool StaticModel::LoadMaterials(const aiScene* scene, const std::filesystem::path& filepath)
+// {
+// 	// Extract the directory part from the file name
+// 	auto last_slash_index = filepath.generic_string().rfind("/");
+// 	std::string dir;
 
-	bool ret = true;
+// 	if (last_slash_index == std::string::npos)
+// 	{
+// 		dir = ".";
+// 	}
+// 	else if (last_slash_index == 0)
+// 	{
+// 		dir = "/";
+// 	}
+// 	else
+// 	{
+// 		dir = filepath.generic_string().substr(0, last_slash_index);
+// 	}
 
-	for (uint32_t idx = 0; idx < scene->mNumMaterials; ++idx)
-	{
-		auto *material = scene->mMaterials[idx];
+// 	bool ret = true;
 
-		ret |= LoadMaterialTextures(scene, material, idx, aiTextureType_BASE_COLOR,        Material::TextureType::ALBEDO,    dir);
-		ret |= LoadMaterialTextures(scene, material, idx, aiTextureType_NORMALS,           Material::TextureType::NORMAL,    dir);
-		ret |= LoadMaterialTextures(scene, material, idx, aiTextureType_EMISSIVE,          Material::TextureType::EMISSIVE,  dir);
-		ret |= LoadMaterialTextures(scene, material, idx, aiTextureType_AMBIENT_OCCLUSION, Material::TextureType::AO,        dir);
-		ret |= LoadMaterialTextures(scene, material, idx, aiTextureType_DIFFUSE_ROUGHNESS, Material::TextureType::ROUGHNESS, dir);
-		ret |= LoadMaterialTextures(scene, material, idx, aiTextureType_METALNESS,         Material::TextureType::METALLIC,  dir);
+// 	for (uint32_t idx = 0; idx < scene->mNumMaterials; ++idx)
+// 	{
+// 		auto *material = scene->mMaterials[idx];
 
-		/* Load material parameters */
-		aiColor3D color_rgb;
-		aiColor4D color_rgba;
-		float value;
+// 		ret |= LoadMaterialTextures(scene, material, idx, aiTextureType_BASE_COLOR,        Material::TextureType::ALBEDO,    dir);
+// 		ret |= LoadMaterialTextures(scene, material, idx, aiTextureType_NORMALS,           Material::TextureType::NORMAL,    dir);
+// 		ret |= LoadMaterialTextures(scene, material, idx, aiTextureType_EMISSIVE,          Material::TextureType::EMISSIVE,  dir);
+// 		ret |= LoadMaterialTextures(scene, material, idx, aiTextureType_AMBIENT_OCCLUSION, Material::TextureType::AO,        dir);
+// 		ret |= LoadMaterialTextures(scene, material, idx, aiTextureType_DIFFUSE_ROUGHNESS, Material::TextureType::ROUGHNESS, dir);
+// 		ret |= LoadMaterialTextures(scene, material, idx, aiTextureType_METALNESS,         Material::TextureType::METALLIC,  dir);
 
-		if (AI_SUCCESS == material->Get(AI_MATKEY_BASE_COLOR, color_rgba))
-		{
-			m_materials[idx].set("u_albedo"sv, glm::vec3(color_rgba.r, color_rgba.g, color_rgba.b));
-		}
-		if (AI_SUCCESS == material->Get(AI_MATKEY_COLOR_EMISSIVE, color_rgb))
-		{
-			m_materials[idx].set("u_emission"sv, glm::vec3(color_rgb.r, color_rgb.g, color_rgb.b));
-		}
-		if (AI_SUCCESS == material->Get(AI_MATKEY_EMISSIVE_INTENSITY, value))
-		{
-			m_materials[idx].set("u_emission_strength"sv, value);
-		}
-		if (AI_SUCCESS == material->Get(AI_MATKEY_COLOR_AMBIENT, color_rgb))
-		{
-			m_materials[idx].set("u_ao"sv, (color_rgb.r + color_rgb.g + color_rgb.b) / 3.0f);
-		}
-		if (AI_SUCCESS == material->Get(AI_MATKEY_ROUGHNESS_FACTOR, value))
-		{
-			m_materials[idx].set("u_roughness"sv, value);
-		}
-		if (AI_SUCCESS == material->Get(AI_MATKEY_METALLIC_FACTOR, value))
-		{
-			m_materials[idx].set("u_metallic"sv, value);
-		}
-	}
+// 		/* Load material parameters */
+// 		aiColor3D color_rgb;
+// 		aiColor4D color_rgba;
+// 		float value;
 
-	return ret;
-}
+// 		if (AI_SUCCESS == material->Get(AI_MATKEY_BASE_COLOR, color_rgba))
+// 		{
+// 			m_materials[idx].set("u_albedo"sv, glm::vec3(color_rgba.r, color_rgba.g, color_rgba.b));
+// 		}
+// 		if (AI_SUCCESS == material->Get(AI_MATKEY_COLOR_EMISSIVE, color_rgb))
+// 		{
+// 			m_materials[idx].set("u_emission"sv, glm::vec3(color_rgb.r, color_rgb.g, color_rgb.b));
+// 		}
+// 		if (AI_SUCCESS == material->Get(AI_MATKEY_EMISSIVE_INTENSITY, value))
+// 		{
+// 			m_materials[idx].set("u_emission_strength"sv, value);
+// 		}
+// 		if (AI_SUCCESS == material->Get(AI_MATKEY_COLOR_AMBIENT, color_rgb))
+// 		{
+// 			m_materials[idx].set("u_ao"sv, (color_rgb.r + color_rgb.g + color_rgb.b) / 3.0f);
+// 		}
+// 		if (AI_SUCCESS == material->Get(AI_MATKEY_ROUGHNESS_FACTOR, value))
+// 		{
+// 			m_materials[idx].set("u_roughness"sv, value);
+// 		}
+// 		if (AI_SUCCESS == material->Get(AI_MATKEY_METALLIC_FACTOR, value))
+// 		{
+// 			m_materials[idx].set("u_metallic"sv, value);
+// 		}
+// 	}
 
-bool StaticModel::LoadMaterialTextures(const aiScene* scene, const aiMaterial* material, uint32_t material_index, aiTextureType type, Material::TextureType texture_type, const std::string& directory)
-{
-	if (material->GetTextureCount(type) > 0)
-	{
-		aiString path;
-		aiTextureMapMode texture_map_mode[3];
+// 	return ret;
+// }
 
-		// Only one texture of a given type is being loaded
-		if (material->GetTexture(type, 0, &path, NULL, NULL, NULL, NULL, texture_map_mode) == AI_SUCCESS)
-		{
-			bool is_srgb = (type == aiTextureType_DIFFUSE) || (type == aiTextureType_EMISSIVE) || (type == aiTextureType_BASE_COLOR);
+// bool StaticModel::LoadMaterialTextures(const aiScene* scene, const aiMaterial* material, uint32_t material_index, aiTextureType type, Material::TextureType texture_type, const std::string& directory)
+// {
+// 	if (material->GetTextureCount(type) > 0)
+// 	{
+// 		aiString path;
+// 		aiTextureMapMode texture_map_mode[3];
 
-			std::shared_ptr<Texture2D> texture = std::make_shared<Texture2D>();
-			const aiTexture* paiTexture = scene->GetEmbeddedTexture(path.C_Str());
+// 		// Only one texture of a given type is being loaded
+// 		if (material->GetTexture(type, 0, &path, NULL, NULL, NULL, NULL, texture_map_mode) == AI_SUCCESS)
+// 		{
+// 			const bool is_srgb = (type == aiTextureType_DIFFUSE) or (type == aiTextureType_EMISSIVE) or (type == aiTextureType_BASE_COLOR);
 
-			if (paiTexture)
-			{
-				// Load embedded
-				uint32_t data_size = paiTexture->mHeight > 0 ? paiTexture->mWidth * paiTexture->mHeight : paiTexture->mWidth;
+// 			std::shared_ptr<Texture2D> texture = std::make_shared<Texture2D>();
+// 			const aiTexture* paiTexture = scene->GetEmbeddedTexture(path.C_Str());
 
-				if (texture->Load(reinterpret_cast<unsigned char*>(paiTexture->pcData), data_size, is_srgb))
-				{
-					Log::debug("Loaded embedded texture for the model {}", path.C_Str());
-					m_materials[material_index].set(texture_type, texture);
+// 			if (paiTexture)
+// 			{
+// 				// Load embedded
+// 				uint32_t data_size = paiTexture->mHeight > 0 ? paiTexture->mWidth * paiTexture->mHeight : paiTexture->mWidth;
 
-					if (texture_map_mode[0] == aiTextureMapMode_Wrap)
-					{
-						texture->SetWrapping(RGL::TextureWrappingAxis::U, RGL::TextureWrappingParam::Repeat);
-						texture->SetWrapping(RGL::TextureWrappingAxis::V, RGL::TextureWrappingParam::Repeat);
-					}
-				}
-				else
-				{
-					Log::error("\x1b[97;41;1mError\x1b[m Loading embedded texture for the model failed: {}", path.C_Str());
-					return false;
-				}
-			}
-			else
-			{
-				// Load from file
-				std::string p(path.data);
+// 				if (texture->Load(reinterpret_cast<unsigned char*>(paiTexture->pcData), data_size, is_srgb))
+// 				{
+// 					Log::debug("Loaded embedded texture for the model {}", path.C_Str());
+// 					m_materials[material_index].set(texture_type, texture);
 
-				if (p.substr(0, 2) == ".\\")
-				{
-					p = p.substr(2, p.size() - 2);
-				}
+// 					if (texture_map_mode[0] == aiTextureMapMode_Wrap)
+// 					{
+// 						texture->SetWrapping(RGL::TextureWrappingAxis::U, RGL::TextureWrappingParam::Repeat);
+// 						texture->SetWrapping(RGL::TextureWrappingAxis::V, RGL::TextureWrappingParam::Repeat);
+// 					}
+// 				}
+// 				else
+// 				{
+// 					Log::error("\x1b[97;41;1mError\x1b[m Loading embedded texture for the model failed: {}", path.C_Str());
+// 					return false;
+// 				}
+// 			}
+// 			else
+// 			{
+// 				// Load from file
+// 				std::string p(path.data);
 
-				const auto T0 = steady_clock::now();
+// 				if (p.substr(0, 2) == ".\\")
+// 				{
+// 					p = p.substr(2, p.size() - 2);
+// 				}
 
-				std::string full_path = directory + "/" + p;
-				if (!texture->Load(full_path, is_srgb))
-				{
-					Log::error("\x1b[97;41;1mError\x1b[m Loading texture failed {}.", full_path);
-					return false;
-				}
-				else
-				{
-					const auto T1 = steady_clock::now();
-					Log::debug("Loaded texture {}  ({})", full_path, duration_cast<milliseconds>(T1 - T0));
-					m_materials[material_index].set(texture_type, texture);
+// 				const auto T0 = steady_clock::now();
 
-					if (texture_map_mode[0] == aiTextureMapMode_Wrap)
-					{
-						texture->SetWrapping(RGL::TextureWrappingAxis::U, RGL::TextureWrappingParam::Repeat);
-						texture->SetWrapping(RGL::TextureWrappingAxis::V, RGL::TextureWrappingParam::Repeat);
-					}
-				}
-			}
-		}
+// 				std::string full_path = directory + "/" + p;
+// 				auto texture = AssetManager::the().texture(full_path, is_srgb);
+// 				// if (!texture->Load(full_path, is_srgb))
+// 				// {
+// 				// 	Log::error("\x1b[97;41;1mError\x1b[m Loading texture failed {}.", full_path);
+// 				// 	return false;
+// 				// }
+// 				// else
+// 				// {
+// 					const auto T1 = steady_clock::now();
+// 					Log::debug("Loaded texture {}  ({})", full_path, duration_cast<milliseconds>(T1 - T0));
+// 					m_materials[material_index].set(texture_type, texture);
 
-		static const dense_map<Material::TextureType, std::string_view> s_texture_flag_uniform_name {
-			{ Material::TextureType::ALBEDO,    "u_has_albedo_map"sv },
-			{ Material::TextureType::NORMAL,    "u_has_normal_map"sv },
-			{ Material::TextureType::EMISSIVE,  "u_has_emissive_map"sv },
-			{ Material::TextureType::AO,        "u_has_ao_map"sv },
-			{ Material::TextureType::METALLIC,  "u_has_metallic_map"sv },
-			{ Material::TextureType::ROUGHNESS, "u_has_roughness_map"sv }
-		};
+// 					// if (texture_map_mode[0] == aiTextureMapMode_Wrap)
+// 					// {
+// 					// 	texture->SetWrapping(RGL::TextureWrappingAxis::U, RGL::TextureWrappingParam::Repeat);
+// 					// 	texture->SetWrapping(RGL::TextureWrappingAxis::V, RGL::TextureWrappingParam::Repeat);
+// 					// }
+// 				// }
+// 			}
+// 		}
 
-		auto uniform_found = s_texture_flag_uniform_name.find(texture_type);
-		if(uniform_found != s_texture_flag_uniform_name.end())
-			m_materials[material_index].set(uniform_found->second, true);
-	}
+// 		static const dense_map<Material::TextureType, std::string_view> s_texture_flag_uniform_name {
+// 			{ Material::TextureType::ALBEDO,    "u_has_albedo_map"sv },
+// 			{ Material::TextureType::NORMAL,    "u_has_normal_map"sv },
+// 			{ Material::TextureType::EMISSIVE,  "u_has_emissive_map"sv },
+// 			{ Material::TextureType::AO,        "u_has_ao_map"sv },
+// 			{ Material::TextureType::METALLIC,  "u_has_metallic_map"sv },
+// 			{ Material::TextureType::ROUGHNESS, "u_has_roughness_map"sv }
+// 		};
 
-	return true;
-}
+// 		auto uniform_found = s_texture_flag_uniform_name.find(texture_type);
+// 		if(uniform_found != s_texture_flag_uniform_name.end())
+// 			m_materials[material_index].set(uniform_found->second, true);
+// 	}
 
-void StaticModel::CreateBuffers(VertexData& vertex_data)
-{
-	bool has_tangents = !vertex_data.tangents.empty();
+// 	return true;
+// }
 
-	const GLsizei positions_size_bytes = GLsizei(vertex_data.positions.size() * sizeof(vertex_data.positions[0]));
-	const GLsizei texcoords_size_bytes = GLsizei(vertex_data.texcoords.size() * sizeof(vertex_data.texcoords[0]));
-	const GLsizei normals_size_bytes   = GLsizei(vertex_data.normals  .size() * sizeof(vertex_data.normals  [0]));
-	const GLsizei tangents_size_bytes  = GLsizei(has_tangents ? vertex_data.tangents .size() * sizeof(vertex_data.tangents [0]) : 0);
-	const GLsizei total_size_bytes     = positions_size_bytes + texcoords_size_bytes + normals_size_bytes + tangents_size_bytes;
+// void StaticModel::CreateBuffers(VertexData& vertex_data)
+// {
+// 	bool has_tangents = !vertex_data.tangents.empty();
 
-	glCreateBuffers     (1, &m_vbo_name);
-	glNamedBufferStorage(m_vbo_name, total_size_bytes, nullptr, GL_DYNAMIC_STORAGE_BIT);
+// 	const GLsizei positions_size_bytes = GLsizei(vertex_data.positions.size() * sizeof(vertex_data.positions[0]));
+// 	const GLsizei texcoords_size_bytes = GLsizei(vertex_data.texcoords.size() * sizeof(vertex_data.texcoords[0]));
+// 	const GLsizei normals_size_bytes   = GLsizei(vertex_data.normals  .size() * sizeof(vertex_data.normals  [0]));
+// 	const GLsizei tangents_size_bytes  = GLsizei(has_tangents ? vertex_data.tangents .size() * sizeof(vertex_data.tangents [0]) : 0);
+// 	const GLsizei total_size_bytes     = positions_size_bytes + texcoords_size_bytes + normals_size_bytes + tangents_size_bytes;
 
-	GLintptr offset = 0;
-	glNamedBufferSubData(m_vbo_name, offset, positions_size_bytes, vertex_data.positions.data());
+// 	glCreateBuffers     (1, &m_vbo_name);
+// 	glNamedBufferStorage(m_vbo_name, total_size_bytes, nullptr, GL_DYNAMIC_STORAGE_BIT);
 
-	offset += positions_size_bytes;
-	glNamedBufferSubData(m_vbo_name, offset, texcoords_size_bytes, vertex_data.texcoords.data());
+// 	GLintptr offset = 0;
+// 	glNamedBufferSubData(m_vbo_name, offset, positions_size_bytes, vertex_data.positions.data());
 
-	offset += texcoords_size_bytes;
-	glNamedBufferSubData(m_vbo_name, offset, normals_size_bytes, vertex_data.normals.data());
+// 	offset += positions_size_bytes;
+// 	glNamedBufferSubData(m_vbo_name, offset, texcoords_size_bytes, vertex_data.texcoords.data());
 
-	if(has_tangents)
-	{
-		offset += normals_size_bytes;
-		glNamedBufferSubData(m_vbo_name, offset, tangents_size_bytes, vertex_data.tangents.data());
-	}
+// 	offset += texcoords_size_bytes;
+// 	glNamedBufferSubData(m_vbo_name, offset, normals_size_bytes, vertex_data.normals.data());
 
-	glCreateBuffers     (1, &m_ibo_name);
-	glNamedBufferStorage(m_ibo_name, GLsizeiptr(sizeof(vertex_data.indices[0]) * vertex_data.indices.size()), vertex_data.indices.data(), GL_DYNAMIC_STORAGE_BIT);
+// 	if(has_tangents)
+// 	{
+// 		offset += normals_size_bytes;
+// 		glNamedBufferSubData(m_vbo_name, offset, tangents_size_bytes, vertex_data.tangents.data());
+// 	}
 
-	glCreateVertexArrays(1, &m_vao_name);
+// 	glCreateBuffers     (1, &m_ibo_name);
+// 	glNamedBufferStorage(m_ibo_name, GLsizeiptr(sizeof(vertex_data.indices[0]) * vertex_data.indices.size()), vertex_data.indices.data(), GL_DYNAMIC_STORAGE_BIT);
 
-	offset = 0;
-	glVertexArrayVertexBuffer(m_vao_name, 0 /* bindingindex*/, m_vbo_name, offset, sizeof(vertex_data.positions[0]) /*stride*/);
+// 	glCreateVertexArrays(1, &m_vao_name);
 
-	offset += positions_size_bytes;
-	glVertexArrayVertexBuffer(m_vao_name, 1 /* bindingindex*/, m_vbo_name, offset, sizeof(vertex_data.texcoords[0]) /*stride*/);
+// 	offset = 0;
+// 	glVertexArrayVertexBuffer(m_vao_name, 0 /* bindingindex*/, m_vbo_name, offset, sizeof(vertex_data.positions[0]) /*stride*/);
 
-	offset += texcoords_size_bytes;
-	glVertexArrayVertexBuffer(m_vao_name, 2 /* bindingindex*/, m_vbo_name,  offset, sizeof(vertex_data.normals[0]) /*stride*/);
+// 	offset += positions_size_bytes;
+// 	glVertexArrayVertexBuffer(m_vao_name, 1 /* bindingindex*/, m_vbo_name, offset, sizeof(vertex_data.texcoords[0]) /*stride*/);
 
-	if (has_tangents)
-	{
-		offset += normals_size_bytes;
-		glVertexArrayVertexBuffer(m_vao_name, 3 /* bindingindex*/, m_vbo_name, offset, sizeof(vertex_data.tangents[0]) /*stride*/);
-	}
+// 	offset += texcoords_size_bytes;
+// 	glVertexArrayVertexBuffer(m_vao_name, 2 /* bindingindex*/, m_vbo_name,  offset, sizeof(vertex_data.normals[0]) /*stride*/);
 
-	glVertexArrayElementBuffer(m_vao_name, m_ibo_name);
+// 	if (has_tangents)
+// 	{
+// 		offset += normals_size_bytes;
+// 		glVertexArrayVertexBuffer(m_vao_name, 3 /* bindingindex*/, m_vbo_name, offset, sizeof(vertex_data.tangents[0]) /*stride*/);
+// 	}
 
-	glEnableVertexArrayAttrib(m_vao_name, 0 /*attribindex*/); // positions
-	glEnableVertexArrayAttrib(m_vao_name, 1 /*attribindex*/); // texcoords
-	glEnableVertexArrayAttrib(m_vao_name, 2 /*attribindex*/); // normals
-	if (has_tangents) glEnableVertexArrayAttrib(m_vao_name, 3 /*attribindex*/); // tangents
+// 	glVertexArrayElementBuffer(m_vao_name, m_ibo_name);
 
-	glVertexArrayAttribFormat(m_vao_name, 0 /*attribindex */, 3 /* size */, GL_FLOAT, GL_FALSE, 0 /*relativeoffset*/);
-	glVertexArrayAttribFormat(m_vao_name, 1 /*attribindex */, 2 /* size */, GL_FLOAT, GL_FALSE, 0 /*relativeoffset*/);
-	glVertexArrayAttribFormat(m_vao_name, 2 /*attribindex */, 3 /* size */, GL_FLOAT, GL_FALSE, 0 /*relativeoffset*/);
-	if (has_tangents) glVertexArrayAttribFormat(m_vao_name, 3 /*attribindex */, 3 /* size */, GL_FLOAT, GL_FALSE, 0 /*relativeoffset*/);
+// 	glEnableVertexArrayAttrib(m_vao_name, 0 /*attribindex*/); // positions
+// 	glEnableVertexArrayAttrib(m_vao_name, 1 /*attribindex*/); // texcoords
+// 	glEnableVertexArrayAttrib(m_vao_name, 2 /*attribindex*/); // normals
+// 	if (has_tangents) glEnableVertexArrayAttrib(m_vao_name, 3 /*attribindex*/); // tangents
 
-	glVertexArrayAttribBinding(m_vao_name, 0 /*attribindex*/, 0 /*bindingindex*/); // positions
-	glVertexArrayAttribBinding(m_vao_name, 1 /*attribindex*/, 1 /*bindingindex*/); // texcoords
-	glVertexArrayAttribBinding(m_vao_name, 2 /*attribindex*/, 2 /*bindingindex*/); // normals
-	if (has_tangents) glVertexArrayAttribBinding(m_vao_name, 3 /*attribindex*/, 3 /*bindingindex*/); // tangents
-}
+// 	glVertexArrayAttribFormat(m_vao_name, 0 /*attribindex */, 3 /* size */, GL_FLOAT, GL_FALSE, 0 /*relativeoffset*/);
+// 	glVertexArrayAttribFormat(m_vao_name, 1 /*attribindex */, 2 /* size */, GL_FLOAT, GL_FALSE, 0 /*relativeoffset*/);
+// 	glVertexArrayAttribFormat(m_vao_name, 2 /*attribindex */, 3 /* size */, GL_FLOAT, GL_FALSE, 0 /*relativeoffset*/);
+// 	if (has_tangents) glVertexArrayAttribFormat(m_vao_name, 3 /*attribindex */, 3 /* size */, GL_FLOAT, GL_FALSE, 0 /*relativeoffset*/);
+
+// 	glVertexArrayAttribBinding(m_vao_name, 0 /*attribindex*/, 0 /*bindingindex*/); // positions
+// 	glVertexArrayAttribBinding(m_vao_name, 1 /*attribindex*/, 1 /*bindingindex*/); // texcoords
+// 	glVertexArrayAttribBinding(m_vao_name, 2 /*attribindex*/, 2 /*bindingindex*/); // normals
+// 	if (has_tangents) glVertexArrayAttribBinding(m_vao_name, 3 /*attribindex*/, 3 /*bindingindex*/); // tangents
+// }
 
 /* The first available input attribute index is 4. */
-void StaticModel::AddAttributeBuffer(GLuint attrib_index, GLuint binding_index, GLint format_size, GLenum data_type, GLuint buffer_id, GLsizei stride, GLuint divisor)
+// void StaticModel::AddAttributeBuffer(GLuint attrib_index, GLuint binding_index, GLint format_size, GLenum data_type, GLuint buffer_id, GLsizei stride, GLuint divisor)
+// {
+// 	if(m_vao_name)
+// 	{
+// 		glVertexArrayVertexBuffer  (m_vao_name, binding_index, buffer_id, 0 /*offset*/, stride);
+// 		glEnableVertexArrayAttrib  (m_vao_name, attrib_index);
+// 		glVertexArrayAttribFormat  (m_vao_name, attrib_index, format_size, data_type, GL_FALSE, 0 /*relativeoffset*/);
+// 		glVertexArrayAttribBinding (m_vao_name, attrib_index, binding_index);
+// 		glVertexArrayBindingDivisor(m_vao_name, binding_index, divisor);
+// 	}
+// }
+
+// void StaticModel::AddTexture(const std::shared_ptr<Texture2D>& texture, Material::TextureType texture_type, uint32_t mesh_id)
+// {
+// 	assert(texture);
+// 	assert(mesh_id < m_mesh_parts.size());
+
+// 	/* If the mesh part doesn't have any material assigned, add the new one. */
+// 	if (m_mesh_parts[mesh_id].m_material_index == INVALID_MATERIAL)
+// 	{
+// 		Material new_material {};
+// 		new_material.set(texture_type, texture);
+
+// 		m_materials.push_back(new_material);
+// 		m_mesh_parts[mesh_id].m_material_index = m_materials.size() - 1;
+// 	}
+// 	else
+// 	{
+// 		auto material_index = m_mesh_parts[mesh_id].m_material_index;
+// 		m_materials[material_index].set(texture_type, texture);
+// 	}
+// }
+
+std::vector<std::string> StaticModel::cameraNames() const
 {
-	if(m_vao_name)
-	{
-		glVertexArrayVertexBuffer  (m_vao_name, binding_index, buffer_id, 0 /*offset*/, stride);
-		glEnableVertexArrayAttrib  (m_vao_name, attrib_index);
-		glVertexArrayAttribFormat  (m_vao_name, attrib_index, format_size, data_type, GL_FALSE, 0 /*relativeoffset*/);
-		glVertexArrayAttribBinding (m_vao_name, attrib_index, binding_index);
-		glVertexArrayBindingDivisor(m_vao_name, binding_index, divisor);
-	}
+	std::vector<std::string> names;
+	names.reserve(_cameras.size());
+	for(const auto &[name, _]: _cameras)
+		names.push_back(name);
+	return names;
 }
 
-void StaticModel::AddTexture(const std::shared_ptr<Texture2D>& texture, Material::TextureType texture_type, uint32_t mesh_id)
+Camera &StaticModel::camera(std::string_view name)
 {
-	assert(texture);
-	assert(mesh_id < m_mesh_parts.size());
+	assert(_cameras.contains(name));
+	auto found = _cameras.find(name);
+	if(found != _cameras.end())
+		return *found->second;
 
-	/* If the mesh part doesn't have any material assigned, add the new one. */
-	if (m_mesh_parts[mesh_id].m_material_index == INVALID_MATERIAL)
-	{
-		Material new_material {};
-		new_material.set(texture_type, texture);
-
-		m_materials.push_back(new_material);
-		m_mesh_parts[mesh_id].m_material_index = m_materials.size() - 1;
-	}
-	else
-	{
-		auto material_index = m_mesh_parts[mesh_id].m_material_index;
-		m_materials[material_index].set(texture_type, texture);
-	}
+	static Camera sentinel;
+	return sentinel;
 }
 
 void StaticModel::CalcTangentSpace(VertexData& vertex_data)
@@ -1301,18 +1330,16 @@ void StaticModel::GenQuad(float width, float height)
 	GenPrimitive(vertex_data, false);
 }
 
-InstanceAttributes &StaticModel::instance_attributes(size_t stride)
+void StaticModel::configureInstanceAttributes(InstanceAttributes &inst_attrs, size_t stride) const
 {
-	if(not m_inst_attrs)
+	if(not inst_attrs)
 	{
 		assert(stride);
-		m_inst_attrs.config_with_vao(m_vao_name, stride);
-		// caller is expected to do the apropriate add() calls
+		inst_attrs.config_with_vao(m_vao_name, stride);
+		// caller is expected to do the apropriate inst_attrs.add() calls
 	}
 	else
-		assert(m_inst_attrs.stride() == stride);
-
-	return m_inst_attrs;
+		assert(inst_attrs.stride() == stride);
 }
 
 }

@@ -430,17 +430,16 @@ void ZigApp::init_app()
 	const auto models_path = FileSystem::getResourcesPath() / "models";
 
 	{
-		const auto origin = glm::mat4(1);
+		const fs::path light_meshes = "lights"sv;
 
-		const auto light_meshes = models_path / "lights";
+		_lightModels.reserve(4);
 
 		for(const auto light_type: { LightType::Rect, LightType::Tube, LightType::Sphere, LightType::Disc })
 		{
-			auto filename = std::format("{}.gltf", _light_mgr.type_name(uint_fast8_t(light_type)));
-			auto model = std::make_shared<StaticModel>();
-			model->Load(light_meshes / filename);
+			const auto filename = std::format("{}.gltf", _light_mgr.type_name(uint_fast8_t(light_type)));
+			auto model = assets().staticMesh((light_meshes / filename).native());
 			assert(*model);
-			_lightModels.emplace_back(model, origin);
+			_lightModels.emplace(uint32_t(light_type), std::make_pair(model, InstanceAttributes{}));
 		}
 		Log::info("Loaded {} light geometries", _lightModels.size());
 	}
@@ -1196,7 +1195,6 @@ void ZigApp::render()
 	m_find_nonempty_clusters_shader->invoke(size_t(glm::ceil(float(m_depth_pass_rt.width()) / 32.f)),
 											size_t(glm::ceil(float(m_depth_pass_rt.height()) / 32.f)));
 
-
 	if(auto d = _gl_timers["cluster-find"].elapsed<microseconds>(); d)
 		m_cluster_find_time.add(*d);
 	// ------------------------------------------------------------------
@@ -1647,11 +1645,9 @@ void ZigApp::renderLightGeometry()
 		if(surf_attrs.empty())
 			continue;
 
-		uint_fast8_t model_index = uint_fast8_t(light_type) - uint_fast8_t(LightType::Rect);
+		auto &[model, inst_attrs] = _lightModels[uint32_t(light_type)];
 
-		auto &model = _lightModels[model_index].model;
-
-		auto &inst_attrs = model->instance_attributes(sizeof(SurfaceLightAttrs));
+		model->configureInstanceAttributes(inst_attrs, sizeof(SurfaceLightAttrs));
 		if(not inst_attrs)
 			config_attrs(inst_attrs);
 
@@ -1700,8 +1696,8 @@ void ZigApp::renderLightGeometry()
 			surf_attrs.clear();
 			surf_attrs.emplace_back(sun_model, general.color*general.intensity * 100.f, false);
 
-			auto &model = _lightModels[2].model;  // render as a disc  (but currently as a sphere, for testing)
-			auto &inst_attrs = model->instance_attributes(sizeof(SurfaceLightAttrs));
+			auto &[model, inst_attrs] = _lightModels[uint32_t(LightType::Sphere)];  // TODO: should be disc, but it doesn't show up (facing wrong direction?)
+			model->configureInstanceAttributes(inst_attrs, sizeof(SurfaceLightAttrs));
 			if(not inst_attrs)
 				config_attrs(inst_attrs);
 
@@ -1894,9 +1890,9 @@ void ZigApp::renderScene(const glm::mat4 &view_projection, Shader &shader, RGL::
 		shader.setUniform("u_normal_matrix"sv, transform.normal_matrix());
 
 		if(materialCtrl == UseMaterials)
-			model.Render(shader);
+			model->Render(shader);
 		else
-			model.Render();
+			model->Render();
 	}
 
 	for(const auto &entity_id: _cameraPvs.static_entities)
@@ -1909,9 +1905,9 @@ void ZigApp::renderScene(const glm::mat4 &view_projection, Shader &shader, RGL::
 		shader.setUniform("u_normal_matrix"sv, transform.normal_matrix());
 
 		if(materialCtrl == UseMaterials)
-			model.Render(shader);
+			model->Render(shader);
 		else
-			model.Render();
+			model->Render();
 	}
 }
 
@@ -1947,7 +1943,7 @@ void ZigApp::renderSceneShadow(const QueryResult &objects, uint16_t shadow_idx, 
 
 			m_shadow_depth_shader->setUniform("u_model"sv, tfm);
 			m_shadow_depth_shader->setUniform("u_normal_matrix"sv, transform.normal_matrix());
-			model.Render();
+			model->Render();
 		}
 	}
 	for(const auto &entity_id: objects.dynamic_entities)
@@ -1957,7 +1953,7 @@ void ZigApp::renderSceneShadow(const QueryResult &objects, uint16_t shadow_idx, 
 
 		m_shadow_depth_shader->setUniform("u_model"sv, tfm);
 		m_shadow_depth_shader->setUniform("u_normal_matrix"sv, transform.normal_matrix());
-		model.Render();
+		model->Render();
 	}
 
 }
@@ -2143,15 +2139,16 @@ void ZigApp::loadScene([[maybe_unused]] std::string_view name)
 	// assert(*testroom_model);
 	// _scene.emplace_back(testroom_model, origin);
 
-	// StaticModel floor_model;
-	// floor_model.Load(FileSystem::getResourcesPath() / "models" / "floor.gltf");
-	// assert(floor_model);
-	// _scene.add(std::move(floor_model), origin);
+	// auto floor_model = assets().staticMesh("floor.gltf");
+	// _scene.add(floor_model, origin);
 
-	StaticModel shadow_model;
-	shadow_model.Load(FileSystem::getResourcesPath() / "models" / "shadowtest.gltf");
-	assert(shadow_model);
-	_scene.add(std::move(shadow_model), origin);
+	// StaticModel cathedral_model;
+	// cathedral_model.Load("/dl/necropolisfantasygraveyardkit/cathedral_jxl.gltf");
+	// assert(cathedral_model);
+	// _scene.add(std::move(cathedral_model), origin);
+
+	auto shadowtest_model = assets().staticMesh("shadowtest.gltf");
+	_scene.add(shadowtest_model, origin);
 
 	_entities.compact();
 }

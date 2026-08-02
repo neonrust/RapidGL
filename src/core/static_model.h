@@ -11,13 +11,15 @@
 #include <assimp/scene.h>
 
 #include "bounds.h"
-#include "instance_attributes.h"
 #include "mesh_part.h"
 #include "material.h"
-#include "shader.h"
+#include "container_types.h"
+#include "camera.h"
 
 namespace RGL
 {
+
+class InstanceAttributes;
 
 struct VertexData
 {
@@ -36,8 +38,12 @@ enum class DrawMode {
 	PATCHES        = GL_PATCHES
 };
 
+class Camera;
+
 class StaticModel
 {
+	friend class AssetManager;
+
 public:
 	StaticModel() :
 		m_vao_name  (0),
@@ -88,13 +94,16 @@ public:
 		return *this;
 	}
 
-	virtual void AddAttributeBuffer(GLuint attrib_index, GLuint binding_index, GLint format_size, GLenum data_type, GLuint buffer_id, GLsizei stride, GLuint divisor = 0);
-	virtual void AddTexture(const std::shared_ptr<Texture2D> & texture, Material::TextureType texture_type = Material::TextureType::ALBEDO, uint32_t mesh_id = 0);
+	// virtual void AddAttributeBuffer(GLuint attrib_index, GLuint binding_index, GLint format_size, GLenum data_type, GLuint buffer_id, GLsizei stride, GLuint divisor = 0);
+	// virtual void AddTexture(const std::shared_ptr<Texture2D> & texture, Material::TextureType texture_type = Material::TextureType::ALBEDO, uint32_t mesh_id = 0);
 
-	virtual void SetDrawMode(DrawMode mode) { m_draw_mode = mode; }
+	void SetDrawMode(DrawMode mode) { m_draw_mode = mode; }
+
+	std::vector<std::string> cameraNames() const;
+	Camera &camera(std::string_view name);
 
 	// TODO: convert to factory function
-	virtual bool Load(const std::filesystem::path& filepath);
+	virtual bool Load(const std::filesystem::path& filepath) { return false; }
 	
 	void BindVAO() const;
 	inline GLuint VAO() const { return m_vao_name; }
@@ -122,7 +131,7 @@ public:
 
 	inline operator bool () const { return _ok; }
 
-	InstanceAttributes &instance_attributes(size_t stride=0);  // 'stride' must be specified the first call
+	void configureInstanceAttributes(InstanceAttributes &inst_attrs, size_t stride=0) const;
 
 protected:
 	// For converting between ASSIMP and glm
@@ -132,11 +141,11 @@ protected:
 	static inline glm::mat4 mat4_cast(const aiMatrix4x4& m)  { return glm::transpose(glm::make_mat4(&m.a1)); }
 	static inline glm::mat4 mat4_cast(const aiMatrix3x3& m)  { return glm::transpose(glm::make_mat3(&m.a1)); }
 
-	virtual bool ParseScene(const aiScene* scene, const std::filesystem::path& filepath);
-	virtual void LoadMeshPart(const aiMesh* mesh, VertexData& vertex_data);
-	virtual bool LoadMaterials(const aiScene* scene, const std::filesystem::path& filepath);
-	virtual bool LoadMaterialTextures(const aiScene* scene, const aiMaterial* material, uint32_t material_index, aiTextureType type, Material::TextureType texture_type, const std::string& directory);
-	virtual void CreateBuffers(VertexData& vertex_data);
+	virtual bool ParseScene(const aiScene* scene, const std::filesystem::path& filepath) { return false; }
+	virtual void LoadMeshPart(const aiMesh* mesh, VertexData& vertex_data) {}
+	virtual bool LoadMaterials(const aiScene* scene, const std::filesystem::path& filepath) { return false; }
+	virtual bool LoadMaterialTextures(const aiScene* scene, const aiMaterial* material, uint32_t material_index, aiTextureType type, Material::TextureType texture_type, const std::string& directory) { return false; }
+	virtual void CreateBuffers(VertexData& vertex_data) {}
 
 	virtual void CalcTangentSpace(VertexData& vertex_data);
 	virtual void GenPrimitive(VertexData& vertex_data, bool generate_tangents = true);
@@ -150,10 +159,11 @@ protected:
 	GLuint   m_vbo_name;
 	GLuint   m_ibo_name;
 	DrawMode m_draw_mode;
-	InstanceAttributes m_inst_attrs;
 	bounds::AABB _aabb;
 	bounds::Sphere _sphere;
 	bool _ok;
+	string_map<std::unique_ptr<Camera>> _cameras;
+private:
 };
 
 } // RGL

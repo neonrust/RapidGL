@@ -27,14 +27,10 @@ public:
 		m_material_index(INVALID_MATERIAL),
 		m_indices_count (0) { }
 
-private:
 	uint32_t      m_base_vertex;
 	uint32_t      m_base_index;
 	uint_fast16_t m_material_index;
 	size_t        m_indices_count;
-
-	friend class StaticModel;
-	friend class AnimatedModel;
 };
 
 }

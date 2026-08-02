@@ -7,7 +7,6 @@
 #include "sample_window.h"
 #include "scene.h"
 #include "ssbo.h"
-#include "static_object.h"
 #include "shader.h"
 #include "lights.h"
 #include "buffer_binds.h"
@@ -100,7 +99,7 @@ private:
 	RGL::Texture2D _contact_shadow_buffer;
 
 	std::vector<LightIndex>   _lightsPvs;  // basically all lights within theoretical range
-	std::vector<StaticObject> _lightModels;
+	dense_map<uint32_t, std::pair<std::shared_ptr<const RGL::StaticModel>, RGL::InstanceAttributes>> _lightModels;
 
 	RGL::Camera m_camera;
 	float m_camera_fov { 80.f };

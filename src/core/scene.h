@@ -54,7 +54,7 @@ public:
 public:
 	Scene(entt::registry &entities, size_t reserve=0);
 
-	EntityID add(StaticModel &&model, const component::Transform &transforn, bool is_dynamic=false);
+	EntityID add(std::shared_ptr<const StaticModel> model, const component::Transform &transforn, bool is_dynamic=false);
 	EntityID add(GPULight &&light, const component::Transform &transfor);
 
 	bool remove(EntityID entity_id);

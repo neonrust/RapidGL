@@ -29,27 +29,27 @@ namespace RGL
     {
     }
 
-	void Material::set(TextureType texture_type, const std::shared_ptr<Texture2D>& texture)
+	void Material::set(TextureType texture_type, const std::shared_ptr<const Texture2D>& texture)
     {
         m_texture_map[texture_type] = texture;
     }
 
-	void Material::set(const std::string_view &uniform_name, const glm::vec3& vector3)
+	void Material::set(std::string_view uniform_name, const glm::vec3& vector3)
     {
         m_vec3_map[uniform_name] = vector3;
     }
 
-	void Material::set(const std::string_view &uniform_name, float value)
+	void Material::set(std::string_view uniform_name, float value)
     {
         m_float_map[uniform_name] = value;
     }
 
-	void Material::set(const std::string_view &uniform_name, bool value)
+	void Material::set(std::string_view uniform_name, bool value)
     {
         m_bool_map[uniform_name] = value;
     }
 
-	std::shared_ptr<Texture2D> Material::getTexture(TextureType texture_type)
+	std::shared_ptr<const Texture2D> Material::getTexture(TextureType texture_type)
     {
 		auto found = m_texture_map.find(texture_type);
 		if(found != m_texture_map.end())
