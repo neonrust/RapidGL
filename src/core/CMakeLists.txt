@@ -10,6 +10,8 @@ set(SOURCE_FILES_CORE
 	gui/imgui_impl_glfw.cpp
 	gui/imgui_impl_opengl3.cpp
 	animated_model.cpp
+	asset_manager.cpp
+	asset_manager_mesh.cpp
 	bounds.cpp
 	buffer.cpp
 	buffer_binds.h
@@ -43,6 +45,8 @@ set(SOURCE_FILES_CORE
 	static_model.cpp
 	texture.cpp
 	util.cpp
+	variable.cpp
+	variable_master.cpp
 	window.cpp
 	zstr.cpp
 )
@@ -70,6 +74,7 @@ set(HEADER_FILES_CORE
 	gui/imgui_impl_opengl3.h
 	gui/imgui_impl_opengl3_loader.h
 	animated_model.h
+	asset_manager.h
 	bounds.h
 	buffer.h
 	camera.h
@@ -124,11 +129,12 @@ set(HEADER_FILES_CORE
 	spatial_allocator.h
 	ssbo.h
 	static_model.h
-	static_object.h
 	texture.h
 	timer.h
 	ubo.h
 	util.h
+	variable.h
+	variable_master.h
 	window.h
 	zstr.h
 	stack_container.h
