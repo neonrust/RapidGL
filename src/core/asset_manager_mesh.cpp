@@ -39,8 +39,8 @@ std::shared_ptr<const StaticModel> AssetManager::staticMesh(std::string_view nam
 	loadStaticMesh(*mesh, FileSystem::getResourcesPath() / "models" / name); // TODO: use 'models_prefix'
 	assert(*mesh);
 
-	auto mesh_ref = std::shared_ptr<const StaticModel>(mesh, [this, name=std::string(name)](auto *) {
-		delete_static_mesh(name);
+	auto mesh_ref = std::shared_ptr<const StaticModel>(mesh, [this, name=std::string(name)](auto *mesh) {
+		delete_static_mesh(name, mesh);
 	});
 
 	_static_meshes[std::string(name)] = mesh_ref;
@@ -48,13 +48,14 @@ std::shared_ptr<const StaticModel> AssetManager::staticMesh(std::string_view nam
 	return mesh_ref;
 }
 
-void AssetManager::delete_static_mesh(std::string_view name)
+void AssetManager::delete_static_mesh(std::string_view name, StaticModel *mesh)
 {
 	auto found = _static_meshes.find(name);
 	if(found != _static_meshes.end())
 	{
-		Log::info("Freeing mesh: {}", name);
+		delete mesh;
 		_static_meshes.erase(found);
+		Log::info("Deleted mesh: {}", name);
 	}
 }
 

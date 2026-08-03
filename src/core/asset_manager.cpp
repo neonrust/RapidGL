@@ -50,8 +50,8 @@ std::shared_ptr<const Texture2D> AssetManager::texture(std::string_view name, bo
 	tex->SetWrapping(TextureWrappingAxis::U, TextureWrappingParam::Repeat);
 	tex->SetWrapping(TextureWrappingAxis::V, TextureWrappingParam::Repeat);
 
-	auto tex_ref = std::shared_ptr<Texture2D>(tex, [this, name=std::string(name)](auto *) {
-		delete_texture2d(name);
+	auto tex_ref = std::shared_ptr<Texture2D>(tex, [this, name=std::string(name)](auto *tex) {
+		delete_texture2d(name, tex);
 	});
 
 	_textures[std::string(name)] = tex_ref;
@@ -59,13 +59,14 @@ std::shared_ptr<const Texture2D> AssetManager::texture(std::string_view name, bo
 	return tex_ref;
 }
 
-void AssetManager::delete_texture2d(std::string_view name)
+void AssetManager::delete_texture2d(std::string_view name, Texture2D *tex)
 {
 	auto found = _textures.find(name);
 	if(found != _textures.end())
 	{
-		Log::info("Freeing texture: {}", name);
+		delete tex;
 		_textures.erase(found);
+		Log::info("Deleted texture: {}", name);
 	}
 }
 

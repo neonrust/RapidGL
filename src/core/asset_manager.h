@@ -28,8 +28,8 @@ public:
 	std::shared_ptr<const Texture2D> texture(std::string_view name, bool is_srgb=false);
 
 private:
-	void delete_static_mesh(std::string_view name);
-	void delete_texture2d(std::string_view name);
+	void delete_static_mesh(std::string_view name, StaticModel *mesh);
+	void delete_texture2d(std::string_view name, Texture2D *tex);
 
 	// TODO: move these to a "mesh loader" thingy
 	bool loadStaticMesh(StaticModel &model, const std::filesystem::path &filepath);
