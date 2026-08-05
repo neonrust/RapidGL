@@ -1,4 +1,5 @@
 #include "frustum.h"
+#include <cmath>       // std::sqrt
 #include <functional>  // std::ref
 #include <glm/mat4x4.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
@@ -43,7 +44,19 @@ void Frustum::setFromView(const glm::mat4 &proj, const glm::mat4 &view, const gl
 	_far.set(   anchor - mvp[2]);
 
 	// build an AABB around the frustum for even faster early-outs
+	// (needs the UNnormalized plane values computed above)
+	recomputeCornersAndAABB();
 
+	// normalize planes after computing corners & AABB
+	for(Plane &plane: std::array{std::ref(_left), std::ref(_right), std::ref(_bottom), std::ref(_top), std::ref(_near), std::ref(_far)})
+	{
+		const auto l = glm::length(plane.normal());
+		plane.set(plane.normal() / l, plane.offset() / l);
+	}
+}
+
+void Frustum::recomputeCornersAndAABB()
+{
 	// compute the 8 corners of the frustum by intersecting the 3 adjacent planes
 	const glm::vec3 crosses[] = {
 		{}, // glm::cross(_left.normal(),   _right.normal()), // 0
@@ -77,13 +90,49 @@ void Frustum::setFromView(const glm::mat4 &proj, const glm::mat4 &view, const gl
 	_aabb.clear();
 	for(const auto &corner: _corners)
 		_aabb.expand(corner);
+}
 
-	// normalize planes after computing corners & AABB
-	for(Plane &plane: std::array{std::ref(_left), std::ref(_right), std::ref(_bottom), std::ref(_top), std::ref(_near), std::ref(_far)})
+void Frustum::narrowToSphere(const bounds::Sphere &sphere)
+{
+	const auto toSphere = sphere.center() - _origin;
+	const float distSq = glm::dot(toSphere, toSphere);
+
+	// if the origin is already inside the sphere, there's nothing to narrow
+	if(distSq <= sphere.squaredRadius())
+		return;
+
+	const float dist = std::sqrt(distSq);
+	const auto u = toSphere / dist;
+
+	const float cosBeta = sphere.radius() / dist;
+	const float sinBeta = std::sqrt(1.f - cosBeta*cosBeta);
+
+	// rotate left/right/top/bottom planes around the origin, until tangent to the sphere
+	for(auto *plane: { &_left, &_right, &_top, &_bottom })
 	{
-		const auto l = glm::length(plane.normal());
-		plane.set(plane.normal() / l, plane.offset() / l);
+		const auto n = plane->normal();
+		const float d = math::distance(*plane, sphere.center());
+
+		if(d <= sphere.radius())
+			continue; // already intersecting the sphere
+
+		auto nPerp = n - glm::dot(n, u) * u;
+		const float nPerpLen = glm::length(nPerp);
+		if(nPerpLen < 1e-6f)
+			continue; // degenerate: normal already points straight at the sphere's center
+
+		nPerp /= nPerpLen;
+
+		const auto newNormal = cosBeta*u + sinBeta*nPerp;
+		plane->set(newNormal, -glm::dot(newNormal, _origin));
 	}
+
+	// move near plane along its normal until intersecting with the sphere
+	const float d = math::distance(_near, sphere.center());
+	if(d > sphere.radius())
+		_near.set(_near.normal(), sphere.radius() - glm::dot(_near.normal(), sphere.center()));
+
+	recomputeCornersAndAABB();
 }
 
 glm::vec3 Frustum::center() const

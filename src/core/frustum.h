@@ -41,7 +41,11 @@ struct Frustum
 
 	const std::array<glm::vec4, 6> planes() const;  // left, right, top, bottom, front, back
 
+	void narrowToSphere(const bounds::Sphere &sphere);
+
 private:
+	void recomputeCornersAndAABB();
+
 	glm::vec3 _origin;
 	glm::vec3 _forward;
 	Plane _right;
