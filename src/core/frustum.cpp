@@ -8,9 +8,9 @@
 namespace RGL
 {
 
-void Frustum::setFromProjection(const glm::mat4 &proj, const glm::vec3 &origin)
+void Frustum::setFromProjection(const glm::mat4 &proj, const glm::vec3 &origin, const glm::vec3 &forward)
 {
-	setFromView(proj, glm::mat4(1), origin);
+	setFromView(proj, glm::mat4(1), origin, forward);
 }
 
 static glm::vec3 intersection(const Plane &A, const Plane &B, const Plane &C, const glm::vec3 &crossAB, const glm::vec3 &crossAC, const glm::vec3 &crossBC)
@@ -23,9 +23,10 @@ static glm::vec3 intersection(const Plane &A, const Plane &B, const Plane &C, co
 	return nom / denom;
 }
 
-void Frustum::setFromView(const glm::mat4 &proj, const glm::mat4 &view, const glm::vec3 &origin)
+void Frustum::setFromView(const glm::mat4 &proj, const glm::mat4 &view, const glm::vec3 &origin, const glm::vec3 &forward)
 {
 	_origin = origin;
+	_forward = forward;
 
 	// transpose to make it easier to extract the frustum plane vectors
 	const auto mvp = glm::transpose(proj * view);

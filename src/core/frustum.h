@@ -12,10 +12,11 @@ struct Frustum
 {
 	inline Frustum() {}
 
-	void setFromProjection(const glm::mat4 &proj, const glm::vec3 &origin);
-	void setFromView(const glm::mat4 &proj, const glm::mat4 &view, const glm::vec3 &origin);
+	void setFromProjection(const glm::mat4 &proj, const glm::vec3 &origin, const glm::vec3 &forward={});
+	void setFromView(const glm::mat4 &proj, const glm::mat4 &view, const glm::vec3 &origin, const glm::vec3 &forward={});
 
 	inline const glm::vec3 &origin() const { return _origin; }
+	inline const glm::vec3 &forward() const { return _forward; }
 
 	inline const Plane &right() const  { return _right; }
 	inline const Plane &left() const   { return _left; }
@@ -42,6 +43,7 @@ struct Frustum
 
 private:
 	glm::vec3 _origin;
+	glm::vec3 _forward;
 	Plane _right;
 	Plane _left;
 	Plane _top;
