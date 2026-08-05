@@ -219,7 +219,7 @@ size_t Camera::hash() const
 
 void Camera::updateFrustum()
 {
-	_frustum.setFromView(m_projection, m_view, m_position);
+	_frustum.setFromView(m_projection, m_view, m_position, forwardVector());
 }
 
 void Camera::setPosition(const glm::vec3 &position)
