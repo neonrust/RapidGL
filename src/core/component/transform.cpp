@@ -1,9 +1,74 @@
 #include "component/transform.h"
 
+#include "constants.h"
+
+#include <glm/gtc/matrix_transform.hpp>
+
+
 namespace RGL::component
 {
 
 const glm::vec3 Transform::direction_reference { 0, 0, -1 };
+
+void Transform::set_orientation_xyz(const glm::vec3 &angles)
+{
+	auto m = \
+		glm::angleAxis(glm::radians(angles.x), AXIS_X) *
+		glm::angleAxis(glm::radians(angles.y), AXIS_Y) *
+		glm::angleAxis(glm::radians(angles.z), AXIS_Z);
+
+	set_orientation(glm::quat_cast(glm::mat3(m)));
+}
+
+void Transform::set_orientation_xzy(const glm::vec3 &angles)
+{
+	auto m = \
+		glm::angleAxis(glm::radians(angles.x), AXIS_X) *
+		glm::angleAxis(glm::radians(angles.z), AXIS_Z) *
+		glm::angleAxis(glm::radians(angles.y), AXIS_Y);
+
+	set_orientation(glm::quat_cast(glm::mat3(m)));
+}
+
+void Transform::set_orientation_yxz(const glm::vec3 &angles)
+{
+	auto m = \
+		glm::angleAxis(glm::radians(angles.y), AXIS_Y) *
+		glm::angleAxis(glm::radians(angles.x), AXIS_X) *
+		glm::angleAxis(glm::radians(angles.z), AXIS_Z);
+
+	set_orientation(glm::quat_cast(glm::mat3(m)));
+}
+
+void Transform::set_orientation_yzx(const glm::vec3 &angles)
+{
+	auto m = \
+		glm::angleAxis(glm::radians(angles.y), AXIS_Y) *
+		glm::angleAxis(glm::radians(angles.z), AXIS_Z) *
+		glm::angleAxis(glm::radians(angles.x), AXIS_X);
+
+	set_orientation(glm::quat_cast(glm::mat3(m)));
+}
+
+void Transform::set_orientation_zxy(const glm::vec3 &angles)
+{
+	auto m = \
+		glm::angleAxis(glm::radians(angles.z), AXIS_Z) *
+		glm::angleAxis(glm::radians(angles.x), AXIS_X) *
+		glm::angleAxis(glm::radians(angles.y), AXIS_Y);
+
+	set_orientation(glm::quat_cast(glm::mat3(m)));
+}
+
+void Transform::set_orientation_zyx(const glm::vec3 &angles)
+{
+	auto m = \
+		glm::angleAxis(glm::radians(angles.z), AXIS_Z) *
+		glm::angleAxis(glm::radians(angles.y), AXIS_Y) *
+		glm::angleAxis(glm::radians(angles.x), AXIS_X);
+
+	set_orientation(glm::quat_cast(glm::mat3(m)));
+}
 
 void Transform::set_direction(const glm::vec3 &dir)
 {

@@ -75,10 +75,16 @@ struct Transform
 		// Log::debug("Transform (scale)");
 	}
 
-	inline void set_position   (const glm::vec3 &pos)   { _position = pos;    _matrix_dirty = true; }
-	inline void set_orientation(const glm::quat &ori)   { _orientation = ori; _matrix_dirty = true; }
-	inline void set_scale      (const glm::vec3 &scale) { _scale= scale;      _matrix_dirty = true; }
-		   void set_direction  (const glm::vec3 &dir);
+	inline void set_position       (const glm::vec3 &pos)   { _position = pos;    _matrix_dirty = true; }
+	inline void set_orientation    (const glm::quat &ori)   { _orientation = ori; _matrix_dirty = true; }
+		   void set_orientation_xyz(const glm::vec3 &angles);
+		   void set_orientation_xzy(const glm::vec3 &angles);
+		   void set_orientation_yxz(const glm::vec3 &angles);
+		   void set_orientation_yzx(const glm::vec3 &angles);
+		   void set_orientation_zxy(const glm::vec3 &angles);
+		   void set_orientation_zyx(const glm::vec3 &angles);
+	inline void set_scale          (const glm::vec3 &scale) { _scale= scale;      _matrix_dirty = true; }
+		   void set_direction      (const glm::vec3 &dir);
 
 	inline const glm::vec3 &position() const    { return _position; }
 	inline const glm::quat &orientation() const { return _orientation; }
