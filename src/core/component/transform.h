@@ -19,12 +19,20 @@ struct Transform
 {
 	static const glm::vec3 direction_reference;
 
+	inline Transform() :
+		_position(0),
+		_orientation(ident_quat),
+		_scale(1),
+		_transform(glm::mat4(1)),
+		_matrix_dirty(false)
+	{
+	}
+
 	// from existing transform matrix -> decompose
 	inline explicit  Transform(const glm::mat4 &tfm) :
 		_transform(tfm),
 		_matrix_dirty(false)
 	{
-		// Log::debug("Transform (tfm)");
 		glm::vec3 skew;        // not used
 		glm::vec4 perspective; // not used
 
@@ -35,13 +43,11 @@ struct Transform
 	inline explicit Transform(const glm::vec3 &position) :
 		_position(position)
 	{
-		// Log::debug("Transform (pos)");
 	}
 	// from only orientation
 	inline explicit Transform(const glm::quat &orientation) :
 		_orientation(orientation)
 	{
-		// Log::debug("Transform (ori)");
 	}
 	// from position, orientation & scale
 	inline explicit Transform(const glm::vec3 &position, const glm::quat &orientation, const glm::vec3 &scale=glm::vec3(1)) :
@@ -49,21 +55,18 @@ struct Transform
 		_orientation(orientation),
 		_scale(scale)
 	{
-		// Log::debug("Transform (pos,ori,scale)");
 	}
 	// from only direction (set only orientation)
 	struct Direction {}; // to disambiguate 'direction' argument'
 	inline explicit  Transform(Direction, const glm::vec3 &direction) :
 		_matrix_dirty(true)
 	{
-		// Log::debug("Transform (dir)");
 		set_direction(direction);
 	}
 	// from position & direction
 	inline explicit  Transform(const glm::vec3 &position, Direction, const glm::vec3 &direction) :
 		_position(position)
 	{
-		// Log::debug("Transform (pos, dir)");
 		set_direction(direction);
 	}
 	// from position & scale
@@ -72,7 +75,6 @@ struct Transform
 		_position(position),
 		_scale(scale)
 	{
-		// Log::debug("Transform (scale)");
 	}
 
 	inline void set_position       (const glm::vec3 &pos)   { _position = pos;    _matrix_dirty = true; }
