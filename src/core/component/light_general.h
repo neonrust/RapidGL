@@ -2,6 +2,9 @@
 
 #include <glm/vec3.hpp>
 
+#include <string>
+#include <cstring>
+
 #include "light_type.h"
 
 namespace RGL
@@ -122,19 +125,33 @@ struct LightGeneral
 		};
 	}
 
-	LightType light_type;       // LIGHT_TYPE_*
-	glm::vec3 color;            // { 0, 0, 0 } to { 1, 1, 1 }
-	float     intensity;        // >= 0
-	bool      enabled;
-	bool      shadow_caster;
-	bool      contact_shadows;
-	bool      is_volumetric;
-	bool      has_surface;
-	float     fog;              // >= 0
-	float     shadow_compression; // [0, 1) (0 = full range)
-	uint16_t  shadow_index;     // >= 0   OR  LIGHT_NO_SHADOW
+	void set_name(std::string_view name_);
+
+	static constexpr size_t NAME_LEN = 15;
+	char      name[NAME_LEN + 1] { '\0' };
+	LightType light_type         { LightType::Point };
+	glm::vec3 color              { 1, 1, 1 };
+	float     intensity          { 10.f };     // >= 0
+	bool      enabled            { true };
+	bool      shadow_caster      { true };
+	bool      contact_shadows    { false };
+	bool      is_volumetric      { false };
+	bool      has_surface        { false };
+	float     fog                { 1.f };            // >= 0
+	float     shadow_compression { 0.f }; // [0, 1) (0 = full range)
+	uint16_t  shadow_index { LIGHT_NO_SHADOW };  // >= 0   OR  LIGHT_NO_SHADOW
 };
-static_assert(sizeof(LightGeneral) == 40);
+static_assert(sizeof(LightGeneral) == 56);
+
+inline void LightGeneral::set_name(std::string_view name_)
+{
+	if(name_.size() > 0)
+	{
+		name_ = name_.substr(0, std::min(name_.size(), NAME_LEN));
+		std::strcpy(name, name_.data());
+	}
+	name[name_.size()] = '\0';
+}
 
 
 } // component
@@ -156,6 +173,7 @@ struct hash<RGL::component::LightGeneral>
 		h = hash_combine(h, general.color);
 		h = hash_combine(h, general.intensity);
 		h = hash_combine(h, general.fog);
+		// the other parametes?
 		return h;
 	}
 };
