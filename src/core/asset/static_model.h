@@ -108,6 +108,9 @@ public:
 	void BindVAO() const;
 	inline GLuint VAO() const { return m_vao_name; }
 
+	void setMaterial(size_t index, const Material &material);
+	void setMaterials(std::vector<Material> &materials);
+
 	// TODO: move to a Renderer-thingy class
 	//   _renderer->submit(mesh);
 	virtual void Render(uint32_t num_instances = 0) const;
@@ -153,7 +156,7 @@ protected:
 	void Release();
 
 	std::vector<MeshPart> m_mesh_parts;
-	std::vector<Material> m_materials;
+	std::vector<Material> m_materials; // TODO: shared_ptr<>; needs to be overridable and/or shared between meshes
 
 	GLuint   m_vao_name;
 	GLuint   m_vbo_name;
@@ -165,5 +168,7 @@ protected:
 	string_map<std::unique_ptr<Camera>> _cameras;
 private:
 };
+
+using ModelRef = std::shared_ptr<const StaticModel>;
 
 } // RGL

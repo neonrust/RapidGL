@@ -139,4 +139,6 @@ protected:
 	uint32_t m_animations_count;
 };
 
+using AModelRef = std::shared_ptr<const AnimatedModel>;
+
 }

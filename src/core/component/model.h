@@ -1,6 +1,6 @@
 #pragma once
 
-#include "static_model.h"
+#include "asset/static_model.h"
 
 namespace RGL::component
 {

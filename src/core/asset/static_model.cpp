@@ -22,19 +22,30 @@ void StaticModel::BindVAO() const
 	glBindVertexArray(m_vao_name);
 }
 
+void StaticModel::setMaterial(size_t index, const Material &material)
+{
+	assert(index < m_materials.size());
+	m_materials[index] = material;
+}
+
+void StaticModel::setMaterials(std::vector<Material> &materials)
+{
+	assert(materials.size() == m_materials.size());
+	m_materials = materials;
+}
+
 void StaticModel::Render(uint32_t num_instances) const
 {
 	BindVAO();
 
 	for (unsigned int idx = 0; idx < m_mesh_parts.size(); idx++)
 	{
-		if (!m_materials.empty())
+		if (not m_materials.empty())
 		{
 			const auto material_index = m_mesh_parts[idx].m_material_index;
-
 			assert(material_index < m_materials.size());
 
-			for (auto const& [texture_type, texture] : m_materials[material_index].m_texture_map)
+			for(auto const& [texture_type, texture] : m_materials[material_index].m_texture_map)
 				texture->Bind(uint32_t(texture_type));
 		}
 

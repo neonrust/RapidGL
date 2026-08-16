@@ -7,9 +7,9 @@
 
 #include "bounds.h"
 #include "container_types.h"
-#include "static_model.h"
 
 
+#include "asset/static_model.h"
 #include "component/transform.h"
 
 class GPULight;

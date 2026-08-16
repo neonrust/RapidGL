@@ -4,6 +4,8 @@ set(CORE_LIB_NAME "RapidGLCore" CACHE STRING "Name of the core library")
 
 # Add source files
 set(SOURCE_FILES_CORE
+	asset/animated_model.cpp
+	asset/static_model.cpp
 	component/transform.cpp
 	gui/font.cpp
 	gui/gui.cpp
@@ -42,7 +44,6 @@ set(SOURCE_FILES_CORE
 	scene.cpp
 	shader.cpp
 	shadow_atlas.cpp
-	static_model.cpp
 	texture.cpp
 	util.cpp
 	variable.cpp
@@ -53,6 +54,8 @@ set(SOURCE_FILES_CORE
 
 # Add header files
 set(HEADER_FILES_CORE
+	asset/animated_model.h
+	asset/static_model.h
 	camera_system.h
 	camera_system.cpp
 	component/bounds.h
@@ -73,7 +76,6 @@ set(HEADER_FILES_CORE
 	gui/imgui_impl_glfw.h
 	gui/imgui_impl_opengl3.h
 	gui/imgui_impl_opengl3_loader.h
-	animated_model.h
 	asset_manager.h
 	bounds.h
 	buffer.h
@@ -82,7 +84,6 @@ set(HEADER_FILES_CORE
 	container_types.h
 	core_app.h
 	debug_output_gl.h
-	dynamic_object.h
 	entity_system.h
 	filesystem.h
 	formatters_glm.h
@@ -128,7 +129,6 @@ set(HEADER_FILES_CORE
 	shadow_atlas.h
 	spatial_allocator.h
 	ssbo.h
-	static_model.h
 	texture.h
 	timer.h
 	ubo.h
