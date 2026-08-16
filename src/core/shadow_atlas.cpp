@@ -33,7 +33,7 @@ static constexpr float s_min_light_value = 1e-2f;
 
 static const auto s_slot_max_size_shift = 1;
 static constexpr auto s_normal_shadow_shift = 2;  // point & spot shadow maps are shifted N down in size (e.g. from 4096 to 1024)
-
+static constexpr auto s_min_shadowed_radius = .5f;
 
 #define SLOT_CONFIG(light_type)   ((light_type) == LightType::Point? SlotConfig::Cube: ((light_type) == LightType::Directional? SlotConfig::Cascades: SlotConfig::Single))
 
@@ -760,6 +760,12 @@ void ShadowAtlas::evaluate_lights(const std::vector<LightIndex> &relevant_lights
 		const auto light_ent = entt::entity(light_id);
 		const auto &[general, transform] = _lights.entities().get<component::LightGeneral, component::Transform>(light_ent);
 		if(not general.enabled)
+			continue;
+
+		const float affect_radius = _lights.affect_radius(light_id, general);
+
+		// very small lights are simply ignored
+		if(affect_radius < s_min_shadowed_radius)
 			continue;
 
 		seen_lights.insert(light_id);
