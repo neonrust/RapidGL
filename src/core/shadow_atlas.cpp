@@ -779,7 +779,6 @@ void ShadowAtlas::evaluate_lights(const std::vector<LightIndex> &relevant_lights
 		{
 			const auto &spot = _lights.entities().get<component::SpotLight>(light_ent);
 			// use radius of spot's outer edge as "affect_radius" (i.e. a narrower spot will get a smaller atlas slot)
-			const auto affect_radius = _lights.affect_radius(general, spot);
 			const auto edge_distance = affect_radius * std::cos(spot.outer_angle);
 			const auto edge_radius = affect_radius * std::sin(spot.outer_angle);
 
@@ -792,7 +791,6 @@ void ShadowAtlas::evaluate_lights(const std::vector<LightIndex> &relevant_lights
 		}
 		else
 		{
-			const auto affect_radius = _lights.affect_radius(light_id, general);
 			const bounds::Sphere light_sphere { transform.position(), affect_radius };
 			const auto value = evaluate_light(light_sphere, view_pos, view_forward);
 
