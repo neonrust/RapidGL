@@ -126,9 +126,8 @@ struct LightGeneral
 	}
 
 	void set_name(std::string_view name_);
+	inline std::string_view name() const { return __name; };
 
-	static constexpr size_t NAME_LEN = 15;
-	char      name[NAME_LEN + 1] { '\0' };
 	LightType light_type         { LightType::Point };
 	glm::vec3 color              { 1, 1, 1 };
 	float     intensity          { 10.f };     // >= 0
@@ -140,6 +139,9 @@ struct LightGeneral
 	float     fog                { 1.f };            // >= 0
 	float     shadow_compression { 0.f }; // [0, 1) (0 = full range)
 	uint16_t  shadow_index { LIGHT_NO_SHADOW };  // >= 0   OR  LIGHT_NO_SHADOW
+
+	static constexpr size_t NAME_LEN = 15;
+	char      __name[NAME_LEN + 1] { '\0' };
 };
 static_assert(sizeof(LightGeneral) == 56);
 
@@ -148,9 +150,9 @@ inline void LightGeneral::set_name(std::string_view name_)
 	if(name_.size() > 0)
 	{
 		name_ = name_.substr(0, std::min(name_.size(), NAME_LEN));
-		std::strcpy(name, name_.data());
+		std::strcpy(__name, name_.data());
 	}
-	name[name_.size()] = '\0';
+	__name[name_.size()] = '\0';
 }
 
 
