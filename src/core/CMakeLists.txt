@@ -88,6 +88,7 @@ set(HEADER_FILES_CORE
 	debug_output_gl.h
 	entity_system.h
 	filesystem.h
+	formatters_entt.h
 	formatters_glm.h
 	frustum.h
 	game_time.h
