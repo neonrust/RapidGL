@@ -93,6 +93,13 @@ struct Transform
 	inline const glm::vec3 &scale() const       { return _scale; }
 		   const glm::vec3  direction() const;
 
+	glm::vec3 orientation_xyz() const;
+	glm::vec3 orientation_xzy() const;
+	glm::vec3 orientation_yxz() const;
+	glm::vec3 orientation_yzx() const;
+	glm::vec3 orientation_zxy() const;
+	glm::vec3 orientation_zyx() const;
+
 	inline void move(const glm::vec3 &delta) { _position += delta; _matrix_dirty = true; }
 
 	inline operator const glm::mat4 &() const { return transform(); }

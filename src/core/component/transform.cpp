@@ -3,6 +3,7 @@
 #include "constants.h"
 
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/euler_angles.hpp>
 
 
 namespace RGL::component
@@ -78,6 +79,48 @@ void Transform::set_direction(const glm::vec3 &dir)
 const glm::vec3 RGL::component::Transform::direction() const
 {
 	return _orientation * glm::vec4(direction_reference, 1);
+}
+
+glm::vec3 Transform::orientation_xyz() const
+{
+	glm::vec3 angles;
+	glm::extractEulerAngleXYZ(glm::mat4_cast(orientation()), angles.x, angles.y, angles.z);
+	return angles;
+}
+
+glm::vec3 Transform::orientation_xzy() const
+{
+	glm::vec3 angles;
+	glm::extractEulerAngleXZY(glm::mat4_cast(orientation()), angles.x, angles.y, angles.z);
+	return angles;
+}
+
+glm::vec3 Transform::orientation_yxz() const
+{
+	glm::vec3 angles;
+	glm::extractEulerAngleYXZ(glm::mat4_cast(orientation()), angles.x, angles.y, angles.z);
+	return angles;
+}
+
+glm::vec3 Transform::orientation_yzx() const
+{
+	glm::vec3 angles;
+	glm::extractEulerAngleYZX(glm::mat4_cast(orientation()), angles.x, angles.y, angles.z);
+	return angles;
+}
+
+glm::vec3 Transform::orientation_zxy() const
+{
+	glm::vec3 angles;
+	glm::extractEulerAngleZXY(glm::mat4_cast(orientation()), angles.x, angles.y, angles.z);
+	return angles;
+}
+
+glm::vec3 Transform::orientation_zyx() const
+{
+	glm::vec3 angles;
+	glm::extractEulerAngleZYX(glm::mat4_cast(orientation()), angles.x, angles.y, angles.z);
+	return angles;
 }
 
 const glm::mat4 &Transform::transform() const
