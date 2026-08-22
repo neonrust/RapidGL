@@ -5,6 +5,7 @@ set(CORE_LIB_NAME "RapidGLCore" CACHE STRING "Name of the core library")
 # Add source files
 set(SOURCE_FILES_CORE
 	asset/animated_model.cpp
+	asset/material.cpp
 	asset/static_model.cpp
 	component/transform.cpp
 	gui/font.cpp
@@ -28,7 +29,6 @@ set(SOURCE_FILES_CORE
 	ktx_loader.cpp
 	light_manager.cpp
 	log.cpp
-	material.cpp
 	plane.cpp
 	postprocess.cpp
 	pp_ao.cpp
@@ -55,6 +55,7 @@ set(SOURCE_FILES_CORE
 # Add header files
 set(HEADER_FILES_CORE
 	asset/animated_model.h
+	asset/material.h
 	asset/static_model.h
 	camera_system.h
 	camera_system.cpp
@@ -69,6 +70,7 @@ set(HEADER_FILES_CORE
 	component/light_rect.h
 	component/light_sphere.h
 	component/light_tube.h
+	component/material.h
 	component/model.h
 	component/transform.h
 	gui/font.h
@@ -92,6 +94,7 @@ set(HEADER_FILES_CORE
 	gl_lookup.h
 	gl_timer.h
 	hash_combine.h
+	hash_material.h
 	hash_mat4.h
 	hash_vec2.h
 	hash_vec3.h
@@ -107,7 +110,6 @@ set(HEADER_FILES_CORE
 	light_wrapper.h
 	lights.h
 	log.h
-	material.h
 	mesh_part.h
 	plane.h
 	postprocess.h
