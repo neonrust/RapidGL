@@ -135,7 +135,7 @@ struct LightGeneral
 	bool      shadow_caster      { true };
 	bool      contact_shadows    { false };
 	bool      is_volumetric      { false };
-	bool      has_surface        { false };
+	bool      has_surface        { false };  // TODO: move to area light components (rect, tube, sphere, disc)
 	float     fog                { 1.f };            // >= 0
 	float     shadow_compression { 0.f }; // [0, 1) (0 = full range)
 	uint16_t  shadow_index { LIGHT_NO_SHADOW };  // >= 0   OR  LIGHT_NO_SHADOW
