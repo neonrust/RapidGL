@@ -30,28 +30,32 @@ AABB::AABB(const Sphere &sphere)
 		clear();
 }
 
-void AABB::expand(const glm::vec3 &point)
+bool AABB::expand(const glm::vec3 &point)
 {
     if(empty())
     {
 		_min = point;
 		_max = point;
+		return true;
     }
-    else
-    {
-		_min = glm::min(_min, point);
-		_max = glm::max(_max, point);
-    }
+
+	const auto old_min = _min;
+	const auto old_max = _max;
+	_min = glm::min(_min, point);
+	_max = glm::max(_max, point);
+	return _min != old_min or _max != old_max;
 }
 
-void AABB::expand(const AABB &aabb)
+bool AABB::expand(const AABB &aabb)
 {
-	expand(aabb.min());
-	expand(aabb.max());
+	return expand(aabb.min()) or expand(aabb.max());
 }
 
-void AABB::expand(const Sphere &sphere)
+bool AABB::expand(const Sphere &sphere)
 {
+	const auto old_min = _min;
+	const auto old_max = _max;
+
 	_min.x = std::min(_min.x, sphere.center().x - sphere.radius());
 	_min.y = std::min(_min.y, sphere.center().y - sphere.radius());
 	_min.y = std::min(_min.z, sphere.center().z - sphere.radius());
@@ -59,6 +63,8 @@ void AABB::expand(const Sphere &sphere)
 	_max.x = std::min(_max.x, sphere.center().x + sphere.radius());
 	_max.y = std::min(_max.y, sphere.center().y + sphere.radius());
 	_max.y = std::min(_max.z, sphere.center().z + sphere.radius());
+
+	return _min != old_min or _max != old_max;
 }
 
 float AABB::volume() const
@@ -148,7 +154,7 @@ Sphere::Sphere(const AABB &aabb)
 		clear();
 }
 
-void Sphere::expand(const glm::vec3 &point)
+bool Sphere::expand(const glm::vec3 &point)
 {
 	// algorithm mostly from http://plib.sourceforge.net/sg/
 
@@ -156,14 +162,14 @@ void Sphere::expand(const glm::vec3 &point)
     {
         _center = point;
         _radius = 0.f;
-        return;
+		return true;
     }
 
 	const auto offset = point - _center;
 	const float sqDistance = offset.x*offset.x + offset.y*offset.y + offset.z*offset.z;
 
 	if(sqDistance <= _squaredRadius)
-		return;  // point already contained
+		return false;  // point already contained
 
     // adjust center & radius by half the distance to center
 	// TODO: hm, shouldn't this be half the distance from 'point' to surface of sphere?
@@ -172,6 +178,8 @@ void Sphere::expand(const glm::vec3 &point)
     _center += offset/2.f;
     _radius += std::sqrt(sqDistance)/2.f;
 	_squaredRadius = _radius*_radius;
+
+	return true;
 }
 
 float Sphere::volume() const

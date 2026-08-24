@@ -16,10 +16,11 @@ public:
 	AABB(const glm::vec3 &min, const glm::vec3 &max);
 
 	explicit AABB(const Sphere &sphere);
-
-	void expand(const glm::vec3 &point);
-	void expand(const AABB &aabb);
-	void expand(const Sphere &sphere);
+	
+	// returns true if box actually expanded
+	bool expand(const glm::vec3 &point);
+	bool expand(const AABB &aabb);
+	bool expand(const Sphere &sphere);
 
 	bool empty() const;
 	void clear();
@@ -67,7 +68,7 @@ public:
 
 	explicit Sphere(const AABB &aabb);
 
-	void expand(const glm::vec3 &vertex);
+	bool expand(const glm::vec3 &vertex);
 	[[nodiscard]] float volume() const;
 	[[nodiscard]] inline bool empty() const { return _radius < 0; }
     void clear();
