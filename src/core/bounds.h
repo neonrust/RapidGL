@@ -26,6 +26,7 @@ public:
 	void clear();
 	[[nodiscard]] glm::vec3 center() const;
 	[[nodiscard]] float volume() const;
+	[[nodiscard]] float surfaceArea() const;
 
 	[[nodiscard]] float width() const;     // X-axis
 	[[nodiscard]] float height() const;    // Y-axis

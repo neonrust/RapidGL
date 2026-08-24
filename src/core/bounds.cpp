@@ -73,6 +73,12 @@ float AABB::volume() const
     return size.x*size.y*size.z;
 }
 
+float AABB::surfaceArea() const
+{
+	// sum of the area of all sides
+	return 2.f * (width()*(height() + depth()) + height()*depth());
+}
+
 glm::vec3 AABB::center() const
 {
     return _min + (_max - _min)/2.f;
