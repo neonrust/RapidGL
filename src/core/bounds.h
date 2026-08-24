@@ -102,4 +102,14 @@ bool check(const bounds::Sphere &sphere,  const    glm::vec3   &point);
 
 } // intersect
 
+namespace math
+{
+
+bounds::AABB envelop(const bounds::AABB &A, const bounds::AABB &B);
+bool valid(const bounds::AABB &box);
+
+bounds::Sphere sphere_cast(const bounds::AABB &box);
+bounds::AABB aabb_cast(const bounds::Sphere &sphere);
+} // math
+
 } // RGL

@@ -262,4 +262,41 @@ bool check(const bounds::Sphere &sphere, const glm::vec3 &point)
 
 } // intersect
 
+namespace math
+{
+
+bounds::AABB envelop(const bounds::AABB &A, const bounds::AABB &B)
+{
+	return bounds::AABB{ glm::min(A.min(), B.min()), glm::max(A.max(), B.max()) };
+}
+
+bool valid(const bounds::AABB &box)
+{
+	if(glm::any(glm::isnan(box.min())) or glm::any(glm::isnan(box.max())))
+		return false;
+
+	if(glm::any(glm::isinf(box.min())) or glm::any(glm::isinf(box.max())))
+		return false;
+
+	if(glm::any(glm::lessThanEqual(box.max(), box.min())))
+		return false;
+
+	return true;
+}
+
+bounds::Sphere sphere_cast(const bounds::AABB &box)
+{
+	const auto radius = std::max(std::max(box.width(), box.height()), box.depth());
+	return bounds::Sphere{ box.center(), radius };
+}
+
+bounds::AABB aabb_cast(const bounds::Sphere &sphere)
+{
+	const auto min = sphere.center() - glm::vec3{sphere.radius() };
+	const auto max = sphere.center() + glm::vec3{ sphere.radius() };
+	return bounds::AABB{ min, max };
+}
+
+} // math
+
 } // RGL
