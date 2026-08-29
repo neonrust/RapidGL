@@ -86,12 +86,13 @@ private:
 		seconds_f duration() const;
 		seconds_f last_end_time() const;
 
-		struct
-		{
-			glm::vec3 position;
-			glm::vec3 orientation;
-			glm::vec3 scale;
-		} initial;
+		// struct
+		// {
+		// 	glm::vec3 position;
+		// 	glm::vec3 orientation;
+		// 	glm::vec3 scale;
+		// } initial;
+		glm::mat4 initial_transform;
 
 		glm::vec3 position_offset;
 		glm::quat orientation_offset;

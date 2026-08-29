@@ -118,11 +118,12 @@ bool AnimationSystem::play(std::string_view name, entt::entity subject_id, secon
 		.started = elapsed,
 		.last_update = elapsed,
 		.end_time = end_time,
-		.initial = {  // or just the transform component, as-is?  not if pos/ori/scale needs to be reset individually
-			.position = transform.position(),
-			.orientation = transform.orientation_xyz(),
-			.scale = transform.scale(),
-		},
+		// .initial = {  // or just the transform component, as-is?  not if pos/ori/scale needs to be reset individually
+		// 	.position = transform.position(),
+		// 	.orientation = transform.orientation_xyz(),
+		// 	.scale = transform.scale(),
+		// },
+		.initial_transform = transform.transform(),
 		.position_offset = offset,
 		.orientation_offset = orientation,
 		.samplers = {
@@ -217,13 +218,16 @@ void AnimationSystem::stop(std::string_view name, entt::entity subject_id, bool 
 
 	if(reset_transform)
 	{
-		// if not needed to reset partially, 'initial' could be a mat4 or component::Transform
+		// if needed to reset partially, 'initial' needs to be pos/ori/scale separately
+		//   or simply a component::Transform
 
-		const auto &initial = found->second.initial;
 		auto transform = _entities.get<component::Transform>(subject_id);
-		transform.set_position(initial.position);
-		transform.set_orientation_xyz(initial.orientation);
-		transform.set_scale(initial.scale);
+		// const auto &initial = found->second.initial;
+		const auto &initial = found->second.initial_transform;
+		// transform.set_position(initial.position);
+		// transform.set_orientation_xyz(initial.orientation);
+		// transform.set_scale(initial.scale);
+		transform = decltype(transform)(initial);
 		_entities.replace<component::Transform>(subject_id, transform);
 	}
 
