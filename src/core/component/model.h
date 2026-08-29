@@ -5,6 +5,6 @@
 namespace RGL::component
 {
 
-using Model = std::shared_ptr<const RGL::StaticModel>;
+using Model = RGL::ModelCRef;
 
 } // RGL::component

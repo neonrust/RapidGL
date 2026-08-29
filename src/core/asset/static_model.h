@@ -60,7 +60,7 @@ public:
 
 	StaticModel(StaticModel&& other) noexcept
 		: m_mesh_parts(std::move(other.m_mesh_parts)),
-		m_materials  (std::move(other.m_materials)),
+		// m_materials  (std::move(other.m_materials)),
 		m_vao_name  (other.m_vao_name),
 		m_vbo_name  (other.m_vbo_name),
 		m_ibo_name  (other.m_ibo_name),
@@ -82,7 +82,7 @@ public:
 			Release();
 
 			std::swap(m_mesh_parts, other.m_mesh_parts);
-			std::swap(m_materials,  other.m_materials);
+			// std::swap(m_materials,  other.m_materials);
 			std::swap(m_vao_name,   other.m_vao_name);
 			std::swap(m_vbo_name,   other.m_vbo_name);
 			std::swap(m_ibo_name,   other.m_ibo_name);
@@ -108,13 +108,11 @@ public:
 	void BindVAO() const;
 	inline GLuint VAO() const { return m_vao_name; }
 
-	void setMaterial(size_t index, const Material &material);
-	void setMaterials(std::vector<Material> &materials);
-
 	// TODO: move to a Renderer-thingy class
 	//   _renderer->submit(mesh);
-	virtual void Render(uint32_t num_instances = 0) const;
-	virtual void Render(Shader &shader, uint32_t num_instances = 0) const;
+	virtual void Render(const MaterialCSet &materials, uint32_t num_instances=0) const;
+	virtual void Render(Shader &shader, const MaterialCSet &materials, uint32_t num_instances=0) const;
+	virtual void RenderNoMaterial(uint32_t num_instances=0) const;
 
 	// TODO: convert these to a "mesh primitive factory"
 	virtual void GenCone       (float    height      = 3.0f, float radius         = 1.5f, uint32_t slices = 10, uint32_t stacks = 10);
@@ -156,7 +154,6 @@ protected:
 	void Release();
 
 	std::vector<MeshPart> m_mesh_parts;
-	std::vector<Material> m_materials; // TODO: shared_ptr<>; needs to be overridable and/or shared between meshes
 
 	GLuint   m_vao_name;
 	GLuint   m_vbo_name;
@@ -166,9 +163,13 @@ protected:
 	bounds::Sphere _sphere;
 	bool _ok;
 	string_map<std::unique_ptr<Camera>> _cameras;
+
 private:
+	void applyMaterial(uint_fast16_t material_index, Shader &shader, const MaterialCSet &materials) const;
+	void applyMaterial(uint_fast16_t material_index, const MaterialCSet &materials) const;
+	void renderMeshPart(uint32_t part_idx, uint32_t num_instances) const;
 };
 
-using ModelRef = std::shared_ptr<const StaticModel>;
+using ModelCRef = std::shared_ptr<const StaticModel>;
 
 } // RGL

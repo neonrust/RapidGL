@@ -85,7 +85,7 @@ struct Transform
 		   void set_orientation_yzx(const glm::vec3 &angles);
 		   void set_orientation_zxy(const glm::vec3 &angles);
 		   void set_orientation_zyx(const glm::vec3 &angles);
-	inline void set_scale          (const glm::vec3 &scale) { _scale= scale;      _matrix_dirty = true; }
+	inline void set_scale          (const glm::vec3 &scale) { _scale = scale;     _matrix_dirty = true; }
 		   void set_direction      (const glm::vec3 &dir);
 
 	inline const glm::vec3 &position() const    { return _position; }

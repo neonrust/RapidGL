@@ -91,15 +91,17 @@ private:
 
 private:
 	entt::registry _entities;
-	RGL::Scene _scene;
-	RGL::QueryResult _cameraPvs;
 
 	RGL::LightManager _light_mgr;
+	RGL::Scene _scene;
+
 	RGL::ShadowAtlas _shadow_atlas;
 	RGL::Texture2D _contact_shadow_buffer;
 
+	RGL::QueryResult _cameraPvs;
+
 	std::vector<LightIndex>   _lightsPvs;  // basically all lights within theoretical range
-	dense_map<uint32_t, std::pair<std::shared_ptr<const RGL::StaticModel>, RGL::InstanceAttributes>> _lightModels;
+	dense_map<uint32_t, std::tuple<std::shared_ptr<const RGL::StaticModel>, RGL::MaterialCSet, RGL::InstanceAttributes>> _lightModels;
 
 	RGL::Camera m_camera;
 	float m_camera_fov { 80.f };

@@ -1,5 +1,6 @@
 #include "zigapp.h"
 
+#include "component/material.h"
 #include "filesystem.h"
 #include "gl_lookup.h"
 #include "hash_combine.h"
@@ -81,8 +82,8 @@ glm::mat3 make_common_space_from_direction(const glm::vec3 &direction)
 using namespace RGL;
 
 ZigApp::ZigApp() :
-	_scene(_entities),
 	_light_mgr(_entities),
+	_scene(_entities, _light_mgr),
 	_shadow_atlas(8192, _light_mgr),
 	m_cluster_aabb_ssbo("cluster-aabb"sv),
 	m_cluster_discovery_ssbo("cluster-discovery"sv),
@@ -437,9 +438,9 @@ void ZigApp::init_app()
 		for(const auto light_type: { LightType::Rect, LightType::Tube, LightType::Sphere, LightType::Disc })
 		{
 			const auto filename = std::format("{}.gltf", _light_mgr.type_name(uint_fast8_t(light_type)));
-			auto model = assets().staticMesh((light_meshes / filename).native());
+			auto [model, materials] = assets().staticMesh((light_meshes / filename).native());
 			assert(*model);
-			_lightModels.emplace(uint32_t(light_type), std::make_pair(model, InstanceAttributes{}));
+			_lightModels.emplace(uint32_t(light_type), std::tuple(model, std::move(materials), InstanceAttributes{}));
 		}
 		Log::info("Loaded {} light geometries", _lightModels.size());
 	}
@@ -721,7 +722,7 @@ void ZigApp::createLights()
 
 	auto light_dir = glm::normalize(glm::vec3(5, -3, 5));
 	Log::debug("light dir: {:.3f}", light_dir);
-	_light_mgr.add(DirectionalLightParams{
+	auto lid = _light_mgr.add(DirectionalLightParams{
 		.color = { 1.f, 0.97f, 0.9f },
 		.intensity = 20.f,
 		.fog = 1.f,
@@ -1645,7 +1646,7 @@ void ZigApp::renderLightGeometry()
 		if(surf_attrs.empty())
 			continue;
 
-		auto &[model, inst_attrs] = _lightModels[uint32_t(light_type)];
+		auto &[model, materials, inst_attrs] = _lightModels[uint32_t(light_type)];
 
 		model->configureInstanceAttributes(inst_attrs, sizeof(SurfaceLightAttrs));
 		if(not inst_attrs)
@@ -1653,7 +1654,7 @@ void ZigApp::renderLightGeometry()
 
 		inst_attrs.load<SurfaceLightAttrs>(surf_attrs);
 
-		model->Render(*m_light_geometry_shader, uint32_t(surf_attrs.size()));
+		model->Render(*m_light_geometry_shader, materials,  uint32_t(surf_attrs.size()));
 	}
 
 	// draw "sun"   (or just draw all directional lights?)
@@ -1696,14 +1697,14 @@ void ZigApp::renderLightGeometry()
 			surf_attrs.clear();
 			surf_attrs.emplace_back(sun_model, general.color*general.intensity * 100.f, false);
 
-			auto &[model, inst_attrs] = _lightModels[uint32_t(LightType::Sphere)];  // TODO: should be disc, but it doesn't show up (facing wrong direction?)
+			auto &[model, materials, inst_attrs] = _lightModels[uint32_t(LightType::Sphere)];  // TODO: should be disc, but it doesn't show up (facing wrong direction?)
 			model->configureInstanceAttributes(inst_attrs, sizeof(SurfaceLightAttrs));
 			if(not inst_attrs)
 				config_attrs(inst_attrs);
 
 			inst_attrs.load<SurfaceLightAttrs>(surf_attrs);
 
-			model->Render(*m_light_geometry_shader, uint32_t(surf_attrs.size()));
+			model->Render(*m_light_geometry_shader, materials, uint32_t(surf_attrs.size()));
 		}
 	}
 }
@@ -1880,37 +1881,62 @@ void ZigApp::renderScene(const glm::mat4 &view_projection, Shader &shader, RGL::
 {
 	// TODO: in c++26: std::views::concat(_cameraPvs.static_ids, _cameraPvs.dynamic_ids)
 	// TODO: group by 'component::Model' and render those instanced?
-	for(const auto &entity_id: _cameraPvs.dynamic_entities)
+
+	if(materialCtrl == UseMaterials)
 	{
-		const auto &[model, transform] = _entities.get<component::Model, component::Transform>(entity_id);
-		const auto &tfm = transform.transform();
+		for(const auto &entity_id: _cameraPvs.dynamic_entities)
+		{
+			const auto &[model, materials, transform] = _entities.get<component::Model, component::MaterialSet, component::Transform>(entity_id);
+			const auto &tfm = transform.transform();
 
-		shader.setUniform("u_mvp"sv,           view_projection * tfm);
-		shader.setUniform("u_model"sv,         tfm);
-		shader.setUniform("u_normal_matrix"sv, transform.normal_matrix());
+			shader.setUniform("u_mvp"sv,           view_projection * tfm);
+			shader.setUniform("u_model"sv,         tfm);
+			shader.setUniform("u_normal_matrix"sv, transform.normal_matrix());
 
-		if(materialCtrl == UseMaterials)
-			model->Render(shader);
-		else
-			model->Render();
+			model->Render(shader, materials);
+		}
+
+		for(const auto &entity_id: _cameraPvs.static_entities)
+		{
+			const auto &[model, materials, transform] = _entities.get<component::Model, component::MaterialSet, component::Transform>(entity_id);
+			const auto &tfm = transform.transform();
+
+			shader.setUniform("u_mvp"sv,           view_projection * tfm);
+			shader.setUniform("u_model"sv,         tfm);
+			shader.setUniform("u_normal_matrix"sv, transform.normal_matrix());
+
+			model->Render(shader, materials);
+		}
 	}
-
-	for(const auto &entity_id: _cameraPvs.static_entities)
+	else
 	{
-		const auto &[model, transform] = _entities.get<component::Model, component::Transform>(entity_id);
-		const auto &tfm = transform.transform();
+		// render using no materials, i.e. for shadow maps or depth-only
 
-		shader.setUniform("u_mvp"sv,           view_projection * tfm);
-		shader.setUniform("u_model"sv,         tfm);
-		shader.setUniform("u_normal_matrix"sv, transform.normal_matrix());
+		for(const auto &entity_id: _cameraPvs.dynamic_entities)
+		{
+			const auto &[model, transform] = _entities.get<component::Model, component::Transform>(entity_id);
+			const auto &tfm = transform.transform();
 
-		if(materialCtrl == UseMaterials)
-			model->Render(shader);
-		else
-			model->Render();
+			shader.setUniform("u_mvp"sv,           view_projection * tfm);
+			shader.setUniform("u_model"sv,         tfm);
+			shader.setUniform("u_normal_matrix"sv, transform.normal_matrix());
+
+			model->RenderNoMaterial();
+		}
+
+		for(const auto &entity_id: _cameraPvs.static_entities)
+		{
+			const auto &[model, transform] = _entities.get<component::Model, component::Transform>(entity_id);
+			const auto &tfm = transform.transform();
+
+			shader.setUniform("u_mvp"sv,           view_projection * tfm);
+			shader.setUniform("u_model"sv,         tfm);
+			shader.setUniform("u_normal_matrix"sv, transform.normal_matrix());
+
+			model->RenderNoMaterial();
+		}
 	}
 }
-
 
 void ZigApp::renderDepth(const glm::mat4 &view_projection, RenderTarget::Texture2d &target, const glm::ivec4 &rect)
 {
@@ -1943,7 +1969,7 @@ void ZigApp::renderSceneShadow(const QueryResult &objects, uint16_t shadow_idx, 
 
 			m_shadow_depth_shader->setUniform("u_model"sv, tfm);
 			m_shadow_depth_shader->setUniform("u_normal_matrix"sv, transform.normal_matrix());
-			model->Render();
+			model->RenderNoMaterial();
 		}
 	}
 	for(const auto &entity_id: objects.dynamic_entities)
@@ -1953,7 +1979,7 @@ void ZigApp::renderSceneShadow(const QueryResult &objects, uint16_t shadow_idx, 
 
 		m_shadow_depth_shader->setUniform("u_model"sv, tfm);
 		m_shadow_depth_shader->setUniform("u_normal_matrix"sv, transform.normal_matrix());
-		model->Render();
+		model->RenderNoMaterial();
 	}
 
 }
@@ -2147,8 +2173,8 @@ void ZigApp::loadScene([[maybe_unused]] std::string_view name)
 	// assert(cathedral_model);
 	// _scene.add(std::move(cathedral_model), origin);
 
-	auto shadowtest_model = assets().staticMesh("shadowtest.gltf");
-	_scene.add(shadowtest_model, origin);
+	auto [shadowtest_model, materials] = assets().staticMesh("shadowtest.gltf");
+	_scene.add(shadowtest_model, materials, origin);
 
 	_entities.compact();
 }

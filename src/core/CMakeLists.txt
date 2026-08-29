@@ -4,6 +4,9 @@ set(CORE_LIB_NAME "RapidGLCore" CACHE STRING "Name of the core library")
 
 # Add source files
 set(SOURCE_FILES_CORE
+	animation/animation_system.cpp
+	asset/asset_manager.cpp
+	asset/asset_manager_mesh.cpp
 	asset/animated_model.cpp
 	asset/material.cpp
 	asset/static_model.cpp
@@ -12,14 +15,12 @@ set(SOURCE_FILES_CORE
 	gui/gui.cpp
 	gui/imgui_impl_glfw.cpp
 	gui/imgui_impl_opengl3.cpp
-	animated_model.cpp
-	asset_manager.cpp
-	asset_manager_mesh.cpp
 	bounds.cpp
 	buffer.cpp
 	buffer_binds.h
 	camera.cpp
 	core_app.cpp
+	dynamic_tree.cpp
 	filesystem.cpp
 	frustum.cpp
 	game_time.cpp
@@ -41,9 +42,14 @@ set(SOURCE_FILES_CORE
 	rendertarget_2d.cpp
 	rendertarget_common.cpp
 	rendertarget_cube.cpp
+	room.cpp
+	room_portal.cpp
 	scene.cpp
+	scene_items.cpp
+	scene_loader.cpp
 	shader.cpp
 	shadow_atlas.cpp
+	tag_file.cpp
 	texture.cpp
 	util.cpp
 	variable.cpp
@@ -54,11 +60,16 @@ set(SOURCE_FILES_CORE
 
 # Add header files
 set(HEADER_FILES_CORE
+	animation/animation_curve.h
+	animation/animation_system.h
 	asset/animated_model.h
+	asset/asset_manager.h
 	asset/material.h
 	asset/static_model.h
-	camera_system.h
-	camera_system.cpp
+	# camera_system.h
+	# camera_system.cpp
+	component/animation.h
+	component/animation_set.h
 	component/bounds.h
 	component/camera_general.h
 	component/camera_perspective.h
@@ -78,7 +89,7 @@ set(HEADER_FILES_CORE
 	gui/imgui_impl_glfw.h
 	gui/imgui_impl_opengl3.h
 	gui/imgui_impl_opengl3_loader.h
-	asset_manager.h
+	bezier_spline.h
 	bounds.h
 	buffer.h
 	camera.h
@@ -86,6 +97,7 @@ set(HEADER_FILES_CORE
 	container_types.h
 	core_app.h
 	debug_output_gl.h
+	dynamic_tree.h
 	entity_system.h
 	filesystem.h
 	formatters_entt.h
@@ -125,13 +137,18 @@ set(HEADER_FILES_CORE
 	rendertarget_common.h
 	rendertarget_cube.h
 	ringbuffer.h
+	room.h
+	room_portal.h
 	sample_window.h
 	scene.h
+	scene_items.h
+	scene_loader.h
 	scoped_timer.h
 	shader.h
 	shadow_atlas.h
 	spatial_allocator.h
 	ssbo.h
+	tag_file.h
 	texture.h
 	timer.h
 	ubo.h

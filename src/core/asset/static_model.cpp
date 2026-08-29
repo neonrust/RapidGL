@@ -22,104 +22,101 @@ void StaticModel::BindVAO() const
 	glBindVertexArray(m_vao_name);
 }
 
-void StaticModel::setMaterial(size_t index, const Material &material)
-{
-	assert(index < m_materials.size());
-	m_materials[index] = material;
-}
-
-void StaticModel::setMaterials(std::vector<Material> &materials)
-{
-	assert(materials.size() == m_materials.size());
-	m_materials = materials;
-}
-
-void StaticModel::Render(uint32_t num_instances) const
+void StaticModel::Render(const MaterialCSet &materials, uint32_t num_instances) const
 {
 	BindVAO();
 
-	for (unsigned int idx = 0; idx < m_mesh_parts.size(); idx++)
+	for(uint32_t idx = 0; idx < m_mesh_parts.size(); idx++)
 	{
-		if (not m_materials.empty())
+		if(materials.empty())
 		{
 			const auto material_index = m_mesh_parts[idx].m_material_index;
-			assert(material_index < m_materials.size());
-
-			for(auto const& [texture_type, texture] : m_materials[material_index].m_texture_map)
-				texture->Bind(uint32_t(texture_type));
+			applyMaterial(material_index, materials);
 		}
 
-		if (num_instances == 0)
-		{
-			glDrawElementsBaseVertex(GLenum(m_draw_mode),
-									 int(m_mesh_parts[idx].m_indices_count),
-									 GL_UNSIGNED_INT,
-									 (void*)(sizeof(unsigned int) * m_mesh_parts[idx].m_base_index),
-									 int(m_mesh_parts[idx].m_base_vertex));
-		}
-		else
-		{
-			glDrawElementsInstancedBaseVertex(GLenum(m_draw_mode),
-											  int(m_mesh_parts[idx].m_indices_count),
-											  GL_UNSIGNED_INT,
-											  (void*)(sizeof(unsigned int) * m_mesh_parts[idx].m_base_index),
-											  int(num_instances),
-											  int(m_mesh_parts[idx].m_base_vertex));
-		}
+		renderMeshPart(idx, num_instances);
 	}
 
-	glBindTextureUnit(0, 0);
+	glBindTextureUnit(0, 0); // why?
 }
 
-void StaticModel::Render(Shader& shader, uint32_t num_instances) const
+void StaticModel::RenderNoMaterial(uint32_t num_instances) const
 {
 	BindVAO();
 
-	for (unsigned int idx = 0 ; idx < m_mesh_parts.size() ; idx++)
+	for(uint32_t idx = 0; idx < m_mesh_parts.size(); idx++)
+		renderMeshPart(idx, num_instances);
+}
+
+// void StaticModel::Render(Shader& shader, uint32_t num_instances, const RGL::MaterialSet &materials) const
+void StaticModel::Render(Shader& shader, const MaterialCSet &materials, uint32_t num_instances) const
+{
+	BindVAO();
+
+	for(uint32_t idx = 0 ; idx < m_mesh_parts.size() ; idx++)
 	{
-		if (!m_materials.empty())
+		if(not materials.empty())
 		{
 			const auto material_index = m_mesh_parts[idx].m_material_index;
-
-			assert(material_index < m_materials.size());
-
-			for (auto const& [texture_type, texture] : m_materials[material_index].m_texture_map)
-			{
-				texture->Bind(uint32_t(texture_type));
-			}
-
-			// Set uniforms based on the data in the material
-			for (auto& [uniform_name, value] : m_materials[material_index].m_bool_map)
-				shader.setUniform(uniform_name, value);
-
-			for (auto& [uniform_name, value] : m_materials[material_index].m_float_map)
-				shader.setUniform(uniform_name, value);
-
-			for (auto& [uniform_name, value] : m_materials[material_index].m_vec3_map)
-				shader.setUniform(uniform_name, value);
+			applyMaterial(material_index, shader, materials);
 		}
 
-		if(num_instances == 0 )
-		{
-			glDrawElementsBaseVertex(GLenum(m_draw_mode),
-									 int(m_mesh_parts[idx].m_indices_count),
-									 GL_UNSIGNED_INT,
-									 (void*)(sizeof(unsigned int) * m_mesh_parts[idx].m_base_index),
-									 int(m_mesh_parts[idx].m_base_vertex));
-		}
-		else
-		{
-			glDrawElementsInstancedBaseVertex(GLenum(m_draw_mode),
-											  int(m_mesh_parts[idx].m_indices_count),
-											  GL_UNSIGNED_INT,
-											  (void*)(sizeof(unsigned int) * m_mesh_parts[idx].m_base_index),
-											  GLsizei(num_instances),
-											  int(m_mesh_parts[idx].m_base_vertex));
-		}
+		renderMeshPart(idx, num_instances);
 	}
 
-	glBindTextureUnit(0, 0);
+	glBindTextureUnit(0, 0); // why?
 }
+
+void StaticModel::renderMeshPart(uint32_t part_idx, uint32_t num_instances) const
+{
+	const auto &mesh_part = m_mesh_parts[part_idx];
+
+	if (num_instances == 0)
+	{
+		glDrawElementsBaseVertex(GLenum(m_draw_mode),
+								 int(mesh_part.m_indices_count),
+								 GL_UNSIGNED_INT,
+								 (void*)(sizeof(unsigned int) * mesh_part.m_base_index),
+								 int(mesh_part.m_base_vertex));
+	}
+	else
+	{
+		glDrawElementsInstancedBaseVertex(GLenum(m_draw_mode),
+										  int(mesh_part.m_indices_count),
+										  GL_UNSIGNED_INT,
+										  (void*)(sizeof(unsigned int) * mesh_part.m_base_index),
+										  GLsizei(num_instances),
+										  int(mesh_part.m_base_vertex));
+	}
+}
+
+void StaticModel::applyMaterial(uint_fast16_t material_index, const MaterialCSet &materials) const
+{
+	if (not materials.empty())
+	{
+		assert(material_index < materials.size());
+
+		for(auto const& [texture_type, texture] : materials[material_index]->m_texture_map)
+			texture->Bind(uint32_t(texture_type));
+	}
+}
+
+void StaticModel::applyMaterial(uint_fast16_t material_index, Shader &shader, const MaterialCSet &materials) const
+{
+	applyMaterial(material_index, materials);
+
+		   // Set uniforms based on the data in the material
+	for (auto& [uniform_name, value] : materials[material_index]->m_bool_map)
+		shader.setUniform(uniform_name, value);
+
+	for (auto& [uniform_name, value] : materials[material_index]->m_float_map)
+		shader.setUniform(uniform_name, value);
+
+	for (auto& [uniform_name, value] : materials[material_index]->m_vec3_map)
+		shader.setUniform(uniform_name, value);
+
+}
+
 
 // bool StaticModel::Load(const std::filesystem::path& filepath)
 // {
@@ -613,7 +610,7 @@ void StaticModel::Release()
 	m_draw_mode = DrawMode::TRIANGLES;
 
 	m_mesh_parts.clear();
-	m_materials.clear();
+	// m_materials.clear();
 }
 
 void StaticModel::GenCone(float height, float radius, uint32_t slices, uint32_t stacks)

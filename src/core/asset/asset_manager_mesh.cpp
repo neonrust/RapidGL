@@ -21,7 +21,7 @@ namespace RGL
 static inline glm::vec3 vec3_cast(const aiVector3D& v)   { return glm::vec3(v.x, v.y, v.z); }
 
 
-std::shared_ptr<const StaticModel> AssetManager::staticMesh(std::string_view name)
+std::pair<std::shared_ptr<const StaticModel>, MaterialCSet> AssetManager::staticMesh(std::string_view name)
 {
 	static constexpr auto models_prefix = "/models/"sv;
 
@@ -30,22 +30,31 @@ std::shared_ptr<const StaticModel> AssetManager::staticMesh(std::string_view nam
 		name = name.substr(pmod + models_prefix.size());
 
 	if(auto found = _static_meshes.find(name); found != _static_meshes.end())
-		return found->second.lock();
+	{
+		auto mfound = _static_mesh_default_materials.find(name);
+		// if the mesh exists, its default materials is guaranteed to exist
+		return { found->second.lock(), mfound->second };
+	}
 
 		   // TODO: pool?
 	auto *mesh = new StaticModel();
 
 	Log::info("Loading mesh: {}", name);
-	loadStaticMesh(*mesh, FileSystem::getResourcesPath() / "models" / name); // TODO: use 'models_prefix'
+	MaterialSet materials;
+	loadStaticMesh(*mesh, FileSystem::getResourcesPath() / "models" / name, materials); // TODO: use 'models_prefix'
 	assert(*mesh);
 
 	auto mesh_ref = std::shared_ptr<const StaticModel>(mesh, [this, name=std::string(name)](auto *mesh) {
 		delete_static_mesh(name, mesh);
 	});
 
-	_static_meshes[std::string(name)] = mesh_ref;
+	// TODO: cast without copy?
+	MaterialCSet const_materials(materials.begin(), materials.end());;
 
-	return mesh_ref;
+	_static_meshes[std::string(name)] = mesh_ref;
+	_static_mesh_default_materials[std::string(name)] = const_materials;
+
+	return { mesh_ref, const_materials };
 }
 
 void AssetManager::delete_static_mesh(std::string_view name, StaticModel *mesh)
@@ -59,11 +68,11 @@ void AssetManager::delete_static_mesh(std::string_view name, StaticModel *mesh)
 	}
 }
 
-bool AssetManager::loadStaticMesh(StaticModel &model, const std::filesystem::path& filepath)
+bool AssetManager::loadStaticMesh(StaticModel &model, const std::filesystem::path& filepath, MaterialSet &materials)
 {
 	Assimp::Importer importer;
 	// TODO: importer.SetIOHandler(compressionLayer);
-	const auto *scene = importer.ReadFile(filepath.generic_string(),
+	const auto *scene = importer.ReadFile(filepath.native(),
 										  aiProcess_Triangulate              |
 											  aiProcess_GenSmoothNormals         |
 											  aiProcess_GenUVCoords              |
@@ -77,22 +86,22 @@ bool AssetManager::loadStaticMesh(StaticModel &model, const std::filesystem::pat
 
 	if(not model._ok)
 	{
-		Log::error("loading mesh failed: {}: {}", filepath.generic_string().c_str(), importer.GetErrorString());
+		Log::error("loading mesh failed: {}: {}", filepath.native(), importer.GetErrorString());
 		return false;
 	}
 
-	model._ok = parseStaticScene(model, scene, filepath);
+	model._ok = parseStaticScene(model, scene, filepath, materials);
 	return model._ok;
 }
 
-bool AssetManager::parseStaticScene(StaticModel &model, const aiScene *scene, const std::filesystem::path& filepath)
+bool AssetManager::parseStaticScene(StaticModel &model, const aiScene *scene, const std::filesystem::path& filepath, MaterialSet &materials)
 {
 	const auto T0 = steady_clock::now();
 
 	const auto filename = filepath.filename();
 
 	model.m_mesh_parts.resize(scene->mNumMeshes);
-	model.m_materials.resize(scene->mNumMaterials);
+	materials.resize(scene->mNumMaterials);
 
 	VertexData vertex_data;
 
@@ -151,7 +160,7 @@ bool AssetManager::parseStaticScene(StaticModel &model, const aiScene *scene, co
 		);
 	}
 
-	if(not loadMaterials(model, scene, filepath))
+	if(not loadMaterials(materials, scene, filepath))
 	{
 		Log::error("loading mesh failed: {}: Could not load the materials", filepath.generic_string());
 		return false;
@@ -196,7 +205,7 @@ void AssetManager::loadMeshPart(StaticModel &model, const aiMesh* mesh, VertexDa
 	}
 }
 
-bool AssetManager::loadMaterials(StaticModel &model, const aiScene* scene, const std::filesystem::path& filepath)
+bool AssetManager::loadMaterials(MaterialSet &materials, const aiScene* scene, const std::filesystem::path& filepath)
 {
 	// Extract the directory part from the file name
 	// auto last_slash_index = filepath.generic_string().rfind("/");
@@ -215,7 +224,10 @@ bool AssetManager::loadMaterials(StaticModel &model, const aiScene* scene, const
 	{
 		auto *material = scene->mMaterials[idx];
 
-		auto &mesh_material = model.m_materials[idx];
+		auto &mesh_material_ref = materials[idx];
+		if(not mesh_material_ref)
+			mesh_material_ref.reset(new Material());
+		auto &mesh_material = *mesh_material_ref;
 		ret |= loadMaterialTextures(mesh_material, scene, material, aiTextureType_BASE_COLOR,        Material::TextureType::ALBEDO);
 		ret |= loadMaterialTextures(mesh_material, scene, material, aiTextureType_NORMALS,           Material::TextureType::NORMAL);
 		ret |= loadMaterialTextures(mesh_material, scene, material, aiTextureType_EMISSIVE,          Material::TextureType::EMISSIVE);
@@ -229,17 +241,17 @@ bool AssetManager::loadMaterials(StaticModel &model, const aiScene* scene, const
 		float value;
 
 		if (AI_SUCCESS == material->Get(AI_MATKEY_BASE_COLOR, color_rgba))
-			model.m_materials[idx].set("u_albedo"sv, glm::vec3(color_rgba.r, color_rgba.g, color_rgba.b));
+			mesh_material.set("u_albedo"sv, glm::vec3(color_rgba.r, color_rgba.g, color_rgba.b));
 		if (AI_SUCCESS == material->Get(AI_MATKEY_COLOR_EMISSIVE, color_rgb))
-			model.m_materials[idx].set("u_emission"sv, glm::vec3(color_rgb.r, color_rgb.g, color_rgb.b));
+			mesh_material.set("u_emission"sv, glm::vec3(color_rgb.r, color_rgb.g, color_rgb.b));
 		if (AI_SUCCESS == material->Get(AI_MATKEY_EMISSIVE_INTENSITY, value))
-			model.m_materials[idx].set("u_emission_strength"sv, value);
+			mesh_material.set("u_emission_strength"sv, value);
 		if (AI_SUCCESS == material->Get(AI_MATKEY_COLOR_AMBIENT, color_rgb))
-			model.m_materials[idx].set("u_ao"sv, (color_rgb.r + color_rgb.g + color_rgb.b) / 3.0f);
+			mesh_material.set("u_ao"sv, (color_rgb.r + color_rgb.g + color_rgb.b) / 3.0f);
 		if (AI_SUCCESS == material->Get(AI_MATKEY_ROUGHNESS_FACTOR, value))
-			model.m_materials[idx].set("u_roughness"sv, value);
+			mesh_material.set("u_roughness"sv, value);
 		if (AI_SUCCESS == material->Get(AI_MATKEY_METALLIC_FACTOR, value))
-			model.m_materials[idx].set("u_metallic"sv, value);
+			mesh_material.set("u_metallic"sv, value);
 	}
 
 	return ret;
@@ -268,7 +280,9 @@ bool AssetManager::loadMaterialTextures(Material &mesh_material, const aiScene* 
 				if (texture->Load(reinterpret_cast<unsigned char*>(paiTexture->pcData), data_size, is_srgb))
 				{
 					Log::debug("Loaded embedded texture for the model {}", path.C_Str());
-					mesh_material.set(texture_type, texture);
+					static uint32_t s_builtInCounter { 0 };
+					auto texture_name = std::format("bundled.%d", ++s_builtInCounter);
+					mesh_material.set(texture_type, texture_name, texture);
 
 					if (texture_map_mode[0] == aiTextureMapMode_Wrap)
 					{
@@ -298,7 +312,7 @@ bool AssetManager::loadMaterialTextures(Material &mesh_material, const aiScene* 
 				// else
 				// {
 				const auto T1 = steady_clock::now();
-				mesh_material.set(texture_type, texture);
+				mesh_material.set(texture_type, full_path.filename().native(), texture);
 
 				// if (texture_map_mode[0] == aiTextureMapMode_Wrap)
 				// {

@@ -327,7 +327,7 @@ std::vector<std::string> AnimatedModel::GetAnimationsNames() const
 bool AnimatedModel::ParseScene(const aiScene* scene, const std::filesystem::path& filepath)
 {
 	m_mesh_parts.resize(scene->mNumMeshes);
-	m_materials.resize(scene->mNumMaterials);
+	// m_materials.resize(scene->mNumMaterials);
 
 		   // for (uint32_t i = 0; i < m_materials.size(); ++i)
 		   // {

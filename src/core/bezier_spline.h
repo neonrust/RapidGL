@@ -51,6 +51,7 @@ public:
 
 public:
 	void reserve(size_t num_points);
+	inline size_t capacity() const { return _points.capacity(); }
 	inline void add(T point) { add(point, point, point); }
 	void add(T point, T incoming, T outgoing);
 

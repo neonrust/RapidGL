@@ -1,43 +1,112 @@
 #include "scene.h"
 
-#include "frustum.h"
-
-#include <execution>
-
+#include "log.h"
+#include "room.h"
+#include "component/animation_set.h"
 #include "component/model.h"
-#include "component/bounds.h"
+#include "component/material.h"
+#include "light_manager.h"
+#include "formatters_entt.h" // IWYU pragma: keep
 
 #include <entt/entity/registry.hpp>
+
 
 using namespace std::chrono;
 
 namespace RGL
 {
 
-Scene::Scene(entt::registry &entities, size_t reserve) :
-	_entities(entities)
+Scene::Scene(entt::registry &entities, LightManager &lights, size_t reserve) :
+	SceneItems(),
+	_entities(entities),
+	_lights(lights)
 {
-	_spatial_items.reserve(std::max(256ul, reserve));
+	_items.reserve(std::max(256ul, reserve));
 	// TODO: init the whatever-tree
-
-	_connect_signals();
 }
 
-EntityID Scene::add(std::shared_ptr<const StaticModel> model, const component::Transform &transforn, bool is_dynamic)
+EntityID Scene::add(std::shared_ptr<const StaticModel> model, const MaterialCSet &materials, const component::Transform &transform, bool is_dynamic)
 {
 	auto model_ent = _entities.create();
 
-	_entities.emplace<component::SphereBounds>(model_ent, model->sphere());
-	_entities.emplace<component::Transform>   (model_ent, transforn);
-	_entities.emplace<bool>(model_ent, is_dynamic);  // bad idea
-	_entities.emplace<component::Model>       (model_ent, model);
+	_create_components(model_ent, model, materials, transform, is_dynamic);
+
+	// TODO: call manually (noy through signals), since adding to a room should add to a different spatial index
+	// transform the local bounds into world-space
+
+	_spatial_insert(_items, model_ent, model->sphere(), transform, is_dynamic);
+
+	_need_state_sort = true;
 
 	return model_ent;
+}
+
+void RGL::Scene::moved(EntityID entity_id, const component::Transform &transform)
+{
+	const auto &model = _entities.get<component::Model>(entity_id);
+
+	_spatial_update(_items, entity_id, model->sphere(), transform);
+}
+
+void Scene::addRoom(std::string_view roomName, const bounds::AABB &aabb)
+{
+	_rooms.emplace(roomName, std::make_unique<Room>(roomName, aabb));
+}
+
+bool Scene::hasRoom(std::string_view roomName) const
+{
+	return _rooms.contains(roomName);
+}
+
+EntityID Scene::add(std::string_view roomName, std::shared_ptr<const StaticModel> model, const MaterialCSet &materials, const component::Transform &transform, bool is_dynamic)
+{
+	auto found = _rooms.find(roomName);
+	if(found == _rooms.end())
+	{
+		assert(false);
+		return NO_ENTITY_ID;
+	}
+
+	auto model_ent = _entities.create();
+
+	_create_components(model_ent, model, materials, transform, is_dynamic);
+
+	// TODO: call manually (noy through signals), since adding to a room should add to a different spatial index
+	// transform the local bounds into world-space
+
+	auto &room = *found->second;
+
+	_spatial_insert(room._items, model_ent, model->sphere(), transform, is_dynamic);
+
+	_need_state_sort = true;
+
+	return model_ent;
+}
+
+bool Scene::addAnimation(EntityID entity_id, std::string_view anim_name)
+{
+	auto &anim_set = _entities.get<component::AnimationSet>(entity_id);
+	if(anim_set.contains(anim_name))
+	{
+		Log::warning("Scene: animation already added to entity {}: {}", entity_id, anim_name);
+		assert(false);
+		return false;
+	}
+
+	anim_set.insert(std::string(anim_name));
+	_entities.replace<component::AnimationSet>(entity_id, anim_set);
+
+	return true;
 }
 
 bool Scene::remove(EntityID entity_id)
 {
 	_entities.destroy(entity_id);
+	// TODO: might be in a room
+	_spatial_remove(_items, entity_id);
+
+	_need_state_sort = true;
+
 	return true;
 }
 
@@ -49,153 +118,60 @@ void Scene::rebalance(const glm::vec3 &origin)
 
 void Scene::clear()
 {
-	// don'y fire the connected signals
-	_disconnect_signals();
-
 	_entities.clear();
 	// TODO: reset the whatever-tree
-	_spatial_items.clear();
-
-	// reconnect signals again
-	_connect_signals();
+	_items.clear();
+	_rooms.clear();
 }
 
-bool Scene::query(const bounds::Sphere &sphere, QueryResult &result) const
+void Scene::sortByState()
 {
-	if(start_query_maybe(result))
+	if(_need_state_sort)
 	{
-		// TODO: use the whatever-tree instead
+		// TODO: EnTT multi-component sorting: by mesh AND material(hash)
+		//   _entities.sort<component::MaterialSet>([](const auto &A, const auto &B) { ... });
 
-		std::for_each(std::execution::par_unseq, _spatial_items.begin(), _spatial_items.end(), [this, &sphere, &result](const auto &item_pair) {
-			const auto &[entity_id, item] = item_pair;
-			if(intersect::check(sphere, item.bounds))
-				add_result_item(result, entity_id, item);
-		});
-
-		return true;
+		_need_state_sort = false;
 	}
-
-	return false;
 }
 
-bool Scene::query(const Frustum &frustum, QueryResult &result) const
+void Scene::_create_components(EntityID model_ent, std::shared_ptr<const StaticModel> model, const MaterialCSet &materials, const component::Transform &transform, bool is_dynamic)
 {
-	if(start_query_maybe(result))
-	{
-		// TODO: use the whatever-tree instead
-
-		std::for_each(std::execution::par_unseq, _spatial_items.begin(), _spatial_items.end(), [this, &frustum, &result](const auto &item_pair) {
-			const auto &[entity_id, item] = item_pair;
-			if(intersect::check(frustum, item.bounds))
-				add_result_item(result, entity_id, item);
-		});
-
-		return true;
-	}
-
-	return false;
+	_entities.emplace<component::Transform>  (model_ent, transform);
+	_entities.emplace<bool>                  (model_ent, is_dynamic);  // bad idea?
+	_entities.emplace<component::MaterialSet>(model_ent, materials);
+	_entities.emplace<component::Model>      (model_ent, model);
 }
 
-bool Scene::query(const bounds::AABB &aabb, QueryResult &result) const
+void Scene::_spatial_insert(SpatialItems items, EntityID entity_id, const bounds::Sphere &local_bounds, const component::Transform &transform, bool is_dynamic)
 {
-	if(start_query_maybe(result))
-	{
-		// TODO: use the whatever-tree instead
+	assert(not items.contains(entity_id));
 
-		std::for_each(std::execution::par_unseq, _spatial_items.begin(), _spatial_items.end(), [this, &aabb, &result](const auto &item_pair) {
-			const auto &[entity_id, item] = item_pair;
-			if(intersect::check(aabb, item.bounds))
-				add_result_item(result, entity_id, item);
-		});
-
-		return true;
-	}
-
-	return false;
-}
-
-bool Scene::query(const glm::mat4 &view, const glm::mat4 &ortho, const bounds::AABB &aabb, QueryResult &result) const
-{
-	if(start_query_maybe(result))
-	{
-		// TODO: use the whatever-tree instead
-
-		const auto view_proj = ortho * view;
-
-		std::for_each(std::execution::par_unseq, _spatial_items.begin(), _spatial_items.end(), [this, &view_proj, &aabb, &result](const auto &item_pair) {
-			const auto &[entity_id, item] = item_pair;
-
-			// transform the bounds into given space
-			auto bounds = item.bounds;
-			bounds.setCenter(view_proj * glm::vec4(item.bounds.center(), 1));
-
-			if(intersect::check(aabb, bounds))
-				add_result_item(result, entity_id, item);
-		});
-		return true;
-	}
-
-	return false;
-}
-
-bool Scene::start_query_maybe(QueryResult &result) const
-{
-	const auto now = steady_clock::now();
-
-	if(result.created_at.time_since_epoch().count() == 0 or now - result.created_at > result.max_interval)
-	{
-		result.static_entities.reserve(_min_result_reserve);
-		result.static_entities.clear();
-		result.dynamic_entities.reserve(_min_result_reserve);
-		result.dynamic_entities.clear();
-		result.created_at = now;
-
-		return true;
-	}
-
-	return false;
-}
-
-void Scene::_disconnect_signals()
-{
-	for(auto &conn: _signals)
-		conn.release();
-}
-
-void Scene::_connect_signals()
-{
-	_signals[0] = _entities.on_construct<component::Model>()    .connect<&Scene::_spatial_insert>(this);
-	_signals[1] = _entities.on_update<   component::Transform>().connect<&Scene::_spatial_update>(this);
-	_signals[2] = _entities.on_destroy<  component::Model>()    .connect<&Scene::_spatial_remove>(this);
-}
-
-void Scene::_spatial_insert(entt::registry &, EntityID entity_id)
-{
-	const auto &[transform, model, is_dynamic] = _entities.get<component::Transform, component::Model, bool>(entity_id);
-
-	// transform the local bounds into world-space
-	auto world_bounds = model->sphere(); // local bounds
+	auto world_bounds = local_bounds;
 	world_bounds.setCenter(glm::mat4(transform) * glm::vec4(world_bounds.center(), 1));
 	world_bounds.setRadius(world_bounds.radius() * transform.max_scale());
 
-	_entities.replace<component::SphereBounds>(entity_id, world_bounds);
-
 	// TODO: update the whatever-tree
-
 	// TODO: component with model meta info
-	_spatial_items[entity_id] = { world_bounds, is_dynamic };
+	items[entity_id] = { world_bounds, is_dynamic };
 }
 
-void Scene::_spatial_update(entt::registry &e, EntityID entity_id)
+void Scene::_spatial_update(SpatialItems items, EntityID entity_id, const bounds::Sphere &local_bounds, const component::Transform &transform)
 {
-	if(not _spatial_items.contains(entity_id))  // i.e. transform was updated for something without a model
-		return;
-	_spatial_insert(e, entity_id);
+	assert(items.contains(entity_id));
+
+	auto world_bounds = local_bounds;
+	world_bounds.setCenter(glm::mat4(transform) * glm::vec4(world_bounds.center(), 1));
+	world_bounds.setRadius(world_bounds.radius() * transform.max_scale());
+
+	items[entity_id].bounds = world_bounds;
 }
 
-void Scene::_spatial_remove(entt::registry &, EntityID entity_id)
+void Scene::_spatial_remove(SpatialItems items, EntityID entity_id)
 {
-	_spatial_items.erase(entity_id);
+	assert(items.contains(entity_id));
+
+	items.erase(entity_id);
 }
 
 } // RGL
