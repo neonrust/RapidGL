@@ -1,3 +1,8 @@
+// This is bsaically a straight port of box3d's DynamicTree to C++
+// https://github.com/erincatto/box3d
+//
+// It has been made into a template on the user data type (thus far).
+
 #pragma once
 
 #include <cstdint>
@@ -13,109 +18,87 @@
 namespace RGL
 {
 
-static constexpr uint64_t B3_DEFAULT_CATEGORY_BITS = std::numeric_limits<uint64_t>::max();
-static constexpr uint32_t B3_NULL_INDEX = std::numeric_limits<uint32_t>::max();
-static constexpr uint64_t B3_DYNAMIC_TREE_VERSION { 0x93EDAF889FD30B4Aull };
 
-
-struct b3TreeNodeChildren
+struct DynamicTreeStats
 {
-	uint32_t child1; ///< child node index 1
-	uint32_t child2; ///< child node index 2
+	uint32_t nodeVisits;
+	uint32_t leafVisits;
 };
 
-enum b3TreeNodeFlags
-{
-	b3_allocatedNode = 0x0001,
-	b3_enlargedNode  = 0x0002,
-	b3_leafNode      = 0x0004,
-};
-
-
-struct b3TreeStats
-{
-	/// Number of internal nodes visited during the query
-	int nodeVisits;
-
-	/// Number of leaf nodes visited during the query
-	int leafVisits;
-};
-
-struct b3RayCastInput
+struct TreeRayCastInput
 {
 	glm::vec3 origin;
-
-	/// Translation of the ray cast.
-	/// end = start + translation.  (i.e. direction * length)
 	glm::vec3 translation;
-
-	/// The maximum fraction of the translation to consider, typically 1
 	float maxFraction;
 };
 
-struct b3BoxCastInput
+struct TreeBoxCastInput
 {
-	/// The AABB to cast, in the tree's frame.
 	bounds::AABB box;
-
-	/// The sweep translation.
 	glm::vec3 translation;
-
-	/// The maximum fraction of the translation to consider, typically 1.
 	float maxFraction;
 };
 
 using TreeProxyID = uint32_t;
 using TreeNodeIndex = uint32_t;
 
-template<typename UserT=uint64_t>
-struct b3TreeNode
+static constexpr uint64_t      DT_DEFAULT_CATEGORY_BITS = std::numeric_limits<uint64_t>::max();
+static constexpr TreeNodeIndex DT_NULL_INDEX =            std::numeric_limits<uint32_t>::max();
+static constexpr uint64_t      DT_DYNAMIC_TREE_VERSION { 0x3ae7c89ceb448f33ull };
+
+
+struct DynamicTreeNodeChildren
 {
-	/// The node bounding box
-	bounds::AABB aabb; // 24
-
-		   /// Category bits for collision filtering
-	uint64_t categoryBits { std::numeric_limits<uint64_t>::max() }; // 8
-
-	union
-	{
-		/// Children (internal node)
-		b3TreeNodeChildren children { .child1 = B3_NULL_INDEX, .child2 = B3_NULL_INDEX };
-		/// User data (leaf node)
-		UserT userData;
-	}; // 8
-
-	union
-	{
-		/// The node parent index (allocated node)
-		TreeNodeIndex parent { B3_NULL_INDEX };
-
-			   /// The node freelist next index (free node)
-		TreeNodeIndex next;
-	}; // 4
-
-		   /// Height of the node. Leaves have a height of 0.
-	uint16_t height { 0 }; // 2
-
-		   /// @see b3TreeNodeFlags
-	uint16_t flags { b3_allocatedNode }; // 2
-
-	inline bool isLeaf() const { return (flags & b3_leafNode) > 0; }
-	inline bool isAllocated() const { return flags & b3_allocatedNode; }
+	TreeNodeIndex child1;
+	TreeNodeIndex child2;
 };
 
 template<typename UserT=uint64_t>
-class b3DynamicTree
+struct DynamicTreeNode
+{
+	bounds::AABB aabb;
+
+	uint64_t categoryBits { std::numeric_limits<uint64_t>::max() };
+
+	union
+	{
+		DynamicTreeNodeChildren children { .child1 = DT_NULL_INDEX, .child2 = DT_NULL_INDEX };
+		UserT userData;
+	};
+
+	union
+	{
+		TreeNodeIndex parent { DT_NULL_INDEX };
+		TreeNodeIndex next;
+	};
+
+	uint16_t height { 0 };
+
+	enum class Flag : uint16_t
+	{
+		allocatedNode = 0x0001,
+		enlargedNode  = 0x0002,
+		leafNode      = 0x0004,
+	};
+
+	Flag flags { Flag::allocatedNode };
+
+	inline bool isLeaf() const      { return (flags & Flag::leafNode) > 0; }
+	inline bool isAllocated() const { return (flags & Flag::allocatedNode) > 0; }
+};
+
+template<typename UserT=uint64_t>
+class DynamicTree
 {
 public:
 	using QueryCb = std::function<bool(TreeProxyID, UserT)>;
 	using QueryClosestCb = std::function<float(float, TreeProxyID, UserT)>;
-	using CastRayCb = std::function<float(const b3RayCastInput &, TreeProxyID, UserT)>;
-	using CastBoxCb = std::function<float(const b3BoxCastInput &, TreeProxyID, UserT)>;
+	using CastRayCb = std::function<float(const TreeRayCastInput &, TreeProxyID, UserT)>;
+	using CastBoxCb = std::function<float(const TreeBoxCastInput &, TreeProxyID, UserT)>;
 
 public:
-	b3DynamicTree(uint32_t proxyCapacity=0); // b3DynamicTree_Create
-	~b3DynamicTree(); // b3DynamicTree_Destroy
+	DynamicTree(uint32_t proxyCapacity=0); // b3DynamicTree_Create
+	~DynamicTree(); // b3DynamicTree_Destroy
 
 	TreeProxyID addProxy(bounds::AABB aabb, uint64_t categoryBits, UserT userData); // b3DynamicTree_CreateProxy
 	void deleteProxy(TreeProxyID id); // b3DynamicTree_DestroyProxy
@@ -127,10 +110,10 @@ public:
 	[[nodiscard]] UserT proxyUserData(TreeProxyID id) const;
 	[[nodiscard]] bounds::AABB proxyAABB(TreeProxyID id) const;
 
-	b3TreeStats query(bounds::AABB aabb, uint64_t maskBits, bool requireAllBits, QueryCb callback) const; // b3TreeStats b3DynamicTree_Query
-	b3TreeStats queryClosest(glm::vec3 point, uint64_t maskBits, bool requireAllBits, QueryClosestCb callback, float &minDistanceSqr) const; // b3DynamicTree_QueryClosest
-	b3TreeStats castRay(const b3RayCastInput &input, uint64_t maskBits, bool requireAllBits, CastRayCb callback) const; // b3TreeStats b3DynamicTree_RayCast
-	b3TreeStats castBox(const b3BoxCastInput &input, uint64_t maskBits, bool requireAllBits, CastBoxCb callback) const;
+	DynamicTreeStats query(bounds::AABB aabb, uint64_t maskBits, bool requireAllBits, QueryCb callback) const; // DynamicTreeStats b3DynamicTree_Query
+	DynamicTreeStats queryClosest(glm::vec3 point, uint64_t maskBits, bool requireAllBits, QueryClosestCb callback, float &minDistanceSqr) const; // b3DynamicTree_QueryClosest
+	DynamicTreeStats castRay(const TreeRayCastInput &input, uint64_t maskBits, bool requireAllBits, CastRayCb callback) const; // DynamicTreeStats b3DynamicTree_RayCast
+	DynamicTreeStats castBox(const TreeBoxCastInput &input, uint64_t maskBits, bool requireAllBits, CastBoxCb callback) const;
 
 	[[nodiscard]] int32_t height() const; // b3DynamicTree_GetHeight
 	[[nodiscard]] float areaRatio() const; // b3DynamicTree_GetAreaRatio
@@ -164,40 +147,19 @@ private:
 	void validateMetrics(TreeNodeIndex index) const;
 	void validateNoGrown() const;
 #endif
-	float nodeDistanceSq(glm::vec3 point, const b3TreeNode<UserT> &node) const;
+	float nodeDistanceSq(glm::vec3 point, const DynamicTreeNode<UserT> &node) const;
 
 	// TODO: NodeIndex buildTree(uint32_t leafCount);
 	// TODO: uint32_t partitionMid(NodeIndex *indices, glm::vec3 *centers, uint32_t count);
 	// TODO: uint32_t b3PartitionSAH(NodeIndex *indices, NodeIndex *binIndices, bounds::AABB *boxes, uint32_t count);
 
 private:
-	struct b3QueryClosestItem
-	{
-		TreeNodeIndex nodeIndex;
-		float distanceToNodeSqr;
-	};
-
-private:
-	/// The dynamic tree _version. Always the first field. Useful
-	/// if the tree is serialized.
 	uint64_t _version;
-
-	/// The tree _nodes
-	std::vector<b3TreeNode<UserT>> _nodes;
-
-	/// The _root index
+	std::vector<DynamicTreeNode<UserT>> _nodes;
 	TreeNodeIndex _root;
-
-	/// The number of nodes
 	uint32_t _nodeCount;
-
-	/// The allocated node space
 	uint32_t _nodeCapacity;
-
-	/// Number of proxies created
 	uint32_t _proxyCount;
-
-	/// Node free list
 	TreeNodeIndex _freeList;
 
 /* TODO: rebuild
@@ -219,9 +181,9 @@ private:
 };
 
 template<typename UserT>
-b3DynamicTree<UserT>::b3DynamicTree(uint32_t proxyCapacity) :
-	_version(B3_DYNAMIC_TREE_VERSION),
-	_root(B3_NULL_INDEX),
+DynamicTree<UserT>::DynamicTree(uint32_t proxyCapacity) :
+	_version(DT_DYNAMIC_TREE_VERSION),
+	_root(DT_NULL_INDEX),
 	_nodeCount(0),
 	_nodeCapacity(0),
 	_proxyCount(0),
@@ -233,22 +195,22 @@ b3DynamicTree<UserT>::b3DynamicTree(uint32_t proxyCapacity) :
 	_nodeCapacity = 2u * capacity - 1u;
 	_nodes.resize(_nodeCapacity);
 
-	std::memset(_nodes.data(), 0, _nodes.size() * sizeof(b3TreeNode<UserT>));
+	std::memset(_nodes.data(), 0, _nodes.size() * sizeof(DynamicTreeNode<UserT>));
 
 	// Build a linked list for the free list.
 	// todo use a bump allocator until the capacity is consumed (see b3PoolAllocator)
 	for(auto idx = 0u; idx < _nodeCapacity - 2; ++idx)
 		_nodes[idx].next = idx + 1u;
-	_nodes.back().next = B3_NULL_INDEX;
+	_nodes.back().next = DT_NULL_INDEX;
 }
 
 template<typename UserT>
-inline b3DynamicTree<UserT>::~b3DynamicTree()
+inline DynamicTree<UserT>::~DynamicTree()
 {
 }
 
 template<typename UserT>
-TreeProxyID b3DynamicTree<UserT>::addProxy(bounds::AABB aabb, uint64_t categoryBits, UserT userData)
+TreeProxyID DynamicTree<UserT>::addProxy(bounds::AABB aabb, uint64_t categoryBits, UserT userData)
 {
 	assert(math::valid(aabb));
 
@@ -259,7 +221,8 @@ TreeProxyID b3DynamicTree<UserT>::addProxy(bounds::AABB aabb, uint64_t categoryB
 	node.userData = userData;
 	node.categoryBits = categoryBits;
 	node.height = 0;
-	node.flags = b3_allocatedNode | b3_leafNode;
+	node.flags = DynamicTreeNode<UserT>::Flag::allocatedNode
+		| DynamicTreeNode<UserT>::Flag::leafNode;
 
 	bool shouldRotate = true;
 	insertLeaf(proxyId, shouldRotate);
@@ -270,7 +233,7 @@ TreeProxyID b3DynamicTree<UserT>::addProxy(bounds::AABB aabb, uint64_t categoryB
 }
 
 template<typename UserT>
-void b3DynamicTree<UserT>::deleteProxy(TreeProxyID proxyId)
+void DynamicTree<UserT>::deleteProxy(TreeProxyID proxyId)
 {
 	assert(0 <= proxyId and proxyId < _nodeCapacity);
 	assert(_nodes[proxyId].isLeaf());
@@ -283,7 +246,7 @@ void b3DynamicTree<UserT>::deleteProxy(TreeProxyID proxyId)
 }
 
 template<typename UserT>
-void b3DynamicTree<UserT>::moveProxy(TreeProxyID proxyId, bounds::AABB aabb)
+void DynamicTree<UserT>::moveProxy(TreeProxyID proxyId, bounds::AABB aabb)
 {
 	assert(math::valid(aabb));
 	assert(0 <= proxyId and proxyId < _nodeCapacity );
@@ -298,7 +261,7 @@ void b3DynamicTree<UserT>::moveProxy(TreeProxyID proxyId, bounds::AABB aabb)
 }
 
 template<typename UserT>
-void b3DynamicTree<UserT>::growProxy(TreeProxyID proxyId, bounds::AABB aabb)
+void DynamicTree<UserT>::growProxy(TreeProxyID proxyId, bounds::AABB aabb)
 {
 	assert(math::valid(aabb));
 	assert(0 <= proxyId and proxyId < _nodeCapacity);
@@ -312,13 +275,13 @@ void b3DynamicTree<UserT>::growProxy(TreeProxyID proxyId, bounds::AABB aabb)
 	node.aabb = aabb;
 
 	auto parentIndex = node.parent;
-	while(parentIndex != B3_NULL_INDEX)
+	while(parentIndex != DT_NULL_INDEX)
 	{
 		auto node = _nodes[parentIndex];
 		bool changed = node.aabb.expand(aabb);
 
 		// todo not sure why this node is marked as enlarged even if it didn't change
-		node.flags |= b3_enlargedNode;
+		node.flags |= DynamicTreeNode<UserT>::Flag::enlargedNode;
 
 		parentIndex = node.parent;
 
@@ -326,20 +289,20 @@ void b3DynamicTree<UserT>::growProxy(TreeProxyID proxyId, bounds::AABB aabb)
 			break;
 	}
 
-	while(parentIndex != B3_NULL_INDEX)
+	while(parentIndex != DT_NULL_INDEX)
 	{
 		auto node = _nodes[parentIndex];
-		if(node.flags & b3_enlargedNode)
+		if(node.flags & DynamicTreeNode<UserT>::Flag::enlargedNode)
 			// early out because this ancestor was previously ascended and marked as enlarged
 			break;
 
-		node.flags |= b3_enlargedNode;
+		node.flags |= DynamicTreeNode<UserT>::Flag::enlargedNode;
 		parentIndex = node.parent;
 	}
 }
 
 template<typename UserT>
-void b3DynamicTree<UserT>::setCategoryBits(TreeProxyID proxyId, uint64_t categoryBits)
+void DynamicTree<UserT>::setCategoryBits(TreeProxyID proxyId, uint64_t categoryBits)
 {
 	assert(_nodes[proxyId].isLeaf());
 
@@ -347,13 +310,13 @@ void b3DynamicTree<UserT>::setCategoryBits(TreeProxyID proxyId, uint64_t categor
 
 	// Fix up category bits in ancestor internal _nodes
 	auto nodeIndex = _nodes[proxyId].parent;
-	while(nodeIndex != B3_NULL_INDEX )
+	while(nodeIndex != DT_NULL_INDEX )
 	{
 		auto &node = _nodes[nodeIndex];
 		auto child1 = node.children.child1;
-		assert(child1 != B3_NULL_INDEX);
+		assert(child1 != DT_NULL_INDEX);
 		auto child2 = node.children.child2;
-		assert(child2 != B3_NULL_INDEX);
+		assert(child2 != DT_NULL_INDEX);
 		node.categoryBits = _nodes[child1].categoryBits | _nodes[child2].categoryBits;
 
 		nodeIndex = node.parent;
@@ -361,25 +324,25 @@ void b3DynamicTree<UserT>::setCategoryBits(TreeProxyID proxyId, uint64_t categor
 }
 
 template<typename UserT>
-uint64_t b3DynamicTree<UserT>::categoryBits(TreeProxyID proxyId) const
+uint64_t DynamicTree<UserT>::categoryBits(TreeProxyID proxyId) const
 {
 	assert( 0 <= proxyId and proxyId < _nodeCapacity);
 	return _nodes[proxyId].categoryBits;
 }
 
 template<typename UserT>
-int b3DynamicTree<UserT>::height() const
+int DynamicTree<UserT>::height() const
 {
-	if(_root == B3_NULL_INDEX)
+	if(_root == DT_NULL_INDEX)
 		return 0;
 
 	return _nodes[_root].height;
 }
 
 template<typename UserT>
-float b3DynamicTree<UserT>::areaRatio() const
+float DynamicTree<UserT>::areaRatio() const
 {
-	if(_root == B3_NULL_INDEX)
+	if(_root == DT_NULL_INDEX)
 		return 0;
 
 	float rootArea = _nodes[_root].aabb.surfaceArea();
@@ -398,38 +361,38 @@ float b3DynamicTree<UserT>::areaRatio() const
 }
 
 template<typename UserT>
-bounds::AABB b3DynamicTree<UserT>::rootBounds() const
+bounds::AABB DynamicTree<UserT>::rootBounds() const
 {
-	if(_root != B3_NULL_INDEX)
+	if(_root != DT_NULL_INDEX)
 		return _nodes[_root].aabb;
 
 	return {};
 }
 
 template<typename UserT>
-static b3DynamicTree<UserT>::b3TreeNode b3_defaultTreeNode = {
+static DynamicTreeNode<UserT> b3_defaultTreeNode = {
 	.aabb = { { 0, 0, 0 }, { 0, 0, 0 } },
-	.categoryBits = B3_DEFAULT_CATEGORY_BITS,
+	.categoryBits = DT_DEFAULT_CATEGORY_BITS,
 	.children = {
-		.child1 = B3_NULL_INDEX,
-		.child2 = B3_NULL_INDEX,
+		.child1 = DT_NULL_INDEX,
+		.child2 = DT_NULL_INDEX,
 	},
-	.parent = B3_NULL_INDEX,
+	.parent = DT_NULL_INDEX,
 	.height = 0,
-	.flags = b3_allocatedNode,
+	.flags = DynamicTreeNode<UserT>::Flag::allocatedNode,
 };
 
 // Allocate a node from the pool. Grow the pool if necessary.
 template<typename UserT>
-TreeNodeIndex b3DynamicTree<UserT>::allocateNode()
+TreeNodeIndex DynamicTree<UserT>::allocateNode()
 {
 	// Expand the node pool as needed.
-	if(_freeList == B3_NULL_INDEX )
+	if(_freeList == DT_NULL_INDEX )
 	{
 		assert(_nodeCount == _nodeCapacity);
 
 		// The free list is empty. Rebuild a bigger pool.
-		// b3TreeNode* oldNodes = tree->nodes;
+		// DynamicTreeNode* oldNodes = tree->nodes;
 		_nodeCapacity += _nodeCapacity >> 1;
 		_nodes.resize(_nodeCapacity);
 		// zero the new nodes
@@ -439,7 +402,7 @@ TreeNodeIndex b3DynamicTree<UserT>::allocateNode()
 		// todo avoid building freelist?
 		for(auto idx = _nodeCount; idx < _nodeCapacity - 1; ++idx )
 			_nodes[idx].next = idx + 1;
-		_nodes.back().next = B3_NULL_INDEX;
+		_nodes.back().next = DT_NULL_INDEX;
 
 		_freeList = _nodeCount;
 	}
@@ -455,7 +418,7 @@ TreeNodeIndex b3DynamicTree<UserT>::allocateNode()
 }
 
 template<typename UserT>
-void b3DynamicTree<UserT>::freeNode(uint32_t nodeId)
+void DynamicTree<UserT>::freeNode(uint32_t nodeId)
 {
 	assert( 0 <= nodeId and nodeId < _nodeCapacity );
 	assert( 0 < _nodeCount );
@@ -466,12 +429,12 @@ void b3DynamicTree<UserT>::freeNode(uint32_t nodeId)
 }
 
 template<typename UserT>
-void b3DynamicTree<UserT>::insertLeaf(TreeNodeIndex leaf, bool shouldRotate)
+void DynamicTree<UserT>::insertLeaf(TreeNodeIndex leaf, bool shouldRotate)
 {
-	if(_root == B3_NULL_INDEX )
+	if(_root == DT_NULL_INDEX )
 	{
 		_root = leaf;
-		_nodes[_root].parent = B3_NULL_INDEX;
+		_nodes[_root].parent = DT_NULL_INDEX;
 		return;
 	}
 
@@ -490,7 +453,7 @@ void b3DynamicTree<UserT>::insertLeaf(TreeNodeIndex leaf, bool shouldRotate)
 	_nodes[newParent].categoryBits = _nodes[leaf].categoryBits | _nodes[sibling].categoryBits;
 	_nodes[newParent].height = _nodes[sibling].height + 1;
 
-	if(oldParent != B3_NULL_INDEX)
+	if(oldParent != DT_NULL_INDEX)
 	{
 		// The sibling was not the root.
 		if(_nodes[oldParent].children.child1 == sibling)
@@ -515,18 +478,18 @@ void b3DynamicTree<UserT>::insertLeaf(TreeNodeIndex leaf, bool shouldRotate)
 
 		   // Stage 3: walk back up the tree fixing heights and AABBs
 	auto index = _nodes[leaf].parent;
-	while(index != B3_NULL_INDEX)
+	while(index != DT_NULL_INDEX)
 	{
 		auto child1 = _nodes[index].children.child1;
 		auto child2 = _nodes[index].children.child2;
 
-		assert(child1 != B3_NULL_INDEX);
-		assert(child2 != B3_NULL_INDEX);
+		assert(child1 != DT_NULL_INDEX);
+		assert(child2 != DT_NULL_INDEX);
 
 		_nodes[index].aabb = math::envelop(_nodes[child1].aabb, _nodes[child2].aabb);
 		_nodes[index].categoryBits = _nodes[child1].categoryBits | _nodes[child2].categoryBits;
 		_nodes[index].height = 1 + std::max(_nodes[child1].height, _nodes[child2].height );
-		_nodes[index].flags |= ( _nodes[child1].flags | _nodes[child2].flags ) & b3_enlargedNode;
+		_nodes[index].flags |= ( _nodes[child1].flags | _nodes[child2].flags ) & DynamicTreeNode<UserT>::Flag::enlargedNode;
 
 		if(shouldRotate)
 			rotateNodes(index);
@@ -536,11 +499,11 @@ void b3DynamicTree<UserT>::insertLeaf(TreeNodeIndex leaf, bool shouldRotate)
 }
 
 template<typename UserT>
-void b3DynamicTree<UserT>::removeLeaf(TreeNodeIndex leaf)
+void DynamicTree<UserT>::removeLeaf(TreeNodeIndex leaf)
 {
 	if(leaf == _root)
 	{
-		_root = B3_NULL_INDEX;
+		_root = DT_NULL_INDEX;
 		return;
 	}
 
@@ -552,7 +515,7 @@ void b3DynamicTree<UserT>::removeLeaf(TreeNodeIndex leaf)
 	else
 		sibling = _nodes[parent].children.child1;
 
-	if(grandParent != B3_NULL_INDEX)
+	if(grandParent != DT_NULL_INDEX)
 	{
 		// Destroy parent and connect sibling to grandParent.
 		if(_nodes[grandParent].children.child1 == parent )
@@ -562,9 +525,9 @@ void b3DynamicTree<UserT>::removeLeaf(TreeNodeIndex leaf)
 		_nodes[sibling].parent = grandParent;
 		freeNode(parent);
 
-			   // Adjust ancestor bounds.
+		// Adjust ancestor bounds.
 		auto index = grandParent;
-		while(index != B3_NULL_INDEX)
+		while(index != DT_NULL_INDEX)
 		{
 			auto &node = _nodes[index];
 			auto &child1 = _nodes[node.children.child1];
@@ -588,13 +551,13 @@ void b3DynamicTree<UserT>::removeLeaf(TreeNodeIndex leaf)
 	else
 	{
 		_root = sibling;
-		_nodes[sibling].parent = B3_NULL_INDEX;
+		_nodes[sibling].parent = DT_NULL_INDEX;
 		freeNode(parent);
 	}
 }
 
 template<typename UserT>
-TreeNodeIndex b3DynamicTree<UserT>::findBestSibling(bounds::AABB box)
+TreeNodeIndex DynamicTree<UserT>::findBestSibling(bounds::AABB box)
 {
 	const auto centerD = box.center();
 	const auto areaD = box.surfaceArea();
@@ -603,41 +566,41 @@ TreeNodeIndex b3DynamicTree<UserT>::findBestSibling(bounds::AABB box)
 
 	auto rootBox = _nodes[rootIndex].aabb;
 
-		   // Area of current node
+	// Area of current node
 	auto areaBase = rootBox.surfaceArea();
 
-		   // Area of inflated node
+	// Area of inflated node
 	float directCost = math::envelop(rootBox, box).surfaceArea();
 	float inheritedCost = 0;
 
 	auto bestSibling = rootIndex;
 	auto bestCost = directCost;
 
-		   // Descend the tree from root, following a single greedy path.
+	// Descend the tree from root, following a single greedy path.
 	auto index = rootIndex;
-	while (not _nodes[index].isLeaf())
+	while(not _nodes[index].isLeaf())
 	{
 		auto child1 = _nodes[index].children.child1;
 		auto child2 = _nodes[index].children.child2;
 
-			   // Cost of creating a new parent for this node and the new leaf
+		// Cost of creating a new parent for this node and the new leaf
 		float cost = directCost + inheritedCost;
 
-			   // Sometimes there are multiple identical costs within tolerance.
-			   // This breaks the ties using the centroid distance.
-		if ( cost < bestCost )
+		// Sometimes there are multiple identical costs within tolerance.
+		// This breaks the ties using the centroid distance.
+		if(cost < bestCost)
 		{
 			bestSibling = index;
 			bestCost = cost;
 		}
 
-			   // Inheritance cost seen by children
+		// Inheritance cost seen by children
 		inheritedCost += directCost - areaBase;
 
 		bool leaf1 = _nodes[child1].isLeaf();
 		bool leaf2 = _nodes[child2].isLeaf();
 
-			   // Cost of descending into child 1
+		// Cost of descending into child 1
 		float lowerCost1 = std::numeric_limits<float>::max();
 		bounds::AABB box1 = _nodes[child1].aabb;
 		float directCost1 = math::envelop(box1, box).surfaceArea();
@@ -648,8 +611,8 @@ TreeNodeIndex b3DynamicTree<UserT>::findBestSibling(bounds::AABB box)
 			// Cost of creating new node and increasing area of node P
 			float cost1 = directCost1 + inheritedCost;
 
-				   // Need this here due to while condition above
-			if ( cost1 < bestCost )
+			// Need this here due to while condition above
+			if(cost1 < bestCost)
 			{
 				bestSibling = child1;
 				bestCost = cost1;
@@ -660,11 +623,11 @@ TreeNodeIndex b3DynamicTree<UserT>::findBestSibling(bounds::AABB box)
 			// Child 1 is an internal node
 			area1 = box1.surfaceArea();
 
-				   // Lower bound cost of inserting under child 1.
+			// Lower bound cost of inserting under child 1.
 			lowerCost1 = inheritedCost + directCost1 + std::min(areaD - area1, 0.0f);
 		}
 
-			   // Cost of descending into child 2
+		// Cost of descending into child 2
 		float lowerCost2 = std::numeric_limits<float>::min();
 		bounds::AABB box2 = _nodes[child2].aabb;
 		float directCost2 = math::envelop( box2, box).surfaceArea();
@@ -675,7 +638,7 @@ TreeNodeIndex b3DynamicTree<UserT>::findBestSibling(bounds::AABB box)
 			// Cost of creating new node and increasing area of node P
 			float cost2 = directCost2 + inheritedCost;
 
-				   // Need this here due to while condition above
+			// Need this here due to while condition above
 			if(cost2 < bestCost)
 			{
 				bestSibling = child2;
@@ -687,15 +650,15 @@ TreeNodeIndex b3DynamicTree<UserT>::findBestSibling(bounds::AABB box)
 			// Child 2 is an internal node
 			area2 = box2.surfaceArea();
 
-				   // Lower bound cost of inserting under child 2. This is not the cost
-				   // of child 2, it is the best we can hope for under child 2.
-			lowerCost2 = inheritedCost + directCost2 + std::min(areaD - area2, 0.0f);
+			// Lower bound cost of inserting under child 2. This is not the cost
+			// of child 2, it is the best we can hope for under child 2.
+			lowerCost2 = inheritedCost + directCost2 + std::min(areaD - area2, 0.f);
 		}
 
 		if(leaf1 and leaf2)
 			break;
 
-			   // Can the cost possibly be decreased?
+		// Can the cost possibly be decreased?
 		if(bestCost <= lowerCost1 and bestCost <= lowerCost2)
 			break;
 
@@ -709,7 +672,7 @@ TreeNodeIndex b3DynamicTree<UserT>::findBestSibling(bounds::AABB box)
 			lowerCost2 = glm::length2(d2);
 		}
 
-			   // Descend
+		// Descend
 		if(lowerCost1 < lowerCost2 and not leaf1)
 		{
 			index = child1;
@@ -729,19 +692,19 @@ TreeNodeIndex b3DynamicTree<UserT>::findBestSibling(bounds::AABB box)
 	return bestSibling;
 }
 
-enum b3RotateType
-{
-	b3_rotateNone,
-	b3_rotateBF,
-	b3_rotateBG,
-	b3_rotateCD,
-	b3_rotateCE
-};
-
 template<typename UserT>
-void b3DynamicTree<UserT>::rotateNodes(uint32_t iA)
+void DynamicTree<UserT>::rotateNodes(uint32_t iA)
 {
-	assert(iA != B3_NULL_INDEX);
+	assert(iA != DT_NULL_INDEX);
+
+	enum class RotateType
+	{
+		None,
+		BF,
+		BG,
+		CD,
+		CE
+	};
 
 	auto &A = _nodes[iA];
 	if(A.isLeaf())
@@ -799,8 +762,8 @@ void b3DynamicTree<UserT>::rotateNodes(uint32_t iA)
 			A.height = 1 + std::max(C.height, F.height);
 			C.categoryBits = B.categoryBits | G.categoryBits;
 			A.categoryBits = C.categoryBits | F.categoryBits;
-			C.flags |= (B.flags | G.flags) & b3_enlargedNode;
-			A.flags |= (C.flags | F.flags) & b3_enlargedNode;
+			C.flags |= (B.flags | G.flags) & DynamicTreeNode<UserT>::Flag::enlargedNode;
+			A.flags |= (C.flags | F.flags) & DynamicTreeNode<UserT>::Flag::enlargedNode;
 		}
 		else
 		{
@@ -817,8 +780,8 @@ void b3DynamicTree<UserT>::rotateNodes(uint32_t iA)
 			A.height = 1 + std::max(C.height, G.height);
 			C.categoryBits = B.categoryBits | F.categoryBits;
 			A.categoryBits = C.categoryBits | G.categoryBits;
-			C.flags |= (B.flags | F.flags) & b3_enlargedNode;
-			A.flags |= (C.flags | G.flags) & b3_enlargedNode;
+			C.flags |= (B.flags | F.flags) & DynamicTreeNode<UserT>::Flag::enlargedNode;
+			A.flags |= (C.flags | G.flags) & DynamicTreeNode<UserT>::Flag::enlargedNode;
 		}
 	}
 	else if(isLeafC and not isLeafB)
@@ -864,8 +827,8 @@ void b3DynamicTree<UserT>::rotateNodes(uint32_t iA)
 			A.height = 1 + std::max(B.height, D.height);
 			B.categoryBits = C.categoryBits | E.categoryBits;
 			A.categoryBits = B.categoryBits | D.categoryBits;
-			B.flags |= (C.flags | E.flags) & b3_enlargedNode;
-			A.flags |= (B.flags | D.flags) & b3_enlargedNode;
+			B.flags |= (C.flags | E.flags) & DynamicTreeNode<UserT>::Flag::enlargedNode;
+			A.flags |= (B.flags | D.flags) & DynamicTreeNode<UserT>::Flag::enlargedNode;
 		}
 		else
 		{
@@ -882,8 +845,8 @@ void b3DynamicTree<UserT>::rotateNodes(uint32_t iA)
 			A.height = 1 + std::max(B.height, E.height);
 			B.categoryBits = C.categoryBits | D.categoryBits;
 			A.categoryBits = B.categoryBits | E.categoryBits;
-			B.flags |= (C.flags | D.flags) & b3_enlargedNode;
-			A.flags |= (B.flags | E.flags) & b3_enlargedNode;
+			B.flags |= (C.flags | D.flags) & DynamicTreeNode<UserT>::Flag::enlargedNode;
+			A.flags |= (B.flags | E.flags) & DynamicTreeNode<UserT>::Flag::enlargedNode;
 		}
 	}
 	else if(not isLeafB and not isLeafC)
@@ -908,7 +871,7 @@ void b3DynamicTree<UserT>::rotateNodes(uint32_t iA)
 		float areaB = B.aabb.surfaceArea();
 		float areaC = C.aabb.surfaceArea();
 		float costBase = areaB + areaC;
-		auto bestRotation = b3_rotateNone;
+		auto bestRotation = RotateType::None;
 		float bestCost = costBase;
 
 			   // Cost of swapping B and F
@@ -916,7 +879,7 @@ void b3DynamicTree<UserT>::rotateNodes(uint32_t iA)
 		float costBF = areaB + aabbBG.surfaceArea();
 		if(costBF < bestCost)
 		{
-			bestRotation = b3_rotateBF;
+			bestRotation = RotateType::BF;
 			bestCost = costBF;
 		}
 
@@ -925,7 +888,7 @@ void b3DynamicTree<UserT>::rotateNodes(uint32_t iA)
 		float costBG = areaB + aabbBF.surfaceArea();
 		if(costBG < bestCost)
 		{
-			bestRotation = b3_rotateBG;
+			bestRotation = RotateType::BG;
 			bestCost = costBG;
 		}
 
@@ -934,7 +897,7 @@ void b3DynamicTree<UserT>::rotateNodes(uint32_t iA)
 		float costCD = areaC + aabbCE.surfaceArea();
 		if(costCD < bestCost)
 		{
-			bestRotation = b3_rotateCD;
+			bestRotation = RotateType::CD;
 			bestCost = costCD;
 		}
 
@@ -943,16 +906,16 @@ void b3DynamicTree<UserT>::rotateNodes(uint32_t iA)
 		float costCE = areaC + aabbCD.surfaceArea();
 		if(costCE < bestCost)
 		{
-			bestRotation = b3_rotateCE;
+			bestRotation = RotateType::CE;
 			// bestCost = costCE;
 		}
 
 		switch(bestRotation)
 		{
-		case b3_rotateNone:
+		case RotateType::None:
 			break;
 
-		case b3_rotateBF:
+		case RotateType::BF:
 			A.children.child1 = iF;
 			C.children.child1 = iB;
 
@@ -965,11 +928,11 @@ void b3DynamicTree<UserT>::rotateNodes(uint32_t iA)
 			A.height = 1 + std::max(C.height, F.height);
 			C.categoryBits = B.categoryBits | G.categoryBits;
 			A.categoryBits = C.categoryBits | F.categoryBits;
-			C.flags |= (B.flags | G.flags) & b3_enlargedNode;
-			A.flags |= (C.flags | F.flags) & b3_enlargedNode;
+			C.flags |= (B.flags | G.flags) & DynamicTreeNode<UserT>::Flag::enlargedNode;
+			A.flags |= (C.flags | F.flags) & DynamicTreeNode<UserT>::Flag::enlargedNode;
 			break;
 
-		case b3_rotateBG:
+		case RotateType::BG:
 			A.children.child1 = iG;
 			C.children.child2 = iB;
 
@@ -982,11 +945,11 @@ void b3DynamicTree<UserT>::rotateNodes(uint32_t iA)
 			A.height = 1 + std::max(C.height, G.height);
 			C.categoryBits = B.categoryBits | F.categoryBits;
 			A.categoryBits = C.categoryBits | G.categoryBits;
-			C.flags |= (B.flags | F.flags) & b3_enlargedNode;
-			A.flags |= (C.flags | G.flags) & b3_enlargedNode;
+			C.flags |= (B.flags | F.flags) & DynamicTreeNode<UserT>::Flag::enlargedNode;
+			A.flags |= (C.flags | G.flags) & DynamicTreeNode<UserT>::Flag::enlargedNode;
 			break;
 
-		case b3_rotateCD:
+		case RotateType::CD:
 			A.children.child2 = iD;
 			B.children.child1 = iC;
 
@@ -999,11 +962,11 @@ void b3DynamicTree<UserT>::rotateNodes(uint32_t iA)
 			A.height = 1 + std::max(B.height, D.height);
 			B.categoryBits = C.categoryBits | E.categoryBits;
 			A.categoryBits = B.categoryBits | D.categoryBits;
-			B.flags |= (C.flags | E.flags) & b3_enlargedNode;
-			A.flags |= (B.flags | D.flags) & b3_enlargedNode;
+			B.flags |= (C.flags | E.flags) & DynamicTreeNode<UserT>::Flag::enlargedNode;
+			A.flags |= (B.flags | D.flags) & DynamicTreeNode<UserT>::Flag::enlargedNode;
 			break;
 
-		case b3_rotateCE:
+		case RotateType::CE:
 			A.children.child2 = iE;
 			B.children.child2 = iC;
 
@@ -1016,8 +979,8 @@ void b3DynamicTree<UserT>::rotateNodes(uint32_t iA)
 			A.height = 1 + std::max(B.height, E.height);
 			B.categoryBits = C.categoryBits | D.categoryBits;
 			A.categoryBits = B.categoryBits | E.categoryBits;
-			B.flags |= (C.flags | D.flags) & b3_enlargedNode;
-			A.flags |= (B.flags | E.flags) & b3_enlargedNode;
+			B.flags |= (C.flags | D.flags) & DynamicTreeNode<UserT>::Flag::enlargedNode;
+			A.flags |= (B.flags | E.flags) & DynamicTreeNode<UserT>::Flag::enlargedNode;
 			break;
 
 		default:
@@ -1028,19 +991,19 @@ void b3DynamicTree<UserT>::rotateNodes(uint32_t iA)
 }
 
 template<typename UserT>
-UserT b3DynamicTree<UserT>::proxyUserData(TreeProxyID id) const
+UserT DynamicTree<UserT>::proxyUserData(TreeProxyID id) const
 {
 	return _nodes[id].userData;
 }
 
 template<typename UserT>
-bounds::AABB b3DynamicTree<UserT>::proxyAABB(TreeProxyID id) const
+bounds::AABB DynamicTree<UserT>::proxyAABB(TreeProxyID id) const
 {
 	return _nodes[id].aabb;
 }
 
 template<typename UserT>
-size_t b3DynamicTree<UserT>::byteSize() const
+size_t DynamicTree<UserT>::byteSize() const
 {
 	auto size = sizeof(decltype(this)) + sizeof(decltype(_nodes)::value_type) * _nodes.capacity();
 	/* TODO: rebuild size_t(_rebuildCapacity) *  (sizeof(uint32_t) + sizeof(bounds::AABB) + sizeof(glm::vec3) + sizeof(uint32_t)); */
@@ -1049,34 +1012,34 @@ size_t b3DynamicTree<UserT>::byteSize() const
 }
 
 template<typename UserT>
-float b3DynamicTree<UserT>::nodeDistanceSq(glm::vec3 point, const b3TreeNode<UserT> &node) const
+float DynamicTree<UserT>::nodeDistanceSq(glm::vec3 point, const DynamicTreeNode<UserT> &node) const
 {
 	const auto r = point - glm::clamp(point, node.aabb.min(), node.aabb.max());
 	return glm::dot(r, r);
 }
 
 
-#define B3_TREE_STACK_SIZE 1024
+#define DT_TREE_STACK_SIZE 1024
 
 template<typename UserT>
-b3TreeStats b3DynamicTree<UserT>::query(bounds::AABB aabb, uint64_t maskBits, bool requireAllBits, QueryCb callback) const
+DynamicTreeStats DynamicTree<UserT>::query(bounds::AABB aabb, uint64_t maskBits, bool requireAllBits, QueryCb callback) const
 {
-	b3TreeStats result {
+	DynamicTreeStats stats {
 		.nodeVisits = 0,
 		.leafVisits = 0,
 	};
 
 	if(not _nodeCount)
-		return result;
+		return stats;
 
-	TreeNodeIndex stack[B3_TREE_STACK_SIZE];
+	TreeNodeIndex stack[DT_TREE_STACK_SIZE];
 	uint32_t stackCount { 0 };
 	stack[stackCount++] = _root;
 
 	while(stackCount > 0)
 	{
 		auto nodeId = stack[--stackCount];
-		if(nodeId == B3_NULL_INDEX)
+		if(nodeId == DT_NULL_INDEX)
 		{
 			// todo huh?
 			assert(false);
@@ -1084,26 +1047,25 @@ b3TreeStats b3DynamicTree<UserT>::query(bounds::AABB aabb, uint64_t maskBits, bo
 		}
 
 		const auto &node = _nodes[nodeId];
-		++result.nodeVisits;
+		++stats.nodeVisits;
 
-			   // Assuming branch prediction deals with requireAllBits well
-		auto bitMatch = requireAllBits? (node.categoryBits & maskBits) == maskBits: (node.categoryBits & maskBits);
-
+		// Assuming branch prediction deals with requireAllBits well
+		const auto bitMatch = requireAllBits? (node.categoryBits & maskBits) == maskBits: (node.categoryBits & maskBits);
 		if(bitMatch and intersect::check(node.aabb, aabb))
 		{
 			if(node.isLeaf())
 			{
 				// callback to user code with proxy id
-				bool proceed = callback(nodeId, node.userData);
-				++result.leafVisits;
+				const bool proceed = callback(nodeId, node.userData);
+				++stats.leafVisits;
 
 				if(not proceed)
-					return result;
+					return stats;
 			}
 			else
 			{
-				assert(stackCount < B3_TREE_STACK_SIZE - 1);
-				if(stackCount < B3_TREE_STACK_SIZE - 1)
+				assert(stackCount < DT_TREE_STACK_SIZE - 1);
+				if(stackCount < DT_TREE_STACK_SIZE - 1)
 				{
 					stack[stackCount++] = node.children.child1;
 					stack[stackCount++] = node.children.child2;
@@ -1112,22 +1074,28 @@ b3TreeStats b3DynamicTree<UserT>::query(bounds::AABB aabb, uint64_t maskBits, bo
 		}
 	}
 
-	return result;
+	return stats;
 }
 
 template<typename UserT>
-b3TreeStats b3DynamicTree<UserT>::queryClosest(glm::vec3 point, uint64_t maskBits, bool requireAllBits, QueryClosestCb callback, float &minDistanceSqr) const
+DynamicTreeStats DynamicTree<UserT>::queryClosest(glm::vec3 point, uint64_t maskBits, bool requireAllBits, QueryClosestCb callback, float &minDistanceSqr) const
 {
-	b3TreeStats result {
+	DynamicTreeStats stats {
 		.nodeVisits = 0,
 		.leafVisits = 0,
 	};
 
 	if(not _nodeCount)
-		return result;
+		return stats;
 
 	float minSqr = minDistanceSqr;
-	b3QueryClosestItem stack[B3_TREE_STACK_SIZE];
+
+	struct ClosestItem
+	{
+		TreeNodeIndex nodeIndex;
+		float distanceToNodeSqr;
+	};
+	ClosestItem stack[DT_TREE_STACK_SIZE];
 	auto stackCount = 0u;
 
 	float rootDistanceSqr = nodeDistanceSq(point, _nodes[_root]);
@@ -1138,12 +1106,11 @@ b3TreeStats b3DynamicTree<UserT>::queryClosest(glm::vec3 point, uint64_t maskBit
 
 	while( stackCount > 0)
 	{
-		b3QueryClosestItem item = stack[--stackCount];
+		auto item = stack[--stackCount];
 		const auto &node = _nodes[item.nodeIndex];
-		++result.nodeVisits;
+		++stats.nodeVisits;
 
-		auto bitMatch = requireAllBits? (node.categoryBits & maskBits) == maskBits: (node.categoryBits & maskBits);
-
+		const auto bitMatch = requireAllBits? (node.categoryBits & maskBits) == maskBits: (node.categoryBits & maskBits);
 		if(bitMatch)
 		{
 			if(item.distanceToNodeSqr < minSqr)
@@ -1151,33 +1118,33 @@ b3TreeStats b3DynamicTree<UserT>::queryClosest(glm::vec3 point, uint64_t maskBit
 				if(node.isLeaf())
 				{
 					// callback to user code with minimum distance squared so far and proxy id
-					float dd = callback(minSqr, item.nodeIndex, node.userData);
+					const float dd = callback(minSqr, item.nodeIndex, node.userData);
 
 					if(dd < minSqr)
 						minSqr = dd;
 
-					++result.leafVisits;
+					++stats.leafVisits;
 				}
 				else
 				{
-					assert(stackCount < B3_TREE_STACK_SIZE - 1);
-					if( stackCount < B3_TREE_STACK_SIZE - 1)
+					assert(stackCount < DT_TREE_STACK_SIZE - 1);
+					if(stackCount < DT_TREE_STACK_SIZE - 1)
 					{
-						auto child1 = node.children.child1;
-						auto child2 = node.children.child2;
+						const auto child1 = node.children.child1;
+						const auto child2 = node.children.child2;
 
-							   // Store the distance to node in the stack instead of recomputing after pop
-						b3QueryClosestItem item1 = {
+						// Store the distance to node in the stack instead of recomputing after pop
+						ClosestItem item1 {
 							.nodeIndex = child1,
 							.distanceToNodeSqr = nodeDistanceSq( point, _nodes[child1]),
 						};
 
-						b3QueryClosestItem item2 = {
+						ClosestItem item2 {
 							.nodeIndex = child2,
 							.distanceToNodeSqr = nodeDistanceSq(point, _nodes[child2]),
 						};
 
-							   // Ensure we iterate the closest child first as we pop off the stack
+						// Ensure we iterate the closest child first as we pop off the stack
 						if(item2.distanceToNodeSqr < item1.distanceToNodeSqr)
 						{
 							stack[stackCount++] = item1;
@@ -1196,7 +1163,7 @@ b3TreeStats b3DynamicTree<UserT>::queryClosest(glm::vec3 point, uint64_t maskBit
 
 	minDistanceSqr = minSqr;
 
-	return result;
+	return stats;
 }
 
 
@@ -1228,9 +1195,9 @@ static inline bool testBoundsRayOverlap(glm::vec3 nodeMin, glm::vec3 nodeMax, gl
 
 
 template<typename UserT>
-b3TreeStats b3DynamicTree<UserT>::castRay(const b3RayCastInput &input, uint64_t maskBits, bool requireAllBits, CastRayCb callback) const
+DynamicTreeStats DynamicTree<UserT>::castRay(const TreeRayCastInput &input, uint64_t maskBits, bool requireAllBits, CastRayCb callback) const
 {
-	b3TreeStats stats {
+	DynamicTreeStats stats {
 		.nodeVisits = 0,
 		.leafVisits = 0,
 	};
@@ -1243,13 +1210,13 @@ b3TreeStats b3DynamicTree<UserT>::castRay(const b3RayCastInput &input, uint64_t 
 
 	float maxFraction = input.maxFraction;
 
-		   // b3Vec3 p2 = b3MulAdd( p1, maxFraction, d );
+	// b3Vec3 p2 = b3MulAdd( p1, maxFraction, d );
 	auto p2 = p1 + d * maxFraction;
 
-		   // Build a bounding box for the segment.
+	// Build a bounding box for the segment.
 	auto segmentAABB = bounds::AABB{ glm::min(p1, p2), glm::max(p1, p2) };
 
-	TreeNodeIndex stack[B3_TREE_STACK_SIZE];
+	TreeNodeIndex stack[DT_TREE_STACK_SIZE];
 	auto stackCount = 0u;
 	stack[stackCount++] = _root;
 
@@ -1258,7 +1225,7 @@ b3TreeStats b3DynamicTree<UserT>::castRay(const b3RayCastInput &input, uint64_t 
 	while(stackCount > 0)
 	{
 		auto nodeId = stack[--stackCount];
-		if(nodeId == B3_NULL_INDEX)
+		if(nodeId == DT_NULL_INDEX)
 		{
 			// todo is this possible?
 			assert(false);
@@ -1268,16 +1235,14 @@ b3TreeStats b3DynamicTree<UserT>::castRay(const b3RayCastInput &input, uint64_t 
 		const auto &node = _nodes[nodeId];
 		++stats.nodeVisits;
 
-		auto nodeAABB = node.aabb;
+		const auto nodeAABB = node.aabb;
 
-			   // todo look at disassembly
-		uint64_t bitMatch = requireAllBits? (node.categoryBits & maskBits ) == maskBits: (node.categoryBits & maskBits);
-
-		if(bitMatch == 0 or not intersect::check(nodeAABB, segmentAABB))
+		const auto bitMatch = requireAllBits? (node.categoryBits & maskBits ) == maskBits: (node.categoryBits & maskBits);
+		if(not bitMatch or not intersect::check(nodeAABB, segmentAABB))
 			continue;
 
-		auto lower = nodeAABB.min();
-		auto upper = nodeAABB.max();
+		const auto lower = nodeAABB.min();
+		const auto upper = nodeAABB.max();
 
 		bool edgeOverlap = testBoundsRayOverlap(lower, upper, p1, d);
 		if(not edgeOverlap)
@@ -1287,10 +1252,10 @@ b3TreeStats b3DynamicTree<UserT>::castRay(const b3RayCastInput &input, uint64_t 
 		{
 			subInput.maxFraction = maxFraction;
 
-			float value = callback(subInput, nodeId, node.userData);
+			const float value = callback(subInput, nodeId, node.userData);
 			++stats.leafVisits;
 
-				   // The user may return -1 to indicate this shape should be skipped
+			// The user may return -1 to indicate this shape should be skipped
 
 			if(value == 0)  // The client has terminated the ray cast.
 				return stats;
@@ -1307,11 +1272,11 @@ b3TreeStats b3DynamicTree<UserT>::castRay(const b3RayCastInput &input, uint64_t 
 		}
 		else
 		{
-			assert(stackCount < B3_TREE_STACK_SIZE - 1);
-			if(stackCount < B3_TREE_STACK_SIZE - 1)
+			assert(stackCount < DT_TREE_STACK_SIZE - 1);
+			if(stackCount < DT_TREE_STACK_SIZE - 1)
 			{
-				auto c1 = _nodes[node.children.child1].aabb.center();
-				auto c2 = _nodes[node.children.child2].aabb.center();
+				const auto c1 = _nodes[node.children.child1].aabb.center();
+				const auto c2 = _nodes[node.children.child2].aabb.center();
 				if(glm::distance2(c1, p1) < glm::distance2(c2, p1))
 				{
 					stack[stackCount++] = node.children.child2;
@@ -1331,9 +1296,9 @@ b3TreeStats b3DynamicTree<UserT>::castRay(const b3RayCastInput &input, uint64_t 
 
 
 template<typename UserT>
-b3TreeStats b3DynamicTree<UserT>::castBox(const b3BoxCastInput &input, uint64_t maskBits, bool requireAllBits, CastBoxCb callback) const
+DynamicTreeStats DynamicTree<UserT>::castBox(const TreeBoxCastInput &input, uint64_t maskBits, bool requireAllBits, CastBoxCb callback) const
 {
-	b3TreeStats stats {
+	DynamicTreeStats stats {
 		.nodeVisits = 0,
 		.leafVisits = 0,
 	};
@@ -1360,14 +1325,14 @@ b3TreeStats b3DynamicTree<UserT>::castBox(const b3BoxCastInput &input, uint64_t 
 
 	auto subInput = input;
 
-	TreeNodeIndex stack[B3_TREE_STACK_SIZE];
+	TreeNodeIndex stack[DT_TREE_STACK_SIZE];
 	auto stackCount = 0u;
 	stack[stackCount++] = _root;
 
 	while(stackCount > 0)
 	{
 		auto nodeId = stack[--stackCount];
-		if(nodeId == B3_NULL_INDEX)
+		if(nodeId == DT_NULL_INDEX)
 		{
 			assert(false);
 			continue;
@@ -1376,14 +1341,13 @@ b3TreeStats b3DynamicTree<UserT>::castBox(const b3BoxCastInput &input, uint64_t 
 		const auto &node = _nodes[nodeId];
 		++stats.nodeVisits;
 
-		uint64_t bitMatch = requireAllBits? (node.categoryBits & maskBits) == maskBits: (node.categoryBits & maskBits);
-
+		const auto bitMatch = requireAllBits? (node.categoryBits & maskBits) == maskBits: (node.categoryBits & maskBits);
 		if(not bitMatch or not intersect::check(node.aabb, totalAABB))
 			continue;
 
 		// radius extension is added to the node in this case
-		glm::vec3 lower = node.aabb.min() - extension;
-		glm::vec3 upper = node.aabb.max() + extension;
+		const auto lower = node.aabb.min() - extension;
+		const auto upper = node.aabb.max() + extension;
 		bool edgeOverlap = testBoundsRayOverlap(lower, upper, p1, d);
 		if(not edgeOverlap)
 			continue;
@@ -1392,7 +1356,7 @@ b3TreeStats b3DynamicTree<UserT>::castBox(const b3BoxCastInput &input, uint64_t 
 		{
 			subInput.maxFraction = maxFraction;
 
-			float value = callback(subInput, nodeId, node.userData);
+			const float value = callback(subInput, nodeId, node.userData);
 			++stats.leafVisits;
 
 			if(value == 0)
@@ -1411,11 +1375,11 @@ b3TreeStats b3DynamicTree<UserT>::castBox(const b3BoxCastInput &input, uint64_t 
 		}
 		else
 		{
-			assert(stackCount < B3_TREE_STACK_SIZE - 1);
-			if(stackCount < B3_TREE_STACK_SIZE - 1)
+			assert(stackCount < DT_TREE_STACK_SIZE - 1);
+			if(stackCount < DT_TREE_STACK_SIZE - 1)
 			{
-				glm::vec3 c1 = _nodes[node.children.child1].aabb.center();
-				glm::vec3 c2 = _nodes[node.children.child2].aabb.center();
+				const auto c1 = _nodes[node.children.child1].aabb.center();
+				const auto c2 = _nodes[node.children.child2].aabb.center();
 				if(glm::distance2(c1, p1) < glm::distance2(c2, p1))
 				{
 					stack[stackCount++] = node.children.child2;
