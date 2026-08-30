@@ -3,8 +3,12 @@
 #include <cstdint>
 #include <functional>
 #include <limits>
+#include <cstring>
 
 #include "bounds.h"
+
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/norm.hpp>
 
 namespace RGL
 {
@@ -27,49 +31,6 @@ enum b3TreeNodeFlags
 	b3_leafNode      = 0x0004,
 };
 
-
-struct b3TreeNode
-{
-	/// The node bounding box
-	bounds::AABB aabb; // 24
-
-	/// Category bits for collision filtering
-	uint64_t categoryBits { std::numeric_limits<uint64_t>::max() }; // 8
-
-	union
-	{
-		/// Children (internal node)
-		b3TreeNodeChildren children { .child1 = B3_NULL_INDEX, .child2 = B3_NULL_INDEX };
-
-		/// User data (leaf node)
-		uint64_t userData;
-	}; // 8
-
-	union
-	{
-		/// The node parent index (allocated node)
-		uint32_t parent { B3_NULL_INDEX };
-
-		/// The node freelist next index (free node)
-		uint32_t next;
-	}; // 4
-
-	/// Height of the node. Leaves have a height of 0.
-	uint16_t height { 0 }; // 2
-
-	/// @see b3TreeNodeFlags
-	uint16_t flags { b3_allocatedNode }; // 2
-
-	inline bool isLeaf() const
-	{
-		return (flags & b3_leafNode) > 0;
-	}
-
-	inline bool isAllocated() const
-	{
-		return flags & b3_allocatedNode;
-	}
-};
 
 struct b3TreeStats
 {
@@ -104,28 +65,67 @@ struct b3BoxCastInput
 	float maxFraction;
 };
 
-class b3DynamicTree // -> BVHTree
+using TreeProxyID = uint32_t;
+using TreeNodeIndex = uint32_t;
+
+template<typename UserT=uint64_t>
+struct b3TreeNode
+{
+	/// The node bounding box
+	bounds::AABB aabb; // 24
+
+		   /// Category bits for collision filtering
+	uint64_t categoryBits { std::numeric_limits<uint64_t>::max() }; // 8
+
+	union
+	{
+		/// Children (internal node)
+		b3TreeNodeChildren children { .child1 = B3_NULL_INDEX, .child2 = B3_NULL_INDEX };
+		/// User data (leaf node)
+		UserT userData;
+	}; // 8
+
+	union
+	{
+		/// The node parent index (allocated node)
+		TreeNodeIndex parent { B3_NULL_INDEX };
+
+			   /// The node freelist next index (free node)
+		TreeNodeIndex next;
+	}; // 4
+
+		   /// Height of the node. Leaves have a height of 0.
+	uint16_t height { 0 }; // 2
+
+		   /// @see b3TreeNodeFlags
+	uint16_t flags { b3_allocatedNode }; // 2
+
+	inline bool isLeaf() const { return (flags & b3_leafNode) > 0; }
+	inline bool isAllocated() const { return flags & b3_allocatedNode; }
+};
+
+template<typename UserT=uint64_t>
+class b3DynamicTree
 {
 public:
-	using ProxyID = uint32_t;
-	using NodeIndex = uint32_t;
-
-	using QueryCb = std::function<bool(ProxyID, uint64_t /*userData*/)>;
-	using QueryClosestCb = std::function<float(float, ProxyID, uint64_t /*userData*/)>;
-	using CastRayCb = std::function<float(const b3RayCastInput &, ProxyID, uint64_t /*userData*/)>;
-	using CastBoxCb = std::function<float(const b3BoxCastInput &, ProxyID, uint64_t /*userData*/)>;
-
+	using QueryCb = std::function<bool(TreeProxyID, UserT)>;
+	using QueryClosestCb = std::function<float(float, TreeProxyID, UserT)>;
+	using CastRayCb = std::function<float(const b3RayCastInput &, TreeProxyID, UserT)>;
+	using CastBoxCb = std::function<float(const b3BoxCastInput &, TreeProxyID, UserT)>;
 
 public:
 	b3DynamicTree(uint32_t proxyCapacity=0); // b3DynamicTree_Create
 	~b3DynamicTree(); // b3DynamicTree_Destroy
 
-	ProxyID newProxy(bounds::AABB aabb, uint64_t categoryBits, uint64_t userData); // b3DynamicTree_CreateProxy
-	void deleteProxy(ProxyID id); // b3DynamicTree_DestroyProxy
-	void moveProxy(ProxyID id, bounds::AABB aabb); // b3DynamicTree_MoveProxy
-	void growProxy(ProxyID id, bounds::AABB aabb); // b3DynamicTree_EnlargeProxy
-	void setCategoryBits(ProxyID id, uint64_t categoryBits); // b3DynamicTree_SetCategoryBits
-	[[nodiscard]] uint64_t categoryBits(ProxyID id) const; // b3DynamicTree_GetCategoryBits
+	TreeProxyID addProxy(bounds::AABB aabb, uint64_t categoryBits, UserT userData); // b3DynamicTree_CreateProxy
+	void deleteProxy(TreeProxyID id); // b3DynamicTree_DestroyProxy
+	void moveProxy(TreeProxyID id, bounds::AABB aabb); // b3DynamicTree_MoveProxy
+	void growProxy(TreeProxyID id, bounds::AABB aabb); // b3DynamicTree_EnlargeProxy
+	void setCategoryBits(TreeProxyID id, uint64_t categoryBits); // b3DynamicTree_SetCategoryBits
+	[[nodiscard]] uint64_t categoryBits(TreeProxyID id) const; // b3DynamicTree_GetCategoryBits
+	[[nodiscard]] inline uint32_t numProxies() const { return _proxyCount; } // b3DynamicTree_GetProxyCount
+	[[nodiscard]] UserT proxyUserData(TreeProxyID id) const;
+	[[nodiscard]] bounds::AABB proxyAABB(TreeProxyID id) const;
 
 	b3TreeStats query(bounds::AABB aabb, uint64_t maskBits, bool requireAllBits, QueryCb callback) const; // b3TreeStats b3DynamicTree_Query
 	b3TreeStats queryClosest(glm::vec3 point, uint64_t maskBits, bool requireAllBits, QueryClosestCb callback, float &minDistanceSqr) const; // b3DynamicTree_QueryClosest
@@ -137,44 +137,45 @@ public:
 
 	[[nodiscard]] bounds::AABB rootBounds() const; // b3DynamicTree_GetRootBounds
 
-	[[nodiscard]] inline uint32_t numProxies() const { return _proxyCount; } // b3DynamicTree_GetProxyCount
+	[[nodiscard]] size_t byteSize() const; // b3DynamicTree_GetByteCount
 
 	// TODO: uint32_t rebuild(bool full); // b3DynamicTree_Rebuild
 
-	[[nodiscard]] size_t byteSize() const; // b3DynamicTree_GetByteCount
 
-	void validate(); // b3DynamicTree_Validate
-
-	void validateGrown(); // b3DynamicTree_ValidateNoEnlarged
-
-	/// Save this tree to a file for debugging
-	// void b3DynamicTree_Save( const b3DynamicTree* tree, const char* fileName );
-
-	/// Load a file for debugging
-	// b3DynamicTree b3DynamicTree_Load( const char* fileName, float scale );
-
+#if defined(TREE_VALIDATION)
 	[[nodiscard]] int computeHeight() const;
+	void validate(); // b3DynamicTree_Validate
+	void validateGrown(); // b3DynamicTree_ValidateNoEnlarged
+#endif
 
 private:
-	NodeIndex allocateNode();
+	TreeNodeIndex allocateNode();
 	void freeNode(uint32_t nodeId);
 
-	NodeIndex findBestSibling(bounds::AABB box);
+	TreeNodeIndex findBestSibling(bounds::AABB box);
 
 	void rotateNodes(uint32_t iA);
-	void insertLeaf(NodeIndex leaf, bool shouldRotate=false);
-	void removeLeaf(NodeIndex leaf);
+	void insertLeaf(TreeNodeIndex leaf, bool shouldRotate=false);
+	void removeLeaf(TreeNodeIndex leaf);
 
-	[[nodiscard]] int computeHeightRecurse(NodeIndex nodeId) const;
-	void validateStructure(NodeIndex index) const;
-	void validateMetrics(NodeIndex index) const;
+#if defined(TREE_VALIDATION)
+	[[nodiscard]] int computeHeightRecurse(TreeNodeIndex nodeId) const;
+	void validateStructure(TreeNodeIndex index) const;
+	void validateMetrics(TreeNodeIndex index) const;
 	void validateNoGrown() const;
-
-	float nodeDistanceSq(glm::vec3 point, const b3TreeNode &node) const;
+#endif
+	float nodeDistanceSq(glm::vec3 point, const b3TreeNode<UserT> &node) const;
 
 	// TODO: NodeIndex buildTree(uint32_t leafCount);
 	// TODO: uint32_t partitionMid(NodeIndex *indices, glm::vec3 *centers, uint32_t count);
 	// TODO: uint32_t b3PartitionSAH(NodeIndex *indices, NodeIndex *binIndices, bounds::AABB *boxes, uint32_t count);
+
+private:
+	struct b3QueryClosestItem
+	{
+		TreeNodeIndex nodeIndex;
+		float distanceToNodeSqr;
+	};
 
 private:
 	/// The dynamic tree _version. Always the first field. Useful
@@ -182,10 +183,10 @@ private:
 	uint64_t _version;
 
 	/// The tree _nodes
-	std::vector<b3TreeNode> _nodes;
+	std::vector<b3TreeNode<UserT>> _nodes;
 
 	/// The _root index
-	NodeIndex _root;
+	TreeNodeIndex _root;
 
 	/// The number of nodes
 	uint32_t _nodeCount;
@@ -197,7 +198,7 @@ private:
 	uint32_t _proxyCount;
 
 	/// Node free list
-	NodeIndex _freeList;
+	TreeNodeIndex _freeList;
 
 /* TODO: rebuild
 	/// Leaf indices for rebuild
@@ -217,20 +218,1360 @@ private:
 */
 };
 
-#if 0
-/// Get proxy user data
-B3_INLINE uint64_t b3DynamicTree_GetUserData( const b3DynamicTree* tree, int proxyId )
+template<typename UserT>
+b3DynamicTree<UserT>::b3DynamicTree(uint32_t proxyCapacity) :
+	_version(B3_DYNAMIC_TREE_VERSION),
+	_root(B3_NULL_INDEX),
+	_nodeCount(0),
+	_nodeCapacity(0),
+	_proxyCount(0),
+	_freeList(0)
+// TODO: rebuild rebuildCapacity(0)
 {
-	return tree->nodes[proxyId].userData;
+	const auto capacity = std::max(proxyCapacity, 16u); // at least 16 proxies
+
+	_nodeCapacity = 2u * capacity - 1u;
+	_nodes.resize(_nodeCapacity);
+
+	std::memset(_nodes.data(), 0, _nodes.size() * sizeof(b3TreeNode<UserT>));
+
+	// Build a linked list for the free list.
+	// todo use a bump allocator until the capacity is consumed (see b3PoolAllocator)
+	for(auto idx = 0u; idx < _nodeCapacity - 2; ++idx)
+		_nodes[idx].next = idx + 1u;
+	_nodes.back().next = B3_NULL_INDEX;
 }
 
-/// Get the AABB of a proxy
-B3_INLINE b3AABB b3DynamicTree_GetAABB( const b3DynamicTree* tree, int proxyId )
+template<typename UserT>
+inline b3DynamicTree<UserT>::~b3DynamicTree()
 {
-	return tree->nodes[proxyId].aabb;
 }
-#endif
 
-/**@}*/ // tree
+template<typename UserT>
+TreeProxyID b3DynamicTree<UserT>::addProxy(bounds::AABB aabb, uint64_t categoryBits, UserT userData)
+{
+	assert(math::valid(aabb));
+
+	auto proxyId = allocateNode();
+	auto &node = _nodes[proxyId];
+
+	node.aabb = aabb;
+	node.userData = userData;
+	node.categoryBits = categoryBits;
+	node.height = 0;
+	node.flags = b3_allocatedNode | b3_leafNode;
+
+	bool shouldRotate = true;
+	insertLeaf(proxyId, shouldRotate);
+
+	++_proxyCount;
+
+	return proxyId;
+}
+
+template<typename UserT>
+void b3DynamicTree<UserT>::deleteProxy(TreeProxyID proxyId)
+{
+	assert(0 <= proxyId and proxyId < _nodeCapacity);
+	assert(_nodes[proxyId].isLeaf());
+
+	removeLeaf(proxyId);
+	freeNode(proxyId);
+
+	assert(_proxyCount > 0);
+	--_proxyCount;
+}
+
+template<typename UserT>
+void b3DynamicTree<UserT>::moveProxy(TreeProxyID proxyId, bounds::AABB aabb)
+{
+	assert(math::valid(aabb));
+	assert(0 <= proxyId and proxyId < _nodeCapacity );
+	assert(_nodes[proxyId].isLeaf());
+
+	removeLeaf(proxyId);
+
+	_nodes[proxyId].aabb = aabb;
+
+	bool shouldRotate = false;
+	insertLeaf(proxyId, shouldRotate);
+}
+
+template<typename UserT>
+void b3DynamicTree<UserT>::growProxy(TreeProxyID proxyId, bounds::AABB aabb)
+{
+	assert(math::valid(aabb));
+	assert(0 <= proxyId and proxyId < _nodeCapacity);
+	assert(_nodes[proxyId].isLeaf());
+
+	// Caller must ensure this
+
+	assert(not intersect::check(_nodes[proxyId].aabb, aabb));
+
+	auto &node = _nodes[proxyId];
+	node.aabb = aabb;
+
+	auto parentIndex = node.parent;
+	while(parentIndex != B3_NULL_INDEX)
+	{
+		auto node = _nodes[parentIndex];
+		bool changed = node.aabb.expand(aabb);
+
+		// todo not sure why this node is marked as enlarged even if it didn't change
+		node.flags |= b3_enlargedNode;
+
+		parentIndex = node.parent;
+
+		if(not changed)
+			break;
+	}
+
+	while(parentIndex != B3_NULL_INDEX)
+	{
+		auto node = _nodes[parentIndex];
+		if(node.flags & b3_enlargedNode)
+			// early out because this ancestor was previously ascended and marked as enlarged
+			break;
+
+		node.flags |= b3_enlargedNode;
+		parentIndex = node.parent;
+	}
+}
+
+template<typename UserT>
+void b3DynamicTree<UserT>::setCategoryBits(TreeProxyID proxyId, uint64_t categoryBits)
+{
+	assert(_nodes[proxyId].isLeaf());
+
+	_nodes[proxyId].categoryBits = categoryBits;
+
+	// Fix up category bits in ancestor internal _nodes
+	auto nodeIndex = _nodes[proxyId].parent;
+	while(nodeIndex != B3_NULL_INDEX )
+	{
+		auto &node = _nodes[nodeIndex];
+		auto child1 = node.children.child1;
+		assert(child1 != B3_NULL_INDEX);
+		auto child2 = node.children.child2;
+		assert(child2 != B3_NULL_INDEX);
+		node.categoryBits = _nodes[child1].categoryBits | _nodes[child2].categoryBits;
+
+		nodeIndex = node.parent;
+	}
+}
+
+template<typename UserT>
+uint64_t b3DynamicTree<UserT>::categoryBits(TreeProxyID proxyId) const
+{
+	assert( 0 <= proxyId and proxyId < _nodeCapacity);
+	return _nodes[proxyId].categoryBits;
+}
+
+template<typename UserT>
+int b3DynamicTree<UserT>::height() const
+{
+	if(_root == B3_NULL_INDEX)
+		return 0;
+
+	return _nodes[_root].height;
+}
+
+template<typename UserT>
+float b3DynamicTree<UserT>::areaRatio() const
+{
+	if(_root == B3_NULL_INDEX)
+		return 0;
+
+	float rootArea = _nodes[_root].aabb.surfaceArea();
+
+	float totalArea = 0;
+	for(auto i = 0u; i < _nodeCapacity; ++i )
+	{
+		const auto &node = _nodes[i];
+		if(not node.isAllocated() or node.isLeaf() or i == _root)
+			continue;
+
+		totalArea += node.aabb.surfaceArea();
+	}
+
+	return totalArea / rootArea;
+}
+
+template<typename UserT>
+bounds::AABB b3DynamicTree<UserT>::rootBounds() const
+{
+	if(_root != B3_NULL_INDEX)
+		return _nodes[_root].aabb;
+
+	return {};
+}
+
+template<typename UserT>
+static b3DynamicTree<UserT>::b3TreeNode b3_defaultTreeNode = {
+	.aabb = { { 0, 0, 0 }, { 0, 0, 0 } },
+	.categoryBits = B3_DEFAULT_CATEGORY_BITS,
+	.children = {
+		.child1 = B3_NULL_INDEX,
+		.child2 = B3_NULL_INDEX,
+	},
+	.parent = B3_NULL_INDEX,
+	.height = 0,
+	.flags = b3_allocatedNode,
+};
+
+// Allocate a node from the pool. Grow the pool if necessary.
+template<typename UserT>
+TreeNodeIndex b3DynamicTree<UserT>::allocateNode()
+{
+	// Expand the node pool as needed.
+	if(_freeList == B3_NULL_INDEX )
+	{
+		assert(_nodeCount == _nodeCapacity);
+
+		// The free list is empty. Rebuild a bigger pool.
+		// b3TreeNode* oldNodes = tree->nodes;
+		_nodeCapacity += _nodeCapacity >> 1;
+		_nodes.resize(_nodeCapacity);
+		// zero the new nodes
+		std::memset(&_nodes[_nodeCount], 0, (_nodeCapacity - _nodeCount) * sizeof(decltype(_nodes)::value_type));
+
+		// Build a linked list for the free list. The parent pointer becomes the "next" pointer.
+		// todo avoid building freelist?
+		for(auto idx = _nodeCount; idx < _nodeCapacity - 1; ++idx )
+			_nodes[idx].next = idx + 1;
+		_nodes.back().next = B3_NULL_INDEX;
+
+		_freeList = _nodeCount;
+	}
+
+	// Peel a node off the free list.
+	const auto nodeIndex = _freeList;
+	auto &node = _nodes[size_t(nodeIndex)];
+	_freeList = node.next;
+	node = b3_defaultTreeNode<UserT>();
+	++_nodeCount;
+
+	return nodeIndex;
+}
+
+template<typename UserT>
+void b3DynamicTree<UserT>::freeNode(uint32_t nodeId)
+{
+	assert( 0 <= nodeId and nodeId < _nodeCapacity );
+	assert( 0 < _nodeCount );
+	_nodes[nodeId].next = _freeList;
+	_nodes[nodeId].flags = 0;
+	_freeList = nodeId;
+	--_nodeCount;
+}
+
+template<typename UserT>
+void b3DynamicTree<UserT>::insertLeaf(TreeNodeIndex leaf, bool shouldRotate)
+{
+	if(_root == B3_NULL_INDEX )
+	{
+		_root = leaf;
+		_nodes[_root].parent = B3_NULL_INDEX;
+		return;
+	}
+
+		   // Stage 1: find the best sibling for this node
+	auto leafAABB = _nodes[leaf].aabb;
+	auto sibling = findBestSibling(leafAABB);
+
+		   // Stage 2: create a new parent for the leaf and sibling
+	auto oldParent = _nodes[sibling].parent;
+	auto newParent = allocateNode();
+
+		   // warning: node pointer can change after allocation
+	_nodes[newParent].parent = oldParent;
+	_nodes[newParent].userData = std::numeric_limits<uint64_t>::max();
+	_nodes[newParent].aabb = math::envelop(leafAABB, _nodes[sibling].aabb);
+	_nodes[newParent].categoryBits = _nodes[leaf].categoryBits | _nodes[sibling].categoryBits;
+	_nodes[newParent].height = _nodes[sibling].height + 1;
+
+	if(oldParent != B3_NULL_INDEX)
+	{
+		// The sibling was not the root.
+		if(_nodes[oldParent].children.child1 == sibling)
+			_nodes[oldParent].children.child1 = newParent;
+		else
+			_nodes[oldParent].children.child2 = newParent;
+
+		_nodes[newParent].children.child1 = sibling;
+		_nodes[newParent].children.child2 = leaf;
+		_nodes[sibling].parent = newParent;
+		_nodes[leaf].parent = newParent;
+	}
+	else
+	{
+		// The sibling was the root.
+		_nodes[newParent].children.child1 = sibling;
+		_nodes[newParent].children.child2 = leaf;
+		_nodes[sibling].parent = newParent;
+		_nodes[leaf].parent = newParent;
+		_root = newParent;
+	}
+
+		   // Stage 3: walk back up the tree fixing heights and AABBs
+	auto index = _nodes[leaf].parent;
+	while(index != B3_NULL_INDEX)
+	{
+		auto child1 = _nodes[index].children.child1;
+		auto child2 = _nodes[index].children.child2;
+
+		assert(child1 != B3_NULL_INDEX);
+		assert(child2 != B3_NULL_INDEX);
+
+		_nodes[index].aabb = math::envelop(_nodes[child1].aabb, _nodes[child2].aabb);
+		_nodes[index].categoryBits = _nodes[child1].categoryBits | _nodes[child2].categoryBits;
+		_nodes[index].height = 1 + std::max(_nodes[child1].height, _nodes[child2].height );
+		_nodes[index].flags |= ( _nodes[child1].flags | _nodes[child2].flags ) & b3_enlargedNode;
+
+		if(shouldRotate)
+			rotateNodes(index);
+
+		index = _nodes[index].parent;
+	}
+}
+
+template<typename UserT>
+void b3DynamicTree<UserT>::removeLeaf(TreeNodeIndex leaf)
+{
+	if(leaf == _root)
+	{
+		_root = B3_NULL_INDEX;
+		return;
+	}
+
+	auto parent = _nodes[leaf].parent;
+	auto grandParent = _nodes[parent].parent;
+	TreeNodeIndex sibling;
+	if(_nodes[parent].children.child1 == leaf)
+		sibling = _nodes[parent].children.child2;
+	else
+		sibling = _nodes[parent].children.child1;
+
+	if(grandParent != B3_NULL_INDEX)
+	{
+		// Destroy parent and connect sibling to grandParent.
+		if(_nodes[grandParent].children.child1 == parent )
+			_nodes[grandParent].children.child1 = sibling;
+		else
+			_nodes[grandParent].children.child2 = sibling;
+		_nodes[sibling].parent = grandParent;
+		freeNode(parent);
+
+			   // Adjust ancestor bounds.
+		auto index = grandParent;
+		while(index != B3_NULL_INDEX)
+		{
+			auto &node = _nodes[index];
+			auto &child1 = _nodes[node.children.child1];
+			auto &child2 = _nodes[node.children.child2];
+
+			// Fast union using SSE
+			//__m128 aabb1 = _mm_load_ps(&child1->aabb.lowerBound.x);
+			//__m128 aabb2 = _mm_load_ps(&child2->aabb.lowerBound.x);
+			//__m128 lower = _mm_min_ps(aabb1, aabb2);
+			//__m128 upper = _mm_max_ps(aabb1, aabb2);
+			//__m128 aabb = _mm_shuffle_ps(lower, upper, _MM_SHUFFLE(3, 2, 1, 0));
+			//_mm_store_ps(&node->aabb.lowerBound.x, aabb);
+
+			node.aabb = math::envelop(child1.aabb, child2.aabb);
+			node.categoryBits = child1.categoryBits | child2.categoryBits;
+			node.height = 1 + std::max(child1.height, child2.height );
+
+			index = node.parent;
+		}
+	}
+	else
+	{
+		_root = sibling;
+		_nodes[sibling].parent = B3_NULL_INDEX;
+		freeNode(parent);
+	}
+}
+
+template<typename UserT>
+TreeNodeIndex b3DynamicTree<UserT>::findBestSibling(bounds::AABB box)
+{
+	const auto centerD = box.center();
+	const auto areaD = box.surfaceArea();
+
+	const auto rootIndex = _root;
+
+	auto rootBox = _nodes[rootIndex].aabb;
+
+		   // Area of current node
+	auto areaBase = rootBox.surfaceArea();
+
+		   // Area of inflated node
+	float directCost = math::envelop(rootBox, box).surfaceArea();
+	float inheritedCost = 0;
+
+	auto bestSibling = rootIndex;
+	auto bestCost = directCost;
+
+		   // Descend the tree from root, following a single greedy path.
+	auto index = rootIndex;
+	while (not _nodes[index].isLeaf())
+	{
+		auto child1 = _nodes[index].children.child1;
+		auto child2 = _nodes[index].children.child2;
+
+			   // Cost of creating a new parent for this node and the new leaf
+		float cost = directCost + inheritedCost;
+
+			   // Sometimes there are multiple identical costs within tolerance.
+			   // This breaks the ties using the centroid distance.
+		if ( cost < bestCost )
+		{
+			bestSibling = index;
+			bestCost = cost;
+		}
+
+			   // Inheritance cost seen by children
+		inheritedCost += directCost - areaBase;
+
+		bool leaf1 = _nodes[child1].isLeaf();
+		bool leaf2 = _nodes[child2].isLeaf();
+
+			   // Cost of descending into child 1
+		float lowerCost1 = std::numeric_limits<float>::max();
+		bounds::AABB box1 = _nodes[child1].aabb;
+		float directCost1 = math::envelop(box1, box).surfaceArea();
+		float area1 = 0;
+		if(leaf1)
+		{
+			// Child 1 is a leaf
+			// Cost of creating new node and increasing area of node P
+			float cost1 = directCost1 + inheritedCost;
+
+				   // Need this here due to while condition above
+			if ( cost1 < bestCost )
+			{
+				bestSibling = child1;
+				bestCost = cost1;
+			}
+		}
+		else
+		{
+			// Child 1 is an internal node
+			area1 = box1.surfaceArea();
+
+				   // Lower bound cost of inserting under child 1.
+			lowerCost1 = inheritedCost + directCost1 + std::min(areaD - area1, 0.0f);
+		}
+
+			   // Cost of descending into child 2
+		float lowerCost2 = std::numeric_limits<float>::min();
+		bounds::AABB box2 = _nodes[child2].aabb;
+		float directCost2 = math::envelop( box2, box).surfaceArea();
+		float area2 = 0.0f;
+		if(leaf2)
+		{
+			// Child 2 is a leaf
+			// Cost of creating new node and increasing area of node P
+			float cost2 = directCost2 + inheritedCost;
+
+				   // Need this here due to while condition above
+			if(cost2 < bestCost)
+			{
+				bestSibling = child2;
+				bestCost = cost2;
+			}
+		}
+		else
+		{
+			// Child 2 is an internal node
+			area2 = box2.surfaceArea();
+
+				   // Lower bound cost of inserting under child 2. This is not the cost
+				   // of child 2, it is the best we can hope for under child 2.
+			lowerCost2 = inheritedCost + directCost2 + std::min(areaD - area2, 0.0f);
+		}
+
+		if(leaf1 and leaf2)
+			break;
+
+			   // Can the cost possibly be decreased?
+		if(bestCost <= lowerCost1 and bestCost <= lowerCost2)
+			break;
+
+		if(lowerCost1 == lowerCost2 and not leaf1)
+		{
+			// No clear choice based on lower bound surface area. This can happen when both
+			// children fully contain D. Fall back to node distance.
+			auto d1 = box1.center() - centerD;
+			auto d2 = box2.center() - centerD;
+			lowerCost1 = glm::length2(d1);
+			lowerCost2 = glm::length2(d2);
+		}
+
+			   // Descend
+		if(lowerCost1 < lowerCost2 and not leaf1)
+		{
+			index = child1;
+			areaBase = area1;
+			directCost = directCost1;
+		}
+		else
+		{
+			index = child2;
+			areaBase = area2;
+			directCost = directCost2;
+		}
+
+		assert(not _nodes[index].isLeaf());
+	}
+
+	return bestSibling;
+}
+
+enum b3RotateType
+{
+	b3_rotateNone,
+	b3_rotateBF,
+	b3_rotateBG,
+	b3_rotateCD,
+	b3_rotateCE
+};
+
+template<typename UserT>
+void b3DynamicTree<UserT>::rotateNodes(uint32_t iA)
+{
+	assert(iA != B3_NULL_INDEX);
+
+	auto &A = _nodes[iA];
+	if(A.isLeaf())
+		return;
+
+	auto iB = A.children.child1;
+	auto iC = A.children.child2;
+	assert(0 <= iB and iB < _nodeCapacity);
+	assert(0 <= iC and iC < _nodeCapacity);
+
+	auto &B = _nodes[iB];
+	auto &C = _nodes[iC];
+
+	bool isLeafB = B.isLeaf();
+	bool isLeafC = C.isLeaf();
+
+	if(isLeafB and not isLeafC)
+	{
+		auto iF = C.children.child1;
+		auto iG = C.children.child2;
+		auto &F = _nodes[iF];
+		auto &G = _nodes[iG];
+		assert(0 <= iF and iF < _nodeCapacity);
+		assert(0 <= iG and iG < _nodeCapacity);
+
+			   // Base cost
+		float costBase = C.aabb.surfaceArea();
+
+			   // Cost of swapping B and F
+		auto aabbBG = math::envelop(B.aabb, C.aabb);
+		float costBF = aabbBG.surfaceArea();
+
+			   // Cost of swapping B and G
+		auto aabbBF = math::envelop(B.aabb, F.aabb);
+		float costBG = aabbBF.surfaceArea();
+
+		if(costBase < costBF and costBase < costBG)
+		{
+			// Rotation does not improve cost
+			return;
+		}
+
+		if(costBF < costBG)
+		{
+			// Swap B and F
+			A.children.child1 = iF;
+			C.children.child1 = iB;
+
+			B.parent = iC;
+			F.parent = iA;
+
+			C.aabb = aabbBG;
+
+			C.height = 1 + std::max(B.height, G.height);
+			A.height = 1 + std::max(C.height, F.height);
+			C.categoryBits = B.categoryBits | G.categoryBits;
+			A.categoryBits = C.categoryBits | F.categoryBits;
+			C.flags |= (B.flags | G.flags) & b3_enlargedNode;
+			A.flags |= (C.flags | F.flags) & b3_enlargedNode;
+		}
+		else
+		{
+			// Swap B and G
+			A.children.child1 = iG;
+			C.children.child2 = iB;
+
+			B.parent = iC;
+			G.parent = iA;
+
+			C.aabb = aabbBF;
+
+			C.height = 1 + std::max(B.height, F.height);
+			A.height = 1 + std::max(C.height, G.height);
+			C.categoryBits = B.categoryBits | F.categoryBits;
+			A.categoryBits = C.categoryBits | G.categoryBits;
+			C.flags |= (B.flags | F.flags) & b3_enlargedNode;
+			A.flags |= (C.flags | G.flags) & b3_enlargedNode;
+		}
+	}
+	else if(isLeafC and not isLeafB)
+	{
+		// C is a leaf and B is internal
+
+		auto iD = B.children.child1;
+		auto iE = B.children.child2;
+		auto &D = _nodes[iD];
+		auto &E = _nodes[iE];
+		assert(0 <= iD and iD < _nodeCapacity);
+		assert(0 <= iE and iE < _nodeCapacity);
+
+			   // Base cost
+		float costBase = B.aabb.surfaceArea();
+
+			   // Cost of swapping C and D
+		auto aabbCE = math::envelop(C.aabb, E.aabb);
+		float costCD = aabbCE.surfaceArea();
+
+			   // Cost of swapping C and E
+		auto aabbCD = math::envelop(C.aabb, D.aabb);
+		float costCE = aabbCD.surfaceArea();
+
+		if(costBase < costCD and costBase < costCE)
+		{
+			// Rotation does not improve cost
+			return;
+		}
+
+		if(costCD < costCE)
+		{
+			// Swap C and D
+			A.children.child2 = iD;
+			B.children.child1 = iC;
+
+			C.parent = iB;
+			D.parent = iA;
+
+			B.aabb = aabbCE;
+
+			B.height = 1 + std::max(C.height, E.height);
+			A.height = 1 + std::max(B.height, D.height);
+			B.categoryBits = C.categoryBits | E.categoryBits;
+			A.categoryBits = B.categoryBits | D.categoryBits;
+			B.flags |= (C.flags | E.flags) & b3_enlargedNode;
+			A.flags |= (B.flags | D.flags) & b3_enlargedNode;
+		}
+		else
+		{
+			// Swap C and E
+			A.children.child2 = iE;
+			B.children.child2 = iC;
+
+			C.parent = iB;
+			E.parent = iA;
+
+			B.aabb = aabbCD;
+
+			B.height = 1 + std::max(C.height, D.height);
+			A.height = 1 + std::max(B.height, E.height);
+			B.categoryBits = C.categoryBits | D.categoryBits;
+			A.categoryBits = B.categoryBits | E.categoryBits;
+			B.flags |= (C.flags | D.flags) & b3_enlargedNode;
+			A.flags |= (B.flags | E.flags) & b3_enlargedNode;
+		}
+	}
+	else if(not isLeafB and not isLeafC)
+	{
+		// All grand children exist so there are many options for rotation
+		auto iD = B.children.child1;
+		auto iE = B.children.child2;
+		auto iF = C.children.child1;
+		auto iG = C.children.child2;
+
+		assert(0 <= iD and iD < _nodeCapacity);
+		assert(0 <= iE and iE < _nodeCapacity);
+		assert(0 <= iF and iF < _nodeCapacity);
+		assert(0 <= iG and iG < _nodeCapacity);
+
+		auto &D = _nodes[iD];
+		auto &E = _nodes[iE];
+		auto &F = _nodes[iF];
+		auto &G = _nodes[iG];
+
+			   // Base cost
+		float areaB = B.aabb.surfaceArea();
+		float areaC = C.aabb.surfaceArea();
+		float costBase = areaB + areaC;
+		auto bestRotation = b3_rotateNone;
+		float bestCost = costBase;
+
+			   // Cost of swapping B and F
+		auto aabbBG = math::envelop(B.aabb, G.aabb);
+		float costBF = areaB + aabbBG.surfaceArea();
+		if(costBF < bestCost)
+		{
+			bestRotation = b3_rotateBF;
+			bestCost = costBF;
+		}
+
+			   // Cost of swapping B and G
+		auto aabbBF = math::envelop(B.aabb, F.aabb);
+		float costBG = areaB + aabbBF.surfaceArea();
+		if(costBG < bestCost)
+		{
+			bestRotation = b3_rotateBG;
+			bestCost = costBG;
+		}
+
+			   // Cost of swapping C and D
+		auto aabbCE = math::envelop(C.aabb, E.aabb);
+		float costCD = areaC + aabbCE.surfaceArea();
+		if(costCD < bestCost)
+		{
+			bestRotation = b3_rotateCD;
+			bestCost = costCD;
+		}
+
+			   // Cost of swapping C and E
+		auto aabbCD = math::envelop(C.aabb, D.aabb);
+		float costCE = areaC + aabbCD.surfaceArea();
+		if(costCE < bestCost)
+		{
+			bestRotation = b3_rotateCE;
+			// bestCost = costCE;
+		}
+
+		switch(bestRotation)
+		{
+		case b3_rotateNone:
+			break;
+
+		case b3_rotateBF:
+			A.children.child1 = iF;
+			C.children.child1 = iB;
+
+			B.parent = iC;
+			F.parent = iA;
+
+			C.aabb = aabbBG;
+
+			C.height = 1 + std::max(B.height, G.height);
+			A.height = 1 + std::max(C.height, F.height);
+			C.categoryBits = B.categoryBits | G.categoryBits;
+			A.categoryBits = C.categoryBits | F.categoryBits;
+			C.flags |= (B.flags | G.flags) & b3_enlargedNode;
+			A.flags |= (C.flags | F.flags) & b3_enlargedNode;
+			break;
+
+		case b3_rotateBG:
+			A.children.child1 = iG;
+			C.children.child2 = iB;
+
+			B.parent = iC;
+			G.parent = iA;
+
+			C.aabb = aabbBF;
+
+			C.height = 1 + std::max(B.height, F.height);
+			A.height = 1 + std::max(C.height, G.height);
+			C.categoryBits = B.categoryBits | F.categoryBits;
+			A.categoryBits = C.categoryBits | G.categoryBits;
+			C.flags |= (B.flags | F.flags) & b3_enlargedNode;
+			A.flags |= (C.flags | G.flags) & b3_enlargedNode;
+			break;
+
+		case b3_rotateCD:
+			A.children.child2 = iD;
+			B.children.child1 = iC;
+
+			C.parent = iB;
+			D.parent = iA;
+
+			B.aabb = aabbCE;
+
+			B.height = 1 + std::max(C.height, E.height);
+			A.height = 1 + std::max(B.height, D.height);
+			B.categoryBits = C.categoryBits | E.categoryBits;
+			A.categoryBits = B.categoryBits | D.categoryBits;
+			B.flags |= (C.flags | E.flags) & b3_enlargedNode;
+			A.flags |= (B.flags | D.flags) & b3_enlargedNode;
+			break;
+
+		case b3_rotateCE:
+			A.children.child2 = iE;
+			B.children.child2 = iC;
+
+			C.parent = iB;
+			E.parent = iA;
+
+			B.aabb = aabbCD;
+
+			B.height = 1 + std::max(C.height, D.height);
+			A.height = 1 + std::max(B.height, E.height);
+			B.categoryBits = C.categoryBits | D.categoryBits;
+			A.categoryBits = B.categoryBits | E.categoryBits;
+			B.flags |= (C.flags | D.flags) & b3_enlargedNode;
+			A.flags |= (B.flags | E.flags) & b3_enlargedNode;
+			break;
+
+		default:
+			assert(false);
+			break;
+		}
+	}
+}
+
+template<typename UserT>
+UserT b3DynamicTree<UserT>::proxyUserData(TreeProxyID id) const
+{
+	return _nodes[id].userData;
+}
+
+template<typename UserT>
+bounds::AABB b3DynamicTree<UserT>::proxyAABB(TreeProxyID id) const
+{
+	return _nodes[id].aabb;
+}
+
+template<typename UserT>
+size_t b3DynamicTree<UserT>::byteSize() const
+{
+	auto size = sizeof(decltype(this)) + sizeof(decltype(_nodes)::value_type) * _nodes.capacity();
+	/* TODO: rebuild size_t(_rebuildCapacity) *  (sizeof(uint32_t) + sizeof(bounds::AABB) + sizeof(glm::vec3) + sizeof(uint32_t)); */
+
+	return size;
+}
+
+template<typename UserT>
+float b3DynamicTree<UserT>::nodeDistanceSq(glm::vec3 point, const b3TreeNode<UserT> &node) const
+{
+	const auto r = point - glm::clamp(point, node.aabb.min(), node.aabb.max());
+	return glm::dot(r, r);
+}
+
+
+#define B3_TREE_STACK_SIZE 1024
+
+template<typename UserT>
+b3TreeStats b3DynamicTree<UserT>::query(bounds::AABB aabb, uint64_t maskBits, bool requireAllBits, QueryCb callback) const
+{
+	b3TreeStats result {
+		.nodeVisits = 0,
+		.leafVisits = 0,
+	};
+
+	if(not _nodeCount)
+		return result;
+
+	TreeNodeIndex stack[B3_TREE_STACK_SIZE];
+	uint32_t stackCount { 0 };
+	stack[stackCount++] = _root;
+
+	while(stackCount > 0)
+	{
+		auto nodeId = stack[--stackCount];
+		if(nodeId == B3_NULL_INDEX)
+		{
+			// todo huh?
+			assert(false);
+			continue;
+		}
+
+		const auto &node = _nodes[nodeId];
+		++result.nodeVisits;
+
+			   // Assuming branch prediction deals with requireAllBits well
+		auto bitMatch = requireAllBits? (node.categoryBits & maskBits) == maskBits: (node.categoryBits & maskBits);
+
+		if(bitMatch and intersect::check(node.aabb, aabb))
+		{
+			if(node.isLeaf())
+			{
+				// callback to user code with proxy id
+				bool proceed = callback(nodeId, node.userData);
+				++result.leafVisits;
+
+				if(not proceed)
+					return result;
+			}
+			else
+			{
+				assert(stackCount < B3_TREE_STACK_SIZE - 1);
+				if(stackCount < B3_TREE_STACK_SIZE - 1)
+				{
+					stack[stackCount++] = node.children.child1;
+					stack[stackCount++] = node.children.child2;
+				}
+			}
+		}
+	}
+
+	return result;
+}
+
+template<typename UserT>
+b3TreeStats b3DynamicTree<UserT>::queryClosest(glm::vec3 point, uint64_t maskBits, bool requireAllBits, QueryClosestCb callback, float &minDistanceSqr) const
+{
+	b3TreeStats result {
+		.nodeVisits = 0,
+		.leafVisits = 0,
+	};
+
+	if(not _nodeCount)
+		return result;
+
+	float minSqr = minDistanceSqr;
+	b3QueryClosestItem stack[B3_TREE_STACK_SIZE];
+	auto stackCount = 0u;
+
+	float rootDistanceSqr = nodeDistanceSq(point, _nodes[_root]);
+	stack[stackCount++] = {
+		.nodeIndex = _root,
+		.distanceToNodeSqr = rootDistanceSqr,
+	};
+
+	while( stackCount > 0)
+	{
+		b3QueryClosestItem item = stack[--stackCount];
+		const auto &node = _nodes[item.nodeIndex];
+		++result.nodeVisits;
+
+		auto bitMatch = requireAllBits? (node.categoryBits & maskBits) == maskBits: (node.categoryBits & maskBits);
+
+		if(bitMatch)
+		{
+			if(item.distanceToNodeSqr < minSqr)
+			{
+				if(node.isLeaf())
+				{
+					// callback to user code with minimum distance squared so far and proxy id
+					float dd = callback(minSqr, item.nodeIndex, node.userData);
+
+					if(dd < minSqr)
+						minSqr = dd;
+
+					++result.leafVisits;
+				}
+				else
+				{
+					assert(stackCount < B3_TREE_STACK_SIZE - 1);
+					if( stackCount < B3_TREE_STACK_SIZE - 1)
+					{
+						auto child1 = node.children.child1;
+						auto child2 = node.children.child2;
+
+							   // Store the distance to node in the stack instead of recomputing after pop
+						b3QueryClosestItem item1 = {
+							.nodeIndex = child1,
+							.distanceToNodeSqr = nodeDistanceSq( point, _nodes[child1]),
+						};
+
+						b3QueryClosestItem item2 = {
+							.nodeIndex = child2,
+							.distanceToNodeSqr = nodeDistanceSq(point, _nodes[child2]),
+						};
+
+							   // Ensure we iterate the closest child first as we pop off the stack
+						if(item2.distanceToNodeSqr < item1.distanceToNodeSqr)
+						{
+							stack[stackCount++] = item1;
+							stack[stackCount++] = item2;
+						}
+						else
+						{
+							stack[stackCount++] = item2;
+							stack[stackCount++] = item1;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	minDistanceSqr = minSqr;
+
+	return result;
+}
+
+
+static inline glm::vec3 modifiedCross(glm::vec3 a, glm::vec3 b)
+{
+	// like cross(a, b) but sums instead of differences
+	// TODO: this function needs a better name...
+	return { a.y * b.z + a.z * b.y, a.z * b.x + a.x * b.z, a.x * b.y + a.y * b.x };
+}
+
+static inline bool testBoundsRayOverlap(glm::vec3 nodeMin, glm::vec3 nodeMax, glm::vec3 rayStart, glm::vec3 rayDelta)
+{
+	// Setup node
+	// b3V32 nodeCenter = b3MulV( b3_halfV, b3AddV( nodeMin, nodeMax ) );
+	auto nodeCenter = 0.5f * (nodeMin + nodeMax);
+	// b3V32 nodeExtent = b3SubV( nodeMax, nodeCenter );
+	auto nodeExtent = nodeMax - nodeCenter;
+
+	// Setup ray
+	// rayStart = b3SubV( rayStart, nodeCenter );
+	rayStart -= nodeCenter;
+
+	// SAT: Edge separation
+	// b3V32 edgeSeparation = b3SubV( b3AbsV( b3CrossV( rayDelta, rayStart ) ), b3ModifiedCrossV( b3AbsV( rayDelta ), nodeExtent ) );
+	auto edgeSeparation = glm::abs(glm::cross(rayDelta, rayStart)) - modifiedCross(glm::abs(rayDelta), nodeExtent);
+	// return b3AllLessEq3V( edgeSeparation, b3_zeroV );
+	return glm::all(glm::lessThanEqual(edgeSeparation, glm::zero<glm::vec3>()));
+}
+
+
+template<typename UserT>
+b3TreeStats b3DynamicTree<UserT>::castRay(const b3RayCastInput &input, uint64_t maskBits, bool requireAllBits, CastRayCb callback) const
+{
+	b3TreeStats stats {
+		.nodeVisits = 0,
+		.leafVisits = 0,
+	};
+
+	if(not _nodeCount)
+		return stats;
+
+	auto p1 = input.origin;
+	auto d = input.translation;
+
+	float maxFraction = input.maxFraction;
+
+		   // b3Vec3 p2 = b3MulAdd( p1, maxFraction, d );
+	auto p2 = p1 + d * maxFraction;
+
+		   // Build a bounding box for the segment.
+	auto segmentAABB = bounds::AABB{ glm::min(p1, p2), glm::max(p1, p2) };
+
+	TreeNodeIndex stack[B3_TREE_STACK_SIZE];
+	auto stackCount = 0u;
+	stack[stackCount++] = _root;
+
+	auto subInput = input;
+
+	while(stackCount > 0)
+	{
+		auto nodeId = stack[--stackCount];
+		if(nodeId == B3_NULL_INDEX)
+		{
+			// todo is this possible?
+			assert(false);
+			continue;
+		}
+
+		const auto &node = _nodes[nodeId];
+		++stats.nodeVisits;
+
+		auto nodeAABB = node.aabb;
+
+			   // todo look at disassembly
+		uint64_t bitMatch = requireAllBits? (node.categoryBits & maskBits ) == maskBits: (node.categoryBits & maskBits);
+
+		if(bitMatch == 0 or not intersect::check(nodeAABB, segmentAABB))
+			continue;
+
+		auto lower = nodeAABB.min();
+		auto upper = nodeAABB.max();
+
+		bool edgeOverlap = testBoundsRayOverlap(lower, upper, p1, d);
+		if(not edgeOverlap)
+			continue;
+
+		if(node.isLeaf())
+		{
+			subInput.maxFraction = maxFraction;
+
+			float value = callback(subInput, nodeId, node.userData);
+			++stats.leafVisits;
+
+				   // The user may return -1 to indicate this shape should be skipped
+
+			if(value == 0)  // The client has terminated the ray cast.
+				return stats;
+
+			if(value > 0 and value <= maxFraction)
+			{
+				// Update segment bounding box.
+				maxFraction = value;
+				// p2 = b3MulAdd( p1, maxFraction, d );
+				p2 = p1 + d * maxFraction;
+				segmentAABB.min() = glm::min(p1, p2);
+				segmentAABB.max() = glm::max(p1, p2);
+			}
+		}
+		else
+		{
+			assert(stackCount < B3_TREE_STACK_SIZE - 1);
+			if(stackCount < B3_TREE_STACK_SIZE - 1)
+			{
+				auto c1 = _nodes[node.children.child1].aabb.center();
+				auto c2 = _nodes[node.children.child2].aabb.center();
+				if(glm::distance2(c1, p1) < glm::distance2(c2, p1))
+				{
+					stack[stackCount++] = node.children.child2;
+					stack[stackCount++] = node.children.child1;
+				}
+				else
+				{
+					stack[stackCount++] = node.children.child1;
+					stack[stackCount++] = node.children.child2;
+				}
+			}
+		}
+	}
+
+	return stats;
+}
+
+
+template<typename UserT>
+b3TreeStats b3DynamicTree<UserT>::castBox(const b3BoxCastInput &input, uint64_t maskBits, bool requireAllBits, CastBoxCb callback) const
+{
+	b3TreeStats stats {
+		.nodeVisits = 0,
+		.leafVisits = 0,
+	};
+
+	if(not _nodeCount)
+		return stats;
+
+	// The caller folds the shape radius and the world origin into the box
+	auto originAABB = input.box;
+
+	glm::vec3 p1 = originAABB.center();
+	glm::vec3 extension { originAABB.width(), originAABB.height(), originAABB.depth() };
+
+	auto d = input.translation;
+
+	float maxFraction = input.maxFraction;
+
+	// Build total box for the cast
+	glm::vec3 t = input.translation * maxFraction;
+	bounds::AABB totalAABB = {
+		glm::min(originAABB.min(), originAABB.min() + t),
+		glm::max(originAABB.max(), originAABB.max() + t),
+	};
+
+	auto subInput = input;
+
+	TreeNodeIndex stack[B3_TREE_STACK_SIZE];
+	auto stackCount = 0u;
+	stack[stackCount++] = _root;
+
+	while(stackCount > 0)
+	{
+		auto nodeId = stack[--stackCount];
+		if(nodeId == B3_NULL_INDEX)
+		{
+			assert(false);
+			continue;
+		}
+
+		const auto &node = _nodes[nodeId];
+		++stats.nodeVisits;
+
+		uint64_t bitMatch = requireAllBits? (node.categoryBits & maskBits) == maskBits: (node.categoryBits & maskBits);
+
+		if(not bitMatch or not intersect::check(node.aabb, totalAABB))
+			continue;
+
+		// radius extension is added to the node in this case
+		glm::vec3 lower = node.aabb.min() - extension;
+		glm::vec3 upper = node.aabb.max() + extension;
+		bool edgeOverlap = testBoundsRayOverlap(lower, upper, p1, d);
+		if(not edgeOverlap)
+			continue;
+
+		if(node.isLeaf())
+		{
+			subInput.maxFraction = maxFraction;
+
+			float value = callback(subInput, nodeId, node.userData);
+			++stats.leafVisits;
+
+			if(value == 0)
+			{
+				// The client has terminated the cast.
+				return stats;
+			}
+
+			if(value > 0 and value < maxFraction)
+			{
+				maxFraction = value;
+				t = input.translation * maxFraction;
+				totalAABB.min() = glm::min(originAABB.min(), originAABB.min() + t);
+				totalAABB.max() = glm::max(originAABB.max(), originAABB.max() + t);
+			}
+		}
+		else
+		{
+			assert(stackCount < B3_TREE_STACK_SIZE - 1);
+			if(stackCount < B3_TREE_STACK_SIZE - 1)
+			{
+				glm::vec3 c1 = _nodes[node.children.child1].aabb.center();
+				glm::vec3 c2 = _nodes[node.children.child2].aabb.center();
+				if(glm::distance2(c1, p1) < glm::distance2(c2, p1))
+				{
+					stack[stackCount++] = node.children.child2;
+					stack[stackCount++] = node.children.child1;
+				}
+				else
+				{
+					stack[stackCount++] = node.children.child1;
+					stack[stackCount++] = node.children.child2;
+				}
+			}
+		}
+	}
+
+	return stats;
+}
+
+
+#if defined(TREE_VALIDATION)
+
+// Compute the height of a sub-tree.
+template<typename UserT>
+int b3DynamicTree<UserT>::computeHeightRecurse(TreeNodeIndex nodeId) const
+{
+	assert( 0 <= nodeId and nodeId < _nodeCapacity);
+	auto &node = _nodes[nodeId];
+
+	if(node.isLeaf())
+		return 0;
+
+	auto height1 = computeHeightRecurse(node.children.child1);
+	auto height2 = computeHeightRecurse(node.children.child2);
+	return 1 + std::max(height1, height2);
+}
+
+template<typename UserT>
+int b3DynamicTree<UserT>::computeHeight() const
+{
+	return computeHeightRecurse(_root);
+}
+
+template<typename UserT>
+void b3DynamicTree<UserT>::validateStructure(TreeNodeIndex index) const
+{
+	if(index == B3_NULL_INDEX)
+		return;
+
+	if(index == _root)
+		assert(_nodes[index].parent == B3_NULL_INDEX);
+
+	const auto &node = _nodes[index];
+
+	assert(node.flags == 0 or (node.flags & b3_allocatedNode) != 0);
+
+	if(node.isLeaf())
+	{
+		assert(node.height == 0);
+		return;
+	}
+
+	auto child1 = node.children.child1;
+	auto child2 = node.children.child2;
+
+	assert(0 <= child1 and child1 < _nodeCapacity);
+	assert(0 <= child2 and child2 < _nodeCapacity);
+
+	assert(_nodes[child1].parent == index);
+	assert(_nodes[child2].parent == index);
+
+	if((_nodes[child1].flags | _nodes[child2].flags) & b3_enlargedNode)
+		assert(node.flags & b3_enlargedNode);
+
+	validateStructure(child1);
+	validateStructure(child2);
+}
+
+template<typename UserT>
+void b3DynamicTree<UserT>::validateMetrics(TreeNodeIndex index) const
+{
+	if(index == B3_NULL_INDEX)
+		return;
+
+	const auto &node = _nodes[index];
+
+	assert(math::valid(node.aabb));
+
+	if(node.isLeaf())
+	{
+		assert(node.height == 0);
+		return;
+	}
+
+	auto child1 = node.children.child1;
+	auto child2 = node.children.child2;
+
+	assert(0 <= child1 and child1 < _nodeCapacity);
+	assert(0 <= child2 and child2 < _nodeCapacity);
+
+	auto height1 = _nodes[child1].height;
+	auto height2 = _nodes[child2].height;
+	auto height = 1 + std::max(height1, height2);
+	assert(node.height == height);
+
+		   // b3AABB aabb = b3AABB_Union(tree->nodes[child1].aabb, tree->nodes[child2].aabb);
+
+	assert(intersect::check(node.aabb, _nodes[child1].aabb));
+	assert(intersect::check(node.aabb, _nodes[child2].aabb));
+
+		   // assert(aabb.lowerBound.x == node.aabb.lowerBound.x);
+		   // assert(aabb.lowerBound.y == node.aabb.lowerBound.y);
+		   // assert(aabb.upperBound.x == node.aabb.upperBound.x);
+		   // assert(aabb.upperBound.y == node.aabb.upperBound.y);
+
+	auto categoryBits = _nodes[child1].categoryBits | _nodes[child2].categoryBits;
+	assert(node.categoryBits == categoryBits);
+
+	validateMetrics(child1);
+	validateMetrics(child2);
+}
+
+template<typename UserT>
+void b3DynamicTree<UserT>::validate()
+{
+	if(_root == B3_NULL_INDEX)
+		return;
+
+	validateStructure(_root);
+	validateMetrics(_root);
+
+	auto freeCount = 0u;
+	auto freeIndex = _freeList;
+	while(freeIndex != B3_NULL_INDEX )
+	{
+		assert(0 <= freeIndex and freeIndex < _nodeCapacity);
+		freeIndex = _nodes[freeIndex].next;
+		++freeCount;
+	}
+
+	auto height = this->height();
+	auto computedHeight = computeHeight();
+	assert(height == computedHeight);
+
+	assert(_nodeCount + freeCount == _nodeCapacity);
+}
+
+template<typename UserT>
+void b3DynamicTree<UserT>::validateNoGrown() const
+{
+	for(auto i = 0u; i < _nodeCapacity; ++i)
+	{
+		const auto &node = _nodes[i];
+		if(node.flags & b3_allocatedNode)
+			assert((node.flags & b3_enlargedNode) == 0);
+	}
+}
+
+#endif // TREE_VALIDATION
 
 } // RGL
