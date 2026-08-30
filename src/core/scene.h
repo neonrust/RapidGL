@@ -57,9 +57,9 @@ public:
 private:
 	void _create_components(EntityID model_ent, std::shared_ptr<const StaticModel> model, const MaterialCSet &materials, const component::Transform &transform, bool is_dynamic);
 
-	void _spatial_insert(SpatialItems items, EntityID entity_id, const bounds::Sphere &local_bounds, const component::Transform &transform, bool is_dynamic);
-	void _spatial_update(SpatialItems items, EntityID entity_id, const bounds::Sphere &local_bounds, const component::Transform &transform);
-	void _spatial_remove(SpatialItems items, EntityID entity_id);
+	void _spatial_insert(SpatialItems &items, EntityID entity_id, const bounds::Sphere &local_bounds, const component::Transform &transform, bool is_dynamic);
+	void _spatial_update(SpatialItems &items, EntityID entity_id, const bounds::Sphere &local_bounds, const component::Transform &transform);
+	void _spatial_remove(SpatialItems &items, EntityID entity_id);
 
 private:
 	RoomMap _rooms;

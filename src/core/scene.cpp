@@ -143,7 +143,7 @@ void Scene::_create_components(EntityID model_ent, std::shared_ptr<const StaticM
 	_entities.emplace<component::Model>      (model_ent, model);
 }
 
-void Scene::_spatial_insert(SpatialItems items, EntityID entity_id, const bounds::Sphere &local_bounds, const component::Transform &transform, bool is_dynamic)
+void Scene::_spatial_insert(SpatialItems &items, EntityID entity_id, const bounds::Sphere &local_bounds, const component::Transform &transform, bool is_dynamic)
 {
 	assert(not items.contains(entity_id));
 
@@ -156,7 +156,7 @@ void Scene::_spatial_insert(SpatialItems items, EntityID entity_id, const bounds
 	items[entity_id] = { world_bounds, is_dynamic };
 }
 
-void Scene::_spatial_update(SpatialItems items, EntityID entity_id, const bounds::Sphere &local_bounds, const component::Transform &transform)
+void Scene::_spatial_update(SpatialItems &items, EntityID entity_id, const bounds::Sphere &local_bounds, const component::Transform &transform)
 {
 	assert(items.contains(entity_id));
 
@@ -167,7 +167,7 @@ void Scene::_spatial_update(SpatialItems items, EntityID entity_id, const bounds
 	items[entity_id].bounds = world_bounds;
 }
 
-void Scene::_spatial_remove(SpatialItems items, EntityID entity_id)
+void Scene::_spatial_remove(SpatialItems &items, EntityID entity_id)
 {
 	assert(items.contains(entity_id));
 
