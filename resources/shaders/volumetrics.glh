@@ -24,21 +24,21 @@ vec4 texture_tricubic(sampler3D tex, vec3 coord)
 
 	// Fetch the eight linear interpolations
 	// Weighting and fetching is interleaved for performance and stability reasons
-	vec4 tex000 = texture(tex, h0, 0);
-	vec4 tex100 = texture(tex, vec3(h1.x, h0.y, h0.z), 0.0f);
+	vec4 tex000 = texture(tex, h0);
+	vec4 tex100 = texture(tex, vec3(h1.x, h0.y, h0.z));
 	tex000 = mix(tex100, tex000, g0.x); // Weigh along the x-direction
 
-	vec4 tex010 = texture(tex, vec3(h0.x, h1.y, h0.z), 0.0f);
-	vec4 tex110 = texture(tex, vec3(h1.x, h1.y, h0.z), 0.0f);
+	vec4 tex010 = texture(tex, vec3(h0.x, h1.y, h0.z));
+	vec4 tex110 = texture(tex, vec3(h1.x, h1.y, h0.z));
 	tex010 = mix(tex110, tex010, g0.x); // Weigh along the x-direction
 	tex000 = mix(tex010, tex000, g0.y); // Weigh along the y-direction
 
-	vec4 tex001 = texture(tex, vec3(h0.x, h0.y, h1.z), 0.0f);
-	vec4 tex101 = texture(tex, vec3(h1.x, h0.y, h1.z), 0.0f);
+	vec4 tex001 = texture(tex, vec3(h0.x, h0.y, h1.z));
+	vec4 tex101 = texture(tex, vec3(h1.x, h0.y, h1.z));
 	tex001 = mix(tex101, tex001, g0.x); // Weigh along the x-direction
 
-	vec4 tex011 = texture(tex, vec3(h0.x, h1.y, h1.z), 0.0f);
-	vec4 tex111 = texture(tex, vec3(h1), 0.0f);
+	vec4 tex011 = texture(tex, vec3(h0.x, h1.y, h1.z));
+	vec4 tex111 = texture(tex, vec3(h1));
 	tex011 = mix(tex111, tex011, g0.x); // Weigh along the x-direction
 	tex001 = mix(tex011, tex001, g0.y); // Weigh along the y-direction
 
