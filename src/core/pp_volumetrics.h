@@ -23,7 +23,7 @@ public:
 	Volumetrics();
 
 	bool create();
-	operator bool() const override;
+	operator bool () const override;
 
 	inline Shader &shader() { return _inject_shader; }
 

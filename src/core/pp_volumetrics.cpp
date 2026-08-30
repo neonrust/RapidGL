@@ -99,7 +99,7 @@ bool Volumetrics::create()
 	return *this;
 }
 
-Volumetrics::operator bool() const
+Volumetrics::operator bool () const
 {
 	return _select_shader \
 		and _cull_shader \
