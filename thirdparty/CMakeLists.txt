@@ -19,12 +19,12 @@ add_library(stb_image STATIC ${STB_IMAGE_DIR}/stb_image.cpp
 target_include_directories(stb_image PRIVATE ${STB_IMAGE_DIR})
 
 # other - external
-CPMAddPackage("gh:assimp/assimp@5.4.3")
-CPMAddPackage("gh:glfw/glfw#3.4")
-CPMAddPackage("gh:g-truc/glm#1.0.1")
+CPMAddPackage("gh:assimp/assimp@6.0.5")
+CPMAddPackage("gh:glfw/glfw#3.5.1")
+CPMAddPackage("gh:g-truc/glm#1.0.3")
 #CPMAddPackage("gh:gabime/spdlog@1.10.0")
-CPMAddPackage("gh:martinus/unordered_dense@4.4.0")
-CPMAddPackage("gh:martinus/svector@1.0.3")
+CPMAddPackage("gh:martinus/unordered_dense@4.11.0")
+CPMAddPackage("gh:martinus/svector@1.4.0")
 #CPMAddPackage("gh:libjxl/libjxl@0.7.2")   TODO fails with "set_target_properties can not be used on an ALIAS target"
 
 CPMAddPackage(
