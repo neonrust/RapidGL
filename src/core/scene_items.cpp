@@ -4,7 +4,6 @@
 
 #include <glm/mat4x4.hpp>
 
-#include <execution>
 #include <chrono>
 using namespace std::chrono;
 
@@ -47,7 +46,7 @@ bool SceneItems::query(const Frustum &frustum, QueryResult &result) const
 		auto aabb = frustum.aabb();
 
 		// verify that the BVH finds the same objects
-		_bvh.query(aabb, MASK_ALL, false, [&result, &frustum](auto proxy_id, const auto &item_aabb, auto meta) {
+		_bvh.query(aabb, MASK_ALL, false, [&result, &frustum](auto, const auto &item_aabb, auto meta) {
 
 			// check more precisely using the frustum
 			if(intersect::check(frustum, item_aabb))
