@@ -1,6 +1,7 @@
 #include "scene_loader.h"
 
 #include "asset/asset_manager.h"
+#include "component/transform.h"
 #include "animation/animation_system.h"
 #include "bounds.h"
 // #include "component/model.h"
@@ -8,13 +9,11 @@
 #include "game_time.h"
 #include "lights.h"
 #include "log.h"
-// #include "constants.h"
 #include "scene.h"
 #include "filesystem.h"
 #include "tag_file.h"
 #include "light_type.h"
 #include "light_manager.h"
-// #include "formatters_entt.h"
 
 #include <variant>
 #include <chrono>
@@ -24,8 +23,6 @@
 
 using namespace std::chrono;
 using namespace std::literals;
-
-static constexpr size_t NAME_LENGTH = 16;
 
 namespace RGL
 {
