@@ -1012,7 +1012,7 @@ size_t DynamicTree<UserT>::byteSize() const
 template<typename UserT>
 inline void DynamicTree<UserT>::resetNodes(uint32_t startIndex)
 {
-	std::memset(_nodes.data()[startIndex], 0, (_nodes.size() - startIndex) * sizeof(DynamicTreeNode<UserT>));
+	std::memset(&_nodes.data()[startIndex], 0, (_nodes.size() - startIndex) * sizeof(DynamicTreeNode<UserT>));
 
 	for(auto idx = startIndex; idx < _nodeCapacity - 1; ++idx)
 		_nodes[idx].next = idx + 1u;
