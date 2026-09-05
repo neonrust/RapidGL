@@ -4,7 +4,6 @@
 #include <entt/signal/sigh.hpp>
 
 #include "asset/static_model.h"
-#include "component/transform.h"
 #include "container_types.h"
 #include "light_manager.h"
 #include "scene_items.h"
@@ -46,8 +45,6 @@ public:
 	void rebalance(const glm::vec3 &origin);
 	void clear();
 
-	void sortByState();
-
 	inline       LightManager &lights()       { return _lights; }
 	inline const LightManager &lights() const { return _lights; }
 
@@ -57,16 +54,12 @@ public:
 private:
 	void _create_components(EntityID model_ent, std::shared_ptr<const StaticModel> model, const MaterialCSet &materials, const component::Transform &transform, bool is_dynamic);
 
-	void _spatial_insert(SpatialItems &items, EntityID entity_id, const bounds::Sphere &local_bounds, const component::Transform &transform, bool is_dynamic);
-	void _spatial_update(SpatialItems &items, EntityID entity_id, const bounds::Sphere &local_bounds, const component::Transform &transform);
-	void _spatial_remove(SpatialItems &items, EntityID entity_id);
-
 private:
 	RoomMap _rooms;
 	// TODO: need map EntityID -> room ?   e.g. update & remove
+	dense_map<entt::entity, std::string> _entityToRoom; // TODO: this is not optimal
 
 	entt::registry &_entities;
-	bool _need_state_sort { false };
 
 	LightManager &_lights;
 };
@@ -80,4 +73,5 @@ EntityID Scene::addLight(const LTP &p)
 	const auto &[general, transform] = _entities.get<component::LightGeneral, component::Transform>(light_id);
 	return light_id;
 }
+
 } // RGL
