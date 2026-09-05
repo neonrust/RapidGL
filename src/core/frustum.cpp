@@ -283,6 +283,16 @@ bool check(const Frustum &f, const bounds::Sphere &sphere)
 	return true;
 }
 
+bool check(const Frustum &f, const bounds::AABB &aabb)
+{
+	if(not check(f.aabb(), aabb))
+		return false;
+
+	// TODO: check more precisely
+
+	return true;
+}
+
 } // intersect
 
 } // RGL
