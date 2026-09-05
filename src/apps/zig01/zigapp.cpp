@@ -128,6 +128,8 @@ ZigApp::ZigApp() :
 
 ZigApp::~ZigApp()
 {
+	AssetManager::shut_down();
+
 	if(m_skybox_vao)
     {
         glDeleteVertexArrays(1, &m_skybox_vao);

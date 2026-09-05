@@ -19,8 +19,15 @@ AssetManager::AssetManager()
 
 AssetManager &AssetManager::the()
 {
-	static AssetManager instance;
-	return instance;
+	static AssetManager *instance = new AssetManager();
+	return *instance;
+}
+
+void AssetManager::shut_down()
+{
+	the()._static_mesh_default_materials.clear();
+	the()._textures.clear();
+	the()._static_meshes.clear();
 }
 
 std::shared_ptr<const Texture2D> AssetManager::texture(std::string_view name, bool is_srgb)

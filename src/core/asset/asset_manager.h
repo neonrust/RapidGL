@@ -23,6 +23,8 @@ class AssetManager
 {
 public:
 	static AssetManager &the();
+	// must be called before OpenGL shut down
+	static void shut_down();
 
 	std::pair<std::shared_ptr<const StaticModel>, MaterialCSet> staticMesh(std::string_view name);
 	std::shared_ptr<const Texture2D>   texture(std::string_view name, bool is_srgb=false);
