@@ -112,7 +112,7 @@ std::vector<uint8_t> Util::LoadFileBinary(const fs::path& filename)
 
 	if (!file)
 	{
-		Log::error("Could not open file %s", filepath.string());
+		Log::error("Could not open file {}", filepath.string());
 		file.close();
 
 		return {};
