@@ -25,6 +25,11 @@ void close()
 		std::fclose(_private::the().out);
 }
 
+static struct _Log_Closer
+{
+	~_Log_Closer() { close(); }
+} _log_closer;
+
 void flush()
 {
 	std::fflush(_private::the().out);

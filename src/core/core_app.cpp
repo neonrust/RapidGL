@@ -27,11 +27,6 @@ CoreApp::CoreApp():
 #endif
 }
 
-CoreApp::~CoreApp()
-{
-	Log::close();
-}
-
 void CoreApp::init(unsigned int width, unsigned int height, const std::string & title, double framerate)
 {
 	m_frame_time = 1.0 / framerate;

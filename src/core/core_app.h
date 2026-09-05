@@ -12,7 +12,6 @@ namespace RGL
     {
     public:
         CoreApp();
-        virtual ~CoreApp();
 
 		CoreApp(const CoreApp&)              = delete;
 		CoreApp& operator = (const CoreApp&) = delete;
