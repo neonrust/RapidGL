@@ -74,24 +74,25 @@ struct DynamicTreeNode
 
 	uint16_t height { 0 };
 
-	enum class Flag : uint16_t
+	using flag_t = uint16_t;
+	struct Flag
 	{
-		allocatedNode = 0x0001,
-		enlargedNode  = 0x0002,
-		leafNode      = 0x0004,
+		static constexpr flag_t allocatedNode = 0x0001;
+		static constexpr flag_t enlargedNode  = 0x0002;
+		static constexpr flag_t leafNode      = 0x0004;
 	};
 
-	Flag flags { Flag::allocatedNode };
+	flag_t flags { Flag::allocatedNode };
 
 	inline bool isLeaf() const      { return (flags & Flag::leafNode) > 0; }
 	inline bool isAllocated() const { return (flags & Flag::allocatedNode) > 0; }
 };
 
-template<typename UserT=uint64_t>
+template<typename UserT=uint64_t> //requires (std::is_pod<UserT>())
 class DynamicTree
 {
 public:
-	using QueryCb = std::function<bool(TreeProxyID, UserT)>;
+	using QueryCb = std::function<bool(TreeProxyID, const bounds::AABB &, UserT)>;
 	using QueryClosestCb = std::function<float(float, TreeProxyID, UserT)>;
 	using CastRayCb = std::function<float(const TreeRayCastInput &, TreeProxyID, UserT)>;
 	using CastBoxCb = std::function<float(const TreeBoxCastInput &, TreeProxyID, UserT)>;
@@ -100,7 +101,9 @@ public:
 	DynamicTree(uint32_t proxyCapacity=0); // b3DynamicTree_Create
 	~DynamicTree(); // b3DynamicTree_Destroy
 
-	TreeProxyID addProxy(bounds::AABB aabb, uint64_t categoryBits, UserT userData); // b3DynamicTree_CreateProxy
+	void clear();
+
+	TreeProxyID addProxy(bounds::AABB aabb, UserT userData, uint64_t categoryBits=std::numeric_limits<uint64_t>::max()); // b3DynamicTree_CreateProxy
 	void deleteProxy(TreeProxyID id); // b3DynamicTree_DestroyProxy
 	void moveProxy(TreeProxyID id, bounds::AABB aabb); // b3DynamicTree_MoveProxy
 	void growProxy(TreeProxyID id, bounds::AABB aabb); // b3DynamicTree_EnlargeProxy
@@ -132,6 +135,7 @@ public:
 #endif
 
 private:
+	void resetNodes(uint32_t startIndex=0);
 	TreeNodeIndex allocateNode();
 	void freeNode(uint32_t nodeId);
 
@@ -182,12 +186,7 @@ private:
 
 template<typename UserT>
 DynamicTree<UserT>::DynamicTree(uint32_t proxyCapacity) :
-	_version(DT_DYNAMIC_TREE_VERSION),
-	_root(DT_NULL_INDEX),
-	_nodeCount(0),
-	_nodeCapacity(0),
-	_proxyCount(0),
-	_freeList(0)
+	_version(DT_DYNAMIC_TREE_VERSION)
 // TODO: rebuild rebuildCapacity(0)
 {
 	const auto capacity = std::max(proxyCapacity, 16u); // at least 16 proxies
@@ -195,13 +194,7 @@ DynamicTree<UserT>::DynamicTree(uint32_t proxyCapacity) :
 	_nodeCapacity = 2u * capacity - 1u;
 	_nodes.resize(_nodeCapacity);
 
-	std::memset(_nodes.data(), 0, _nodes.size() * sizeof(DynamicTreeNode<UserT>));
-
-	// Build a linked list for the free list.
-	// todo use a bump allocator until the capacity is consumed (see b3PoolAllocator)
-	for(auto idx = 0u; idx < _nodeCapacity - 2; ++idx)
-		_nodes[idx].next = idx + 1u;
-	_nodes.back().next = DT_NULL_INDEX;
+	clear();
 }
 
 template<typename UserT>
@@ -210,7 +203,18 @@ inline DynamicTree<UserT>::~DynamicTree()
 }
 
 template<typename UserT>
-TreeProxyID DynamicTree<UserT>::addProxy(bounds::AABB aabb, uint64_t categoryBits, UserT userData)
+inline void DynamicTree<UserT>::clear()
+{
+	resetNodes();
+
+	_root = DT_NULL_INDEX;
+	_nodeCount = 0;
+	_proxyCount = 0;
+	_freeList = 0;
+}
+
+template<typename UserT>
+TreeProxyID DynamicTree<UserT>::addProxy(bounds::AABB aabb, UserT userData, uint64_t categoryBits)
 {
 	assert(math::valid(aabb));
 
@@ -395,14 +399,7 @@ TreeNodeIndex DynamicTree<UserT>::allocateNode()
 		// DynamicTreeNode* oldNodes = tree->nodes;
 		_nodeCapacity += _nodeCapacity >> 1;
 		_nodes.resize(_nodeCapacity);
-		// zero the new nodes
-		std::memset(&_nodes[_nodeCount], 0, (_nodeCapacity - _nodeCount) * sizeof(decltype(_nodes)::value_type));
-
-		// Build a linked list for the free list. The parent pointer becomes the "next" pointer.
-		// todo avoid building freelist?
-		for(auto idx = _nodeCount; idx < _nodeCapacity - 1; ++idx )
-			_nodes[idx].next = idx + 1;
-		_nodes.back().next = DT_NULL_INDEX;
+		resetNodes(_nodeCount);
 
 		_freeList = _nodeCount;
 	}
@@ -411,7 +408,7 @@ TreeNodeIndex DynamicTree<UserT>::allocateNode()
 	const auto nodeIndex = _freeList;
 	auto &node = _nodes[size_t(nodeIndex)];
 	_freeList = node.next;
-	node = b3_defaultTreeNode<UserT>();
+	node = b3_defaultTreeNode<UserT>;
 	++_nodeCount;
 
 	return nodeIndex;
@@ -446,12 +443,13 @@ void DynamicTree<UserT>::insertLeaf(TreeNodeIndex leaf, bool shouldRotate)
 	auto oldParent = _nodes[sibling].parent;
 	auto newParent = allocateNode();
 
-		   // warning: node pointer can change after allocation
-	_nodes[newParent].parent = oldParent;
-	_nodes[newParent].userData = std::numeric_limits<uint64_t>::max();
-	_nodes[newParent].aabb = math::envelop(leafAABB, _nodes[sibling].aabb);
-	_nodes[newParent].categoryBits = _nodes[leaf].categoryBits | _nodes[sibling].categoryBits;
-	_nodes[newParent].height = _nodes[sibling].height + 1;
+	// warning: node pointer can change after allocation
+	auto &newNode = _nodes[newParent];
+	newNode.parent = oldParent;
+	newNode.userData = UserT{};//std::numeric_limits<UserT>::max();
+	newNode.aabb = math::envelop(leafAABB, _nodes[sibling].aabb);
+	newNode.categoryBits = _nodes[leaf].categoryBits | _nodes[sibling].categoryBits;
+	newNode.height = _nodes[sibling].height + 1;
 
 	if(oldParent != DT_NULL_INDEX)
 	{
@@ -461,16 +459,16 @@ void DynamicTree<UserT>::insertLeaf(TreeNodeIndex leaf, bool shouldRotate)
 		else
 			_nodes[oldParent].children.child2 = newParent;
 
-		_nodes[newParent].children.child1 = sibling;
-		_nodes[newParent].children.child2 = leaf;
+		newNode.children.child1 = sibling;
+		newNode.children.child2 = leaf;
 		_nodes[sibling].parent = newParent;
 		_nodes[leaf].parent = newParent;
 	}
 	else
 	{
 		// The sibling was the root.
-		_nodes[newParent].children.child1 = sibling;
-		_nodes[newParent].children.child2 = leaf;
+		newNode.children.child1 = sibling;
+		newNode.children.child2 = leaf;
 		_nodes[sibling].parent = newParent;
 		_nodes[leaf].parent = newParent;
 		_root = newParent;
@@ -1012,6 +1010,16 @@ size_t DynamicTree<UserT>::byteSize() const
 }
 
 template<typename UserT>
+inline void DynamicTree<UserT>::resetNodes(uint32_t startIndex)
+{
+	std::memset(_nodes.data()[startIndex], 0, (_nodes.size() - startIndex) * sizeof(DynamicTreeNode<UserT>));
+
+	for(auto idx = startIndex; idx < _nodeCapacity - 1; ++idx)
+		_nodes[idx].next = idx + 1u;
+	_nodes.back().next = DT_NULL_INDEX;
+}
+
+template<typename UserT>
 float DynamicTree<UserT>::nodeDistanceSq(glm::vec3 point, const DynamicTreeNode<UserT> &node) const
 {
 	const auto r = point - glm::clamp(point, node.aabb.min(), node.aabb.max());
@@ -1056,7 +1064,7 @@ DynamicTreeStats DynamicTree<UserT>::query(bounds::AABB aabb, uint64_t maskBits,
 			if(node.isLeaf())
 			{
 				// callback to user code with proxy id
-				const bool proceed = callback(nodeId, node.userData);
+				const bool proceed = callback(nodeId, node.aabb, node.userData);
 				++stats.leafVisits;
 
 				if(not proceed)
@@ -1190,7 +1198,7 @@ static inline bool testBoundsRayOverlap(glm::vec3 nodeMin, glm::vec3 nodeMax, gl
 	// b3V32 edgeSeparation = b3SubV( b3AbsV( b3CrossV( rayDelta, rayStart ) ), b3ModifiedCrossV( b3AbsV( rayDelta ), nodeExtent ) );
 	auto edgeSeparation = glm::abs(glm::cross(rayDelta, rayStart)) - modifiedCross(glm::abs(rayDelta), nodeExtent);
 	// return b3AllLessEq3V( edgeSeparation, b3_zeroV );
-	return glm::all(glm::lessThanEqual(edgeSeparation, glm::zero<glm::vec3>()));
+	return glm::all(glm::lessThanEqual(edgeSeparation, glm::vec3(0)));
 }
 
 
