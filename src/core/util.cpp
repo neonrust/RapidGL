@@ -359,6 +359,8 @@ Util::TextureData Util::jxl_load(const fs::path &filepath, ImageMeta &image_meta
 	};
 
 	auto jxlData = LoadFileBinary(filepath);
+	if(jxlData.empty())
+		return {};
 
 	res = JxlDecoderSetInput(dec.get(), jxlData.data(), jxlData.size());
 	if(res != JXL_DEC_SUCCESS)
