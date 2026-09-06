@@ -172,6 +172,14 @@ private:
 // ----------------------------------------------------------------------------
 
 template<typename ValueT, typename TimeT, typename Precision, typename CurveT>
+inline curve_sampler<ValueT, TimeT, Precision, CurveT>::curve_sampler(const anim_curve &curve) :
+	_curve(curve)
+{
+}
+
+// ----------------------------------------------------------------------------
+
+template<typename ValueT, typename TimeT, typename Precision, typename CurveT>
 inline ValueT curve_sampler<ValueT, TimeT, Precision, CurveT>::value_at(TimeT t) const
 {
 	return value_at(t, _sample_hint).value;
