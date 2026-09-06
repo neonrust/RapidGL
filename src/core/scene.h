@@ -33,6 +33,8 @@ public:
 
 	void addRoom(std::string_view roomName, const bounds::AABB &aabb);
 	bool hasRoom(std::string_view roomName) const;
+	bool removeRoom(std::string_view roomName);
+
 	EntityID add(std::string_view roomName, std::shared_ptr<const StaticModel> model, const MaterialCSet &materials, const component::Transform &transform, bool is_dynamic=false);
 
 	bool addAnimation(EntityID entity_id, std::string_view anim_name);
