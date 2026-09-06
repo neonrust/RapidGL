@@ -30,10 +30,6 @@
 using namespace std::chrono;
 using namespace std::literals;
 
-// testing variables
-static float s_spot_outer_angle = 30.f;
-static float s_spot_intensity = 2000.f;
-
 static constexpr auto s_relevant_lights_update_min_interval = 250ms;
 
 // light/shadow distances as fraction of camera far plane (OR of furthest shading cluster? should be the same though...)
@@ -564,16 +560,6 @@ void ZigApp::input()
 
 	if(Input::wasKeyPressed(KeyCode::Backtick))
 		_debug_ui_enabled = not _debug_ui_enabled;
-
-	if(Input::isKeyDown(KeyCode::RightArrow))
-		s_spot_outer_angle = std::min(s_spot_outer_angle + 0.3f, 89.9f);
-	else if(Input::isKeyDown(KeyCode::LeftArrow))
-		s_spot_outer_angle = std::max(s_spot_outer_angle - 0.3f, 0.1f);
-
-	if(Input::isKeyDown(KeyCode::UpArrow))
-		s_spot_intensity = std::min(s_spot_intensity + 5.f, 5000.0f);
-	else if(Input::isKeyDown(KeyCode::DownArrow))
-		s_spot_intensity = std::max(s_spot_intensity - 5.f, 10.f);
 
 	if(Input::isKeyDown(KeyCode::Equals))
 		m_camera_fov = std::min(m_camera_fov + 0.5f, 140.f);
