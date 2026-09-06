@@ -88,6 +88,12 @@ struct Transform
 	inline void set_scale          (const glm::vec3 &scale) { _scale = scale;     _matrix_dirty = true; }
 		   void set_direction      (const glm::vec3 &dir);
 
+	inline void move(const glm::vec3 &offset) { _position += offset; _matrix_dirty = true; }
+	inline void rotate(const glm::quat &rot)  { _orientation *= rot; _matrix_dirty = true; }
+	// TODO: rotate by euler
+	inline void scale(const glm::vec3 &s)     { assert(glm::all(glm::greaterThan(s, glm::vec3(0.f)))); _scale *= s; _matrix_dirty = true; }
+	inline void scale(float s)                { assert(s > 0); _scale *= s; _matrix_dirty = true; }
+
 	inline const glm::vec3 &position() const    { return _position; }
 	inline const glm::quat &orientation() const { return _orientation; }
 	inline const glm::vec3 &scale() const       { return _scale; }
@@ -100,7 +106,6 @@ struct Transform
 	glm::vec3 orientation_zxy() const;
 	glm::vec3 orientation_zyx() const;
 
-	inline void move(const glm::vec3 &delta) { _position += delta; _matrix_dirty = true; }
 
 	inline operator const glm::mat4 &() const { return transform(); }
 
