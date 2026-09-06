@@ -80,6 +80,7 @@ bool AssetManager::loadStaticMesh(StaticModel &model, const std::filesystem::pat
 											  aiProcess_FlipUVs                  |
 											  aiProcess_JoinIdenticalVertices    |
 											  aiProcess_RemoveRedundantMaterials |
+											  aiProcess_PreTransformVertices     |
 											  aiProcess_GenBoundingBoxes );
 
 	model._ok = scene and scene->mFlags != AI_SCENE_FLAGS_INCOMPLETE and scene->mRootNode;
