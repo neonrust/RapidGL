@@ -44,10 +44,11 @@ std::shared_ptr<const Texture2D> AssetManager::texture(std::string_view name, bo
 	// TODO: pool?
 	auto *tex = new Texture2D();
 
-	Log::info("Loading texture: {}", name);
+	const auto texture_path = FileSystem::getResourcesPath() / "textures" / name;
+	Log::debug("Loading texture: {}", texture_path.string());
 	// TODO: immediately return a default texture while loading in the background,
 	//   then replace it
-	tex->Load(FileSystem::getResourcesPath() / "textures" / name, is_srgb); // TODO: use 'textures_prefix'
+	tex->Load(texture_path, is_srgb); // TODO: use 'textures_prefix'
 	if(not *tex)
 	{
 		// TODO: use the default texture
