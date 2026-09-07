@@ -1,7 +1,7 @@
 #include "tag_file.h"
+#include "log.h"
 
 #include <cstring>
-#include <print>
 
 namespace RGL
 {
@@ -62,7 +62,7 @@ std::pair<std::string_view, std::string_view> tag_file::next()
 			// only output error if we read something non-empty and non-comment
 			if(tag_length > 0 and not is_comment() and _tag[0] != '\n')
 			{
-				std::println(stderr, "[{}:{}] failed to read tag (8 bytes)", _filename, _line_num);
+				Log::error("[{}:{}] failed to read tag (8 bytes)", _filename, _line_num);
 				break;
 			}
 			// nothing relevant was read; this is normal -> just exit
@@ -102,14 +102,14 @@ std::pair<std::string_view, std::string_view> tag_file::next()
 	auto highc = std::getc(_fp);
 	if(highc == EOF)
 	{
-		std::println(stderr, "[{}:{}]: EOF while reading value size", _filename, _line_num);
+		Log::error("[{}:{}]: EOF while reading value size", _filename, _line_num);
 		close();
 		return {};
 	}
 	int lowc = std::getc(_fp);
 	if(lowc == EOF)
 	{
-		std::println(stderr, "[{}:{}]: EOF while reading value size", _filename, _line_num);
+		Log::error("[{}:{}]: EOF while reading value size", _filename, _line_num);
 		close();
 		return {};
 	}
@@ -119,7 +119,7 @@ std::pair<std::string_view, std::string_view> tag_file::next()
 
 	if(high == -1 or low == -1)
 	{
-		std::println(stderr, "[{}:{}]: bad value size: {}{} (expected hex)", _filename, _line_num, highc, lowc);
+		Log::error("[{}:{}]: bad value size: {}{} (expected hex)", _filename, _line_num, highc, lowc);
 		close();
 		return {};
 	}
@@ -127,7 +127,7 @@ std::pair<std::string_view, std::string_view> tag_file::next()
 	size_t value_length = size_t(high*16 + low);
 	if(value_length > ValueLength)
 	{
-		std::println(stderr, "[{}:{}]: failed to read value; too large: ", _filename, _line_num, value_length);
+		Log::error("[{}:{}]: failed to read value; too large: ", _filename, _line_num, value_length);
 		close();
 		return {};
 	}
@@ -137,7 +137,7 @@ std::pair<std::string_view, std::string_view> tag_file::next()
 		auto could_read = std::fread(_value.data(), 1, value_length, _fp);
 		if(could_read != value_length)
 		{
-			std::println(stderr, "[{}:{}]: failed to read value of size {}: {}", _filename, _line_num, value_length, std::strerror(errno));
+			Log::error("[{}:{}]: failed to read value of size {}: {}", _filename, _line_num, value_length, std::strerror(errno));
 			close();
 			return {};
 		}
@@ -147,8 +147,8 @@ std::pair<std::string_view, std::string_view> tag_file::next()
 	auto tail = std::getc(_fp);
 	if(tail != '\n')
 	{
-		std::println(stderr, "[{}:{}]: expected LF, got {} {:02x}", _filename, _line_num, char(tail), uint8_t(tail));
-		std::println(stderr, " ... after reading tag '{}' and value '{}'", _tag, _value);
+		Log::error("[{}:{}]: expected LF, got {} {:02x}", _filename, _line_num, char(tail), uint8_t(tail));
+		Log::error(" ... after reading tag '{}' and value '{}'", _tag, _value);
 		close();
 		return {};
 	}
@@ -167,9 +167,9 @@ std::FILE *tag_file::open(std::string_view filename)
 	if(not fp)
 	{
 		if(errno == ENOENT)
-			std::println(stderr, "[{}]: file not found", filename);
+			Log::error("[{}]: file not found", filename);
 		else
-			std::println(stderr, "[{}]: failed to open file: {}", filename, std::strerror(errno));
+			Log::error("[{}]: failed to open file: {}", filename, std::strerror(errno));
 		return {};
 	}
 
