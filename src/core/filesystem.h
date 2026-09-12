@@ -1,18 +1,23 @@
 #pragma once
 
 #include <filesystem>
-#include <string>
+#include <functional>
 
 namespace RGL
 {
-    namespace fs = std::filesystem;
 
-    class FileSystem
-    {
-    public:
-        static fs::path rootPath();
-        static fs::path getResourcesPath();
-        static bool directoryExists(const fs::path & path, fs::file_status status = fs::file_status{});
-        static void createDirectory(const fs::path & directory_name);
-    };
-}
+namespace fs = std::filesystem;
+
+class FileSystem
+{
+public:
+	static fs::path rootPath();
+	static fs::path getResourcesPath();
+	static bool directoryExists(const fs::path & path, fs::file_status status = fs::file_status{});
+	static void createDirectory(const fs::path & directory_name);
+
+	static void monitor(const fs::path &filepath, std::function<void()> callback);
+	static void pollMonitors();
+};
+
+} // RGL
