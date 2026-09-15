@@ -64,6 +64,9 @@ void AssetManager::delete_static_mesh(std::string_view name, StaticModel *mesh)
 	{
 		delete mesh;
 		_static_meshes.erase(found);
+
+		_static_mesh_default_materials.erase(name);
+
 		Log::info("Deleted mesh: {}", name);
 	}
 }
