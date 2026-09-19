@@ -557,6 +557,8 @@ void DynamicTree<UserT>::removeLeaf(TreeNodeIndex leaf)
 template<typename UserT>
 TreeNodeIndex DynamicTree<UserT>::findBestSibling(bounds::AABB box)
 {
+	static constexpr auto s_insaneCost = std::numeric_limits<float>::max();
+
 	const auto centerD = box.center();
 	const auto areaD = box.surfaceArea();
 
@@ -595,12 +597,11 @@ TreeNodeIndex DynamicTree<UserT>::findBestSibling(bounds::AABB box)
 		// Inheritance cost seen by children
 		inheritedCost += directCost - areaBase;
 
-		bool leaf1 = _nodes[child1].isLeaf();
-		bool leaf2 = _nodes[child2].isLeaf();
 
 		// Cost of descending into child 1
-		float lowerCost1 = std::numeric_limits<float>::max();
-		bounds::AABB box1 = _nodes[child1].aabb;
+		const bool leaf1 = _nodes[child1].isLeaf();
+		float lowerCost1 = s_insaneCost;
+		auto box1 = _nodes[child1].aabb;
 		float directCost1 = math::envelop(box1, box).surfaceArea();
 		float area1 = 0;
 		if(leaf1)
@@ -626,8 +627,9 @@ TreeNodeIndex DynamicTree<UserT>::findBestSibling(bounds::AABB box)
 		}
 
 		// Cost of descending into child 2
-		float lowerCost2 = std::numeric_limits<float>::min();
-		bounds::AABB box2 = _nodes[child2].aabb;
+		const bool leaf2 = _nodes[child2].isLeaf();
+		float lowerCost2 = s_insaneCost;
+		auto box2 = _nodes[child2].aabb;
 		float directCost2 = math::envelop( box2, box).surfaceArea();
 		float area2 = 0.0f;
 		if(leaf2)
