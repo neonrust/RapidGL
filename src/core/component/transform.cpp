@@ -13,62 +13,44 @@ const glm::vec3 Transform::direction_reference { 0, 0, -1 };
 
 void Transform::set_orientation_xyz(const glm::vec3 &angles)
 {
-	auto m = \
-		glm::angleAxis(glm::radians(angles.x), AXIS_X) *
-		glm::angleAxis(glm::radians(angles.y), AXIS_Y) *
-		glm::angleAxis(glm::radians(angles.z), AXIS_Z);
+	const auto m = glm::eulerAngleXYZ(glm::radians(angles.x), glm::radians(angles.y), glm::radians(angles.z));
 
-	set_orientation(glm::quat_cast(glm::mat3(m)));
+	set_orientation(glm::quat_cast(m));
 }
 
 void Transform::set_orientation_xzy(const glm::vec3 &angles)
 {
-	auto m = \
-		glm::angleAxis(glm::radians(angles.x), AXIS_X) *
-		glm::angleAxis(glm::radians(angles.z), AXIS_Z) *
-		glm::angleAxis(glm::radians(angles.y), AXIS_Y);
+	const auto m = glm::eulerAngleXZY(glm::radians(angles.x), glm::radians(angles.y), glm::radians(angles.z));
 
-	set_orientation(glm::quat_cast(glm::mat3(m)));
+	set_orientation(glm::quat_cast(m));
 }
 
 void Transform::set_orientation_yxz(const glm::vec3 &angles)
 {
-	auto m = \
-		glm::angleAxis(glm::radians(angles.y), AXIS_Y) *
-		glm::angleAxis(glm::radians(angles.x), AXIS_X) *
-		glm::angleAxis(glm::radians(angles.z), AXIS_Z);
+	const auto m = glm::eulerAngleYXZ(glm::radians(angles.x), glm::radians(angles.y), glm::radians(angles.z));
 
-	set_orientation(glm::quat_cast(glm::mat3(m)));
+	set_orientation(glm::quat_cast(m));
 }
 
 void Transform::set_orientation_yzx(const glm::vec3 &angles)
 {
-	auto m = \
-		glm::angleAxis(glm::radians(angles.y), AXIS_Y) *
-		glm::angleAxis(glm::radians(angles.z), AXIS_Z) *
-		glm::angleAxis(glm::radians(angles.x), AXIS_X);
+	const auto m = glm::eulerAngleYZX(glm::radians(angles.x), glm::radians(angles.y), glm::radians(angles.z));
 
-	set_orientation(glm::quat_cast(glm::mat3(m)));
+	set_orientation(glm::quat_cast(m));
 }
 
 void Transform::set_orientation_zxy(const glm::vec3 &angles)
 {
-	auto m = \
-		glm::angleAxis(glm::radians(angles.z), AXIS_Z) *
-		glm::angleAxis(glm::radians(angles.x), AXIS_X) *
-		glm::angleAxis(glm::radians(angles.y), AXIS_Y);
+	const auto m = glm::eulerAngleZXY(glm::radians(angles.x), glm::radians(angles.y), glm::radians(angles.z));
 
-	set_orientation(glm::quat_cast(glm::mat3(m)));
+	set_orientation(glm::quat_cast(m));
 }
 
 void Transform::set_orientation_zyx(const glm::vec3 &angles)
 {
-	auto m = \
-		glm::angleAxis(glm::radians(angles.z), AXIS_Z) *
-		glm::angleAxis(glm::radians(angles.y), AXIS_Y) *
-		glm::angleAxis(glm::radians(angles.x), AXIS_X);
+	const auto m = glm::eulerAngleZYX(glm::radians(angles.x), glm::radians(angles.y), glm::radians(angles.z));
 
-	set_orientation(glm::quat_cast(glm::mat3(m)));
+	set_orientation(glm::quat_cast(m));
 }
 
 void Transform::set_direction(const glm::vec3 &dir)
