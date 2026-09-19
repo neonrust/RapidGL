@@ -89,6 +89,11 @@ void Window::createWindow(unsigned int width, unsigned int height, const std::st
 
 	GLFWmonitor *fullscreenMonitor = nullptr;// glfwGetPrimaryMonitor();
 
+	if(fullscreenMonitor != nullptr)
+		Log::debug("Creating fullscreen window: {}x{} ...", screen_w, screen_h);
+	else
+		Log::debug("Creating window: {}x{} ...", m_window_size.x, m_window_size.y);
+
 	m_window = glfwCreateWindow(int(m_window_size.x), int(m_window_size.y), title.c_str(), fullscreenMonitor, nullptr);
 
 	if(not m_window)
@@ -96,7 +101,7 @@ void Window::createWindow(unsigned int width, unsigned int height, const std::st
 		Log::error("Could not create window with OpenGL context");
 
 		glfwTerminate();
-		exit(EXIT_FAILURE);
+		std::exit(EXIT_FAILURE);
 	}
 
 	// always open the window in a predictable position (if not full screen)
@@ -104,11 +109,11 @@ void Window::createWindow(unsigned int width, unsigned int height, const std::st
 
 	glfwMakeContextCurrent(m_window);
 
-	/* Initialize GLAD */
+	// Initialize GLAD
 	if(not gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
 		Log::error("Could not initialize GLAD");
-		exit(EXIT_FAILURE);
+		std::exit(EXIT_FAILURE);
 	}
 
 	const GLubyte* vendor_name    = glGetString(GL_VENDOR);
