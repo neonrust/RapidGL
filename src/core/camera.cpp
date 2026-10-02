@@ -234,7 +234,7 @@ void Camera::setOrientationEuler(const glm::vec3 &euler)
 		glm::angleAxis(glm::radians(euler.y), AXIS_Y) *
 		glm::angleAxis(glm::radians(euler.z), AXIS_Z);
 
-	_yaw = glm::radians(euler.y); // best we can do
+	_yaw = glm::radians(euler.y);
 	_pitch = glm::radians(euler.x);
 	// to apply limits
 	addYaw(0);
