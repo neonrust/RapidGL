@@ -2,6 +2,7 @@
 
 #include "asset/asset_manager.h"
 #include "component/transform.h"
+#include "formatters_glm.h"  // IWYU pragma: keep
 #include "animation/animation_system.h"
 #include "bounds.h"
 // #include "component/model.h"
@@ -37,21 +38,23 @@ struct GridPos
 
 namespace Property
 {
-static constexpr std::string_view Name = "name"sv;
-static constexpr std::string_view Type = "type"sv;
-static constexpr std::string_view Position = "pos"sv;
-static constexpr std::string_view Orientation = "ori"sv;
-static constexpr std::string_view Animation = "anim"sv;
-static constexpr std::string_view Grid = "grid"sv;
-static constexpr std::string_view Color = "color"sv;
-static constexpr std::string_view Effect1 = "fx1"sv;   // lights: wobble (o.e. live flame) - amplitude (float)
-static constexpr std::string_view Effect2 = "fx2"sv;   // lights: intensity (float)
-static constexpr std::string_view Effect3 = "fx3"sv;   // lights: fog (float)
-static constexpr std::string_view Effect4 = "fx4"sv;   // TBD
-static constexpr std::string_view Length = "len"sv;
-static constexpr std::string_view Power = "pow"sv;
-static constexpr std::string_view Flicker = "flicker"sv;
-static constexpr std::string_view Radius = "radius"sv;
+static constexpr auto Name = "name"sv;
+static constexpr auto Type = "type"sv;
+static constexpr auto Position = "position"sv;
+static constexpr auto Grid = "grid"sv;
+static constexpr auto Orientation = "ori"sv;
+static constexpr auto Scale = "scale"sv;
+static constexpr auto Bounds = "bounds"sv;
+static constexpr auto Animation = "anim"sv;
+static constexpr auto Color = "color"sv;
+static constexpr auto Effect1 = "fx1"sv;   // lights: wobble (o.e. live flame) - amplitude (float)
+static constexpr auto Effect2 = "fx2"sv;   // lights: intensity (float)
+static constexpr auto Effect3 = "fx3"sv;   // lights: fog (float)
+static constexpr auto Effect4 = "fx4"sv;   // TBD
+static constexpr auto Length = "len"sv;
+static constexpr auto Power = "pow"sv;
+static constexpr auto Flicker = "flicker"sv;
+static constexpr auto Radius = "radius"sv;
 } // Property
 
 enum class Control
@@ -78,33 +81,9 @@ static GridPos to_grid(const prop_value_t &p)
 	return std::get<GridPos>(p);
 }
 
-template<typename T=float>
-static T pop_number(auto &buffer)
+static std::string_view pop_word(std::string_view &buffer)
 {
-	// TODO: use extract_word() then convert?
-
-	T number;
-	auto result = std::from_chars(buffer.data(), buffer.data() + buffer.size(), number);
-	if(result.ec == std::errc::invalid_argument)
-		return std::numeric_limits<T>::min();
-
-	if(result.ptr == buffer.data() + buffer.size())
-		buffer.remove_prefix(buffer.size());
-	else
-	{
-		auto *ptr = result.ptr;
-		// advance 'p' until not whitespace
-		while(*ptr == ' ' and ptr < buffer.data() + buffer.size())
-			++ptr;
-		buffer.remove_prefix(size_t(ptr - buffer.data()));
-	}
-
-	return number;
-};
-
-static std::string_view extract_word(std::string_view &buffer)
-{
-	// skip initial space (probably not needed)
+	// skip initial space, if any
 	auto nonspace = buffer.find_first_not_of(" ");
 	if(nonspace != std::string_view::npos)
 		buffer.remove_prefix(nonspace);
@@ -113,7 +92,7 @@ static std::string_view extract_word(std::string_view &buffer)
 	auto word = buffer.substr(0, word_end);
 	buffer.remove_prefix(word_end == std::string_view::npos? buffer.size(): word_end);
 
-	// skip trailing space
+	// skip space after word (as a favor)
 	nonspace = buffer.find_first_not_of(" ");
 	if(nonspace != std::string_view::npos)
 		buffer.remove_prefix(nonspace);
@@ -121,6 +100,40 @@ static std::string_view extract_word(std::string_view &buffer)
 	return word;
 }
 
+template<typename T=float>
+static std::optional<T> pop_number_optional(auto &buffer)
+{
+	auto word = pop_word(buffer);
+	if(word.empty())
+		return std::nullopt;
+
+	T number;
+	auto result = std::from_chars(word.data(), word.data() + word.size(), number);
+	if(result.ec != std::errc(0))
+	{
+		if constexpr (std::is_integral_v<T>)
+			Log::error("Failed to parse '{}' as integer value, error: {}", word, uint32_t(result.ec));
+		else if constexpr (std::is_floating_point_v<T>)
+			Log::error("Failed to parse '{}' as float value, error: {}", word, uint32_t(result.ec));
+		else
+			Log::error("Failed to parse '{}' (not int, nor float), error: {}", word, uint32_t(result.ec));
+		assert(result.ec == std::errc(0));
+		return std::nullopt;
+	}
+
+	// skip space after word (as a favor)
+	auto nonspace = buffer.find_first_not_of(" ");
+	if(nonspace != std::string_view::npos)
+		buffer.remove_prefix(nonspace);
+
+	return number;
+};
+
+template<typename T=float>
+static T pop_number(auto &buffer)
+{
+	return pop_number_optional<T>(buffer).value();
+}
 
 SceneLoader::SceneLoader(AssetManager &assets, AnimationSystem &anims) :
 	_assets(assets),
@@ -140,13 +153,16 @@ uint32_t SceneLoader::load(std::string_view name, Scene &scene)
 
 	const auto T0 = steady_clock::now();
 
-	auto file_path = FileSystem::getResourcesPath() / "scene" / name;
+	auto file_path = FileSystem::getResourcesPath() / "scenes" / name;
 
 	tag_file fp(file_path);
+	if(not fp)
+		return 0;
 
 	enum class ItemType
 	{
 		None = 0,
+		Config,
 		Mesh,
 		// Animation,
 		Light,
@@ -156,6 +172,7 @@ uint32_t SceneLoader::load(std::string_view name, Scene &scene)
 		Walkable,
 	};
 	static const string_map<ItemType> item_name_type {
+		{ "CONFIG",   ItemType::Config },
 		{ "MESH",     ItemType::Mesh },
 		// { "ANIM",     ItemType::Animation },
 		{ "LIGHT",    ItemType::Light },
@@ -172,17 +189,25 @@ uint32_t SceneLoader::load(std::string_view name, Scene &scene)
 	auto num_walkables { 0u };
 
 	ItemType item_type { ItemType::None };
-	auto item_start_line = 0u;
 	bool first { true };
+
+	fp.next();
 
 	while(fp)
 	{
-		const auto &[tag, value] = fp.next();
-		if(tag.empty())
-			break;
+		const auto &[tag, value] = fp.current();
 
-		if(first and tag == "room"sv)
+		if(tag.empty())
+			return 0;
+
+		if(tag == "room"sv)
 		{
+			assert(first);
+			if(not first)
+			{
+				Log::error("[{}:{}] unexpected '{}', must be first tag in the file", _filename, fp.line_num(), tag);
+				return 0;
+			}
 			_roomName = value;
 			first = false;
 			continue;
@@ -191,15 +216,19 @@ uint32_t SceneLoader::load(std::string_view name, Scene &scene)
 		// capital latter means new item
 		if(is_entry_start(tag))
 		{
-			item_start_line = fp.line_num();
+			_item_start_line = fp.line_num();
 
 			// TODO: read all fields directly in each if case??
 			//   more clear, but less robust
 
 			auto type_found = item_name_type.find(tag);
 			if(type_found == item_name_type.end())
+			{
 				Log::error("unknown item type: '{}'", tag);
-			assert(type_found != item_name_type.end());
+				fp.next();
+				assert(type_found != item_name_type.end());
+				continue;
+			}
 
 			item_type = type_found->second;
 
@@ -210,24 +239,31 @@ uint32_t SceneLoader::load(std::string_view name, Scene &scene)
 		}
 		else
 		{
-			Log::error("[{}:{}] unknown tag file state, expected entry start, got: {} {}", _filename, fp.line_num(), tag, value);
+			Log::warning("[{}:{}] unknown file state: expected entry start, got: {} {}", _filename, fp.line_num(), tag, value);
+			fp.next();
 			continue;
 		}
+
+		bool eaten = false;
 
 		switch(item_type)
 		{
 		case ItemType::None:
 			Log::warning("ignoring property of UNKNOWN item type: '{}'", tag);
 			continue;
-		case ItemType::Mesh:     read_mesh(fp, scene);     break;
-		case ItemType::Light:    read_light(fp, scene);    break;
-		case ItemType::Entity:   read_entity(fp, scene);   break;
-		case ItemType::Control:  read_control(fp, scene);  break;
-		case ItemType::Trigger:  read_trigger(fp, scene);  break;
-		case ItemType::Walkable: read_walkable(fp, scene); break;
+		case ItemType::Config:   eaten = read_config(fp, scene);   break;
+		case ItemType::Mesh:     eaten = read_mesh(fp, scene);     break;
+		case ItemType::Light:    eaten = read_light(fp, scene);    break;
+		case ItemType::Entity:   eaten = read_entity(fp, scene);   break;
+		case ItemType::Control:  eaten = read_control(fp, scene);  break;
+		case ItemType::Trigger:  eaten = read_trigger(fp, scene);  break;
+		case ItemType::Walkable: eaten = read_walkable(fp, scene); break;
 		}
 
 		item_type = ItemType::None;
+
+		if(eaten)
+			fp.next();
 	}
 
 	const auto T1 = steady_clock::now();
@@ -251,44 +287,45 @@ uint32_t SceneLoader::load(std::string_view name, Scene &scene)
 
 static bool pop_bool(std::string_view &value)
 {
-	auto word = extract_word(value);
+	auto word = pop_word(value);
 
 	return word == "1"sv or word == "y"sv or word == "t"sv or word == "yes"sv or word == "true"sv or word == "on"sv;
 }
 
-static GridPos pop_grid(std::string_view &value)
+glm::vec3 SceneLoader::pop_grid_pos(std::string_view &value) const
 {
-	return {
-		.x = pop_number<int32_t>(value),
-		.y = pop_number<int32_t>(value),
-		.z = pop_number<int32_t>(value)    // might be omitted
-	};
+	glm::vec3 grid;
+	grid.x = float(pop_number<int32_t>(value));
+	grid.y = float(pop_number<int32_t>(value));
+	grid.z = float(pop_number<int32_t>(value));
+
+	return grid * _gridSize;
 };
 static glm::vec2 pop_vec2(std::string_view &value)
 {
-	return {
-		pop_number(value),
-		pop_number(value),
-	};
+	glm::vec2 v;
+	v.x = pop_number(value);
+	v.y = pop_number(value);
+	return v;
 };
 static glm::vec3 pop_vec3(std::string_view &value)
 {
-	return {
-		pop_vec2(value),
-		pop_number(value),
-	};
+	glm::vec3 v(pop_vec2(value), 0);
+	v.z = pop_number(value);
+	return v;
 };
 static glm::vec3 pop_orientation(std::string_view &value)
 {
-	auto ori = pop_vec3(value);
+	glm::vec3 ori;
+	ori.x = pop_number(value);
+	auto y = pop_number_optional(value);
+	auto z = pop_number_optional(value);
 
-	// y & z might be non-existent
-	assert(ori.x != std::numeric_limits<float>::min());
-
-		   // if only a single number was specified it's rotation around the Z-axis
-	if(ori.y == std::numeric_limits<float>::min() and ori.z == std::numeric_limits<float>::min())
-		return { 0, 0, ori.x };
-	return ori;
+	// if only a single number was specified it's rotation around the Y-axis
+	if(not y.has_value() and not z.has_value())
+		return { 0, ori.x, 0 };
+	assert(y.has_value() and z.has_value());
+	return { ori.x, y.value(), z.value() };
 };
 
 static std::optional<anim::curve_ref<>> select_curve(std::string_view descriptor, AnimationSystem::AnimationSetup &anim)
@@ -306,7 +343,10 @@ static std::optional<anim::curve_ref<>> select_curve(std::string_view descriptor
 		case 'o': return anim.orientation; break;
 		case 's': return anim.scale; break;
 		}
+		Log::error("Invalid axis property: {}", p);
 		assert(false);
+		static std::array<anim::curve_ref<>, 3> sentinel;
+		return sentinel;
 	};
 	auto &curveset = select_property(descriptor[0]);
 
@@ -323,8 +363,7 @@ static std::optional<anim::curve_ref<>> select_curve(std::string_view descriptor
 
 static bool add_curve_point(anim::curve_ref<> curve, std::string_view args)
 {
-	auto rest = args;
-	const auto interp_type = extract_word(rest);
+	const auto interp_type = pop_word(args);
 	// only one interpolation type supported at the moment (and probably every woll be)
 	if(interp_type != "bz"sv)
 	{
@@ -332,12 +371,12 @@ static bool add_curve_point(anim::curve_ref<> curve, std::string_view args)
 		return false;
 	}
 
-	const auto in_time = seconds_f(pop_number(rest));
-	const auto in_value = pop_number(rest);
-	const auto cp_time = seconds_f(pop_number(rest));
-	const auto cp_value = pop_number(rest);
-	const auto out_time = seconds_f(pop_number(rest));
-	const auto out_value = pop_number(rest);
+	const auto in_time = seconds_f(pop_number(args));
+	const auto in_value = pop_number(args);
+	const auto cp_time = seconds_f(pop_number(args));
+	const auto cp_value = pop_number(args);
+	const auto out_time = seconds_f(pop_number(args));
+	const auto out_value = pop_number(args);
 
 	curve->add({ cp_time, cp_value }, { in_time, in_value }, { out_time, out_value });
 
@@ -355,21 +394,20 @@ struct animation_params
 static bool read_animation(tag_file &fp, AnimationSystem::AnimationSetup &anim)
 {
 	const auto &tag = fp.tag();
+	auto value = fp.value();
 
 	if(tag == "anim_len"sv)
 	{
-		auto rest = fp.value();
-		anim.end_time = seconds_f(pop_number(rest));
+		anim.end_time = seconds_f(pop_number(value));
 		return true;
 	}
-	else if(tag == "anim_end"sv)
+	else if(tag == "animend"sv)
 	{
-		anim.end_state = fp.value() == "reset"? anim::EndState::Reset: anim::EndState::Clamp;
+		anim.end_state = value == "reset"? anim::EndState::Reset: anim::EndState::Clamp;
 	}
-	else if(tag == "anim_lop"sv)
+	else if(tag == "animloop"sv)
 	{
-		auto rest = fp.value();
-		anim.total_loops = pop_number<uint32_t>(rest);
+		anim.total_loops = pop_number<uint32_t>(value);
 		if(anim.total_loops == 0)
 			anim.total_loops = 1;
 	}
@@ -389,20 +427,19 @@ static bool read_animation(tag_file &fp, AnimationSystem::AnimationSetup &anim)
 	return false;
 }
 
-static bool read_bounds(std::string_view value, bounds::AABB &bounds)
+static bool pop_bounds(std::string_view &value, bounds::AABB &bounds)
 {
 	// NOTE: the model itself contains a bounds, is this even needed?
-	auto rest = value;
-	auto min_x = pop_number(rest);
-	auto min_y = pop_number(rest);
-	auto min_z = pop_number(rest);
-	auto to = extract_word(rest);
+	auto min_x = pop_number(value);
+	auto min_y = pop_number(value);
+	auto min_z = pop_number(value);
+	auto to = pop_word(value);
 	if(to != "to"sv)
 		Log::error("bounds: expected word 'to': '{}'", to);
 
-	auto max_x = pop_number(rest);
-	auto max_y = pop_number(rest);
-	auto max_z = pop_number(rest);
+	auto max_x = pop_number(value);
+	auto max_y = pop_number(value);
+	auto max_z = pop_number(value);
 
 	bounds.min() = { min_x, min_y, min_z };
 	bounds.max() = { max_x, max_y, max_z };
@@ -417,19 +454,22 @@ static bool read_material(tag_file &fp, dense_map<uint32_t, MaterialRef> &materi
 	// e.g. mat_alb >> 0 some_texture.png  (0 is material index)
 	//   OR mat_alb >> 0 0.25
 
-	auto rest = fp.value();
-	const auto index = pop_number<uint32_t>(rest);
+	auto value = fp.value();
+	const auto index = pop_number<uint32_t>(value);
 	assert(index >= 0);
 
-	auto texture_name = rest;
-	auto texture = AssetManager::the().texture(texture_name);
-	assert(texture);
+	auto texture_name = value;
+	auto loaded = AssetManager::the().texture(texture_name);
+	if(not loaded)
+		return false;
+
+	auto texture = loaded.value();
 
 	auto &material = materials[index];
 	if(not material)
 		material.reset(new Material());
 
-	// see material.h
+		   // see material.h
 	if(prop == "alb"sv) // albedo
 		material->set(Material::TextureType::ALBEDO, texture_name, texture);
 	else if(prop == "norm"sv) // normals
@@ -447,15 +487,40 @@ static bool read_material(tag_file &fp, dense_map<uint32_t, MaterialRef> &materi
 		Log::warning("Unknown mateiral property: {}", prop);
 		return false;
 	}
+	return true;
+}
+
+bool SceneLoader::read_config(tag_file &fp, Scene &)
+{
+	Log::debug("[{}:{}] read_config", fp.file_path().filename().native(), fp.line_num());
+
+	while(fp)
+	{
+		auto [tag, value] = fp.next();
+
+		if(is_entry_start(tag))
+			return false;
+		if(tag == Property::Grid)
+		{
+			// grid size (not position)
+			const auto width = float(pop_number<uint32_t>(value));
+			const auto depth = float(pop_number<uint32_t>(value));
+			const auto height = width;
+			assert(width > 0 and depth > 0 and height > 0);
+			_gridSize = glm::vec3(width, height, depth);
+		}
+		else
+			unexpected_tag(fp, "config");
+	}
 
 	return true;
 }
 
 bool SceneLoader::read_mesh(tag_file &fp, Scene &scene)
 {
-	// name (also.model file)
+	Log::debug("[{}:{}] read_mesh: {}", fp.file_path().filename().native(), fp.line_num(), fp.value());
 
-	const auto name = std::string(fp.value());
+	// name (also.model file)
 
 	prop_map_t props;
 
@@ -464,57 +529,89 @@ bool SceneLoader::read_mesh(tag_file &fp, Scene &scene)
 	bounds::AABB bounds;
 	AnimationSystem::AnimationSetup animation;
 	component::Transform transform;
+	std::string object_name; // only required if it needs to be referred to by name
 	std::string anim_name;
+
+	auto mesh_name = std::string(fp.value());
+	// if no extension, default to ".gltf"  (this decision should probably be in AssetManager)
+	if(std::string_view(mesh_name).substr(mesh_name.size() - 5).find('.') == std::string::npos)
+		mesh_name += ".gltf"sv;
+
+	auto loaded = _assets.staticMesh(mesh_name);
+	if(loaded)
+	{
+		const auto &[model_, materials_] = loaded.value();
+		model = std::move(model_);
+		materials = std::move(materials_);
+	}
+	else
+	{
+		// skip until next start tag or EOF
+		while(fp)
+			if(is_entry_start(fp.next().first))
+				break;
+		return false;
+	}
 
 	dense_map<uint32_t, MaterialRef> material_overrides;
 
 	auto add_mesh = [&]() {
 		// override materials (and constify)
-		for(const auto &[index, material]: material_overrides)
+		if(model)
 		{
-			assert(index < materials.size());
-			materials[index] = material;
+			for(const auto &[index, material]: material_overrides)
+			{
+				assert(index < materials.size());
+				materials[index] = material;
+			}
+			// store_mesh(model, materials, transform, bounds);
+			if(_roomName.empty())
+				scene.add(model, materials, transform);
+			else
+				scene.add(_roomName, model, materials, transform);
 		}
-		// store_mesh(model, materials, transform, bounds);
-		if(_roomName.empty())
-			scene.add(model, materials, transform);
-		else
-			scene.add(_roomName, model, materials, transform);
+		model.reset();
 	};
 
 	while(fp)
 	{
 		auto [tag, value] = fp.next();
+		if(not fp)
+		{
+			add_mesh();
+			return false;
+		}
 
 		if(is_entry_start(tag))
 		{
 			add_mesh();
 			return false;
 		}
-		if(tag == "mesh"sv)
+		if(tag == Property::Name)
 		{
-			auto [model_, materials_] = _assets.staticMesh(fp.value());
-			model = std::move(model_);
-			materials = std::move(materials_);
-			assert(model);
+			object_name = fp.value();
 		}
-		if(tag == "position"sv)
+		else if(tag == Property::Position)
 		{
-			transform.set_position(glm::vec4(pop_vec3(value), 0));
+			transform.set_position(pop_vec3(value));
 		}
-		else if(tag == "orientat"sv)
+		else if(tag == Property::Grid)
 		{
-			transform.set_orientation_xyz(glm::vec4(pop_orientation(value), 0));
+			transform.set_position(pop_grid_pos(value));
 		}
-		else if(tag == "scale"sv)
+		else if(tag == Property::Orientation)
 		{
-			transform.set_scale(glm::vec4(pop_vec3(value), 0));
+			transform.set_orientation_xyz(pop_orientation(value));
 		}
-		else if(tag == "bounds"sv and read_bounds(value, bounds))
+		else if(tag == Property::Scale)
+		{
+			transform.set_scale(pop_vec3(value));
+		}
+		else if(tag == Property::Bounds and pop_bounds(value, bounds))
 			;
 		else if(tag.starts_with("mat_"sv) and tag.size() > 5 and read_material(fp, material_overrides))
 			;
-		if(tag == "anim"sv)
+		else if(tag == Property::Animation)
 		{
 			if(not anim_name.empty())
 			{
@@ -526,6 +623,8 @@ bool SceneLoader::read_mesh(tag_file &fp, Scene &scene)
 		}
 		else if(not anim_name.empty() and read_animation(fp, animation))
 			;
+		else
+			unexpected_tag(fp, "mesh");
 	}
 
 	// if we got here, we ran into EOF
@@ -540,6 +639,8 @@ bool SceneLoader::read_mesh(tag_file &fp, Scene &scene)
 
 bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 {
+	Log::debug("[{}:{}] read_light: {}", fp.file_path().filename().native(), fp.line_num(), fp.value());
+
 	// intensity
 	// fog
 	// shadow caster
@@ -572,7 +673,9 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 	float flicker { 0.f };
 	std::optional<bool> double_sided;
 
-	if(fp.value() == "spot"sv)
+	if(fp.value() == "point"sv)
+		type = LightType::Point;
+	else if(fp.value() == "spot"sv)
 		type = LightType::Spot;
 	else if(fp.value()== "rect"sv)
 		type = LightType::Rect;
@@ -585,13 +688,15 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 	else
 	{
 		Log::warning("[{}:{}]: unknown light type: {} (using point)", _filename, start_line, fp.value());
+		type = LightType::Point;
 		return false;
 	}
 
 	while(fp)
 	{
 		auto [tag, value] = fp.next();
-		auto rest = value;
+		if(not fp)
+			return false;
 
 		if(tag == "enabled"sv) // bool
 			enabled = pop_bool(value);
@@ -600,37 +705,42 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 			intensity = pop_number(value);
 			intensity = std::max(0.f, intensity.value());
 		}
-		else if(tag == "position"sv)
-			position = pop_vec3(rest);
-		else if(tag == "orientat"sv)
-			orientation = pop_vec3(rest);
-		else if(tag == "color"sv)
+		else if(tag == Property::Position)
+			position = pop_vec3(value);
+		else if(tag == Property::Orientation)
+			orientation = pop_vec3(value);
+		else if(tag == Property::Color)
 		{
-			color = pop_vec3(rest)/255.f;
+			color = pop_vec3(value)/255.f;
 			// TODO: saturate/normalize
 		}
 		else if(tag == "flicker"sv)
-			flicker = pop_number(rest);
+			flicker = pop_number(value);
 		else if(tag == "angle"sv)  // spots
-			angles = { pop_number(rest), pop_number(rest) };
+			angles = { pop_number(value), pop_number(value) };
 		else if(tag == "shadows"sv) // bool
-			shadows = pop_bool(rest);
+			shadows = pop_bool(value);
 		else if(tag == "fog"sv) // float
-			fog = pop_number(rest);
+			fog = pop_number(value);
 		else if(tag == "surface"sv) // bool
-			surface = pop_bool(rest);
+			surface = pop_bool(value);
 		else if(tag == "contacts"sv) // bool?
-			contact_shadows = pop_bool(rest);
+			contact_shadows = pop_bool(value);
 		else if(tag == "rangecmp"sv) // float
-			shadow_range_comp = pop_number(rest);
+			shadow_range_comp = pop_number(value);
 		else if(tag == "radius"sv)
-			radius = pop_number(rest);
+			radius = pop_number(value);
 		else if(tag == "thick"sv)
-			thickness = pop_number(rest);
+			thickness = pop_number(value);
 		else if(tag == "size"sv) // vec2
-			size = pop_vec2(rest);
+			size = pop_vec2(value);
 		else if(tag == "dblsided"sv)
-			double_sided = pop_bool(rest);
+			double_sided = pop_bool(value);
+		else
+		{
+			unexpected_tag(fp, "light");
+			return false;
+		}
 	}
 
 	assert(type == LightType::Directional or position.has_value());
@@ -775,12 +885,19 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 
 bool SceneLoader::read_entity(tag_file &fp, Scene &scene)
 {
+	Log::debug("[{}:{}] read_entity: {}", fp.file_path().filename().native(), fp.line_num(), fp.value());
+
+	// skip until next start tag or EOF
+	while(fp)
+		if(is_entry_start(fp.next().first))
+			break;
+	return false;
+
 	// spawns (player, mobs)
 	// "pickupables" / game items
 
 	// name
 	// type
-	return false;
 /*
 	if(not current.got(Property::Grid) or not current.got(Property::Orientation))
 	{
@@ -824,8 +941,15 @@ bool SceneLoader::read_entity(tag_file &fp, Scene &scene)
 
 bool SceneLoader::read_control(tag_file &fp, Scene &scene)
 {
-	// TODO
+	Log::debug("[{}:{}] read_control: {}", fp.file_path().filename().native(), fp.line_num(), fp.value());
+
+	// skip until next start tag or EOF
+	while(fp)
+		if(is_entry_start(fp.next().first))
+			break;
 	return false;
+
+	// TODO
 /*
 	// name
 	// type
@@ -864,18 +988,20 @@ bool SceneLoader::read_control(tag_file &fp, Scene &scene)
 	level->_entities.emplace<component::Control>(ctrl_ent, ctrl_comp);
 
 
-	return true;
 */
+	return true;
 }
 
 bool SceneLoader::read_trigger(tag_file &fp, Scene &scene)
 {
+	Log::debug("[{}:{}] read_trigger: {}", fp.file_path().filename().native(), fp.line_num(), fp.value());
+
 	// name
 	// bounds
 
 	auto name = std::string(fp.value());
 
-	GridPos grid;
+	glm::vec3 position(0);
 	bounds::AABB bounds;
 
 
@@ -892,10 +1018,15 @@ bool SceneLoader::read_trigger(tag_file &fp, Scene &scene)
 			add_trigger();
 			return false;
 		}
-		else if(tag == "grid"sv)
-			grid = pop_grid(value);
-		else if(tag == "bounds"sv and read_bounds(value, bounds))
+		else if(tag == Property::Grid)
+			position = pop_grid_pos(value);
+		else if(tag == "bounds"sv and pop_bounds(value, bounds))
 			;
+		else
+		{
+			unexpected_tag(fp, "trigger");
+			return false;
+		}
 	}
 
 	add_trigger();
@@ -905,11 +1036,13 @@ bool SceneLoader::read_trigger(tag_file &fp, Scene &scene)
 
 bool SceneLoader::read_walkable(tag_file &fp, Scene &scene)
 {
-	GridPos grid;
+	Log::debug("[{}:{}] read_walkable: {}", fp.file_path().filename().native(), fp.line_num(), fp.value());
+
+	glm::vec3 position(0);
 	bounds::AABB bounds;
 
 
-	auto add_walkable = [&scene, &grid]() {
+	auto add_walkable = [&scene, &position]() {
 		Log::warning("Add walkable NOT IMPLEMENTED");
 		// scene.addWalkable(grid);
 	};
@@ -923,13 +1056,20 @@ bool SceneLoader::read_walkable(tag_file &fp, Scene &scene)
 			add_walkable();
 			return false;
 		}
-		else if(tag == "grid"sv)
-			grid = pop_grid(value);
+		else if(tag == Property::Grid)
+			position = pop_grid_pos(value);
+		else
+			unexpected_tag(fp, "walkable");
 	}
 
 	add_walkable();
 
 	return true;
+}
+
+void SceneLoader::unexpected_tag(const tag_file &fp, std::string_view context)
+{
+	Log::error("[{}:{}] (in {}) Unexpected tag: {} (item started @ {})", _filename, fp.line_num(), context, fp.tag(), _item_start_line);
 }
 
 } // RGL

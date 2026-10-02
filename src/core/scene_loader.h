@@ -4,6 +4,7 @@
 #include <string>
 
 #include <glm/fwd.hpp>
+#include <glm/vec3.hpp>
 
 namespace RGL
 {
@@ -22,18 +23,25 @@ public:
 	uint32_t load(std::string_view name, Scene &scene);
 
 private:
+	bool read_config(tag_file &fp, Scene &scene);
 	bool read_mesh(tag_file &fp, Scene &scene);
 	bool read_light(tag_file &fp, Scene &scene);
 	bool read_entity(tag_file &fp, Scene &scene);
 	bool read_control(tag_file &fp, Scene &scene);
 	bool read_trigger(tag_file &fp, Scene &scene);
 	bool read_walkable(tag_file &fp, Scene &scene);
+	void unexpected_tag(const tag_file &fp, std::string_view context);
+
+	glm::vec3 pop_grid_pos(std::string_view &value) const;
 
 private:
 	std::string _roomName;
+	uint32_t _item_start_line { 0 };
 	AssetManager &_assets;
 	AnimationSystem &_anims;
 	std::string_view _filename;
+
+	glm::vec3 _gridSize { 2, 2, 2 };
 };
 
 } // RGL
