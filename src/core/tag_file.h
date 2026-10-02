@@ -32,6 +32,8 @@ public:
 
 	[[nodiscard]] inline operator bool () const { return bool(_fp); }
 
+	inline const std::filesystem::path &file_path() const { return _file_path; }
+
 	// returned key & value are the same buffers every time (valid until next call)
 	std::pair<std::string_view, std::string_view> next();
 	[[nodiscard]] inline std::pair<std::string_view, std::string_view> current() const { return { tag(), value() }; }
@@ -42,7 +44,7 @@ public:
 	[[nodiscard]] inline uint32_t line_num() const { return _line_num; }
 
 private:
-	static std::FILE *open(std::string_view filename);
+	std::FILE *open();
 	void close();
 	bool skip_line();
 	[[nodiscard]] bool is_comment() const;
@@ -50,7 +52,7 @@ private:
 private:
 	std::FILE *_fp;
 	uint32_t _line_num { 0 };
-	std::string_view _filename;
+	std::filesystem::path _file_path;
 
 	std::string _tag;
 	std::string _value;
