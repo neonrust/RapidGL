@@ -11,11 +11,11 @@ remove_definitions("-DNDEBUG")
 add_compile_definitions("$<$<NOT:$<CONFIG:Debug>>:NDEBUG>")
 
 # if(RGL_ENABLE_ASAN)
-# add_compile_options(
-# 	$<$<CONFIG:Debug>:-fsanitize=address>
-# 	$<$<CONFIG:Debug>:-fno-omit-frame-pointer>
-# )
-# add_link_options($<$<CONFIG:Debug>:-fsanitize=address>)
+add_compile_options(
+	$<$<CONFIG:Debug>:-fsanitize=address>
+	$<$<CONFIG:Debug>:-fno-omit-frame-pointer>
+)
+add_link_options($<$<CONFIG:Debug>:-fsanitize=address>)
 # endif()
 
 # Set glfw variables
