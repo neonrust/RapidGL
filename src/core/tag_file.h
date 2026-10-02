@@ -30,22 +30,22 @@ public:
 	tag_file(const std::filesystem::path &file_path);
 	~tag_file();
 
-	inline operator bool () const { return bool(_fp); }
+	[[nodiscard]] inline operator bool () const { return bool(_fp); }
 
 	// returned key & value are the same buffers every time (valid until next call)
 	std::pair<std::string_view, std::string_view> next();
-	inline std::pair<std::string_view, std::string_view> current() const { return { tag(), value() }; }
+	[[nodiscard]] inline std::pair<std::string_view, std::string_view> current() const { return { tag(), value() }; }
 
-	inline std::string_view tag() const { return _tag; }
-	inline std::string_view value() const { return _value; }
+	[[nodiscard]] inline std::string_view tag() const { return _tag; }
+	[[nodiscard]] inline std::string_view value() const { return _value; }
 
-	inline uint32_t line_num() const { return _line_num; }
+	[[nodiscard]] inline uint32_t line_num() const { return _line_num; }
 
 private:
 	static std::FILE *open(std::string_view filename);
 	void close();
 	bool skip_line();
-	bool is_comment() const;
+	[[nodiscard]] bool is_comment() const;
 	
 private:
 	std::FILE *_fp;
