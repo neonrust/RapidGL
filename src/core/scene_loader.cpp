@@ -55,6 +55,18 @@ static constexpr auto Length = "len"sv;
 static constexpr auto Power = "pow"sv;
 static constexpr auto Flicker = "flicker"sv;
 static constexpr auto Radius = "radius"sv;
+
+namespace Material
+{
+// suffixes (max 4 characters)
+static constexpr auto Albedo = "alb"sv;
+static constexpr auto Normals = "norm"sv;
+static constexpr auto Metallic = "met"sv;
+static constexpr auto Roughness = "ruff"sv;
+static constexpr auto Ambient = "ao"sv;
+static constexpr auto Emissive = "em"sv;
+} // Material
+
 } // Property
 
 enum class Control
@@ -244,25 +256,25 @@ uint32_t SceneLoader::load(std::string_view name, Scene &scene)
 			continue;
 		}
 
-		bool eaten = false;
+		bool eat_next = false;
 
 		switch(item_type)
 		{
 		case ItemType::None:
 			Log::warning("ignoring property of UNKNOWN item type: '{}'", tag);
 			continue;
-		case ItemType::Config:   eaten = read_config(fp, scene);   break;
-		case ItemType::Mesh:     eaten = read_mesh(fp, scene);     break;
-		case ItemType::Light:    eaten = read_light(fp, scene);    break;
-		case ItemType::Entity:   eaten = read_entity(fp, scene);   break;
-		case ItemType::Control:  eaten = read_control(fp, scene);  break;
-		case ItemType::Trigger:  eaten = read_trigger(fp, scene);  break;
-		case ItemType::Walkable: eaten = read_walkable(fp, scene); break;
+		case ItemType::Config:   eat_next = read_config(fp, scene);   break;
+		case ItemType::Mesh:     eat_next = read_mesh(fp, scene);     break;
+		case ItemType::Light:    eat_next = read_light(fp, scene);    break;
+		case ItemType::Entity:   eat_next = read_entity(fp, scene);   break;
+		case ItemType::Control:  eat_next = read_control(fp, scene);  break;
+		case ItemType::Trigger:  eat_next = read_trigger(fp, scene);  break;
+		case ItemType::Walkable: eat_next = read_walkable(fp, scene); break;
 		}
 
 		item_type = ItemType::None;
 
-		if(eaten)
+		if(eat_next and fp)
 			fp.next();
 	}
 
@@ -350,11 +362,16 @@ static std::optional<anim::curve_ref<>> select_curve(std::string_view descriptor
 	};
 	auto &curveset = select_property(descriptor[0]);
 
+	auto ensure_created = [&](size_t idx) {
+		if(not curveset[idx])
+			curveset[idx].reset(new anim::animation_curve<>());
+	};
+
 	switch(descriptor[1])
 	{
-	case 'x': return curveset[0]; break;
-	case 'y': return curveset[1]; break;
-	case 'z': return curveset[2]; break;
+	case 'x': ensure_created(0); return curveset[0];
+	case 'y': ensure_created(1); return curveset[1];
+	case 'z': ensure_created(2); return curveset[2];
 	default:
 		Log::debug("Unknown animation curve: {} (expected: [pos][xyz])", descriptor);
 		return std::nullopt;
@@ -391,12 +408,12 @@ struct animation_params
 	seconds_f end_time;
 };
 
-static bool read_animation(tag_file &fp, AnimationSystem::AnimationSetup &anim)
+bool SceneLoader::read_anim_tag(tag_file &fp, AnimationSystem::AnimationSetup &anim)
 {
 	const auto &tag = fp.tag();
 	auto value = fp.value();
 
-	if(tag == "anim_len"sv)
+	if(tag == "animlen"sv)
 	{
 		anim.end_time = seconds_f(pop_number(value));
 		return true;
@@ -404,26 +421,25 @@ static bool read_animation(tag_file &fp, AnimationSystem::AnimationSetup &anim)
 	else if(tag == "animend"sv)
 	{
 		anim.end_state = value == "reset"? anim::EndState::Reset: anim::EndState::Clamp;
+		return true;
 	}
 	else if(tag == "animloop"sv)
 	{
 		anim.total_loops = pop_number<uint32_t>(value);
-		if(anim.total_loops == 0)
+		if(anim.total_loops == 0) // TODO: or infinite? useful?
 			anim.total_loops = 1;
+		return true;
 	}
-	else if(tag.starts_with("kf-"sv) and tag.size() >= 4) // e.g. kf-px
+	else if(tag.starts_with("kf-"sv) and tag.size() >= 4) // keyframe of a channel, e.g. kf-px
 	{
 		auto opt_curve = select_curve(tag.substr(3), anim);
 		if(opt_curve.has_value())
-		{
-			auto &curve = opt_curve.value();
-			if(not curve) // not yet allocated
-				curve.reset(new anim::animation_curve<>);
-
-			add_curve_point(curve, fp.value());
-		}
+			add_curve_point(opt_curve.value(), fp.value());
 		return true;
 	}
+	else
+		unexpected_tag(fp, "anim");
+
 	return false;
 }
 
@@ -447,12 +463,12 @@ static bool pop_bounds(std::string_view &value, bounds::AABB &bounds)
 	return bounds.volume() > 0;
 }
 
-static bool read_material(tag_file &fp, dense_map<uint32_t, MaterialRef> &materials)
+static bool read_material_override(tag_file &fp, dense_map<uint32_t, MaterialRef> &materials)
 {
-	const auto prop = fp.tag().substr(4); // "mat_"
+	const auto prop = fp.tag().substr(4); // "mtl_"
 
-	// e.g. mat_alb >> 0 some_texture.png  (0 is material index)
-	//   OR mat_alb >> 0 0.25
+	// e.g. mtl_alb >> 0 some_texture.png  (0 is material index)
+	//   OR mtl_alb >> 0 0.25
 
 	auto value = fp.value();
 	const auto index = pop_number<uint32_t>(value);
@@ -469,18 +485,18 @@ static bool read_material(tag_file &fp, dense_map<uint32_t, MaterialRef> &materi
 	if(not material)
 		material.reset(new Material());
 
-		   // see material.h
-	if(prop == "alb"sv) // albedo
+	// see material.h
+	if(prop == Property::Material::Albedo)
 		material->set(Material::TextureType::ALBEDO, texture_name, texture);
-	else if(prop == "norm"sv) // normals
+	else if(prop == Property::Material::Normals)
 		material->set(Material::TextureType::NORMAL, texture_name, texture);
-	else if(prop == "met"sv) // metallic
+	else if(prop == Property::Material::Metallic)
 		material->set(Material::TextureType::METALLIC, texture_name, texture);
-	else if(prop == "ruff"sv) // roughness  :)
+	else if(prop == Property::Material::Roughness)
 		material->set(Material::TextureType::ROUGHNESS, texture_name, texture);
-	else if(prop == "ao"sv) // ambient occlusion
+	else if(prop == Property::Material::Ambient)
 		material->set(Material::TextureType::AO, texture_name, texture);
-	else if(prop == "em"sv) // emissive
+	else if(prop == Property::Material::Emissive)
 		material->set(Material::TextureType::EMISSIVE, texture_name, texture);
 	else
 	{
@@ -497,10 +513,9 @@ bool SceneLoader::read_config(tag_file &fp, Scene &)
 	while(fp)
 	{
 		auto [tag, value] = fp.next();
-
 		if(is_entry_start(tag))
 			return false;
-		if(tag == Property::Grid)
+		else if(tag == Property::Grid)
 		{
 			// grid size (not position)
 			const auto width = float(pop_number<uint32_t>(value));
@@ -513,7 +528,7 @@ bool SceneLoader::read_config(tag_file &fp, Scene &)
 			unexpected_tag(fp, "config");
 	}
 
-	return true;
+	return false;
 }
 
 bool SceneLoader::read_mesh(tag_file &fp, Scene &scene)
@@ -555,7 +570,7 @@ bool SceneLoader::read_mesh(tag_file &fp, Scene &scene)
 
 	dense_map<uint32_t, MaterialRef> material_overrides;
 
-	auto add_mesh = [&]() {
+	auto add_mesh = [&]() -> entt::entity {
 		// override materials (and constify)
 		if(model)
 		{
@@ -565,63 +580,60 @@ bool SceneLoader::read_mesh(tag_file &fp, Scene &scene)
 				materials[index] = material;
 			}
 			// store_mesh(model, materials, transform, bounds);
+			auto local = model;
+			model.reset();
 			if(_roomName.empty())
-				scene.add(model, materials, transform);
+				return scene.add(model, materials, transform);
 			else
-				scene.add(_roomName, model, materials, transform);
+				return scene.add(_roomName, model, materials, transform);
 		}
-		model.reset();
+		return NO_ENTITY_ID;
 	};
+	auto add_anim = [&](auto mesh_id) {
+		if(not anim_name.empty())
+		{
+			assert(animation);
+			_anims.add(anim_name, mesh_id, animation);
+			anim_name.clear();
+			animation.clear();
+		}
+	};
+
+	entt::entity mesh_id { NO_ENTITY_ID };
 
 	while(fp)
 	{
 		auto [tag, value] = fp.next();
 		if(not fp)
-		{
-			add_mesh();
-			return false;
-		}
+			break;
 
 		if(is_entry_start(tag))
 		{
-			add_mesh();
+			mesh_id = add_mesh();
+			add_anim(mesh_id);
 			return false;
 		}
 		if(tag == Property::Name)
-		{
 			object_name = fp.value();
-		}
 		else if(tag == Property::Position)
-		{
 			transform.set_position(pop_vec3(value));
-		}
 		else if(tag == Property::Grid)
-		{
 			transform.set_position(pop_grid_pos(value));
-		}
 		else if(tag == Property::Orientation)
-		{
 			transform.set_orientation_xyz(pop_orientation(value));
-		}
 		else if(tag == Property::Scale)
-		{
 			transform.set_scale(pop_vec3(value));
-		}
 		else if(tag == Property::Bounds and pop_bounds(value, bounds))
 			;
-		else if(tag.starts_with("mat_"sv) and tag.size() > 5 and read_material(fp, material_overrides))
+		else if(tag.starts_with("mtl_"sv) and tag.size() > 5 and read_material_override(fp, material_overrides))
 			;
 		else if(tag == Property::Animation)
 		{
-			if(not anim_name.empty())
-			{
-				_anims.add(anim_name, animation);
-				anim_name.clear();
-				animation.clear();
-			}
+			add_anim(mesh_id);
+
 			anim_name = fp.value();
 		}
-		else if(not anim_name.empty() and read_animation(fp, animation))
+		else if(not anim_name.empty() and read_anim_tag(fp, animation))
 			;
 		else
 			unexpected_tag(fp, "mesh");
@@ -629,10 +641,8 @@ bool SceneLoader::read_mesh(tag_file &fp, Scene &scene)
 
 	// if we got here, we ran into EOF
 
-	if(not anim_name.empty())
-		_anims.add(anim_name, animation);
-
-	add_mesh();
+	mesh_id = add_mesh();
+	add_anim(mesh_id);
 
 	return true;
 }
@@ -673,17 +683,19 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 	float flicker { 0.f };
 	std::optional<bool> double_sided;
 
-	if(fp.value() == "point"sv)
+	const auto type_name = fp.value();
+
+	if(type_name == "point"sv)
 		type = LightType::Point;
-	else if(fp.value() == "spot"sv)
+	else if(type_name == "spot"sv)
 		type = LightType::Spot;
-	else if(fp.value()== "rect"sv)
+	else if(type_name== "rect"sv)
 		type = LightType::Rect;
-	else if(fp.value() == "tube"sv)
+	else if(type_name == "tube"sv)
 		type = LightType::Tube;
-	else if(fp.value() == "sphere"sv)
+	else if(type_name == "sphere"sv)
 		type = LightType::Sphere;
-	else if(fp.value() == "disc"sv)
+	else if(type_name == "disc"sv)
 		type = LightType::Disc;
 	else
 	{
@@ -1023,10 +1035,7 @@ bool SceneLoader::read_trigger(tag_file &fp, Scene &scene)
 		else if(tag == "bounds"sv and pop_bounds(value, bounds))
 			;
 		else
-		{
 			unexpected_tag(fp, "trigger");
-			return false;
-		}
 	}
 
 	add_trigger();

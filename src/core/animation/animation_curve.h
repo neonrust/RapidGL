@@ -71,10 +71,14 @@ void animation_curve<ValueT, TimeT, Precision>::add(const point_t &point, const 
 		throw std::out_of_range("'time' may not be negative");
 
 	if(empty() and point.time > TimeT(0))
-		std::println(stderr, "animation_curve: first point is not at T = 0");
+	{
+		// std::println(stderr, "animation_curve: first point is not at T = 0");
+		// TODO: insert a fake point at zero?
+		// add({ 0, point.value }, { 0, point.value }, { point.time/4, point.value });
+	}
 
 	// TODO: this should allow adding points in the middle;
-	//   the new point is inserted at the correct place
+	//   the new point is then inserted at the correct place
 	if(not empty() and point.time <= curve().back().point.time)
 		throw std::out_of_range("points must have increasing 'time'");
 

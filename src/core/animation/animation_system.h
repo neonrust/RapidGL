@@ -11,28 +11,28 @@
 #include <glm/vec3.hpp>
 #include <glm/gtc/quaternion.hpp>
 
-struct active_key_t
-{
-	entt::entity anim_entity_id;
-	entt::entity subject_entity_id;
+// struct active_key_t
+// {
+// 	entt::entity anim_entity_id;
+// 	entt::entity subject_entity_id;
 
-	bool operator == (const active_key_t &that) const = default;
-};
+// 	bool operator == (const active_key_t &that) const = default;
+// };
 
-namespace std
-{
-template<>
-struct hash<active_key_t>
-{
-	[[nodiscard]] inline size_t operator()(const active_key_t &k) const
-	{
-		size_t h { 0 };
-		h = hash_combine(h, uint32_t(k.anim_entity_id));
-		h = hash_combine(h, uint32_t(k.subject_entity_id));
-		return h;
-	}
-};
-}
+// namespace std
+// {
+// template<>
+// struct hash<active_key_t>
+// {
+// 	[[nodiscard]] inline size_t operator()(const active_key_t &k) const
+// 	{
+// 		size_t h { 0 };
+// 		h = hash_combine(h, uint32_t(k.anim_entity_id));
+// 		h = hash_combine(h, uint32_t(k.subject_entity_id));
+// 		return h;
+// 	}
+// };
+// }
 
 namespace RGL
 {
@@ -53,20 +53,26 @@ public:
 		uint32_t total_loops { 1 };
 
 		void clear();
+		[[nodiscard]] size_t num_curves() const;
+
+		[[nodiscard]] operator bool () const;
 	};
 public:
 	AnimationSystem(entt::registry &entities);
+	
+	entt::entity add(std::string_view name, entt::entity entity_id, const AnimationSetup &A);
 
-	entt::entity add(std::string_view name, const AnimationSetup &A);
+	bool play(std::string_view name, seconds_f elapsed);
+	bool play(std::string_view name, seconds_f elapsed, const glm::vec3 &offset);
+	bool play(std::string_view name, seconds_f elapsed, const glm::vec3 &offset, const glm::quat &orientation);
 
-	bool play(std::string_view name, entt::entity subject_Id, seconds_f elapsed);
-	bool play(std::string_view name, entt::entity subject_Id, seconds_f elapsed, const glm::vec3 &offset);
-	bool play(std::string_view name, entt::entity subject_id, seconds_f elapsed, const glm::vec3 &offset, const glm::quat &orientation);
-	void stop(std::string_view name, entt::entity subject_id, bool reset_transform=false);
+	void stop(std::string_view name, bool reset_transform=false);
 
-	bool is_playing(std::string_view name, entt::entity subject_id) const;
+	bool is_playing(std::string_view name) const;
 
 	void update(seconds_f elapsed) override;
+
+	std::vector<std::string_view> names() const;
 
 private:
 	string_map<entt::entity> _nameToId;
@@ -100,7 +106,7 @@ private:
 		std::array<anim::curve_sampler<>, 9> samplers;
 	};
 
-	dense_map<active_key_t, sampler_ctrl> _active;
+	string_map<sampler_ctrl> _active;
 
 	float _default_tesselation { 5.f };
 };
