@@ -11,7 +11,7 @@ float_min = float_info.min
 bl_info = {
 	"name": "Game Scene Exporter",
 	"author": "André Jonsson",
-	"version": (0, 3, 2),
+	"version": (0, 3, 3),
 	"blender": (5, 0, 0),
 	"location": "File > Export > Game Scene",
 	"category": "Import-Export",
@@ -241,7 +241,7 @@ def dump_control(fp, obj):
 def dump_light(fp, obj):
 	wtag(fp, 'LIGHT', obj.name)
 	light_type = obj.data.type
-	wtag(fp, 'type', light_type)
+	wtag(fp, 'type', light_type.lower())
 	wtag(fp, 'position', fv(obj.location, 2))
 	# for non-point lights:
 	if light_type != 'POINT':
