@@ -9,6 +9,7 @@
 #include "constants.h"
 #include "component/light_general.h"
 #include "component/light_spot.h"
+#include "component/transform.h"
 #include <ranges>
 
 #include "ImGuizmo.h"
@@ -709,7 +710,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 
 		if(ImGui::Button("+ point"))
 		{
-			_light_mgr.add(PointLightParams{
+			[[maybe_unused]] auto lid = _light_mgr.add(PointLightParams{
 				.color = { 1, 1, 1 },
 				.intensity = 25.f,
 				.fog = 1.f,
@@ -721,7 +722,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 		ImGui::SameLine();
 		if(ImGui::Button("+ spot"))
 		{
-			_light_mgr.add(SpotLightParams{
+			[[maybe_unused]] auto lid = _light_mgr.add(SpotLightParams{
 				.color = { 1, 1, 1 },
 				.intensity = 25.f,
 				.fog = 1.f,
