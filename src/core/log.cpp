@@ -37,12 +37,13 @@ void flush()
 		std::fflush(stderr);
 }
 
-bool set_file(fs::path &file_path)
+bool set_file(const fs::path &file_path, bool also_stdout)
 {
 	auto *fp = std::fopen(file_path.native().c_str(), "wb");
 	if(not fp)
 		return false;
 	_private::the().out = fp;
+	_private::the().also_stdout = also_stdout;
 	return true;
 }
 

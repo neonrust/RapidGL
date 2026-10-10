@@ -24,6 +24,7 @@ CoreApp::CoreApp():
 {
 #if defined(_DEBUG)
 	Log::set_level(Log::DEBUG);
+	Log::set_file(fs::current_path() / "app.log", true);
 #endif
 }
 

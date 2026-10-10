@@ -38,11 +38,18 @@ public:
 	template<typename... Args>
 	void log_msg(Level lvl, std::format_string<Args...> fmt, Args&&... args)
 	{
-		preamble(lvl, out);
-		std::print(out, fmt, std::forward<Args>(args)...);
-		end(out);
+		log_msg(out, lvl, fmt, std::forward<Args>(args)...);
+		if(also_stdout and out != stdout)
+			log_msg(stdout, lvl, fmt, std::forward<Args>(args)...);
+	}
+	template<typename... Args>
+	void log_msg(FILE *fp, Level lvl, std::format_string<Args...> fmt, Args&&... args)
+	{
+		preamble(lvl, fp);
+		std::print(fp, fmt, std::forward<Args>(args)...);
+		end(fp);
 
-		if(lvl >= error_level and out != stdout and out != stderr)
+		if(lvl >= error_level and fp != stdout and fp != stderr)
 		{
 			preamble(lvl, stderr);
 			std::print(stderr, fmt, std::forward<Args>(args)...);
@@ -55,12 +62,13 @@ public:
 	Level level        { WARNING };
 	Level error_level  { WARNING };  // at or higher also writes to stderr
 	FILE  *out         { stdout };
+	bool  also_stdout  { false }; // when logging to file
 	bool  output_date  { false };
 	bool  output_since { false };
 	std::chrono::steady_clock::time_point start_time;
 };
 
-bool set_file(std::filesystem::path &file_path);
+bool set_file(const std::filesystem::path &file_path, bool also_stdout=false);
 Level set_level(Level min_level);
 void enable_date(bool enable);
 void enable_since(bool enable);
