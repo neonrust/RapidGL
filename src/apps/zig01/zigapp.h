@@ -1,5 +1,6 @@
 #pragma once
 
+#include "animation/animation_system.h"
 #include "core_app.h"
 
 #include "common.h"
@@ -203,6 +204,8 @@ private:
     std::shared_ptr<RGL::Texture2D> m_ltc_mat_lut;
 	// std::shared_ptr<RGL::Texture2DArray> _csm_shadow_maps;
 	RGL::Texture3D _random_angles;
+
+	RGL::AnimationSystem _animSystem;
 
 	// Tonemapping variables
 	RGL::RenderTarget::Texture2d _rt;
