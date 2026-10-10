@@ -1258,10 +1258,10 @@ ShadowAtlas::SlotID ShadowAtlas::alloc_slot(SlotSize slot_size, bool first)
 {
 	const auto size_idx = slot_size_idx(slot_size);
 
+	assert(size_idx < curr_available().size());
 	auto &free_slots = curr_available()[size_idx];
 
 	assert(not free_slots.empty());
-	assert(size_idx < free_slots.size());
 
 	SlotID node_index;
 	if(first)
