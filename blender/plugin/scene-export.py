@@ -11,7 +11,7 @@ float_min = float_info.min
 bl_info = {
 	"name": "Game Scene Exporter",
 	"author": "André Jonsson",
-	"version": (0, 3, 3),
+	"version": (0, 4, 0),
 	"blender": (5, 0, 0),
 	"location": "File > Export > Game Scene",
 	"category": "Import-Export",
@@ -191,11 +191,16 @@ def ori_angle(angle):
 # Blender (Z up) -> engine (Y up): (x, y, z) -> (x, z, -y)
 Y_UP_CONVERSION = Matrix.Rotation(-PI/2, 3, 'X')
 
-def engine_orientation(obj):
+def engine_orientation(obj, mesh=True):
 	'''euler angles (degrees) as expected by glm::eulerAngleXYZ(), i.e. Rx*Ry*Rz'''
 	rot = obj.matrix_basis.decompose()[1].to_matrix()
 	if option_y_up:
-		rot = Y_UP_CONVERSION @ rot @ Y_UP_CONVERSION.transposed()
+		if mesh:
+			# mesh geometry is already converted to Y up (by the glTF export)
+			rot = Y_UP_CONVERSION @ rot @ Y_UP_CONVERSION.transposed()
+		else:
+			# e.g. lights; the engine uses the same local axes as Blender (forward = -Z, tube along X)
+			rot = Y_UP_CONVERSION @ rot
 	# Blender calls the Rx*Ry*Rz product 'ZYX' order
 	e = rot.to_euler('ZYX')
 	return '%s %s %s' % (ori_angle(e.x), ori_angle(e.y), ori_angle(e.z))
@@ -238,21 +243,69 @@ def dump_control(fp, obj):
 		wtag(fp, 'action', obj.get('action'))
 
 
+AREA_LIGHT_TYPES = ('rect', 'disc', 'sphere', 'tube')
+
+def game_light_type(light):
+	'''the engine's light type of a Blender light (None if unsupported)'''
+	if light.type == 'POINT':
+		return light.game_light.point_shape.lower()  # point, sphere or tube
+	if light.type == 'SUN':
+		return 'directional'
+	if light.type == 'SPOT':
+		return 'spot'
+	if light.type == 'AREA':
+		if light.shape in ('SQUARE', 'RECTANGLE'):
+			return 'rect'
+		if light.shape == 'DISK':
+			return 'disc'
+	return None
+
 def dump_light(fp, obj):
+	light = obj.data
+	light_type = game_light_type(light)
+	if light_type is None:
+		print('WARNING: %s: unsupported light: %s %s' % (obj.name, light.type, getattr(light, 'shape', '')))
+		return
+
 	wtag(fp, 'LIGHT', obj.name)
-	light_type = obj.data.type
-	wtag(fp, 'type', light_type.lower())
-	wtag(fp, 'position', fv(obj.location, 2))
-	# for non-point lights:
-	if light_type != 'POINT':
-		wtag(fp, 'ori', fv(obj.rotation_euler, 3))
-	elif light_type == 'SPOT':
-		wtag(fp, 'angle', str(fv(obj.data.spot_size, 2)))
-	wtag(fp, 'color', iv(obj.data.color, scale=255))
+	wtag(fp, 'type', light_type)
+	wtag(fp, 'color', iv(light.color, scale=255))
 	# some made-up formula to make the light power similar in the enginge :|
-	wtag(fp, 'power', str(round(math.pow(obj.data.energy/100, 0.5), 2)))
-	wtag(fp, 'shadows', str(1 if obj.data.use_shadow else 0))
+	wtag(fp, 'power', str(round(math.pow(light.energy/100, 0.5), 2)))
+	wtag(fp, 'shadows', str(1 if light.use_shadow else 0))
+	settings = light.game_light
+	if light.use_shadow:
+		wtag(fp, 'rangecmp', fv(settings.shadow_range_compression, 2))
+	wtag(fp, 'contacts', str(1 if settings.contact_shadows else 0))
+	wtag(fp, 'fog', fv(settings.fog, 2))
+	if settings.flicker > 0:
+		wtag(fp, 'flicker', fv(settings.flicker, 2))
+	if light_type in AREA_LIGHT_TYPES:
+		wtag(fp, 'surface', str(1 if settings.visible_surface else 0))
 	# TODO: animation(s)
+
+	if light_type != 'directional':
+		wtag(fp, 'position', fv(to_engine_space(obj.location), 2))
+	if light_type not in ('point', 'sphere'):
+		wtag(fp, 'ori', engine_orientation(obj, mesh=False))
+
+	if light_type == 'spot':
+		# Blender's spot size is the full cone angle, the engine's is the half angle
+		outer_angle = light.spot_size/2
+		inner_angle = outer_angle*(1 - light.spot_blend)
+		wtag(fp, 'angle', '%.3f %.3f' % (outer_angle, inner_angle))
+	elif light_type == 'rect':
+		size_y = light.size if light.shape == 'SQUARE' else light.size_y
+		wtag(fp, 'size', fv((light.size, size_y), 2))
+		wtag(fp, 'dblsided', str(1 if settings.double_sided else 0))
+	elif light_type == 'disc':
+		wtag(fp, 'radius', fv(light.size/2, 2))  # disk size is the diameter
+		wtag(fp, 'dblsided', str(1 if settings.double_sided else 0))
+	elif light_type == 'sphere':
+		wtag(fp, 'radius', fv(light.shadow_soft_size, 2))
+	elif light_type == 'tube':
+		wtag(fp, 'radius', fv(settings.length/2, 2))  # the engine's tube "radius" is half its length
+		wtag(fp, 'thick', fv(light.shadow_soft_size*2, 2))
 
 
 def dump_spawn(fp, obj):
@@ -393,8 +446,10 @@ def write_scene_data_wrapped(fp, context, options=None):
 # ExportHelper is a helper class, defines filename and
 # invoke() function which calls the file selector.
 from bpy_extras.io_utils import ExportHelper
-from bpy.props import StringProperty, BoolProperty, EnumProperty
-from bpy.types import Operator
+from bpy.props import StringProperty, BoolProperty, EnumProperty, FloatProperty, PointerProperty
+from bpy.types import Operator, Panel, PropertyGroup
+import gpu
+from gpu_extras.batch import batch_for_shader
 
 
 class ExportGameScene(Operator, ExportHelper):
@@ -448,15 +503,253 @@ class ExportGameScene(Operator, ExportHelper):
 def menu_func_export(self, context):
 	self.layout.operator(ExportGameScene.bl_idname, text="Game Scene (.scene)")
 
+# ----------------------------------------------------------------------------
+# Game light types
+#
+# Blender only has point, sun, spot & area lights; the rest of the engine's types map onto those:
+#   rect:   area light, square/rectangle shape
+#   disc:   area light, disk shape (size is the diameter)
+#   sphere: point light, radius = point light radius
+#   tube:   point light, radius = point light radius, length along local X (drawn as an overlay)
+# Sphere & tube light the viewport like a point light with a radius, which is about as close as Blender gets.
+
+class GameLightSettings(PropertyGroup):
+	point_shape: EnumProperty(
+		name="Shape",
+		description="Engine light type of a point light",
+		items=(
+			('POINT', "Point", "Point light"),
+			('SPHERE', "Sphere", "Sphere light (uses the point light radius)"),
+			('TUBE', "Tube", "Tube light along local X (uses the point light radius)"),
+		),
+		default='POINT',
+	)
+	length: FloatProperty(
+		name="Length",
+		description="Tube light length (along local X)",
+		default=1.0,
+		min=0.0,
+		subtype='DISTANCE',
+	)
+	double_sided: BoolProperty(
+		name="Double sided",
+		description="Emit light from both sides (rect & disc lights)",
+		default=False,
+	)
+	visible_surface: BoolProperty(
+		name="Visible surface",
+		description="Render the light's emitting surface (rect, disc, sphere & tube lights)",
+		default=True,
+	)
+	fog: FloatProperty(
+		name="Fog",
+		description="Contribution to volumetric fog",
+		default=1.0,
+		min=0.0,
+	)
+	contact_shadows: BoolProperty(
+		name="Contact shadows",
+		description="Cast screen-space contact shadows",
+		default=False,
+	)
+	shadow_range_compression: FloatProperty(
+		name="Shadow range compression",
+		default=1.0,
+		min=0.0,
+	)
+	flicker: FloatProperty(
+		name="Flicker",
+		description="Flicker amount (0 = steady)",
+		default=0.0,
+		min=0.0,
+	)
+
+
+LIGHT_TYPE_ICONS = {
+	'point': 'LIGHT_POINT',
+	'directional': 'LIGHT_SUN',
+	'spot': 'LIGHT_SPOT',
+	'rect': 'LIGHT_AREA',
+	'disc': 'LIGHT_AREA',
+	'sphere': 'SHADING_SOLID',
+	'tube': 'MESH_CYLINDER',
+}
+
+class DATA_PT_game_light(Panel):
+	bl_label = "Game Light"
+	bl_space_type = 'PROPERTIES'
+	bl_region_type = 'WINDOW'
+	bl_context = 'data'
+
+	@classmethod
+	def poll(cls, context):
+		return context.light is not None
+
+	def draw(self, context):
+		layout = self.layout
+		light = context.light
+		settings = light.game_light
+
+		light_type = game_light_type(light)
+		box = layout.box()
+		if light_type:
+			box.label(text="Exports as: %s" % light_type.upper(), icon=LIGHT_TYPE_ICONS[light_type])
+		else:
+			box.alert = True
+			box.label(text="Unsupported (ellipse area light)", icon='ERROR')
+
+		if light.type == 'POINT':
+			layout.prop(settings, 'point_shape', expand=True)
+			if settings.point_shape != 'POINT':
+				layout.prop(light, 'shadow_soft_size', text="Radius")
+			if settings.point_shape == 'TUBE':
+				layout.prop(settings, 'length')
+		elif light.type == 'AREA':
+			# same as Blender's own area light shape: square/rectangle -> rect, disk -> disc
+			layout.prop(light, 'shape')
+			if light_type in ('rect', 'disc'):
+				layout.prop(settings, 'double_sided')
+
+		if light_type in AREA_LIGHT_TYPES:
+			layout.prop(settings, 'visible_surface')
+		layout.prop(settings, 'fog')
+		layout.prop(settings, 'flicker')
+		layout.prop(settings, 'contact_shadows')
+		row = layout.row()
+		row.enabled = light.use_shadow
+		row.prop(settings, 'shadow_range_compression')
+
+
+class OBJECT_OT_add_game_light(Operator):
+	bl_idname = "object.add_game_light"
+	bl_label = "Add Game Light"
+	bl_options = {'REGISTER', 'UNDO'}
+
+	light_type: EnumProperty(
+		items=(
+			('SPHERE', "Sphere", ""),
+			('TUBE', "Tube", ""),
+			('DISC', "Disc", ""),
+		),
+	)
+
+	def execute(self, context):
+		if self.light_type == 'DISC':
+			bpy.ops.object.light_add(type='AREA')
+			light = context.active_object.data
+			light.shape = 'DISK'
+		else:
+			bpy.ops.object.light_add(type='POINT')
+			light = context.active_object.data
+			light.game_light.point_shape = self.light_type
+			light.shadow_soft_size = 0.25 if self.light_type == 'SPHERE' else 0.05
+		return {'FINISHED'}
+
+
+def menu_func_add_light(self, context):
+	self.layout.separator()
+	self.layout.operator(OBJECT_OT_add_game_light.bl_idname, text="Sphere (game)", icon='LIGHT_POINT').light_type = 'SPHERE'
+	self.layout.operator(OBJECT_OT_add_game_light.bl_idname, text="Tube (game)", icon='LIGHT_POINT').light_type = 'TUBE'
+	# a disc is just an area light with disk shape (rect is a plain area light)
+	self.layout.operator(OBJECT_OT_add_game_light.bl_idname, text="Disc (game)", icon='LIGHT_AREA').light_type = 'DISC'
+
+
+def tube_outline(radius, length, segments=16):
+	'''line segments (pairs of points) of a tube along local X'''
+	half = length/2
+	ring = [ Vector((0, math.cos(2*PI*i/segments)*radius, math.sin(2*PI*i/segments)*radius)) for i in range(segments) ]
+	lines = []
+	for x in (-half, half):
+		offset = Vector((x, 0, 0))
+		for i in range(segments):
+			lines += [ ring[i] + offset, ring[(i + 1) % segments] + offset ]
+	for i in range(0, segments, segments//4):
+		lines += [ ring[i] + Vector((-half, 0, 0)), ring[i] + Vector((half, 0, 0)) ]
+	return lines
+
+def draw_tube_lights():
+	coords = []
+	for obj in bpy.context.scene.objects:
+		if obj.type == 'LIGHT' and game_light_type(obj.data) == 'tube' and obj.visible_get():
+			m = obj.matrix_world
+			coords += [ m @ v for v in tube_outline(obj.data.shadow_soft_size, obj.data.game_light.length) ]
+	if not coords:
+		return
+
+	shader = gpu.shader.from_builtin('UNIFORM_COLOR')
+	batch = batch_for_shader(shader, 'LINES', {'pos': coords})
+	shader.uniform_float('color', (1.0, 0.85, 0.4, 1.0))
+	batch.draw(shader)
+
+_draw_handle = None
+
+
+class VIEW3D_GGT_tube_light_length(bpy.types.GizmoGroup):
+	'''arrow at the +X end of the active tube light, dragging it changes its length'''
+	bl_idname = "VIEW3D_GGT_tube_light_length"
+	bl_label = "Tube Light Length"
+	bl_space_type = 'VIEW_3D'
+	bl_region_type = 'WINDOW'
+	bl_options = {'3D', 'PERSISTENT'}
+
+	@classmethod
+	def poll(cls, context):
+		obj = context.object
+		return obj is not None and obj.type == 'LIGHT' and game_light_type(obj.data) == 'tube'
+
+	def setup(self, context):
+		def get_half_length():
+			return bpy.context.object.data.game_light.length/2
+
+		def set_half_length(value):
+			bpy.context.object.data.game_light.length = max(0.0, value*2)
+
+		gz = self.gizmos.new('GIZMO_GT_arrow_3d')
+		gz.target_set_handler('offset', get=get_half_length, set=set_half_length)
+		gz.color = 1.0, 0.85, 0.4
+		gz.alpha = 0.6
+		gz.color_highlight = 1.0, 1.0, 0.7
+		gz.alpha_highlight = 1.0
+		self.length_gizmo = gz
+
+	def refresh(self, context):
+		obj = context.object
+		# arrows point along their local +Z; turn it to point along the tube's local +X
+		self.length_gizmo.matrix_basis = obj.matrix_world.normalized() @ Matrix.Rotation(PI/2, 4, 'Y')
+
+# ----------------------------------------------------------------------------
+
+classes = (
+	ExportGameScene,
+	GameLightSettings,
+	DATA_PT_game_light,
+	OBJECT_OT_add_game_light,
+	VIEW3D_GGT_tube_light_length,
+)
+
 # Register and add to the "file selector" menu (required to use fv for quick access).
 def register():
-	bpy.utils.register_class(ExportGameScene)
+	for cls in classes:
+		bpy.utils.register_class(cls)
+	bpy.types.Light.game_light = PointerProperty(type=GameLightSettings)
 	bpy.types.TOPBAR_MT_file_export.append(menu_func_export)
+	bpy.types.VIEW3D_MT_light_add.append(menu_func_add_light)
+
+	global _draw_handle
+	_draw_handle = bpy.types.SpaceView3D.draw_handler_add(draw_tube_lights, (), 'WINDOW', 'POST_VIEW')
 
 
 def unregister():
-	bpy.utils.unregister_class(ExportGameScene)
+	global _draw_handle
+	if _draw_handle is not None:
+		bpy.types.SpaceView3D.draw_handler_remove(_draw_handle, 'WINDOW')
+		_draw_handle = None
+
+	bpy.types.VIEW3D_MT_light_add.remove(menu_func_add_light)
 	bpy.types.TOPBAR_MT_file_export.remove(menu_func_export)
+	del bpy.types.Light.game_light
+	for cls in reversed(classes):
+		bpy.utils.unregister_class(cls)
 
 if __name__ == "__main__":
 	register()
