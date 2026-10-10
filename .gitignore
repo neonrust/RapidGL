@@ -35,6 +35,10 @@
 .vs/
 CMakeSettings.json
 
+# Temp files
+*.blend1
+*~
+
 build/
 configuration/root_directory.h
 !resources/**
