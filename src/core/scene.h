@@ -39,8 +39,6 @@ public:
 
 	bool addAnimation(EntityID entity_id, std::string_view anim_name);
 
-	// TODO: add light
-
 	void moved(EntityID entity_id, const component::Transform &transform);
 
 	bool remove(EntityID entity_id);
@@ -49,9 +47,6 @@ public:
 
 	inline       LightManager &lights()       { return _lights; }
 	inline const LightManager &lights() const { return _lights; }
-
-	template<typename LTP>
-	EntityID addLight(const LTP &p);
 
 private:
 	void _create_components(EntityID model_ent, std::shared_ptr<const StaticModel> model, const MaterialCSet &materials, const component::Transform &transform, bool is_dynamic);
@@ -65,15 +60,5 @@ private:
 
 	LightManager &_lights;
 };
-
-
-template<typename LTP>
-EntityID Scene::addLight(const LTP &p)
-{
-	auto light_id = _lights.add(p);
-	// TODO: insert light's "affect sphere" into spatial index
-	const auto &[general, transform] = _entities.get<component::LightGeneral, component::Transform>(light_id);
-	return light_id;
-}
 
 } // RGL
