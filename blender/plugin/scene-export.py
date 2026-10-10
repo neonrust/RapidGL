@@ -565,16 +565,6 @@ class GameLightSettings(PropertyGroup):
 	)
 
 
-LIGHT_TYPE_ICONS = {
-	'point': 'LIGHT_POINT',
-	'directional': 'LIGHT_SUN',
-	'spot': 'LIGHT_SPOT',
-	'rect': 'LIGHT_AREA',
-	'disc': 'LIGHT_AREA',
-	'sphere': 'SHADING_SOLID',
-	'tube': 'MESH_CYLINDER',
-}
-
 class DATA_PT_game_light(Panel):
 	bl_label = "Game Light"
 	bl_space_type = 'PROPERTIES'
@@ -591,12 +581,7 @@ class DATA_PT_game_light(Panel):
 		settings = light.game_light
 
 		light_type = game_light_type(light)
-		box = layout.box()
-		if light_type:
-			box.label(text="Exports as: %s" % light_type.upper(), icon=LIGHT_TYPE_ICONS[light_type])
-		else:
-			box.alert = True
-			box.label(text="Unsupported (ellipse area light)", icon='ERROR')
+		layout.label(text="Exports as: %s" % (light_type or "unsupported (ellipse area light)"))
 
 		if light.type == 'POINT':
 			layout.prop(settings, 'point_shape', expand=True)
@@ -604,11 +589,8 @@ class DATA_PT_game_light(Panel):
 				layout.prop(light, 'shadow_soft_size', text="Radius")
 			if settings.point_shape == 'TUBE':
 				layout.prop(settings, 'length')
-		elif light.type == 'AREA':
-			# same as Blender's own area light shape: square/rectangle -> rect, disk -> disc
-			layout.prop(light, 'shape')
-			if light_type in ('rect', 'disc'):
-				layout.prop(settings, 'double_sided')
+		elif light_type in ('rect', 'disc'):
+			layout.prop(settings, 'double_sided')
 
 		if light_type in AREA_LIGHT_TYPES:
 			layout.prop(settings, 'visible_surface')
@@ -683,40 +665,6 @@ def draw_tube_lights():
 
 _draw_handle = None
 
-
-class VIEW3D_GGT_tube_light_length(bpy.types.GizmoGroup):
-	'''arrow at the +X end of the active tube light, dragging it changes its length'''
-	bl_idname = "VIEW3D_GGT_tube_light_length"
-	bl_label = "Tube Light Length"
-	bl_space_type = 'VIEW_3D'
-	bl_region_type = 'WINDOW'
-	bl_options = {'3D', 'PERSISTENT'}
-
-	@classmethod
-	def poll(cls, context):
-		obj = context.object
-		return obj is not None and obj.type == 'LIGHT' and game_light_type(obj.data) == 'tube'
-
-	def setup(self, context):
-		def get_half_length():
-			return bpy.context.object.data.game_light.length/2
-
-		def set_half_length(value):
-			bpy.context.object.data.game_light.length = max(0.0, value*2)
-
-		gz = self.gizmos.new('GIZMO_GT_arrow_3d')
-		gz.target_set_handler('offset', get=get_half_length, set=set_half_length)
-		gz.color = 1.0, 0.85, 0.4
-		gz.alpha = 0.6
-		gz.color_highlight = 1.0, 1.0, 0.7
-		gz.alpha_highlight = 1.0
-		self.length_gizmo = gz
-
-	def refresh(self, context):
-		obj = context.object
-		# arrows point along their local +Z; turn it to point along the tube's local +X
-		self.length_gizmo.matrix_basis = obj.matrix_world.normalized() @ Matrix.Rotation(PI/2, 4, 'Y')
-
 # ----------------------------------------------------------------------------
 
 classes = (
@@ -724,7 +672,6 @@ classes = (
 	GameLightSettings,
 	DATA_PT_game_light,
 	OBJECT_OT_add_game_light,
-	VIEW3D_GGT_tube_light_length,
 )
 
 # Register and add to the "file selector" menu (required to use fv for quick access).
