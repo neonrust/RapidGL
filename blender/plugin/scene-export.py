@@ -270,8 +270,8 @@ def dump_light(fp, obj):
 	wtag(fp, 'LIGHT', obj.name)
 	wtag(fp, 'type', light_type)
 	wtag(fp, 'color', iv(light.color, scale=255))
-	# some made-up formula to make the light power similar in the enginge :|
-	wtag(fp, 'power', str(round(math.pow(light.energy/100, 0.5), 2)))
+	# some made-up formula to make the light power similar in the engine :|
+	wtag(fp, 'power', light.energy)#round(math.pow(light.energy/100, 0.5), 2)))
 	wtag(fp, 'shadows', str(1 if light.use_shadow else 0))
 	settings = light.game_light
 	if light.use_shadow:
