@@ -68,7 +68,7 @@ void ZigApp::debugDrawSceneBounds()
 	for(const auto &[entity_id, tfm, model]: _entities.view<component::Transform, component::Model>().each()) // _scenePvs
 	{
 		bounds::AABB tfm_aabb;
-		for(const auto &corner: model.aabb().corners())
+		for(const auto &corner: model->aabb().corners())
 			tfm_aabb.expand(tfm.transform() * glm::vec4(corner, 1));
 
 		const auto &vertices = tfm_aabb.corners();
@@ -109,7 +109,11 @@ void ZigApp::debugDrawSceneBounds()
 		const auto &light = *light_;
 
 		if(light.general.light_type == LightType::Spot)
+		{
 			debugDrawSpotLight(light.gpu_light, glm::vec4(light.general.color, 1));
+
+			// TODO: draw shadow map size hint  (see ShadowAtlas::evaluate_lights())
+		}
 		else
 		{
 			const auto light_id = _light_mgr.light_id(LightIndex(light_index));
@@ -117,9 +121,13 @@ void ZigApp::debugDrawSceneBounds()
 			auto found = shadow_maps.find(light_id);
 			if(found != shadow_maps.end())
 			{
-				auto res = shadow_size_res.find(found->second.slots[0].size)->second;
-				const auto alpha = std::sqrt(float(res)/32.f);
-				debugDrawSphere(light.gpu_light.position, light.gpu_light.affect_radius, res, size_t(float(res)*1.5f), glm::vec4(shadow_color, alpha));
+				auto size_found = shadow_size_res.find(found->second.slots[0].size);
+				if(size_found != shadow_size_res.end())
+				{
+					const auto res = size_found->second;
+					const auto alpha = std::sqrt(float(res)/32.f);
+					debugDrawSphere(light.gpu_light.position, light.gpu_light.affect_radius, res, size_t(float(res)*1.5f), glm::vec4(shadow_color, alpha));
+				}
 			}
 			else
 				debugDrawSphere(light.gpu_light.position, light.gpu_light.affect_radius, glm::vec4(no_shadow_color, 0.5f));
