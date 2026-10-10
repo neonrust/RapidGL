@@ -21,7 +21,7 @@ namespace RGL
 static inline glm::vec3 vec3_cast(const aiVector3D& v)   { return glm::vec3(v.x, v.y, v.z); }
 
 
-std::pair<std::shared_ptr<const StaticModel>, MaterialCSet> AssetManager::staticMesh(std::string_view name)
+std::expected<AssetManager::MeshAndMaterials, AssetError> AssetManager::staticMesh(std::string_view name)
 {
 	static constexpr auto models_prefix = "/models/"sv;
 
@@ -33,15 +33,24 @@ std::pair<std::shared_ptr<const StaticModel>, MaterialCSet> AssetManager::static
 	{
 		auto mfound = _static_mesh_default_materials.find(name);
 		// if the mesh exists, its default materials is guaranteed to exist
-		return { found->second.lock(), mfound->second };
+		return MeshAndMaterials{ found->second.lock(), mfound->second };
 	}
+
+	if(auto found = _meshFailures.find(name); found != _meshFailures.end())
+		return std::unexpected(found->second);
 
 		   // TODO: pool?
 	auto *mesh = new StaticModel();
 
 	Log::info("Loading mesh: {}", name);
 	MaterialSet materials;
-	loadStaticMesh(*mesh, FileSystem::getResourcesPath() / "models" / name, materials); // TODO: use 'models_prefix'
+	if(not loadStaticMesh(*mesh, FileSystem::getResourcesPath() / "models" / name, materials)) // TODO: use 'models_prefix)
+	{
+		const auto err = AssetError("mesh load failed");
+		_meshFailures[name] = err;
+		return std::unexpected(err);
+	}
+
 	assert(*mesh);
 
 	auto mesh_ref = std::shared_ptr<const StaticModel>(mesh, [this, name=std::string(name)](auto *mesh) {
@@ -54,7 +63,7 @@ std::pair<std::shared_ptr<const StaticModel>, MaterialCSet> AssetManager::static
 	_static_meshes[std::string(name)] = mesh_ref;
 	_static_mesh_default_materials[std::string(name)] = const_materials;
 
-	return { mesh_ref, const_materials };
+	return MeshAndMaterials{ mesh_ref, const_materials };
 }
 
 void AssetManager::delete_static_mesh(std::string_view name, StaticModel *mesh)
@@ -67,7 +76,7 @@ void AssetManager::delete_static_mesh(std::string_view name, StaticModel *mesh)
 
 		_static_mesh_default_materials.erase(name);
 
-		Log::info("Deleted mesh: {}", name);
+		Log::debug("Deleted mesh: {}", name);
 	}
 }
 
@@ -77,14 +86,14 @@ bool AssetManager::loadStaticMesh(StaticModel &model, const std::filesystem::pat
 	// TODO: importer.SetIOHandler(compressionLayer);
 	const auto *scene = importer.ReadFile(filepath.native(),
 										  aiProcess_Triangulate              |
-											  aiProcess_GenSmoothNormals         |
-											  aiProcess_GenUVCoords              |
-											  aiProcess_CalcTangentSpace         |
-											  aiProcess_FlipUVs                  |
-											  aiProcess_JoinIdenticalVertices    |
-											  aiProcess_RemoveRedundantMaterials |
-											  aiProcess_PreTransformVertices     |
-											  aiProcess_GenBoundingBoxes );
+										  aiProcess_GenSmoothNormals         |
+										  aiProcess_GenUVCoords              |
+										  aiProcess_CalcTangentSpace         |
+										  aiProcess_FlipUVs                  |
+										  aiProcess_JoinIdenticalVertices    |
+										  aiProcess_RemoveRedundantMaterials |
+										  aiProcess_PreTransformVertices     |
+										  aiProcess_GenBoundingBoxes );
 
 	model._ok = scene and scene->mFlags != AI_SCENE_FLAGS_INCOMPLETE and scene->mRootNode;
 
@@ -109,19 +118,19 @@ bool AssetManager::parseStaticScene(StaticModel &model, const aiScene *scene, co
 
 	VertexData vertex_data;
 
-	uint32_t vertices_count = 0;
-	uint32_t indices_count  = 0;
+	uint32_t vertex_count = 0;
+	uint32_t index_count  = 0;
 
 	/* Count the number of vertices and indices. */
 	for (uint32_t idx = 0; idx < model.m_mesh_parts.size(); ++idx)
 	{
 		model.m_mesh_parts[idx].m_material_index = scene->mNumMaterials > 0 ? scene->mMeshes[idx]->mMaterialIndex : INVALID_MATERIAL;
 		model.m_mesh_parts[idx].m_indices_count  = scene->mMeshes[idx]->mNumFaces * 3;
-		model.m_mesh_parts[idx].m_base_vertex    = vertices_count;
-		model.m_mesh_parts[idx].m_base_index     = indices_count;
+		model.m_mesh_parts[idx].m_base_vertex    = vertex_count;
+		model.m_mesh_parts[idx].m_base_index     = index_count;
 
-		vertices_count += scene->mMeshes[idx]->mNumVertices;
-		indices_count  += model.m_mesh_parts[idx].m_indices_count;
+		vertex_count += scene->mMeshes[idx]->mNumVertices;
+		index_count  += model.m_mesh_parts[idx].m_indices_count;
 	}
 
 	if(scene->mNumCameras > 0)
@@ -136,12 +145,12 @@ bool AssetManager::parseStaticScene(StaticModel &model, const aiScene *scene, co
 		}
 	}
 
-		   // Reserve space for the vertex attributes and indices
-	vertex_data.positions.reserve(vertices_count);
-	vertex_data.texcoords.reserve(vertices_count);
-	vertex_data.normals.reserve(vertices_count);
-	vertex_data.tangents.reserve(vertices_count);
-	vertex_data.indices.reserve(indices_count);
+	// Reserve space for the vertex attributes and indices
+	vertex_data.positions.reserve(vertex_count);
+	vertex_data.texcoords.reserve(vertex_count);
+	vertex_data.normals.reserve(vertex_count);
+	vertex_data.tangents.reserve(vertex_count);
+	vertex_data.indices.reserve(index_count);
 
 	// Load each mesh parts
 	for (uint32_t idx = 0; idx < model.m_mesh_parts.size(); ++idx)
@@ -155,13 +164,13 @@ bool AssetManager::parseStaticScene(StaticModel &model, const aiScene *scene, co
 		model._aabb.expand(box_min);
 		model._aabb.expand(box_max);
 
-		Log::info("[{}] added sub-mesh {}: {} vertices  AABB: {:.1f}  ->  {:.1f}  ({:.1f}x{:.1f}x{:.1f})",
-				  filename.string(),
-				  idx,
-				  mesh->mNumVertices,
-				  box_min, box_max,
-				  box_max.x - box_min.x, box_max.y - box_min.y, box_max.z - box_min.z
-		);
+		// Log::info("[{}] added sub-mesh {}: {} vertices  AABB: {:.1f}  ->  {:.1f}  ({:.1f}x{:.1f}x{:.1f})",
+		// 		  filename.string(),
+		// 		  idx,
+		// 		  mesh->mNumVertices,
+		// 		  box_min, box_max,
+		// 		  box_max.x - box_min.x, box_max.y - box_min.y, box_max.z - box_min.z
+		// );
 	}
 
 	if(not loadMaterials(materials, scene, filepath))
@@ -171,12 +180,21 @@ bool AssetManager::parseStaticScene(StaticModel &model, const aiScene *scene, co
 	}
 
 	// Populate buffers on the GPU with the model's data
-	// if mesh loading runs in the background, _this_ function needs to be run on the main thread
+	// if mesh loading runs in the background, _this_ call must be run on the main thread
 	createStaticBuffers(model, vertex_data);
 
 	const auto T1 = steady_clock::now();
 
-	Log::info("Loaded mesh {}  ({:.1f} x {:.1f} x {:.1f})  ({})", filepath.string().c_str(), model._aabb.width(), model._aabb.height(), model._aabb.depth(), duration_cast<milliseconds>(T1 - T0));
+	Log::info("Loaded mesh {}: {} verts in {} part{}; ({:.1f} x {:.1f} x {:.1f})  ({})",
+			  filepath.string(),
+			  vertex_count,
+			  model.m_mesh_parts.size(),
+			  model.m_mesh_parts.size() != 1? "s": "",
+			  model._aabb.width(),
+			  model._aabb.height(),
+			  model._aabb.depth(),
+			  duration_cast<milliseconds>(T1 - T0)
+	);
 
 	return true;
 }
@@ -307,23 +325,28 @@ bool AssetManager::loadMaterialTextures(Material &mesh_material, const aiScene* 
 				// Load from file
 				fs::path full_path { path.data };
 
-				auto texture = this->texture(full_path.native(), is_srgb);
-				// if (!texture->Load(full_path, is_srgb))
-				// {
-				// 	Log::error("\x1b[97;41;1mError\x1b[m Loading texture failed {}.", full_path);
-				// 	return false;
-				// }
-				// else
-				// {
-				const auto T1 = steady_clock::now();
-				mesh_material.set(texture_type, full_path.filename().native(), texture);
+				auto loaded = this->texture(full_path.native(), is_srgb);
+				if(loaded)
+				{
+					const auto &texture = loaded.value();
 
-				// if (texture_map_mode[0] == aiTextureMapMode_Wrap)
-				// {
-				// 	texture->SetWrapping(RGL::TextureWrappingAxis::U, RGL::TextureWrappingParam::Repeat);
-				// 	texture->SetWrapping(RGL::TextureWrappingAxis::V, RGL::TextureWrappingParam::Repeat);
-				// }
-				// }
+					// if (!texture->Load(full_path, is_srgb))
+					// {
+					// 	Log::error("\x1b[97;41;1mError\x1b[m Loading texture failed {}.", full_path);
+					// 	return false;
+					// }
+					// else
+					// {
+					// const auto T1 = steady_clock::now();
+					mesh_material.set(texture_type, full_path.filename().native(), texture);
+
+					// if (texture_map_mode[0] == aiTextureMapMode_Wrap)
+					// {
+					// 	texture->SetWrapping(RGL::TextureWrappingAxis::U, RGL::TextureWrappingParam::Repeat);
+					// 	texture->SetWrapping(RGL::TextureWrappingAxis::V, RGL::TextureWrappingParam::Repeat);
+					// }
+					// }
+				}
 			}
 		}
 

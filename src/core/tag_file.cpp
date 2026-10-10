@@ -158,6 +158,8 @@ std::pair<std::string_view, std::string_view> tag_file::next()
 	if(std::feof(_fp))
 		close();
 
+	// Log::debug("tag_file| '{}' :: '{}'", tag(), value());
+
 	return { tag(), value() };
 }
 

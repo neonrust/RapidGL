@@ -253,34 +253,29 @@ void AnimationSystem::stop(std::string_view name, bool reset_transform)
 		case anim::EndState::Clamp:
 		{
 			// set transform to last curve point
+#define set_end_value(_subject_, _idx_) \
+			if(anim.curves. _subject_ [_idx_]) \
+				_subject_[_idx_]  = anim.curves. _subject_ [_idx_]->curve().back().point.value
 
-			auto pos = transform.position();
-			if(anim.curves.position[0])
-				pos.x = anim.curves.position[0]->curve().back().point.value;
-			if(anim.curves.position[1])
-				pos.y = anim.curves.position[1]->curve().back().point.value;
-			if(anim.curves.position[2])
-				pos.z = anim.curves.position[2]->curve().back().point.value;
+			auto position = transform.position();
+			set_end_value(position, 0);
+			set_end_value(position, 1);
+			set_end_value(position, 2);
 			if(anim.curves.position[0] or anim.curves.position[1] or anim.curves.position[2])
-				transform.set_position(pos);
+				transform.set_position(position);
 
-			auto ori = transform.orientation_xyz();
-			if(anim.curves.orientation[0])
-				ori.x = anim.curves.orientation[0]->curve().back().point.value;
-			if(anim.curves.orientation[1])
-				ori.y = anim.curves.orientation[1]->curve().back().point.value;
-			if(anim.curves.orientation[2])
-				ori.z = anim.curves.orientation[2]->curve().back().point.value;
+			auto orientation = transform.orientation_xyz();
+			set_end_value(orientation, 0);
+			set_end_value(orientation, 1);
+			set_end_value(orientation, 2);
 			if(anim.curves.orientation[0] or anim.curves.orientation[1] or anim.curves.orientation[2])
-				transform.set_orientation_xyz(ori);
+				transform.set_orientation_xyz(orientation);
 
 			auto scale = transform.scale();
-			if(anim.curves.scale[0])
-				scale.x = anim.curves.scale[0]->curve().back().point.value;
-			if(anim.curves.scale[1])
-				scale.y = anim.curves.scale[1]->curve().back().point.value;
-			if(anim.curves.scale[2])
-				scale.z = anim.curves.scale[2]->curve().back().point.value;
+			scale[0] = 1.f;
+			set_end_value(scale, 0);
+			set_end_value(scale, 1);
+			set_end_value(scale, 2);
 			if(anim.curves.scale[0] or anim.curves.scale[1] or anim.curves.scale[2])
 				transform.set_scale(scale);
 		}

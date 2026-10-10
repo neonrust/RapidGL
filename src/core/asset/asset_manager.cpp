@@ -30,7 +30,7 @@ void AssetManager::shut_down()
 	the()._static_meshes.clear();
 }
 
-std::shared_ptr<const Texture2D> AssetManager::texture(std::string_view name, bool is_srgb)
+std::expected<std::shared_ptr<const Texture2D>, AssetError> AssetManager::texture(std::string_view name, bool is_srgb)
 {
 	static constexpr auto textures_prefix = "/textures/"sv;
 
@@ -40,6 +40,9 @@ std::shared_ptr<const Texture2D> AssetManager::texture(std::string_view name, bo
 
 	if(auto found = _textures.find(name); found != _textures.end())
 		return found->second.lock();
+
+	if(auto found = _textureFailures.find(name); found != _textureFailures.end())
+		return std::unexpected(found->second);
 
 	// TODO: pool?
 	auto *tex = new Texture2D();
@@ -52,7 +55,9 @@ std::shared_ptr<const Texture2D> AssetManager::texture(std::string_view name, bo
 	if(not *tex)
 	{
 		// TODO: use the default texture
-		assert(*tex);
+		const auto err = AssetError("texture load failed");
+		_textureFailures[name] = err;
+		return std::unexpected(err);
 	}
 
 	tex->SetWrapping(TextureWrappingAxis::U, TextureWrappingParam::Repeat);
@@ -74,7 +79,7 @@ void AssetManager::delete_texture2d(std::string_view name, Texture2D *tex)
 	{
 		delete tex;
 		_textures.erase(found);
-		Log::info("Deleted texture: {}", name);
+		Log::debug("Deleted texture: {}", name);
 	}
 }
 

@@ -20,7 +20,6 @@ set(SOURCE_FILES_CORE
 	buffer_binds.h
 	camera.cpp
 	core_app.cpp
-	dynamic_tree.cpp
 	filesystem.cpp
 	frustum.cpp
 	game_time.cpp

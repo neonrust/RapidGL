@@ -1,5 +1,6 @@
 #pragma once
 
+#include <expected>
 #include <memory>
 #include <filesystem>
 
@@ -19,6 +20,11 @@ class StaticModel;
 class Texture2D;
 struct VertexData;
 
+struct AssetError
+{
+	std::string message;
+};
+
 class AssetManager
 {
 public:
@@ -26,8 +32,9 @@ public:
 	// must be called before OpenGL shut down
 	static void shut_down();
 
-	std::pair<std::shared_ptr<const StaticModel>, MaterialCSet> staticMesh(std::string_view name);
-	std::shared_ptr<const Texture2D>   texture(std::string_view name, bool is_srgb=false);
+	using MeshAndMaterials = std::pair<std::shared_ptr<const StaticModel>, MaterialCSet>;
+	std::expected<MeshAndMaterials, AssetError> staticMesh(std::string_view name);
+	std::expected<std::shared_ptr<const Texture2D>, AssetError> texture(std::string_view name, bool is_srgb=false);
 
 private:
 	void delete_static_mesh(std::string_view name, StaticModel *mesh);
@@ -48,6 +55,9 @@ private:
 	string_map<std::weak_ptr<const StaticModel>> _static_meshes;
 	string_map<MaterialCSet> _static_mesh_default_materials;
 	string_map<std::weak_ptr<const Texture2D>> _textures;
+
+	string_map<AssetError> _meshFailures;
+	string_map<AssetError> _textureFailures;
 };
 
 } // RGL

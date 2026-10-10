@@ -166,6 +166,8 @@ uint32_t SceneLoader::load(std::string_view name, Scene &scene)
 	const auto T0 = steady_clock::now();
 
 	auto file_path = FileSystem::getResourcesPath() / "scenes" / name;
+	if(file_path.extension().empty())
+		file_path.replace_extension(".scene");
 
 	tag_file fp(file_path);
 	if(not fp)
@@ -508,7 +510,7 @@ static bool read_material_override(tag_file &fp, dense_map<uint32_t, MaterialRef
 
 bool SceneLoader::read_config(tag_file &fp, Scene &)
 {
-	Log::debug("[{}:{}] read_config", fp.file_path().filename().native(), fp.line_num());
+	// Log::debug("[{}:{}] read_config", fp.file_path().filename().native(), fp.line_num());
 
 	while(fp)
 	{
@@ -533,7 +535,7 @@ bool SceneLoader::read_config(tag_file &fp, Scene &)
 
 bool SceneLoader::read_mesh(tag_file &fp, Scene &scene)
 {
-	Log::debug("[{}:{}] read_mesh: {}", fp.file_path().filename().native(), fp.line_num(), fp.value());
+	// Log::debug("[{}:{}] read_mesh: {}", fp.file_path().filename().native(), fp.line_num(), fp.value());
 
 	// name (also.model file)
 
@@ -579,9 +581,6 @@ bool SceneLoader::read_mesh(tag_file &fp, Scene &scene)
 				assert(index < materials.size());
 				materials[index] = material;
 			}
-			// store_mesh(model, materials, transform, bounds);
-			auto local = model;
-			model.reset();
 			if(_roomName.empty())
 				return scene.add(model, materials, transform);
 			else
@@ -613,7 +612,7 @@ bool SceneLoader::read_mesh(tag_file &fp, Scene &scene)
 			add_anim(mesh_id);
 			return false;
 		}
-		if(tag == Property::Name)
+		else if(tag == Property::Name)
 			object_name = fp.value();
 		else if(tag == Property::Position)
 			transform.set_position(pop_vec3(value));
@@ -649,7 +648,7 @@ bool SceneLoader::read_mesh(tag_file &fp, Scene &scene)
 
 bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 {
-	Log::debug("[{}:{}] read_light: {}", fp.file_path().filename().native(), fp.line_num(), fp.value());
+	// Log::debug("[{}:{}] read_light: {}", fp.file_path().filename().native(), fp.line_num(), fp.value());
 
 	// intensity
 	// fog
@@ -704,17 +703,25 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 		return false;
 	}
 
+	// true if we stopped at the start of the next entry (i.e. it must not be skipped by the caller)
+	bool at_next_entry = false;
+
 	while(fp)
 	{
 		auto [tag, value] = fp.next();
 		if(not fp)
-			return false;
+			break;  // EOF; still add the light
 
-		if(tag == "enabled"sv) // bool
+		if(is_entry_start(tag))
+		{
+			at_next_entry = true;
+			break;
+		}
+		else if(tag == "enabled"sv) // bool
 			enabled = pop_bool(value);
 		else if(tag == "power"sv) // intensity, float
 		{
-			intensity = pop_number(value);
+			intensity = std::sqrt(pop_number(value)) * 2.f;
 			intensity = std::max(0.f, intensity.value());
 		}
 		else if(tag == Property::Position)
@@ -729,7 +736,15 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 		else if(tag == "flicker"sv)
 			flicker = pop_number(value);
 		else if(tag == "angle"sv)  // spots
-			angles = { pop_number(value), pop_number(value) };
+		{
+			auto outer = pop_number(value);
+			auto inner_o = pop_number_optional(value);
+			auto inner = outer;
+			if(inner_o)
+				inner = inner_o.value();
+
+			angles = { outer, inner };
+		}
 		else if(tag == "shadows"sv) // bool
 			shadows = pop_bool(value);
 		else if(tag == "fog"sv) // float
@@ -749,10 +764,7 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 		else if(tag == "dblsided"sv)
 			double_sided = pop_bool(value);
 		else
-		{
 			unexpected_tag(fp, "light");
-			return false;
-		}
 	}
 
 	assert(type == LightType::Directional or position.has_value());
@@ -813,6 +825,7 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 	case LightType::Spot:
 	{
 		SpotLightParams s;
+		s.position = position.value();
 		s.color = general.color;
 		s.intensity = general.intensity;
 		s.fog = general.fog;
@@ -829,6 +842,7 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 	case LightType::Rect:
 	{
 		RectLightParams r;
+		r.position = position.value();
 		r.intensity = general.intensity;
 		r.fog = general.fog;
 		r.shadow_caster = general.shadow_caster;
@@ -845,6 +859,7 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 	case LightType::Tube:
 	{
 		TubeLightParams t;
+		t.position = position.value();
 		t.intensity = general.intensity;
 		t.fog = general.fog;
 		t.shadow_caster = general.shadow_caster;
@@ -860,6 +875,7 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 	case LightType::Sphere:
 	{
 		SphereLightParams s;
+		s.position = position.value();
 		s.intensity = general.intensity;
 		s.fog = general.fog;
 		s.shadow_caster = general.shadow_caster;
@@ -874,6 +890,7 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 	case LightType::Disc:
 	{
 		DiscLightParams d;
+		d.position = position.value();
 		d.intensity = general.intensity;
 		d.fog = general.fog;
 		d.shadow_caster = general.shadow_caster;
@@ -892,12 +909,12 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 	if(light_id != NO_LIGHT_ID)
 		Log::info("added light {}", light_id);
 
-	return true;
+	return not at_next_entry;
 }
 
 bool SceneLoader::read_entity(tag_file &fp, Scene &scene)
 {
-	Log::debug("[{}:{}] read_entity: {}", fp.file_path().filename().native(), fp.line_num(), fp.value());
+	// Log::debug("[{}:{}] read_entity: {}", fp.file_path().filename().native(), fp.line_num(), fp.value());
 
 	// skip until next start tag or EOF
 	while(fp)
@@ -1006,7 +1023,7 @@ bool SceneLoader::read_control(tag_file &fp, Scene &scene)
 
 bool SceneLoader::read_trigger(tag_file &fp, Scene &scene)
 {
-	Log::debug("[{}:{}] read_trigger: {}", fp.file_path().filename().native(), fp.line_num(), fp.value());
+	// Log::debug("[{}:{}] read_trigger: {}", fp.file_path().filename().native(), fp.line_num(), fp.value());
 
 	// name
 	// bounds
@@ -1045,7 +1062,7 @@ bool SceneLoader::read_trigger(tag_file &fp, Scene &scene)
 
 bool SceneLoader::read_walkable(tag_file &fp, Scene &scene)
 {
-	Log::debug("[{}:{}] read_walkable: {}", fp.file_path().filename().native(), fp.line_num(), fp.value());
+	// Log::debug("[{}:{}] read_walkable: {}", fp.file_path().filename().native(), fp.line_num(), fp.value());
 
 	glm::vec3 position(0);
 	bounds::AABB bounds;
