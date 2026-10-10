@@ -208,6 +208,7 @@ private:
 		uint32_t total_num_slots { 0 };
 	};
 	enum SlotSetCategory { NoSunSlots, WithSunSlots };
+	void auto_switch_slot_set();
 
 	void evaluate_lights(const std::vector<LightIndex> &relevant_lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward, std::vector<ValueLight> &prioritized, dense_set<LightID> &seen_lights);
 	float evaluate_light(const bounds::Sphere &light_sphere, const glm::vec3 &view_pos, const glm::vec3 &view_forward) const;

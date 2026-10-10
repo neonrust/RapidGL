@@ -115,13 +115,7 @@ uint32_t ShadowAtlas::update_allocations(const std::vector<LightIndex> &relevant
 {
 	const TimeT T0 = steady_clock::now();
 
-	// has sun appeared or disappeared -> then we need to switch the current slots set
-	const auto has_sun_light = _lights.sun_id() != NO_LIGHT_ID and _lights.is_enabled(_lights.sun_id());
-	const auto is_using_sun_slots = _current_slot_set == WithSunSlots;
-	if(has_sun_light and not is_using_sun_slots)
-		switch_slots_set(WithSunSlots);
-	else if(not has_sun_light and is_using_sun_slots)
-		switch_slots_set(NoSunSlots);
+	auto_switch_slot_set();
 
 	static std::vector<ValueLight> valued_lights;
 	valued_lights.reserve(std::max(64ul, relevant_lights.size()));
@@ -352,6 +346,17 @@ void ShadowAtlas::debug_dump_desired(const std::vector<AtlasLight> &desired_slot
 	Log::debug("atlas| === Desired slots ({}):", desired_slots.size());
 	for(const auto &atlas_light: desired_slots)
 		Log::debug("atlas|   {{{}}}: {}", atlas_light.uuid, sizes_count_summary(atlas_light));
+}
+
+void ShadowAtlas::auto_switch_slot_set()
+{
+	// has sun appeared or disappeared -> then we need to switch the current slots set
+	const auto has_sun_light = _lights.sun_id() != NO_LIGHT_ID and _lights.is_enabled(_lights.sun_id());
+	const auto is_using_sun_slots = _current_slot_set == WithSunSlots;
+	if(has_sun_light and not is_using_sun_slots)
+		switch_slots_set(WithSunSlots);
+	else if(not has_sun_light and is_using_sun_slots)
+		switch_slots_set(NoSunSlots);
 }
 
 void ShadowAtlas::update_slots_ssbo()
