@@ -754,6 +754,7 @@ void ShadowAtlas::clear()
 void ShadowAtlas::evaluate_lights(const std::vector<LightIndex> &relevant_lights, const glm::vec3 &view_pos, const glm::vec3 &view_forward, std::vector<ShadowAtlas::ValueLight> &valued_lights, dense_set<LightID> &seen_lights)
 {
 	// calculate a "value" for each shadow-casting light
+	// Log::debug("atlas| allocations for {} lights", relevant_lights.size());
 
 	float strongest_dir_value { s_min_light_value };  // only the strongest dir light may get a shadow allocation
 	LightID strongest_dir_id { NO_LIGHT_ID };
@@ -792,7 +793,10 @@ void ShadowAtlas::evaluate_lights(const std::vector<LightIndex> &relevant_lights
 			const auto value = evaluate_light(light_sphere, view_pos, view_forward);
 
 			if(value > s_min_light_value)
+			{
 				valued_lights.emplace_back(value, light_id, SLOT_CONFIG(general.light_type));
+				// Log::debug("atlas|  {} {} -> {} ({})", _lights.type_name(general.light_type), light_id, value, uint32_t(SLOT_CONFIG(general.light_type)));
+			}
 		}
 		else
 		{
@@ -800,7 +804,10 @@ void ShadowAtlas::evaluate_lights(const std::vector<LightIndex> &relevant_lights
 			const auto value = evaluate_light(light_sphere, view_pos, view_forward);
 
 			if(value > s_min_light_value)
+			{
 				valued_lights.emplace_back(value, light_id, SLOT_CONFIG(general.light_type));
+				// Log::debug("atlas|  {} {} -> {} ({})", _lights.type_name(general.light_type), light_id, value, uint32_t(SLOT_CONFIG(general.light_type)));
+			}
 		}
 	}
 
@@ -808,6 +815,7 @@ void ShadowAtlas::evaluate_lights(const std::vector<LightIndex> &relevant_lights
 	{
 		// the "sun" should _always_ get a shadow slot
 		valued_lights.emplace_back(2.f, strongest_dir_id, SlotConfig::Cascades);
+		// Log::debug("atlas|  {} {} -> {} ({})", _lights.type_name(LightType::Directional), strongest_dir_id, 2.f, uint32_t(SlotConfig::Cascades));
 	}
 
 	// highest-valued light first
