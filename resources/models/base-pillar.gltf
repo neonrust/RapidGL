@@ -22,13 +22,13 @@
 		{
 			"doubleSided":true,
 			"name":"pillar.001",
+			"normalTexture":{
+				"index":0
+			},
 			"pbrMetallicRoughness":{
-				"baseColorFactor":[
-					0.800000011920929,
-					0.800000011920929,
-					0.800000011920929,
-					1
-				]
+				"baseColorTexture":{
+					"index":1
+				}
 			}
 		}
 	],
@@ -47,6 +47,28 @@
 					"material":0
 				}
 			]
+		}
+	],
+	"textures":[
+		{
+			"sampler":0,
+			"source":0
+		},
+		{
+			"sampler":0,
+			"source":1
+		}
+	],
+	"images":[
+		{
+			"mimeType":"image/jpeg",
+			"name":"japanese-stone-wall-normal.jpg.001",
+			"uri":"japanese-stone-wall-normal.jpg"
+		},
+		{
+			"mimeType":"image/jpeg",
+			"name":"japanese-stone-wall-diffuse.jpg.001",
+			"uri":"japanese-stone-wall-diffuse.jpg"
 		}
 	],
 	"accessors":[
@@ -121,6 +143,12 @@
 			"byteLength":5922,
 			"byteOffset":142128,
 			"target":34963
+		}
+	],
+	"samplers":[
+		{
+			"magFilter":9729,
+			"minFilter":9987
 		}
 	],
 	"buffers":[

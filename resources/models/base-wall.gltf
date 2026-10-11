@@ -38,27 +38,31 @@
 				}
 			},
 			"name":"wall",
+			"normalTexture":{
+				"index":0,
+				"scale":0.5
+			},
 			"pbrMetallicRoughness":{
-				"baseColorFactor":[
-					0.800000011920929,
-					0.800000011920929,
-					0.800000011920929,
-					1
-				]
+				"baseColorTexture":{
+					"index":1
+				},
+				"metallicRoughnessTexture":{
+					"index":2
+				}
 			}
 		},
 		{
 			"doubleSided":true,
 			"name":"wood",
+			"normalTexture":{
+				"index":3
+			},
 			"pbrMetallicRoughness":{
-				"baseColorFactor":[
-					0.5051894783973694,
-					1,
-					0,
-					1
-				],
+				"baseColorTexture":{
+					"index":4
+				},
 				"metallicFactor":0,
-				"roughnessFactor":0.5
+				"roughnessFactor":0.949999988079071
 			}
 		}
 	],
@@ -87,6 +91,55 @@
 					"material":1
 				}
 			]
+		}
+	],
+	"textures":[
+		{
+			"sampler":0,
+			"source":0
+		},
+		{
+			"sampler":0,
+			"source":1
+		},
+		{
+			"sampler":0,
+			"source":2
+		},
+		{
+			"sampler":0,
+			"source":3
+		},
+		{
+			"sampler":0,
+			"source":4
+		}
+	],
+	"images":[
+		{
+			"mimeType":"image/jpeg",
+			"name":"japanese-stone-wall-normal.jpg",
+			"uri":"japanese-stone-wall-normal.jpg"
+		},
+		{
+			"mimeType":"image/jpeg",
+			"name":"japanese-stone-wall-diffuse.jpg",
+			"uri":"japanese-stone-wall-diffuse.jpg"
+		},
+		{
+			"mimeType":"image/jpeg",
+			"name":"japanese-stone-wall-rough.jpg",
+			"uri":"japanese-stone-wall-rough.jpg"
+		},
+		{
+			"mimeType":"image/jpeg",
+			"name":"planks-normal.jpg",
+			"uri":"planks-normal.jpg"
+		},
+		{
+			"mimeType":"image/jpeg",
+			"name":"planks-diffuse.jpg",
+			"uri":"planks-diffuse.jpg"
 		}
 	],
 	"accessors":[
@@ -231,6 +284,12 @@
 			"byteLength":48,
 			"byteOffset":972,
 			"target":34963
+		}
+	],
+	"samplers":[
+		{
+			"magFilter":9729,
+			"minFilter":9987
 		}
 	],
 	"buffers":[
