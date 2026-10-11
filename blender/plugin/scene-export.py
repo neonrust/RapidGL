@@ -565,6 +565,16 @@ class GameLightSettings(PropertyGroup):
 	)
 
 
+LIGHT_TYPE_ICONS = {
+	'point': 'LIGHT_POINT',
+	'directional': 'LIGHT_SUN',
+	'spot': 'LIGHT_SPOT',
+	'rect': 'LIGHT_AREA',
+	'disc': 'LIGHT_AREA',
+	'sphere': 'SHADING_SOLID',
+	'tube': 'MESH_CYLINDER',
+}
+
 class DATA_PT_game_light(Panel):
 	bl_label = "Game Light"
 	bl_space_type = 'PROPERTIES'
@@ -581,7 +591,12 @@ class DATA_PT_game_light(Panel):
 		settings = light.game_light
 
 		light_type = game_light_type(light)
-		layout.label(text="Exports as: %s" % (light_type or "unsupported (ellipse area light)"))
+		box = layout.box()
+		if light_type:
+			box.label(text="Exports as: %s" % light_type.upper(), icon=LIGHT_TYPE_ICONS[light_type])
+		else:
+			box.alert = True
+			box.label(text="Unsupported (ellipse area light)", icon='ERROR')
 
 		if light.type == 'POINT':
 			layout.prop(settings, 'point_shape', expand=True)
@@ -589,8 +604,11 @@ class DATA_PT_game_light(Panel):
 				layout.prop(light, 'shadow_soft_size', text="Radius")
 			if settings.point_shape == 'TUBE':
 				layout.prop(settings, 'length')
-		elif light_type in ('rect', 'disc'):
-			layout.prop(settings, 'double_sided')
+		elif light.type == 'AREA':
+			# same as Blender's own area light shape: square/rectangle -> rect, disk -> disc
+			layout.prop(light, 'shape')
+			if light_type in ('rect', 'disc'):
+				layout.prop(settings, 'double_sided')
 
 		if light_type in AREA_LIGHT_TYPES:
 			layout.prop(settings, 'visible_surface')
@@ -665,6 +683,83 @@ def draw_tube_lights():
 
 _draw_handle = None
 
+
+class VIEW3D_GGT_tube_light_length(bpy.types.GizmoGroup):
+	'''arrow at the +X end of the active tube light, dragging it changes its length'''
+	bl_idname = "VIEW3D_GGT_tube_light_length"
+	bl_label = "Tube Light Length"
+	bl_space_type = 'VIEW_3D'
+	bl_region_type = 'WINDOW'
+	bl_options = {'3D', 'PERSISTENT'}
+
+	@classmethod
+	def poll(cls, context):
+		obj = context.object
+		return obj is not None and obj.type == 'LIGHT' and game_light_type(obj.data) == 'tube'
+
+	def setup(self, context):
+		def get_half_length():
+			return bpy.context.object.data.game_light.length/2
+
+		def set_half_length(value):
+			bpy.context.object.data.game_light.length = max(0.0, value*2)
+
+		gz = self.gizmos.new('GIZMO_GT_arrow_3d')
+		gz.target_set_handler('offset', get=get_half_length, set=set_half_length)
+		gz.color = 1.0, 0.85, 0.4
+		gz.alpha = 0.6
+		gz.color_highlight = 1.0, 1.0, 0.7
+		gz.alpha_highlight = 1.0
+		self.length_gizmo = gz
+
+	def refresh(self, context):
+		obj = context.object
+		# arrows point along their local +Z; turn it to point along the tube's local +X
+		self.length_gizmo.matrix_basis = obj.matrix_world.normalized() @ Matrix.Rotation(PI/2, 4, 'Y')
+
+# ----------------------------------------------------------------------------
+# glTF exporter hook
+#
+# Picked up by Blender's glTF exporter from any enabled add-on. Together with the exporter's
+# "Keep Original" option (glTF Separate format) and Images: Automatic (Images: None drops all
+# textures), textures aren't written to disk, and this
+# strips the image URIs down to the file name; the engine knows where its textures are.
+
+class GameGltfSettings(PropertyGroup):
+	texture_names_only: BoolProperty(
+		name="Texture file names only",
+		description="Write only the file name of each texture, no path (requires \"Keep Original\" and Images other than None)",
+		default=True,
+	)
+
+
+def draw_gltf_export_options(context, layout):
+	'''drawn by the glTF exporter in its export dialog'''
+	settings = context.scene.game_gltf
+	header, body = layout.panel("GAME_PT_gltf_export_options", default_closed=False)
+	header.label(text="Game Engine")
+	if body:
+		body.prop(settings, 'texture_names_only')
+		operator = getattr(context.space_data, 'active_operator', None)
+		if settings.texture_names_only and operator is not None:
+			if not getattr(operator, 'export_keep_originals', True):
+				body.label(text="Needs \"Keep Original\"", icon='INFO')
+			if getattr(operator, 'export_image_format', 'AUTO') == 'NONE':
+				body.label(text="Needs Images: Automatic (Material)", icon='INFO')
+
+
+class glTF2ExportUserExtension:
+	def __init__(self):
+		# one instance is created per export
+		self.texture_names_only = bpy.context.scene.game_gltf.texture_names_only
+
+	def gather_image_hook(self, gltf2_image, *args):
+		if not self.texture_names_only:
+			return
+		uri = gltf2_image.uri
+		if isinstance(uri, str):  # i.e. a reference to an original file, not image data to be written
+			gltf2_image.uri = uri.rsplit('/', 1)[-1]
+
 # ----------------------------------------------------------------------------
 
 classes = (
@@ -672,18 +767,29 @@ classes = (
 	GameLightSettings,
 	DATA_PT_game_light,
 	OBJECT_OT_add_game_light,
+	VIEW3D_GGT_tube_light_length,
+	GameGltfSettings,
 )
+
+GLTF_EXPORT_SECTION = "Game Engine"
 
 # Register and add to the "file selector" menu (required to use fv for quick access).
 def register():
 	for cls in classes:
 		bpy.utils.register_class(cls)
 	bpy.types.Light.game_light = PointerProperty(type=GameLightSettings)
+	bpy.types.Scene.game_gltf = PointerProperty(type=GameGltfSettings)
 	bpy.types.TOPBAR_MT_file_export.append(menu_func_export)
 	bpy.types.VIEW3D_MT_light_add.append(menu_func_add_light)
 
 	global _draw_handle
 	_draw_handle = bpy.types.SpaceView3D.draw_handler_add(draw_tube_lights, (), 'WINDOW', 'POST_VIEW')
+
+	try:
+		from io_scene_gltf2 import exporter_extension_layout_draw
+		exporter_extension_layout_draw[GLTF_EXPORT_SECTION] = draw_gltf_export_options
+	except ImportError:
+		print('glTF exporter not available; no export options added')
 
 
 def unregister():
@@ -692,8 +798,15 @@ def unregister():
 		bpy.types.SpaceView3D.draw_handler_remove(_draw_handle, 'WINDOW')
 		_draw_handle = None
 
+	try:
+		from io_scene_gltf2 import exporter_extension_layout_draw
+		exporter_extension_layout_draw.pop(GLTF_EXPORT_SECTION, None)
+	except ImportError:
+		pass
+
 	bpy.types.VIEW3D_MT_light_add.remove(menu_func_add_light)
 	bpy.types.TOPBAR_MT_file_export.remove(menu_func_export)
+	del bpy.types.Scene.game_gltf
 	del bpy.types.Light.game_light
 	for cls in reversed(classes):
 		bpy.utils.unregister_class(cls)
