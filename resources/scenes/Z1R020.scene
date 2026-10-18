@@ -2,102 +2,95 @@ ENTITY  05spawn
 type    06player
 grid    050 0 0
 rotation010
-LIGHT   09Point.001
-type    05point
-color   0b255 255 255
-power   05120.0
-shadows 011
-rangecmp011
-contacts010
-fog     011
-position0c0.03 0 -6.99
 MESH    08ceiling1
-grid    060 1 -5
-ori     010
+grid    060 0 -5
+ori     03180
 MESH    08ceiling1
-grid    060 1 -2
+grid    060 0 -2
 ori     010
 MESH    08ceiling1
 grid    050 0 0
 MESH    11ceiling-3crossing
-grid    060 1 -6
+grid    060 0 -6
 ori     0290
 MESH    11ceiling-3crossing
-grid    07-1 1 -6
+grid    07-1 0 -6
 ori     0290
 MESH    11ceiling-3crossing
-grid    07-1 1 -1
+grid    07-1 0 -1
 ori     03270
 MESH    08ceiling1
-grid    07-1 1 -5
+grid    07-1 0 -5
 ori     010
 MESH    08ceiling1
-grid    07-1 1 -3
+grid    07-1 0 -3
 ori     010
 MESH    08ceiling1
-grid    07-1 1 -2
+grid    07-1 0 -2
 ori     010
 MESH    08ceiling1
-grid    07-2 1 -5
+grid    07-2 0 -5
 ori     010
 MESH    08ceiling1
-grid    07-2 1 -3
-ori     010
+grid    07-2 0 -3
+ori     03180
 MESH    08ceiling1
-grid    07-2 1 -2
-ori     010
-MESH    0cceiling-turn
-grid    07-2 1 -6
+grid    07-2 0 -2
 ori     03180
 MESH    0cceiling-turn
-grid    07-2 1 -1
+grid    07-2 0 -6
+ori     03180
+MESH    0cceiling-turn
+grid    07-2 0 -1
 ori     03270
 MESH    11ceiling-3crossing
-grid    061 1 -6
+grid    061 0 -6
 ori     0290
 MESH    11ceiling-3crossing
-grid    061 1 -1
+grid    061 0 -1
 ori     03270
 MESH    08ceiling1
-grid    061 1 -5
+grid    061 0 -5
+ori     03180
+MESH    08ceiling1
+grid    061 0 -3
+ori     03180
+MESH    08ceiling1
+grid    061 0 -2
 ori     010
 MESH    08ceiling1
-grid    061 1 -3
+grid    062 0 -5
 ori     010
 MESH    08ceiling1
-grid    061 1 -2
-ori     010
+grid    062 0 -3
+ori     03180
 MESH    08ceiling1
-grid    062 1 -5
-ori     010
-MESH    08ceiling1
-grid    062 1 -3
-ori     010
-MESH    08ceiling1
-grid    062 1 -2
+grid    062 0 -2
 ori     010
 MESH    0cceiling-turn
-grid    062 1 -6
+grid    062 0 -6
 ori     0290
 MESH    0cceiling-turn
-grid    062 1 -1
+grid    062 0 -1
 ori     010
 MESH    08ceiling1
-grid    07-1 1 -4
+grid    07-1 0 -4
+ori     03180
+MESH    08ceiling1
+grid    07-2 0 -4
 ori     010
 MESH    08ceiling1
-grid    07-2 1 -4
+grid    061 0 -4
 ori     010
 MESH    08ceiling1
-grid    061 1 -4
-ori     010
-MESH    08ceiling1
-grid    062 1 -4
-ori     010
-MESH    11ceiling-3crossing
-grid    060 1 -1
-ori     03270
-MESH    09base-wall
+grid    062 0 -4
+ori     03180
+MESH    10ceiling-crossing
+grid    060 0 -1
+MESH    17base-wall-button-large1
+grid    060 0 -6
+ori     0290
+MESH    1ebase-wall-button-large1-button
 grid    060 0 -6
 ori     0290
 MESH    09base-wall
@@ -164,70 +157,21 @@ MESH    09base-wall
 grid    07-2 0 -4
 ori     03180
 MESH    09base-wall
-grid    062 1 -3
-ori     010
-MESH    09base-wall
-grid    062 1 -2
-ori     010
-MESH    09base-wall
-grid    062 1 -5
-ori     010
-MESH    09base-wall
-grid    062 1 -1
-MESH    09base-wall
-grid    062 1 -6
-ori     010
-MESH    09base-wall
-grid    062 1 -4
-ori     010
-MESH    09base-wall
-grid    060 1 -6
-ori     0290
-MESH    09base-wall
-grid    07-1 1 -6
-ori     0290
-MESH    09base-wall
-grid    07-2 1 -6
-ori     0290
-MESH    09base-wall
-grid    062 1 -6
-ori     0290
-MESH    09base-wall
-grid    061 1 -6
-ori     0290
-MESH    09base-wall
-grid    07-2 1 -6
-ori     03180
-MESH    09base-wall
-grid    07-2 1 -5
-ori     03180
-MESH    09base-wall
-grid    07-2 1 -3
-ori     03180
-MESH    09base-wall
-grid    07-2 1 -2
-ori     03180
-MESH    09base-wall
-grid    07-2 1 -1
-ori     03180
-MESH    09base-wall
-grid    07-2 1 -4
-ori     03180
-MESH    09base-wall
-grid    07-2 1 -1
+grid    060 1 -3
 ori     03270
 MESH    09base-wall
-grid    07-1 1 -1
-ori     03270
+grid    060 1 -4
+ori     0290
 MESH    09base-wall
-grid    061 1 -1
-ori     03270
+grid    060 1 -4
+ori     03180
 MESH    09base-wall
-grid    062 1 -1
-ori     03270
+grid    060 1 -3
+ori     03180
 MESH    09base-wall
-grid    060 1 -1
-ori     03270
+grid    060 1 -3
+MESH    09base-wall
+grid    060 1 -4
 MESH    09base-wall
 grid    060 2 -3
 ori     03270
@@ -244,22 +188,6 @@ MESH    09base-wall
 grid    060 2 -3
 MESH    09base-wall
 grid    060 2 -4
-MESH    09base-wall
-grid    060 3 -3
-ori     03270
-MESH    09base-wall
-grid    060 3 -4
-ori     0290
-MESH    09base-wall
-grid    060 3 -4
-ori     03180
-MESH    09base-wall
-grid    060 3 -3
-ori     03180
-MESH    09base-wall
-grid    060 3 -3
-MESH    09base-wall
-grid    060 3 -4
 MESH    09base-wall
 grid    073 -1 -6
 ori     0290
@@ -268,12 +196,31 @@ grid    073 -1 -6
 ori     03270
 MESH    09base-wall
 grid    050 0 0
+MESH    11base-corner-inner
+grid    051 0 0
+ori     0290
+MESH    11base-corner-inner
+grid    06-1 0 0
+ori     010
+MESH    11base-corner-inner
+grid    062 0 -1
+ori     03270
+MESH    11base-corner-inner
+grid    062 0 -6
+ori     010
+MESH    11base-corner-inner
+grid    07-2 0 -6
+ori     0290
+MESH    11base-corner-inner
+grid    07-2 0 -1
+ori     03180
 MESH    0bfloor-brick
 grid    050 0 0
 MESH    0bbase-pillar
 grid    060 0 -2
 MESH    0bbase-pillar
-grid    060 0 -4
+grid    061 0 -5
+ori     03180
 MESH    0bbase-pillar
 grid    07-1 0 -4
 MESH    0bfloor-brick
@@ -325,16 +272,8 @@ grid    07-1 0 -2
 MESH    0bfloor-brick
 grid    07-1 0 -4
 MESH    0bbase-pillar
-grid    07-1 0 -3
-ori     03270
-MESH    0bbase-pillar
-grid    060 1 -2
-MESH    0bbase-pillar
-grid    07-1 1 -2
-MESH    0bbase-pillar
-grid    060 1 -4
-MESH    0bbase-pillar
-grid    07-1 1 -4
+grid    060 0 -3
+ori     03180
 MESH    11floor-brick-thick
 grid    060 0 -6
 anim    0atrap-door2
@@ -379,11 +318,11 @@ grid    07-1 0 -7
 MESH    11floor-brick-thick
 grid    061 0 -7
 MESH    0bbase-pillar
-grid    060 1 -3
+grid    060 0 -3
 ori     0690 0 0
 MESH    0bbase-pillar
-grid    060 1 -4
-ori     0690 0 0
+grid    061 1 -4
+ori     09270 0 180
 MESH    0bbase-pillar
 grid    07-1 1 -3
 ori     0690 0 0
@@ -396,6 +335,40 @@ ori     0890 0 270
 MESH    0bbase-pillar
 grid    060 1 -4
 ori     0890 0 270
+MESH    0bbase-pillar
+grid    07-1 1 -3
+ori     090 270 270
+MESH    0bbase-pillar
+grid    07-1 0 -4
+ori     0690 0 0
+MESH    0bbase-pillar
+grid    07-1 0 -2
+ori     03270
+MESH    0bbase-pillar
+grid    061 0 -1
+ori     0290
+MESH    0bbase-pillar
+grid    060 0 -2
+ori     0890 0 270
+MESH    0bbase-pillar
+grid    060 0 -4
+ori     0890 0 270
+MESH    0bbase-pillar
+grid    060 0 -5
+MESH    0bbase-pillar
+grid    060 0 -5
+ori     0290
+MESH    0bbase-pillar
+grid    07-1 1 -2
+ori     03270
+MESH    0bbase-pillar
+grid    061 1 -1
+ori     0290
+MESH    0bbase-pillar
+grid    060 1 -5
+MESH    0bbase-pillar
+grid    060 1 -5
+ori     0290
 WALKABLE00
 grid    050 0 0
 WALKABLE00
@@ -450,10 +423,10 @@ WALKABLE00
 grid    062 0 -4
 WALKABLE00
 grid    062 0 -3
-LIGHT   05Point
+LIGHT   04Moon
 type    04spot
-color   0b255 255 255
-power   05500.0
+color   0a77 156 248
+power   05150.0
 shadows 011
 rangecmp011
 contacts010
@@ -461,7 +434,7 @@ fog     011
 position0b-2 17.45 -8
 ori     09265 350 0
 angle   0b0.234 0.234
-LIGHT   09Point.002
+LIGHT   05Torch
 type    05point
 color   0a244 186 99
 power   05100.0
@@ -469,8 +442,9 @@ shadows 011
 rangecmp011
 contacts010
 fog     011
-position0e4.59 1.1 -4.81
-LIGHT   09Point.003
+flicker 030.3
+position0e4.89 0.1 -4.81
+LIGHT   09Torch.001
 type    05point
 color   0a244 186 99
 power   05100.0
@@ -478,8 +452,9 @@ shadows 011
 rangecmp011
 contacts010
 fog     011
-position0f-4.63 1.1 -4.81
-LIGHT   09Point.006
+flicker 030.3
+position0f-4.92 0.1 -4.81
+LIGHT   09Torch.002
 type    05point
 color   0a244 186 99
 power   05100.0
@@ -487,8 +462,9 @@ shadows 011
 rangecmp011
 contacts010
 fog     011
-position0f-4.63 1.1 -8.97
-LIGHT   09Point.009
+flicker 030.3
+position0f-4.92 0.1 -8.97
+LIGHT   09Torch.003
 type    05point
 color   0a244 186 99
 power   05100.0
@@ -496,8 +472,9 @@ shadows 011
 rangecmp011
 contacts010
 fog     011
-position0e4.59 1.1 -8.97
-LIGHT   09Point.010
+flicker 030.3
+position0e4.89 0.1 -8.97
+LIGHT   09Torch.004
 type    05point
 color   0a244 186 99
 power   05100.0
@@ -505,8 +482,9 @@ shadows 011
 rangecmp011
 contacts010
 fog     011
-position0e1.94 1.1 -1.32
-LIGHT   09Point.012
+flicker 030.3
+position0e1.94 0.1 -1.13
+LIGHT   09Torch.005
 type    05point
 color   0a244 186 99
 power   05100.0
@@ -514,51 +492,8 @@ shadows 011
 rangecmp011
 contacts010
 fog     011
-position0f-1.92 1.1 -1.32
-LIGHT   08Spot.001
-type    04spot
-color   0b255 243 137
-power   05150.0
-shadows 011
-rangecmp011
-contacts010
-fog     011
-position10-0.79 0.97 -8.86
-ori     0b248 330 353
-angle   0b0.678 0.106
-LIGHT   08Spot.002
-type    04spot
-color   0b255 243 137
-power   05150.0
-shadows 011
-rangecmp011
-contacts010
-fog     011
-position0f0.83 0.95 -5.13
-ori     0a304 32 350
-angle   0b0.678 0.106
-LIGHT   08Spot.003
-type    04spot
-color   0b255 243 137
-power   05150.0
-shadows 011
-rangecmp011
-contacts010
-fog     011
-position0f0.82 1.01 -8.84
-ori     08248 26 3
-angle   0b0.678 0.106
-LIGHT   08Spot.004
-type    04spot
-color   0b255 243 137
-power   05150.0
-shadows 011
-rangecmp011
-contacts010
-fog     011
-position10-0.82 0.97 -5.16
-ori     09296 328 1
-angle   0b0.678 0.106
+flicker 030.3
+position0f-1.92 0.1 -1.13
 LIGHT   08Spot.005
 type    04spot
 color   0b255 243 137
@@ -569,7 +504,7 @@ contacts010
 fog     011
 position101.98 0.97 -11.91
 ori     0a296 27 347
-angle   0b0.678 0.106
+angle   0b0.678 0.000
 LIGHT   08Spot.006
 type    04spot
 color   0b255 243 137
@@ -580,4 +515,13 @@ contacts010
 fog     011
 position11-2.02 0.97 -11.87
 ori     0b298 327 347
-angle   0b0.678 0.106
+angle   0b0.678 0.000
+LIGHT   09Moon-fill
+type    05point
+color   0a77 156 248
+power   05120.0
+shadows 011
+rangecmp011
+contacts010
+fog     011
+position0c0.03 0 -6.99
