@@ -41,7 +41,6 @@ CMakeSettings.json
 
 build/
 configuration/root_directory.h
-!resources/**
 generated/
 resources/shaders/light_constants.h
 resources/shaders/buffer_binds.h
