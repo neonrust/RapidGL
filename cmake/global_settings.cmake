@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_DEBUG_POSTFIX "_d")
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
+# set(CMAKE_LINKER_TYPE MOLD) mold 2.40 does not support gcc 16 trunk, see https://github.com/rui314/mold/issues/1545
 
 remove_definitions("-DNDEBUG")
 add_compile_definitions("$<$<NOT:$<CONFIG:Debug>>:NDEBUG>")
