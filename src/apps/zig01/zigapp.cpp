@@ -93,8 +93,6 @@ ZigApp::ZigApp() :
 	_animSystem(_entities),
 	m_gamma               (2.2f),
 	_ibl_mip_level        (1.2f),
-	m_skybox_vao          (0),
-	m_skybox_vbo          (0),
 	m_bloom_threshold     (1.5f),
 	m_bloom_knee          (0.1f),
 	m_bloom_intensity     (0.9f),
@@ -127,18 +125,6 @@ ZigApp::ZigApp() :
 ZigApp::~ZigApp()
 {
 	AssetManager::shut_down();
-
-	if(m_skybox_vao)
-    {
-        glDeleteVertexArrays(1, &m_skybox_vao);
-        m_skybox_vao = 0;
-    }
-
-	if(m_skybox_vbo)
-    {
-        glDeleteBuffers(1, &m_skybox_vbo);
-        m_skybox_vbo = 0;
-    }
 
 	if(m_debug_draw_vbo)
 	{
@@ -276,9 +262,8 @@ void ZigApp::init_app()
     m_precompute_brdf->link();
 	assert(*m_precompute_brdf);
 
-	m_background_shader = std::make_shared<Shader>(core_shaders/"background.vert", core_shaders/"background.frag");
-    m_background_shader->link();
-	assert(*m_background_shader);
+	_skybox.create();
+	assert(_skybox);
 
 	// Post-processing steps
 	m_tmo_pp.create();
@@ -391,9 +376,6 @@ void ZigApp::init_app()
 	// TODO: final_rt.cloneFrom(_rt);
 	_final_rt.create("final", Window::width(), Window::height(), C::Default, D::None);
 	_final_rt.SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipNearest); // not necessary?
-
-	// IBL precomputations.
-    GenSkyboxGeometry();
 
 	m_env_cubemap_rt = std::make_shared<RenderTarget::Cube>();
 	m_env_cubemap_rt->create("env", 2048, 2048);
@@ -923,13 +905,12 @@ void ZigApp::HdrEquirectangularToCubemap(const std::shared_ptr<RenderTarget::Cub
 
 	equirectangular_map->Bind(1);
 
-    glBindVertexArray(m_skybox_vao);
     for (uint8_t side = 0; side < 6; ++side)
     {
 		m_equirectangular_to_cubemap_shader->setUniform("u_view"sv, cubemap_rt->view_transform(side));
 		cubemap_rt->bindRenderTarget(side);
 
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+		_skybox.drawBox();
     }
 	glViewport(0, 0, GLsizei(Window::width()), GLsizei(Window::height()));
 }
@@ -947,9 +928,8 @@ void ZigApp::IrradianceConvolution(const std::shared_ptr<RenderTarget::Cube>& cu
 		m_irradiance_convolution_shader->setUniform("u_view"sv, cubemap_rt->view_transform(side));
 		cubemap_rt->bindRenderTarget(side);
 
-        glBindVertexArray(m_skybox_vao);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-    }
+		_skybox.drawBox();
+	}
 	glViewport(0, 0, GLsizei(Window::width()), GLsizei(Window::height()));
 }
 
@@ -979,8 +959,7 @@ void ZigApp::PrefilterEnvCubemap(const std::shared_ptr<RenderTarget::Cube>& cube
 			m_prefilter_env_map_shader->setUniform("u_view"sv, cubemap_rt->view_transform(face));
 			cubemap_rt->bindRenderTargetMip(face, mip);
 
-			glBindVertexArray(m_skybox_vao);
-			glDrawArrays(GL_TRIANGLES, 0, 36);
+			_skybox.drawBox();
         }
 
 	}
@@ -1016,72 +995,6 @@ void ZigApp::bindScreenRenderTarget()
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glViewport(0, 0, GLsizei(Window::width()), GLsizei(Window::height()));
-}
-
-void ZigApp::GenSkyboxGeometry()
-{
-    m_skybox_vao = 0;
-    m_skybox_vbo = 0;
-
-    glCreateVertexArrays(1, &m_skybox_vao);
-    glCreateBuffers(1, &m_skybox_vbo);
-
-	// vertex positions for cube faces
-	glm::vec3 skybox_positions[] = {
-		// back face
-		{ -1, -1, -1 },
-		{  1, -1, -1 },
-		{  1,  1, -1 },
-		{  1,  1, -1 },
-		{ -1,  1, -1 },
-		{ -1, -1, -1 },
-        // front face
-		{ -1, -1,  1 },
-		{  1,  1,  1 },
-		{  1, -1,  1 },
-		{  1,  1,  1 },
-		{ -1, -1,  1 },
-		{ -1,  1,  1 },
-        // left face
-		{ -1,  1,  1 },
-		{ -1, -1, -1 },
-		{ -1,  1, -1 },
-		{ -1, -1, -1 },
-		{ -1,  1,  1 },
-		{ -1, -1,  1 },
-        // right face
-		{ 1,  1,  1 },
-		{ 1,  1, -1 },
-		{ 1, -1, -1 },
-		{ 1, -1, -1 },
-		{ 1, -1,  1 },
-		{ 1,  1,  1 },
-        // bottom face
-		{ -1, -1, -1 },
-		{  1, -1,  1 },
-		{  1, -1, -1 },
-		{  1, -1,  1 },
-		{ -1, -1, -1 },
-		{ -1, -1,  1 },
-        // top face
-		{ -1,  1, -1 },
-		{  1,  1, -1 },
-		{  1,  1 , 1 },
-		{  1,  1,  1 },
-		{ -1,  1,  1 },
-		{ -1,  1, -1 },
-    };
-
-    /* Set up buffer objects */
-	glNamedBufferStorage(m_skybox_vbo, sizeof(skybox_positions), &skybox_positions[0], 0 /*flags*/);
-
-    /* Set up VAO */
-    glEnableVertexArrayAttrib(m_skybox_vao, 0 /*index*/);
-
-    /* Separate attribute format */
-    glVertexArrayAttribFormat(m_skybox_vao, 0 /*index*/, 3 /*size*/, GL_FLOAT, GL_FALSE, 0 /*relativeoffset*/);
-    glVertexArrayAttribBinding(m_skybox_vao, 0 /*index*/, 0 /*bindingindex*/);
-    glVertexArrayVertexBuffer(m_skybox_vao, 0 /*bindingindex*/, m_skybox_vbo, 0 /*offset*/, sizeof(glm::vec3) /*stride*/);
 }
 
 void ZigApp::downloadAffectingLightSet()
@@ -1232,7 +1145,8 @@ void ZigApp::render()
 	if(m_draw_surface_lights_geometry)
 		renderLightGeometry(); // to '_rt'
 
-	renderSkybox(); // to '_rt'
+	// to '_rt'
+	_skybox.render(m_camera, m_env_cubemap_rt->color_texture());
 
 	if(auto d = _gl_timers["skybox"].elapsed<microseconds>(); d)
 		m_skybox_time.add(*d);
@@ -1530,22 +1444,6 @@ void ZigApp::renderShadowMaps()
 	glCullFace(GL_BACK);
 }
 
-void ZigApp::renderSkybox()
-{
-	glEnable(GL_DEPTH_TEST);
-	glDepthMask(GL_FALSE);
-	glDepthFunc(GL_LEQUAL);
-
-	m_background_shader->bind();
-	m_camera.setUniforms(*m_background_shader);
-	m_background_shader->setUniform("u_view_orientation"sv, glm::mat4(glm::mat3(m_camera.viewTransform())));  // only rotational part
-	m_background_shader->setUniform("u_mip_level"sv,        _ibl_mip_level);
-	m_env_cubemap_rt->bindTexture();
-
-	glBindVertexArray(m_skybox_vao);
-	glDrawArrays     (GL_TRIANGLES, 0, 36);
-}
-
 void ZigApp::renderLightGeometry()
 {
 	glEnable(GL_DEPTH_TEST);
@@ -1813,7 +1711,6 @@ void ZigApp::cullScene(const Camera &view, QueryResult &pvs)
 
 	// perform frustum culling of all objects in the scene (or a partition thereof)
 	_scene.query(view.frustum(), pvs);
-
 
 	m_cull_scene_time.add(duration_cast<microseconds>(steady_clock::now() - T0));
 }

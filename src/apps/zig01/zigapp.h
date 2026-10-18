@@ -7,6 +7,7 @@
 #include "camera.h"
 #include "sample_window.h"
 #include "scene.h"
+#include "skybox.h"
 #include "ssbo.h"
 #include "shader.h"
 #include "lights.h"
@@ -60,7 +61,6 @@ private:
 	void PrefilterEnvCubemap        (const std::shared_ptr<RGL::RenderTarget::Cube>& cubemap_rt);
     void PrecomputeIndirectLight    (const std::filesystem::path & hdri_map_filepath);
 	void PrecomputeBRDF             (const std::shared_ptr<RGL::RenderTarget::Texture2d>& rt);
-    void GenSkyboxGeometry();
 
 	void collectRelevantLights(const RGL::Camera &view);
 	void cullScene(const RGL::Camera &camera, RGL::QueryResult &pvs);
@@ -69,7 +69,6 @@ private:
 	void renderShadowMaps();
 	void renderSceneShadow(const RGL::QueryResult &objects, uint16_t shadow_idx, uint_fast8_t slot_idx, bool dynamic_only=false);
 	void renderShading(const RGL::Camera &camera);
-	void renderSkybox();
 	void renderLightGeometry();
 	void downloadAffectingLightSet();
 	void draw2d(const RGL::Texture &texture, BlendMode mode=BlendMode::Replace); // TODO: move to CoreApp
@@ -117,7 +116,6 @@ private:
     std::shared_ptr<RGL::Shader> m_irradiance_convolution_shader;
     std::shared_ptr<RGL::Shader> m_prefilter_env_map_shader;
     std::shared_ptr<RGL::Shader> m_precompute_brdf;
-    std::shared_ptr<RGL::Shader> m_background_shader;
 
     /// Clustered shading variables.
     std::shared_ptr<RGL::Shader> m_depth_prepass_shader;
@@ -231,6 +229,7 @@ private:
 
     GLuint m_skybox_vao, m_skybox_vbo;
 
+	RGL::SkyBox _skybox;
 	RGL::PP::Bloom m_bloom_pp;
 	RGL::PP::BlurFixed<3.f> m_blur3_pp;
 	RGL::PP::GroundTruthAmbientOcclusion m_gtao_pp;
