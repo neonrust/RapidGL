@@ -389,7 +389,7 @@ void LightManager::_light_added(entt::registry &, entt::entity light_ent)
 {
 	const auto light_id = LightID(light_ent);
 
-	Log::debug("{{{}}} _light_added", light_id);
+	// Log::debug("{{{}}} _light_added", light_id);
 
 	assert(not _id_to_index.contains(light_id));
 	if(_id_to_index.contains(light_id))
@@ -412,7 +412,7 @@ void LightManager::_light_removed(entt::registry &, entt::entity light_ent)
 {
 	const auto light_id = LightID(light_ent);
 
-	Log::debug("{{{}}} _light_removed", light_id);
+	// Log::debug("{{{}}} _light_removed", light_id);
 
 	auto found = _id_to_index.find(light_id);
 	assert(found != _id_to_index.end());
