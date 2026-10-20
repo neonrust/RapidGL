@@ -113,8 +113,8 @@ ZigApp::ZigApp() :
 	_affecting_lights.reserve(256);
 	_lightsPvs.reserve(1024);
 
-	m_volumetrics_pp.setEnabled(false);
-	m_bloom_pp.setEnabled(false);
+	m_volumetrics_pp.setEnabled(true);
+	m_bloom_pp.setEnabled(true);
 
 	_light_mgr.set_falloff_power(50.f);
 	_light_mgr.set_radius_power(0.6f);
