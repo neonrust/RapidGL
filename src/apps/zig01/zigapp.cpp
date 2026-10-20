@@ -421,7 +421,7 @@ void ZigApp::init_app()
 			auto loaded = assets().staticMesh((light_meshes / filename).native());
 			if(loaded)
 			{
-				const auto &[model, materials] = loaded.value();
+				const auto &[model, materials, _] = loaded.value();
 				_lightModels.emplace(uint32_t(light_type), std::tuple(model, std::move(materials), InstanceAttributes{}));
 			}
 		}

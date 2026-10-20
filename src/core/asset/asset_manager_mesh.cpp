@@ -12,6 +12,7 @@
 #include <assimp/material.h>
 
 
+
 using namespace std::chrono;
 using namespace std::literals;
 
@@ -21,7 +22,7 @@ namespace RGL
 static inline glm::vec3 vec3_cast(const aiVector3D& v)   { return glm::vec3(v.x, v.y, v.z); }
 
 
-std::expected<AssetManager::MeshAndMaterials, AssetError> AssetManager::staticMesh(std::string_view name)
+std::expected<AssetManager::MeshContainer, AssetError> AssetManager::staticMesh(std::string_view name)
 {
 	static constexpr auto models_prefix = "/models/"sv;
 
@@ -33,18 +34,24 @@ std::expected<AssetManager::MeshAndMaterials, AssetError> AssetManager::staticMe
 	{
 		auto mfound = _static_mesh_default_materials.find(name);
 		// if the mesh exists, its default materials is guaranteed to exist
-		return MeshAndMaterials{ found->second.lock(), mfound->second };
+		return MeshContainer{
+			found->second.first.lock(),
+			mfound->second,
+			found->second.second,
+		};
 	}
 
 	if(auto found = _meshFailures.find(name); found != _meshFailures.end())
 		return std::unexpected(found->second);
 
-		   // TODO: pool?
+	// TODO: pool?
 	auto *mesh = new StaticModel();
 
 	Log::info("Loading mesh: {}", name);
 	MaterialSet materials;
-	if(not loadStaticMesh(*mesh, FileSystem::getResourcesPath() / "models" / name, materials)) // TODO: use 'models_prefix)
+	AnimationSetup anims;
+	const auto filepath = FileSystem::getResourcesPath() / "models" / name;
+	if(not loadStaticMesh(*mesh, filepath, materials, anims)) // TODO: use 'models_prefix)
 	{
 		const auto err = AssetError("mesh load failed");
 		_meshFailures[name] = err;
@@ -60,10 +67,10 @@ std::expected<AssetManager::MeshAndMaterials, AssetError> AssetManager::staticMe
 	// TODO: cast without copy?
 	MaterialCSet const_materials(materials.begin(), materials.end());;
 
-	_static_meshes[std::string(name)] = mesh_ref;
+	_static_meshes[std::string(name)] = { mesh_ref, anims };
 	_static_mesh_default_materials[std::string(name)] = const_materials;
 
-	return MeshAndMaterials{ mesh_ref, const_materials };
+	return MeshContainer{ mesh_ref, const_materials, anims };
 }
 
 void AssetManager::delete_static_mesh(std::string_view name, StaticModel *mesh)
@@ -80,7 +87,7 @@ void AssetManager::delete_static_mesh(std::string_view name, StaticModel *mesh)
 	}
 }
 
-bool AssetManager::loadStaticMesh(StaticModel &model, const std::filesystem::path& filepath, MaterialSet &materials)
+bool AssetManager::loadStaticMesh(StaticModel &model, const std::filesystem::path& filepath, MaterialSet &materials, AnimationSetup &anims)
 {
 	Assimp::Importer importer;
 	// TODO: importer.SetIOHandler(compressionLayer);
@@ -103,11 +110,11 @@ bool AssetManager::loadStaticMesh(StaticModel &model, const std::filesystem::pat
 		return false;
 	}
 
-	model._ok = parseStaticScene(model, scene, filepath, materials);
+	model._ok = parseStaticScene(model, scene, filepath, materials, anims);
 	return model._ok;
 }
 
-bool AssetManager::parseStaticScene(StaticModel &model, const aiScene *scene, const std::filesystem::path& filepath, MaterialSet &materials)
+bool AssetManager::parseStaticScene(StaticModel &model, const aiScene *scene, const std::filesystem::path& filepath, MaterialSet &materials, AnimationSetup &anims)
 {
 	const auto T0 = steady_clock::now();
 
@@ -122,7 +129,7 @@ bool AssetManager::parseStaticScene(StaticModel &model, const aiScene *scene, co
 	uint32_t index_count  = 0;
 
 	/* Count the number of vertices and indices. */
-	for (uint32_t idx = 0; idx < model.m_mesh_parts.size(); ++idx)
+	for(uint32_t idx = 0; idx < model.m_mesh_parts.size(); ++idx)
 	{
 		model.m_mesh_parts[idx].m_material_index = scene->mNumMaterials > 0 ? scene->mMeshes[idx]->mMaterialIndex : INVALID_MATERIAL;
 		model.m_mesh_parts[idx].m_indices_count  = scene->mMeshes[idx]->mNumFaces * 3;
@@ -141,7 +148,7 @@ bool AssetManager::parseStaticScene(StaticModel &model, const aiScene *scene, co
 			auto *camera = scene->mCameras[idx];
 			assert(camera);
 			// TODO
-			Log::warning("StaticModel::ParseScene() Cameras not implemented");
+			Log::warning("parseStaticScene() Cameras not implemented");
 		}
 	}
 
@@ -179,6 +186,32 @@ bool AssetManager::parseStaticScene(StaticModel &model, const aiScene *scene, co
 		return false;
 	}
 
+/*
+ * doesn't assimp support key frames with incoming/outgoing tangent handles?
+ * gLTF supports it. what about fastgltf ?
+
+	for(auto idx = 0u; idx < scene->mNumAnimations; ++idx)
+	{
+		const auto &anim = *scene->mAnimations[idx];
+		// anim.mName
+		for(auto chIdx = 0u; chIdx < anim.mNumChannels; ++chIdx)
+		{
+			const auto &channel = *anim.mChannels[chIdx];
+			auto &curves = anims.position;
+			curves[0].reset(new anim::animation_curve<>());
+			curves[1].reset(new anim::animation_curve<>());
+			curves[2].reset(new anim::animation_curve<>());
+			for(auto keyIdx = 0u; keyIdx < channel.mNumPositionKeys; ++keyIdx)
+			{
+				const auto &key = channel.mPositionKeys[keyIdx];
+				auto time = float(key.mTime);
+				curves[0]->add({ time, key.mValue.x }, incoming, outgoing);
+				curves[1]->add({ time, key.mValue.y }, incoming, outgoing);
+				curves[2]->add({ time, key.mValue.z }, incoming, outgoing);
+			}
+		}
+	}
+*/
 	// Populate buffers on the GPU with the model's data
 	// if mesh loading runs in the background, _this_ call must be run on the main thread
 	createStaticBuffers(model, vertex_data);

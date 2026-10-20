@@ -12,6 +12,13 @@ namespace RGL
 {
 class Frustum;
 using EntityID = entt::entity;
+// struct RenderItem
+// {
+// 	entt::entity entity_id;
+// 	component::Model model;
+// 	component::MaterialSet materials;
+// 	component::Transform transform;
+// };
 using EntityList = std::vector<EntityID>;
 
 namespace component
@@ -93,5 +100,23 @@ protected:
 
 	size_t _min_result_reserve { 32 };
 };
+
+
+class StateSorter
+{
+public:
+	StateSorter(entt::registry &entities) : _entities(entities) {}
+
+	void sort(QueryResult &result);
+
+private:
+	// mesh -> material -> instance
+	using MeshPtr = uint64_t;
+	using MaterialHash = size_t;
+	// dense_map<ModelPtr, dense_map<MaterialHash, std::vector<component::Transform>>> _buckets;
+
+	entt::registry &_entities;
+};
+
 
 } // RGL

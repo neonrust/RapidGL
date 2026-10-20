@@ -31,7 +31,7 @@ private:
 	bool read_control(tag_file &fp, Scene &scene);
 	bool read_trigger(tag_file &fp, Scene &scene);
 	bool read_walkable(tag_file &fp, Scene &scene);
-	bool read_anim_tag(tag_file &fp, AnimationSystem::AnimationSetup &anim);
+	bool read_anim_tag(tag_file &fp, AnimationSetup &anim);
 	void unexpected_tag(const tag_file &fp, std::string_view context);
 
 	glm::vec3 pop_grid_pos(std::string_view &value) const;

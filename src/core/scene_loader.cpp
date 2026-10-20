@@ -28,6 +28,7 @@ using namespace std::literals;
 namespace RGL
 {
 
+// TODO: this should be moved elsewhere
 using gaxis_t = int32_t;
 struct GridPos
 {
@@ -38,6 +39,7 @@ struct GridPos
 
 namespace Property
 {
+static constexpr auto File = "file"sv;
 static constexpr auto Name = "name"sv;
 static constexpr auto Type = "type"sv;
 static constexpr auto Position = "position"sv;
@@ -342,7 +344,7 @@ static glm::vec3 pop_orientation(std::string_view &value)
 	return { ori.x, y.value(), z.value() };
 };
 
-static std::optional<anim::curve_ref<>> select_curve(std::string_view descriptor, AnimationSystem::AnimationSetup &anim)
+static std::optional<anim::curve_ref<>> select_curve(std::string_view descriptor, AnimationSetup &anim)
 {
 	if(descriptor.size() != 2 or descriptor.substr(0, 1).find_first_not_of("pos") != std::string::npos or descriptor.substr(1).find_first_not_of("xyz") != std::string::npos)
 	{
@@ -410,7 +412,7 @@ struct animation_params
 	seconds_f end_time;
 };
 
-bool SceneLoader::read_anim_tag(tag_file &fp, AnimationSystem::AnimationSetup &anim)
+bool SceneLoader::read_anim_tag(tag_file &fp, AnimationSetup &anim)
 {
 	const auto &tag = fp.tag();
 	auto value = fp.value();
@@ -468,11 +470,19 @@ static bool pop_bounds(std::string_view &value, bounds::AABB &bounds)
 static bool read_material_override(tag_file &fp, dense_map<uint32_t, MaterialRef> &materials)
 {
 	const auto prop = fp.tag().substr(4); // "mtl_"
+	auto value = fp.value();
+
+	// TODO: read material from an external file
+	// if(prop == Property::File)
+	// {
+	// 	auto index = pop_number<uint32_t>(value);
+	// 	read_material_file(materials[index]);
+	// 	return false;
+	// }
 
 	// e.g. mtl_alb >> 0 some_texture.png  (0 is material index)
 	//   OR mtl_alb >> 0 0.25
 
-	auto value = fp.value();
 	const auto index = pop_number<uint32_t>(value);
 	assert(index >= 0);
 
@@ -544,7 +554,7 @@ bool SceneLoader::read_mesh(tag_file &fp, Scene &scene)
 	ModelCRef model;
 	MaterialCSet materials;
 	bounds::AABB bounds;
-	AnimationSystem::AnimationSetup animation;
+	AnimationSetup animation;
 	component::Transform transform;
 	std::string object_name; // only required if it needs to be referred to by name
 	std::string anim_name;
@@ -557,9 +567,10 @@ bool SceneLoader::read_mesh(tag_file &fp, Scene &scene)
 	auto loaded = _assets.staticMesh(mesh_name);
 	if(loaded)
 	{
-		const auto &[model_, materials_] = loaded.value();
+		const auto &[model_, materials_, anims_] = loaded.value();
 		model = std::move(model_);
 		materials = std::move(materials_);
+		(void)anims_; //TODO
 	}
 	else
 	{
@@ -771,6 +782,7 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 	assert(type != LightType::Spot or angles.has_value());
 	// TODO: validate other required properties
 
+	// we're just using the as a temporary container
 	component::LightGeneral general;
 	general.light_type = type;
 	general.intensity = intensity.value();
@@ -825,7 +837,7 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 	case LightType::Spot:
 	{
 		SpotLightParams s;
-		s.position = position.value();
+		s.position = transform.position();
 		s.color = general.color;
 		s.intensity = general.intensity;
 		s.fog = general.fog;
@@ -842,7 +854,7 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 	case LightType::Rect:
 	{
 		RectLightParams r;
-		r.position = position.value();
+		r.position = transform.position();
 		r.intensity = general.intensity;
 		r.fog = general.fog;
 		r.shadow_caster = general.shadow_caster;
@@ -859,7 +871,7 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 	case LightType::Tube:
 	{
 		TubeLightParams t;
-		t.position = position.value();
+		t.position = transform.position();
 		t.intensity = general.intensity;
 		t.fog = general.fog;
 		t.shadow_caster = general.shadow_caster;
@@ -875,7 +887,7 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 	case LightType::Sphere:
 	{
 		SphereLightParams s;
-		s.position = position.value();
+		s.position = transform.position();
 		s.intensity = general.intensity;
 		s.fog = general.fog;
 		s.shadow_caster = general.shadow_caster;
@@ -890,7 +902,7 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 	case LightType::Disc:
 	{
 		DiscLightParams d;
-		d.position = position.value();
+		d.position = transform.position();
 		d.intensity = general.intensity;
 		d.fog = general.fog;
 		d.shadow_caster = general.shadow_caster;

@@ -391,7 +391,7 @@ seconds_f AnimationSystem::sampler_ctrl::last_end_time() const
 	return end;
 }
 
-void AnimationSystem::AnimationSetup::clear()
+void AnimationSetup::clear()
 {
 	for(auto idx: { 0u, 1u, 2u })
 	{
@@ -404,14 +404,14 @@ void AnimationSystem::AnimationSetup::clear()
 	total_loops = InfiniteLoops;
 }
 
-size_t AnimationSystem::AnimationSetup::num_curves() const
+size_t AnimationSetup::num_curves() const
 {
 	return (position[0]?1:0) + (position[1]?1:0) + (position[2]?1:0) +
 		(orientation[0]?1:0) + (orientation[1]?1:0) + (orientation[2]?1:0) +
 		(scale[0]?1:0) + (scale[1]?1:0) + (scale[2]?1:0);
 }
 
-AnimationSystem::AnimationSetup::operator bool() const
+AnimationSetup::operator bool() const
 {
 	return num_curves() > 0 and end_time > 0s;
 }

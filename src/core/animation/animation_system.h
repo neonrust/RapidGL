@@ -4,12 +4,13 @@
 
 #include "animation_curve.h"
 #include "entity_system.h"
-#include "hash_combine.h"
 #include "component/animation.h"
 
 #include <entt/fwd.hpp>
 #include <glm/vec3.hpp>
 #include <glm/gtc/quaternion.hpp>
+
+// #include "hash_combine.h"
 
 // struct active_key_t
 // {
@@ -37,26 +38,27 @@
 namespace RGL
 {
 
+using SpatialCurve = std::array<anim::curve_ref<>, 3>;
+
+struct AnimationSetup
+{
+	[[nodiscard]] size_t num_curves() const;
+	[[nodiscard]] operator bool () const;
+	void clear();
+
+	SpatialCurve position;
+	SpatialCurve orientation;
+	SpatialCurve scale;
+
+	anim::EndState end_state { anim::EndState::Clamp };
+	seconds_f end_time { 0 };
+
+	static constexpr size_t InfiniteLoops = 0;
+	uint32_t total_loops { 1 };
+};
+
 class AnimationSystem : public EntitySystem
 {
-public:
-	struct AnimationSetup
-	{
-		std::array<anim::curve_ref<>, 3> position;
-		std::array<anim::curve_ref<>, 3> orientation;
-		std::array<anim::curve_ref<>, 3> scale;
-
-		anim::EndState end_state { anim::EndState::Clamp };
-		seconds_f end_time;
-
-		static constexpr size_t InfiniteLoops = 0;
-		uint32_t total_loops { 1 };
-
-		void clear();
-		[[nodiscard]] size_t num_curves() const;
-
-		[[nodiscard]] operator bool () const;
-	};
 public:
 	AnimationSystem(entt::registry &entities);
 	
