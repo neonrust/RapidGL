@@ -915,10 +915,24 @@ void ZigApp::HdrEquirectangularToCubemap(const std::shared_ptr<RenderTarget::Cub
 	glViewport(0, 0, GLsizei(Window::width()), GLsizei(Window::height()));
 }
 
-void ZigApp::IrradianceConvolution(const std::shared_ptr<RenderTarget::Cube>& cubemap_rt)
+void ZigApp::PrecomputeIndirectLight(const std::filesystem::path& hdri_map_filepath)
 {
-    /* Update all faces per frame */
-    m_irradiance_convolution_shader->bind();
+	auto envmap_hdr = std::make_shared<Texture2D>();
+    envmap_hdr->LoadHdr(hdri_map_filepath);
+
+    HdrEquirectangularToCubemap(m_env_cubemap_rt, envmap_hdr);
+
+	m_env_cubemap_rt->color_texture().SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipLinear);
+	m_env_cubemap_rt->color_texture().GenerateMipMaps();
+
+	IrradianceConvolution(m_irradiance_cubemap_rt);
+	PrefilterEnvCubemap(m_prefiltered_env_map_rt);
+}
+
+void ZigApp::IrradianceConvolution(const std::shared_ptr<RenderTarget::Cube>&cubemap_rt)
+{
+	// Update all faces per frame
+	m_irradiance_convolution_shader->bind();
 	m_irradiance_convolution_shader->setUniform("u_projection"sv, cubemap_rt->projection());
 
     m_env_cubemap_rt->bindTexture(1);
@@ -964,20 +978,6 @@ void ZigApp::PrefilterEnvCubemap(const std::shared_ptr<RenderTarget::Cube>& cube
 
 	}
 	bindScreenRenderTarget();
-}
-
-void ZigApp::PrecomputeIndirectLight(const std::filesystem::path& hdri_map_filepath)
-{
-	auto envmap_hdr = std::make_shared<Texture2D>();
-    envmap_hdr->LoadHdr(hdri_map_filepath);
-
-    HdrEquirectangularToCubemap(m_env_cubemap_rt, envmap_hdr);
-
-	m_env_cubemap_rt->color_texture().SetFiltering(TextureFiltering::Minify, TextureFilteringParam::LinearMipLinear);
-	m_env_cubemap_rt->color_texture().GenerateMipMaps();
-
-	IrradianceConvolution(m_irradiance_cubemap_rt);
-	PrefilterEnvCubemap(m_prefiltered_env_map_rt);
 }
 
 void ZigApp::PrecomputeBRDF(const std::shared_ptr<RenderTarget::Texture2d>& rt)
