@@ -11,7 +11,7 @@ namespace RGL::RenderTarget
 
 Cube::Cube()
 {
-	set_position({ 0, 0, 0 });
+	set_position(glm::vec3(0));
 }
 
 void Cube::create(const char *name, uint32_t width, uint32_t height, Color::Config color_cfg, Depth::Config depth_cfg)
@@ -131,12 +131,12 @@ void Cube::attach(GLenum attachment, GLenum internal_format, GLuint texture_id, 
 void Cube::set_position(const glm::vec3 pos)
 {
 	_position = pos;
-	_view_transforms[0] = glm::lookAt(pos, pos + AXIS_X, -AXIS_Y);
-	_view_transforms[1] = glm::lookAt(pos, pos - AXIS_X, -AXIS_Y);
-	_view_transforms[2] = glm::lookAt(pos, pos + AXIS_Y,  AXIS_Z);
-	_view_transforms[3] = glm::lookAt(pos, pos - AXIS_Y, -AXIS_Z);
-	_view_transforms[4] = glm::lookAt(pos, pos + AXIS_Z, -AXIS_Y);
-	_view_transforms[5] = glm::lookAt(pos, pos - AXIS_Z, -AXIS_Y);
+	_face_view_transforms[CubeFace::PositiveX] = glm::lookAt(pos, pos + AXIS_X, -AXIS_Y);
+	_face_view_transforms[CubeFace::NegativeX] = glm::lookAt(pos, pos - AXIS_X, -AXIS_Y);
+	_face_view_transforms[CubeFace::PositiveY] = glm::lookAt(pos, pos + AXIS_Y,  AXIS_Z);
+	_face_view_transforms[CubeFace::NegativeY] = glm::lookAt(pos, pos - AXIS_Y, -AXIS_Z);
+	_face_view_transforms[CubeFace::PositiveZ] = glm::lookAt(pos, pos + AXIS_Z, -AXIS_Y);
+	_face_view_transforms[CubeFace::NegativeZ] = glm::lookAt(pos, pos - AXIS_Z, -AXIS_Y);
 
 	_projection = glm::perspective(glm::radians(90.f), 1.f, 0.1f, 10.f);
 }
@@ -167,18 +167,18 @@ void Cube::bindDepthTexture(GLuint unit)
 	_depth_texture.Bind(unit);
 }
 
-void Cube::bindRenderTargetMip(uint32_t face, uint32_t mip_level, BufferMask clear_buffers)
+void Cube::bindRenderTargetMip(CubeFace face, uint32_t mip_level, BufferMask clear_buffers)
 {
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _fbo_id);
 
 	if(_has_color and _color_texture)
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-							   GL_TEXTURE_CUBE_MAP_POSITIVE_X + face,
+							   GL_TEXTURE_CUBE_MAP_POSITIVE_X + uint32_t(face),
 							   _color_texture.texture_id(), GLint(mip_level));
 
 	if(_has_depth and _depth_texture)
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
-							   GL_TEXTURE_CUBE_MAP_POSITIVE_X + face,
+							   GL_TEXTURE_CUBE_MAP_POSITIVE_X + uint32_t(face),
 							   _depth_texture.texture_id(), GLint(mip_level));
 
 	glViewport(0, 0, std::max(1, _width >> mip_level), std::max(1, _height >> mip_level));

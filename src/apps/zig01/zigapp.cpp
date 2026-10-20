@@ -907,7 +907,7 @@ void ZigApp::HdrEquirectangularToCubemap(const std::shared_ptr<RenderTarget::Cub
 
     for (uint8_t side = 0; side < 6; ++side)
     {
-		m_equirectangular_to_cubemap_shader->setUniform("u_view"sv, cubemap_rt->view_transform(side));
+		m_equirectangular_to_cubemap_shader->setUniform("u_view"sv, cubemap_rt->face_view_transform(side));
 		cubemap_rt->bindRenderTarget(side);
 
 		_skybox.drawBox();
@@ -923,10 +923,10 @@ void ZigApp::IrradianceConvolution(const std::shared_ptr<RenderTarget::Cube>& cu
 
     m_env_cubemap_rt->bindTexture(1);
 
-    for (uint8_t side = 0; side < 6; ++side)
-    {
-		m_irradiance_convolution_shader->setUniform("u_view"sv, cubemap_rt->view_transform(side));
-		cubemap_rt->bindRenderTarget(side);
+	for(auto face: CubeFaces)
+	{
+		m_irradiance_convolution_shader->setUniform("u_view"sv, cubemap_rt->face_view_transform(face));
+		cubemap_rt->bindRenderTarget(face);
 
 		_skybox.drawBox();
 	}
@@ -956,7 +956,7 @@ void ZigApp::PrefilterEnvCubemap(const std::shared_ptr<RenderTarget::Cube>& cube
 
 		for(auto face = 0u; face < 6; ++face)
         {
-			m_prefilter_env_map_shader->setUniform("u_view"sv, cubemap_rt->view_transform(face));
+			m_prefilter_env_map_shader->setUniform("u_view"sv, cubemap_rt->face_view_transform(face));
 			cubemap_rt->bindRenderTargetMip(face, mip);
 
 			_skybox.drawBox();

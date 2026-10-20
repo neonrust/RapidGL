@@ -72,12 +72,28 @@ enum class TextureCompareFunc
 
 enum class CubeFace : uint32_t
 {
-	PlusX  = 0,
-	MinutX = 1,
-	PlusY  = 2,
-	MinutY = 3,
-	PlusZ  = 4,
-	MinutZ = 5,
+	PositiveX = 0,
+	NegativeX = 1,
+	PositiveY = 2,
+	NegativeY = 3,
+	PositiveZ = 4,
+	NegativeZ = 5,
+
+	Up     = PositiveX,
+	Down   = NegativeX,
+	Left   = PositiveY,
+	Right  = NegativeY,
+	Front  = PositiveZ,
+	Back   = NegativeZ,
+};
+
+static constexpr auto CubeFaces = {
+	CubeFace::PositiveX,
+	CubeFace::NegativeX,
+	CubeFace::PositiveY,
+	CubeFace::NegativeY,
+	CubeFace::PositiveZ,
+	CubeFace::NegativeZ,
 };
 
 enum class ImageAccess
