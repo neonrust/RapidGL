@@ -696,16 +696,16 @@ void ZigApp::createLights()
 
 	static constexpr auto ident_quat = glm::quat_identity<float, glm::defaultp>();
 
-	auto light_dir = glm::normalize(glm::vec3(5, -3, 5));
-	Log::debug("light dir: {:.3f}", light_dir);
-	auto lid = _light_mgr.add(DirectionalLightParams{
-		.color = { 1.f, 0.97f, 0.9f },
-		.intensity = 20.f,
-		.fog = 1.f,
-		.shadow_caster = true,
-		.contact_shadows = false,
-		.direction = light_dir,
-	});
+	// auto light_dir = glm::normalize(glm::vec3(5, -3, 5));
+	// Log::debug("light dir: {:.3f}", light_dir);
+	// auto lid = _light_mgr.add(DirectionalLightParams{
+	// 	.color = { 1.f, 0.97f, 0.9f },
+	// 	.intensity = 20.f,
+	// 	.fog = 1.f,
+	// 	.shadow_caster = true,
+	// 	.contact_shadows = false,
+	// 	.direction = light_dir,
+	// });
 
 	// auto l = _light_mgr.add(SpotLightParams{
 	// 	.color = { 1.f, 0.85f, 0.7f },
