@@ -428,7 +428,7 @@ void ZigApp::init_app()
 		Log::info("Loaded {} light geometries", _lightModels.size());
 	}
 
-	loadScene("test");
+	loadScene("Z1R020");
 }
 
 void ZigApp::calculateShadingClusterGrid()
@@ -2060,81 +2060,11 @@ void ZigApp::debug_message(GLenum type, std::string_view severity, std::string_v
 
 void ZigApp::loadScene([[maybe_unused]] std::string_view name)
 {
-	// Create scene objects
-	const auto origin = component::Transform(glm::mat4(1));
+	SceneLoader loader(assets(), _animSystem);
+	loader.load(name, _scene);
 
-	// StaticModel sponza_model;
-	// sponza_model.Load(FileSystem::getResourcesPath() / "models" / "sponza" / "Sponza.gltf");
-	// assert(sponza_model);
-	// _scene.add(std::move(sponza_model), origin);
-
-	// auto testroom_model = std::make_shared<StaticModel>();
-	// testroom_model->Load(models_path / "testroom" / "testroom.gltf");
-	// assert(*testroom_model);
-	// _scene.emplace_back(testroom_model, origin);
-
-	if(0) {
-		auto loaded = assets().staticMesh("floor.gltf");
-		if(loaded)
-		{
-			const auto &[model, materials] = loaded.value();
-			_scene.add(model, materials, origin);
-		}
-	}
-
-	if(0) {
-		auto loaded = assets().staticMesh("base-wall.gltf");
-		if(loaded)
-		{
-			const auto &[model, materials] = loaded.value();
-			auto loc = origin;
-			loc.set_orientation_xyz({ 0, 0, 0 });
-			_scene.add(model, materials, loc);
-			loc.set_orientation_xyz({ 0, 90, 0 });
-			_scene.add(model, materials, loc);
-			loc.set_orientation_xyz({ 0, 180, 0 });
-			_scene.add(model, materials, loc);
-		}
-	}
-
-	// {
-	// 	auto [cathedral_model, materials] = assets().staticMesh("/dl/necropolisfantasygraveyardkit/cathedral_jxl.gltf");
-	// 	auto loc = origin;
-	// 	_scene.add(cathedral_model, materials, loc);
-	// 	loc.set_position(loc.position() + glm::vec3(50, 0, 0));
-	// 	_scene.add(cathedral_model, materials, loc);
-	// 	loc.set_position(loc.position() + glm::vec3(0, 0, 50));
-	// 	_scene.add(cathedral_model, materials, loc);
-	// 	loc.set_position(loc.position() + glm::vec3(-50, 0, 0));
-	// 	_scene.add(cathedral_model, materials, loc);
-	// }
-
-	if(0) {
-		auto loaded = assets().staticMesh("m1_church.gltf");
-		if(loaded)
-		{
-			const auto &[model, materials] = loaded.value();
-			auto loc = origin;
-			_scene.add(model, materials, loc);
-		}
-		// loc.set_position(origin.position() + glm::vec3(15, 0, 0));
-		// _scene.add(church_model, materials, loc);
-		// loc.set_position(origin.position() + glm::vec3(15, 0, 20));
-		// _scene.add(church_model, materials, loc);
-		// loc.set_position(origin.position() + glm::vec3( 0, 0, 20));
-		// _scene.add(church_model, materials, loc);
-	}
-
-	if(1) {
-		SceneLoader loader(assets(), _animSystem);
-		loader.load("Z1R020", _scene);
-
-		for(const auto &name: _animSystem.names())
-			Log::debug("  animation: {}", name);
-	}
-
-	// auto [shadowtest_model, materials] = assets().staticMesh("shadowtest.gltf");
-	// _scene.add(shadowtest_model, materials, origin);
+	for(const auto &name: _animSystem.names())
+		Log::debug("  animation: {}", name);
 
 	_entities.compact();
 }
