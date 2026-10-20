@@ -196,26 +196,30 @@ ShadowAtlas::SlotMask ShadowAtlas::need_render(const AtlasLight &atlas_light, Ti
 {
 	// NOTE: see comment in renderShadowMaps() regarding static/dynamic caching
 
-	if(atlas_light.is_dirty() or light_hash != atlas_light.hash)
+	if(atlas_light.is_dirty())
 		return SlotMaskAll;
 
-	// light has changed, check the view for each slot whether there are dynamic objects
-	// render if either:
+	if(light_hash != atlas_light.hash)
+	{
+		// TODO: heed 'frame skip'
+		return SlotMaskAll;
+	}
+
+	SlotMask stale_slots { 0 };
+
+	// light has not changed:
+	//   check the view frustum for each slot whether there are dynamic objects
+	// render if all these are true:
 	// - there are dynamic objects in view
 	// - enough frames skipped
 	// - enough time has passed
-
-	SlotMask stale_slots { 0 };
 
 	for(uint_fast8_t slot_idx = 0; slot_idx < atlas_light.num_slots; ++slot_idx)
 	{
 		const auto &objects = pvs(scene, atlas_light.uuid, slot_idx);
 
-		if(not objects.dynamic_entities.empty())
-		{
-			stale_slots |= 1u << slot_idx;
+		if(objects.dynamic_entities.empty())
 			continue;
-		}
 
 		const auto size_idx = slot_size_idx(atlas_light.slots[slot_idx].size);
 		assert(size_idx < _render_intervals.size());
@@ -1111,7 +1115,7 @@ ShadowAtlas::Counters ShadowAtlas::apply_desired_slots(const std::vector<AtlasLi
 				atlas_light.slots[idx].rect = mk_rect(_allocator.rect(node_index));
 			}
 
-			Log::debug("atlas| {{{}}} allocated -> {}", light_id, sizes_count_summary(atlas_light));
+			// Log::debug("atlas| {{{}}} allocated -> {}", light_id, sizes_count_summary(atlas_light));
 
 			_id_to_allocated[light_id] = atlas_light;
 		}
