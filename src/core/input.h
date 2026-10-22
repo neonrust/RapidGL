@@ -139,37 +139,37 @@ public:
 	static void update();
 
 	/**
-	 * @brief Check if key is pressed
+	 * @brief Check if key is currently being held down
 	 * @param KeyCode keycode
 	 */
 	static bool isKeyDown(KeyCode keyCode);
 
 	/**
-	 * @brief Check if key was pressed
+	 * @brief Check if key was just pressed
 	 * @param KeyCode keycode
 	 */
 	static bool wasKeyPressed(KeyCode keyCode);
 
 	/**
-	 * @brief Check if key was released
+	 * @brief Check if key was just released
 	 * @param KeyCode keycode
 	 */
 	static bool wasKeyReleased(KeyCode keyCode);
 
 	/**
-	 * @brief Check if mouse button is pressed
+	 * @brief Check if mouse button is currently being held down
 	 * @param KeyCode keycode
 	 */
 	static bool isMouseDown(KeyCode keyCode);
 
 	/**
-	 * @brief Check if mouse button was pressed
+	 * @brief Check if mouse button was just pressed
 	 * @param KeyCode keycode
 	 */
 	static bool wasMousePressed(KeyCode keyCode);
 
 	/**
-	 * @brief Check if mouse button was released
+	 * @brief Check if mouse button was just released
 	 * @param KeyCode keycode
 	 */
 	static bool wasMouseReleased(KeyCode keyCode);
@@ -180,19 +180,21 @@ public:
 	 *         of the cursor position within the
 	 *         current window.
 	 */
-	static glm::uvec2 getMousePosition();
+	static glm::uvec2 mousePosition();
+	static void setMousePosition(const glm::uvec2 &pos);
+
+	static bool enableRawMouseMotion(bool enabled);
+	static bool isRawMouseMotionEnabled();
 
 	/**
 	 * @brief Enable or disable visibility of the cursor
 	 * @param bool TRUE: to show the cursor
 	 *             FALSE: to hide the cursor
 	 */
-	static void setMouseCursorVisibility(bool is_visible);
+	static void setMouseCursorVisible(bool visible);
 
-	static void setMousePosition(const glm::uvec2 &cursor_position);
-
-	static float getGamepadAxis(int gamepad, int axis);
-	static bool getGamepadButton(int gamepad, int button);
+	static float getControllerAxis(int controllerIdx, int axis);
+	static bool getControllerButton(int controllerIdx, int button);
 
 private:
 	static GLFWwindow * m_window;

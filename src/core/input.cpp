@@ -4,6 +4,7 @@ namespace RGL
 {
     GLFWwindow * Input::m_window = nullptr;
 
+	// state of all known keys (after update() is called)
 	dense_map<KeyCode, bool> Input::m_last_keys_states = {
         { KeyCode::Backspace,      false },
         { KeyCode::Delete,         false },
@@ -108,14 +109,18 @@ namespace RGL
         { KeyCode::RightAlt,       false },
         { KeyCode::LeftAlt,        false },
         { KeyCode::PrintScreen,    false },
-        { KeyCode::Menu,           false }
+		{ KeyCode::Menu,           false },
     };
 
+	// state of all known mouse buttons (after update() is called)
 	dense_map<KeyCode, bool> Input::m_last_mouse_states = {
-        { KeyCode::Mouse1,      false},
-        { KeyCode::Mouse2,      false},
-        { KeyCode::Mouse3,      false}
-    };
+		{ KeyCode::MouseLeft,       false },
+		{ KeyCode::MouseMiddle,     false },
+		{ KeyCode::MouseRight,      false },
+		{ KeyCode::Mouse4,          false },
+		{ KeyCode::Mouse5,          false },
+		{ KeyCode::Mouse6,          false },
+	};
 
     void Input::init(GLFWwindow* window)
     {
@@ -124,10 +129,10 @@ namespace RGL
 
     void Input::update()
     {
-		for (auto &[key, state] : m_last_keys_states)
+		for(auto &[key, state]: m_last_keys_states)
 			state = isKeyDown(key);
 
-		for (auto &[button, state] : m_last_mouse_states)
+		for(auto &[button, state]: m_last_mouse_states)
 			state = isMouseDown(button);
     }
 
@@ -138,30 +143,30 @@ namespace RGL
 
 	bool Input::wasKeyPressed(KeyCode keyCode)
     {
-		return isKeyDown(keyCode) and not m_last_keys_states[keyCode];
+		return not m_last_keys_states[keyCode] and isKeyDown(keyCode);
     }
 
 	bool Input::wasKeyReleased(KeyCode keyCode)
     {
-		return !isKeyDown(keyCode) and m_last_keys_states[keyCode];
+		return m_last_keys_states[keyCode] and not isKeyDown(keyCode);
     }
 
 	bool Input::isMouseDown(KeyCode keyCode)
     {
-        return glfwGetMouseButton(m_window, static_cast<int>(keyCode)) == GLFW_PRESS;
+		return glfwGetMouseButton(m_window, static_cast<int>(keyCode)) == GLFW_PRESS;
     }
 
 	bool Input::wasMousePressed(KeyCode keyCode)
     {
-		return isMouseDown(keyCode) and not m_last_mouse_states[keyCode];
+		return not m_last_mouse_states[keyCode] and isMouseDown(keyCode);
     }
 
 	bool Input::wasMouseReleased(KeyCode keyCode)
     {
-		return !isMouseDown(keyCode) and m_last_mouse_states[keyCode];
+		return m_last_mouse_states[keyCode] and not isMouseDown(keyCode);
     }
 
-	glm::uvec2 Input::getMousePosition()
+	glm::uvec2 Input::mousePosition()
     {
         double x_pos, y_pos;
         glfwGetCursorPos(m_window, &x_pos, &y_pos);
@@ -169,33 +174,49 @@ namespace RGL
 		return glm::uvec2(x_pos, y_pos);
     }
 
-	void Input::setMousePosition(const glm::uvec2 & cursor_position)
+	void Input::setMousePosition(const glm::uvec2 & pos)
 	{
-		glfwSetCursorPos(m_window, cursor_position.x, cursor_position.y);
+		glfwSetCursorPos(m_window, pos.x, pos.y);
 	}
 
-    void Input::setMouseCursorVisibility(bool is_visible)
-    {
-		glfwSetInputMode(m_window, GLFW_CURSOR, is_visible? GLFW_CURSOR_NORMAL: GLFW_CURSOR_DISABLED);
-    }
-
-	float Input::getGamepadAxis(int gamepad, int axis)
+	bool Input::enableRawMouseMotion(bool enabled)
 	{
-		assert(gamepad >= GLFW_JOYSTICK_1 and gamepad <= GLFW_JOYSTICK_LAST);
+		if (glfwRawMouseMotionSupported())
+		{
+			glfwSetInputMode(m_window, GLFW_RAW_MOUSE_MOTION, enabled? GLFW_TRUE: GLFW_FALSE);
+			return true;
+		}
+		return false;
+	}
+
+	bool Input::isRawMouseMotionEnabled()
+	{
+		return glfwRawMouseMotionSupported() and
+			glfwGetInputMode(m_window, GLFW_RAW_MOUSE_MOTION) == GLFW_TRUE;
+	}
+
+	void Input::setMouseCursorVisible(bool visible)
+    {
+		glfwSetInputMode(m_window, GLFW_CURSOR, visible? GLFW_CURSOR_NORMAL: GLFW_CURSOR_DISABLED);
+    }
+	
+	float Input::getControllerAxis(int controllerIdx, int axis)
+	{
+		assert(controllerIdx >= GLFW_JOYSTICK_1 and controllerIdx <= GLFW_JOYSTICK_LAST);
 
 		GLFWgamepadstate state;
-		if(glfwGetGamepadState(gamepad, &state))
+		if(glfwGetGamepadState(controllerIdx, &state))
 			return state.axes[axis];
 
 		return 0;
 	}
-
-	bool Input::getGamepadButton(int gamepad, int button)
+	
+	bool Input::getControllerButton(int controllerIdx, int button)
 	{
-		assert(gamepad >= GLFW_JOYSTICK_1 and gamepad <= GLFW_JOYSTICK_LAST);
+		assert(controllerIdx >= GLFW_JOYSTICK_1 and controllerIdx <= GLFW_JOYSTICK_LAST);
 
 		GLFWgamepadstate state;
-		if(glfwGetGamepadState(gamepad, &state))
+		if(glfwGetGamepadState(controllerIdx, &state))
 			return state.buttons[button] == GLFW_PRESS;
 
 		return false;

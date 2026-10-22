@@ -159,15 +159,15 @@ void Camera::update(std::chrono::nanoseconds dt)
 	if (Input::isKeyDown(m_down_key))
 		move(m_position, -AXIS_Y, movement_amount); // regardless of orientation
 
-	/* Camera Rotation */
+	// Camera Rotation
 	if (Input::isMouseDown(m_unlock_mouse_key))
 	{
 		if (not m_is_mouse_move)
 		{
-			m_mouse_pressed_position = glm::ivec2(Input::getMousePosition());
+			m_mouse_pressed_position = glm::ivec2(Input::mousePosition());
 			// TODO: see raylib's EnableCursor()/DisableCursor()
 			//   also: https://www.glfw.org/docs/3.1/input.html#input_cursor_mode
-			Input::setMouseCursorVisibility(false);
+			Input::setMouseCursorVisible(false);
 			Input::setMousePosition({ m_width/2, m_height/2 });
 			m_is_mouse_move = true;
 		}
@@ -175,13 +175,13 @@ void Camera::update(std::chrono::nanoseconds dt)
 	else if(m_is_mouse_move)
 	{
 		Input::setMousePosition(m_mouse_pressed_position);
-		Input::setMouseCursorVisibility(true);
+		Input::setMouseCursorVisible(true);
 		m_is_mouse_move = false;
 	}
 
 	if (m_is_mouse_move)
 	{
-		const auto mouse_pos = glm::ivec2(Input::getMousePosition());
+		const auto mouse_pos = glm::ivec2(Input::mousePosition());
 		const auto delta_pos = mouse_pos - glm::ivec2{ m_width/2, m_height/2 };
 		Input::setMousePosition({ m_width/2, m_height/2 });
 
