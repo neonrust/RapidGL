@@ -75,6 +75,8 @@ public:
 	
 	const Frustum &frustum() const;
 
+	void lookAt(const glm::vec3 &point);
+
 	inline const glm::mat4 &projectionTransform() const { return m_projection; }
 	inline const glm::mat4 &viewTransform() const { return m_view; }
 

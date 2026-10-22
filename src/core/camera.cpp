@@ -91,6 +91,17 @@ const Frustum &Camera::frustum() const
 	return _frustum;
 }
 
+void Camera::lookAt(const glm::vec3 &point)
+{
+	const auto direction = glm::normalize(point - position());
+
+	// deduce '_pitch' and '_yaw' from direction vector
+	_yaw = std::atan2(direction.x, direction.z);
+	_pitch = std::atan2(direction.y, std::sqrt(direction.x*direction.x + direction.z*direction.z));
+
+	m_is_dirty = true;
+}
+
 glm::mat4 Camera::projectionTransform(float z_near, float z_far) const
 {
 	if(m_is_ortho)
