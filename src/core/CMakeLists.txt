@@ -48,6 +48,7 @@ set(SOURCE_FILES_CORE
 	scene_loader.cpp
 	shader.cpp
 	shadow_atlas.cpp
+	skybox.cpp
 	tag_file.cpp
 	texture.cpp
 	util.cpp
@@ -145,6 +146,7 @@ set(HEADER_FILES_CORE
 	scoped_timer.h
 	shader.h
 	shadow_atlas.h
+	skybox.h
 	spatial_allocator.h
 	ssbo.h
 	tag_file.h
