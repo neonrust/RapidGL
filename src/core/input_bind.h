@@ -22,6 +22,12 @@ enum MouseButton
 	Mouse8 = GLFW_MOUSE_BUTTON_8
 };
 
+enum MouseAxis
+{
+	Horizontal,
+	Vertical,
+};
+
 enum class ControllerButton
 {
 	A = GLFW_GAMEPAD_BUTTON_A,
@@ -44,6 +50,19 @@ enum class ControllerButton
 	RIGHT = GLFW_GAMEPAD_BUTTON_DPAD_RIGHT,
 	DOWN = GLFW_GAMEPAD_BUTTON_DPAD_DOWN,
 	LEFT = GLFW_GAMEPAD_BUTTON_DPAD_LEFT,
+
+	START = GLFW_GAMEPAD_BUTTON_START,
+	BACK = GLFW_GAMEPAD_BUTTON_BACK,
+	GUIDE = GLFW_GAMEPAD_BUTTON_GUIDE,
+};
+
+enum class ControllerAxis
+{
+	LeftThumb,
+	RightThumb,
+
+	LeftBumper,
+	RightBumper,
 };
 
 struct ActionBind
@@ -62,7 +81,6 @@ struct ActionBind
 		TriggerEnd      // only trigger == Hold
 	};
 
-	ActionBind();
 	ActionBind(KeyCode key, Trigger trigger=Press);
 	ActionBind(MouseButton button, Trigger trigger=Press);
 	ActionBind(int controllerIdx, ControllerButton button, Trigger trigger=Press);
@@ -78,69 +96,52 @@ struct ActionBind
 private:
 	bool check_state() const;
 
-	enum { Key, MouseBtn, ControllerBtn } _type { Key };
 	Trigger _trigger;
-	union {
-		KeyCode _key { KeyCode::None };
-		MouseButton _mouseBtn;
-		ControllerButton _controllerBtn;
+	struct ControllerDef
+	{
+		ControllerButton button;
+		int idx { -1 }; // only used for _type == ControllerBtn
 	};
-	int _controllerIdx { -1 }; // only used for _type == ControllerBtn
+	std::variant<KeyCode, MouseButton, ControllerDef> _button { KeyCode::None };
 	mutable bool _previousState { false };
 
 public:
-	inline operator bool () const { return not (_type == Key and _key == KeyCode::None); }
+	operator bool () const;
 };
 
 // ----------------------------------------------------------------------------
 
-inline ActionBind::ActionBind()
+enum class ThresholdDirection { Rising, Falling };
+
+struct AxisBind
 {
-}
+	AxisBind(MouseAxis axis, uint_fast16_t rangeMax);
+	AxisBind(MouseAxis axis, uint_fast16_t rangeMax, float threshold, ThresholdDirection dir);
+	AxisBind(int controllerIdx, ControllerAxis axis);
+	AxisBind(int controllerIdx, ControllerAxis axis, float threshold, ThresholdDirection dir);
 
-// ----------------------------------------------------------------------------
+	float value() const;
 
-inline ActionBind::ActionBind(KeyCode key, Trigger trigger) :
-	_type(Key),
-	_trigger(trigger),
-	_key(key)
-{
-}
+	bool hitThreshold() const;
 
-// ----------------------------------------------------------------------------
+	void setThreshold(float threshold) { setThreshold(threshold, _thresholdDirection); };
+	void setThreshold(float threshold, ThresholdDirection dir) { _threshold = threshold; _thresholdDirection = dir; }
+	std::tuple<float, ThresholdDirection> threshold() const { return { _threshold, _thresholdDirection }; };
 
-inline ActionBind::ActionBind(MouseButton button, Trigger trigger) :
-	_type(MouseBtn),
-	_trigger(trigger),
-	_mouseBtn(button)
-{
-}
-
-// ----------------------------------------------------------------------------
-
-inline ActionBind::ActionBind(int controllerIdx, ControllerButton button, Trigger trigger) :
-	_type(ControllerBtn),
-	_trigger(trigger),
-	_controllerBtn(button),
-	_controllerIdx(controllerIdx)
-{
-}
-
-// ----------------------------------------------------------------------------
-
-inline bool ActionBind::check_state() const
-{
-	switch(_type)
+private:
+	struct MouseDef
 	{
-	case Key:
-		return Input::wasKeyPressed(_key);
-	case MouseBtn:
-		return Input::wasMousePressed(KeyCode(_mouseBtn));
-	case ControllerBtn:
-		return Input::getControllerButton(_controllerIdx, int(_controllerBtn));
-	}
-
-	return false;
-}
+		MouseAxis axis;
+		float max;
+	};
+	struct ControllerDef
+	{
+		ControllerAxis axis;
+		int idx { -1 }; // only used for _type == ControllerBtn
+	};
+	std::variant<MouseDef, ControllerDef> _axis;
+	float _threshold { 0.5f };
+	ThresholdDirection _thresholdDirection { ThresholdDirection::Rising};
+};
 
 } // RGL
