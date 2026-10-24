@@ -200,7 +200,7 @@ namespace RGL
 		glfwSetInputMode(m_window, GLFW_CURSOR, visible? GLFW_CURSOR_NORMAL: GLFW_CURSOR_DISABLED);
     }
 	
-	float Input::getControllerAxis(int controllerIdx, int axis)
+	float Input::controllerAxis(int controllerIdx, int axis)
 	{
 		assert(controllerIdx >= GLFW_JOYSTICK_1 and controllerIdx <= GLFW_JOYSTICK_LAST);
 
@@ -211,7 +211,7 @@ namespace RGL
 		return 0;
 	}
 	
-	bool Input::getControllerButton(int controllerIdx, int button)
+	bool Input::controllerButtonDown(int controllerIdx, int button)
 	{
 		assert(controllerIdx >= GLFW_JOYSTICK_1 and controllerIdx <= GLFW_JOYSTICK_LAST);
 

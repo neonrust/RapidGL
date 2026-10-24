@@ -193,8 +193,8 @@ public:
 	 */
 	static void setMouseCursorVisible(bool visible);
 
-	static float getControllerAxis(int controllerIdx, int axis);
-	static bool getControllerButton(int controllerIdx, int button);
+	static float controllerAxis(int controllerIdx, int axis);
+	static bool controllerButtonDown(int controllerIdx, int button);
 
 private:
 	static GLFWwindow * m_window;
