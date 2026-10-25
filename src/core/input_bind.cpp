@@ -9,6 +9,12 @@ using namespace std::literals;
 namespace RGL
 {
 
+ActionBind::ActionBind()
+{
+}
+
+// ----------------------------------------------------------------------------
+
 ActionBind::ActionBind(KeyCode key, Trigger trigger) :
 	_trigger(trigger),
 	_button(key)
@@ -81,18 +87,38 @@ std::pair<size_t, ControllerButton> ActionBind::controllerButton() const
 
 // ----------------------------------------------------------------------------
 
-bool RGL::ActionBind::check_state() const
+bool ActionBind::current_state() const
 {
 	switch(_button.index())
 	{
 	case 0:
-		return Input::wasKeyPressed(std::get<KeyCode>(_button));
+		return Input::isKeyDown(std::get<KeyCode>(_button));
 	case 1:
-		return Input::wasMousePressed(KeyCode(std::get<MouseButton>(_button)));
+		return Input::isMouseDown(KeyCode(std::get<MouseButton>(_button)));
 	case 2:
 	{
 		const auto &def = std::get<ControllerDef>(_button);
-		return Input::controllerButtonDown(def.idx, int(def.button));
+		return Input::isControllerButtonDown(def.idx, int(def.button));
+	}
+	}
+
+	return false;
+}
+
+// ----------------------------------------------------------------------------
+
+bool ActionBind::previous_state() const
+{
+	switch(_button.index())
+	{
+	case 0:
+		return Input::wasKeyDown(std::get<KeyCode>(_button));
+	case 1:
+		return Input::wasMouseDown(KeyCode(std::get<MouseButton>(_button)));
+	case 2:
+	{
+		const auto &def = std::get<ControllerDef>(_button);
+		return Input::wasControllerButtonDown(def.idx, int(def.button));
 	}
 	}
 
@@ -103,31 +129,30 @@ bool RGL::ActionBind::check_state() const
 
 ActionBind::operator bool() const
 {
-	return not (std::holds_alternative<KeyCode>(_button) and std::get<KeyCode>(_button) == KeyCode::None);
+	return triggered() != TriggerState::NotTriggered;
 }
 
 // ----------------------------------------------------------------------------
 
 ActionBind::TriggerState ActionBind::triggered() const
 {
-	const auto prev_active = _previousState;
-	const auto active_now = check_state();
-	_previousState = active_now;
+	const auto active_now = current_state();
+	const auto was_active = previous_state();
 
 	switch(_trigger)
 	{
 	case Press:
-		return active_now and not prev_active ? Triggered : NotTriggered;
+		return active_now and not was_active ? Triggered : NotTriggered;
 	case Hold:
 		if(active_now)
-			return prev_active ? TriggerStill : Triggered;
+			return was_active ? TriggerStill : Triggered;
 		else
-			return prev_active ? TriggerEnd : NotTriggered;
+			return was_active ? TriggerEnd : NotTriggered;
 	case Repeat:
 		// TODO
 		return NotTriggered;//IsKeyPressedRepeat(_key) ? Triggered : NotTriggered;
 	case Release:
-		return not active_now and prev_active ? Triggered : NotTriggered;;
+		return not active_now and was_active ? Triggered : NotTriggered;;
 	}
 	return NotTriggered;
 }
@@ -135,8 +160,7 @@ ActionBind::TriggerState ActionBind::triggered() const
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
 
-AxisBind::AxisBind(MouseAxis axis, uint_fast16_t rangeMax) :
-	_axis(MouseDef{ axis, float(rangeMax) })
+AxisBind::AxisBind()
 {
 }
 
@@ -146,13 +170,6 @@ AxisBind::AxisBind(MouseAxis axis, uint_fast16_t rangeMax, float threshold, Thre
 	_axis(MouseDef{ axis, float(rangeMax) })
 {
 	setThreshold(threshold, dir);
-}
-
-// ----------------------------------------------------------------------------
-
-AxisBind::AxisBind(int controllerIdx, ControllerAxis axis) :
-	_axis(ControllerDef{ axis, controllerIdx })
-{
 }
 
 // ----------------------------------------------------------------------------
@@ -173,7 +190,7 @@ float AxisBind::value() const
 	{
 		const auto &def = std::get<MouseDef>(_axis);
 
-		auto pos = Input::mousePosition();
+		const auto pos = Input::mousePosition();
 		if(def.axis == MouseAxis::Horizontal)
 			return float(pos.x) / def.max;
 		else
@@ -185,6 +202,50 @@ float AxisBind::value() const
 
 		return Input::controllerAxis(def.idx, int(def.axis));
 	}
+
+	std::unreachable();
+}
+
+// ----------------------------------------------------------------------------
+
+int_fast16_t AxisBind::rawValue() const
+{
+	assert(_axis.index() < 2);
+
+	if(_axis.index() == 0)
+	{
+		const auto &def = std::get<MouseDef>(_axis);
+
+		const auto pos = Input::mousePosition();
+		if(def.axis == MouseAxis::Horizontal)
+			return int_fast16_t(pos.x);
+		else
+			return int_fast16_t(pos.y);
+	}
+	else if(_axis.index() == 1)
+	{
+		const auto &def = std::get<ControllerDef>(_axis);
+
+		return int_fast16_t(Input::controllerAxis(def.idx, int(def.axis))*32767);
+	}
+
+	std::unreachable();
+}
+
+// ----------------------------------------------------------------------------
+
+bool AxisBind::triggered() const
+{
+	if(_thresholdDirection == ThresholdDirection::Greater)
+		return value() >= _threshold;
+	return value() <= _threshold;
+}
+
+// ----------------------------------------------------------------------------
+
+AxisBind::operator bool() const
+{
+	return triggered();
 }
 
 } // RGL

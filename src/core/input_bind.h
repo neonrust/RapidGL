@@ -2,19 +2,17 @@
 
 #include "input.h"
 
-// TODO: struct SteerBind  (mouse pos, joystick/gamepad axes)
-
 namespace RGL
 {
 
 enum MouseButton
 {
-	MouseLeft = GLFW_MOUSE_BUTTON_LEFT,
-	MouseMiddle = GLFW_MOUSE_BUTTON_MIDDLE,
-	MouseRight = GLFW_MOUSE_BUTTON_RIGHT,
-	Mouse1 = GLFW_MOUSE_BUTTON_1,
-	Mouse2 = GLFW_MOUSE_BUTTON_2,
-	Mouse3 = GLFW_MOUSE_BUTTON_3,
+	Left = GLFW_MOUSE_BUTTON_LEFT,
+	Middle = GLFW_MOUSE_BUTTON_MIDDLE,
+	Right = GLFW_MOUSE_BUTTON_RIGHT,
+	Mouse1 = GLFW_MOUSE_BUTTON_1,  // left
+	Mouse2 = GLFW_MOUSE_BUTTON_2,  // right
+	Mouse3 = GLFW_MOUSE_BUTTON_3,  // middle
 	Mouse4 = GLFW_MOUSE_BUTTON_4,
 	Mouse5 = GLFW_MOUSE_BUTTON_5,
 	Mouse6 = GLFW_MOUSE_BUTTON_6,
@@ -81,6 +79,7 @@ struct ActionBind
 		TriggerEnd      // only trigger == Hold
 	};
 
+	ActionBind();
 	ActionBind(KeyCode key, Trigger trigger=Press);
 	ActionBind(MouseButton button, Trigger trigger=Press);
 	ActionBind(int controllerIdx, ControllerButton button, Trigger trigger=Press);
@@ -92,9 +91,11 @@ struct ActionBind
 	std::pair<size_t, ControllerButton> controllerButton() const;
 
 	TriggerState triggered() const;
+	operator bool () const;
 
 private:
-	bool check_state() const;
+	bool current_state() const;
+	bool previous_state() const;
 
 	Trigger _trigger;
 	struct ControllerDef
@@ -103,24 +104,23 @@ private:
 		int idx { -1 }; // only used for _type == ControllerBtn
 	};
 	std::variant<KeyCode, MouseButton, ControllerDef> _button { KeyCode::None };
-	mutable bool _previousState { false };
-
-public:
-	operator bool () const;
 };
 
 // ----------------------------------------------------------------------------
 
-enum class ThresholdDirection { Rising, Falling };
+enum class ThresholdDirection { Greater, Less };
 
 struct AxisBind
 {
-	AxisBind(MouseAxis axis, uint_fast16_t rangeMax);
-	AxisBind(MouseAxis axis, uint_fast16_t rangeMax, float threshold, ThresholdDirection dir);
-	AxisBind(int controllerIdx, ControllerAxis axis);
-	AxisBind(int controllerIdx, ControllerAxis axis, float threshold, ThresholdDirection dir);
+	AxisBind();
+	AxisBind(MouseAxis axis, uint_fast16_t rangeMax, float threshold=std::numeric_limits<float>::quiet_NaN(), ThresholdDirection dir=ThresholdDirection::Greater);
+	AxisBind(int controllerIdx, ControllerAxis axis, float threshold=std::numeric_limits<float>::quiet_NaN(), ThresholdDirection dir=ThresholdDirection::Greater);
 
 	float value() const;
+	int_fast16_t rawValue() const;
+
+	bool triggered() const;
+	operator bool () const;
 
 	bool hitThreshold() const;
 
@@ -140,8 +140,8 @@ private:
 		int idx { -1 }; // only used for _type == ControllerBtn
 	};
 	std::variant<MouseDef, ControllerDef> _axis;
-	float _threshold { 0.5f };
-	ThresholdDirection _thresholdDirection { ThresholdDirection::Rising};
+	float _threshold { std::numeric_limits<float>::quiet_NaN() };
+	ThresholdDirection _thresholdDirection { ThresholdDirection::Greater};
 };
 
 } // RGL

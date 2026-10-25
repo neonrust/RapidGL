@@ -15,6 +15,12 @@ bool ControlMap::add(std::string_view name, ActionBind *bind)
 	return inserted;
 }
 
+bool ControlMap::add(std::string_view name, AxisBind *bind)
+{
+	const auto &[_, inserted] = _axes.emplace(std::string(name), bind);
+	return inserted;
+}
+
 ActionBind &ControlMap::action(std::string_view bind_name)
 {
 	auto found = _actions.find(bind_name);
@@ -31,6 +37,24 @@ ActionBind &ControlMap::action(std::string_view bind_name)
 const ActionBind &ControlMap::action(std::string_view bind_name) const
 {
 	return const_cast<ControlMap *>(this)->action(bind_name);
+}
+
+AxisBind &ControlMap::axis(std::string_view bind_name)
+{
+	auto found = _axes.find(bind_name);
+	if(found == _axes.end())
+	{
+		Log::warning("No axis bind '{}' in control map '{}'", bind_name, _name);
+		assert(found != _axes.end());
+		static AxisBind sentinel;
+		return sentinel;
+	}
+	return *found->second;
+}
+
+const AxisBind &ControlMap::axis(std::string_view bind_name) const
+{
+	return const_cast<ControlMap *>(this)->axis(bind_name);
 }
 
 } // RGL
