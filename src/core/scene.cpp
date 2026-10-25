@@ -161,4 +161,22 @@ void Scene::_create_components(EntityID model_ent, std::shared_ptr<const StaticM
 	_entities.emplace<component::Model>      (model_ent, model);
 }
 
+GridPos operator + (const GridPos &A, const GridPos &B)
+{
+	return GridPos{
+		A.x + B.x,
+		A.y + B.y,
+		A.z + B.z,
+	};
+}
+
+glm::vec3 operator *(const GridPos &G, float scaler)
+{
+	return {
+		float(G.x) * scaler,
+		float(G.y) * scaler,
+		float(G.z) * scaler,
+	};
+}
+
 } // RGL

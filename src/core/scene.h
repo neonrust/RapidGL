@@ -13,6 +13,17 @@
 namespace RGL
 {
 
+using gaxis_t = int32_t;
+struct GridPos
+{
+	gaxis_t x;
+	gaxis_t y;
+	gaxis_t z { 0 };
+
+};
+GridPos operator + (const GridPos &A, const GridPos &B);
+glm::vec3 operator * (const GridPos &G, float scaler);
+
 // NOTE: this contains ONLY things that affect visuals
 
 class LightManager;

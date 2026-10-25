@@ -28,15 +28,6 @@ using namespace std::literals;
 namespace RGL
 {
 
-// TODO: this should be moved elsewhere
-using gaxis_t = int32_t;
-struct GridPos
-{
-	gaxis_t x;
-	gaxis_t y;
-	gaxis_t z { 0 };
-};
-
 namespace Property
 {
 static constexpr auto File = "file"sv;
