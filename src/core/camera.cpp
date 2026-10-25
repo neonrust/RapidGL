@@ -24,7 +24,7 @@ Camera::Camera(bool is_ortho)
 	m_is_ortho              (is_ortho),
 	m_sensitivity           (0.2f),
 	m_move_speed            (10),
-	m_unlock_mouse_key      (KeyCode::MouseRight),
+	// m_unlock_mouse_key      (KeyCode::MouseRight),
 	m_forward_key           (KeyCode::W),
 	m_backward_key          (KeyCode::S),
 	m_left_key              (KeyCode::A),
@@ -132,9 +132,9 @@ void Camera::update(std::chrono::nanoseconds dt)
 	auto movement_amount = m_move_speed * duration_cast<seconds_f>(dt).count();
 
 	if(Input::isKeyDown(KeyCode::LeftShift))
-		movement_amount *= 0.25f;
-	else if(Input::isKeyDown(KeyCode::LeftControl) or Input::isMouseDown(KeyCode::Mouse4))
-		movement_amount *= 4;
+		movement_amount *= 0.1f;
+	else if(Input::isKeyDown(KeyCode::LeftControl) or Input::isMouseDown(MouseButton::Mouse4))
+		movement_amount *= 5;
 
 
 	if (Input::isKeyDown(m_forward_key))
@@ -160,19 +160,19 @@ void Camera::update(std::chrono::nanoseconds dt)
 		move(m_position, -AXIS_Y, movement_amount); // regardless of orientation
 
 	// Camera Rotation
-	if (Input::isMouseDown(m_unlock_mouse_key))
-	{
-		if (not m_is_mouse_move)
-		{
-			m_mouse_pressed_position = glm::ivec2(Input::mousePosition());
-			// TODO: see raylib's EnableCursor()/DisableCursor()
-			//   also: https://www.glfw.org/docs/3.1/input.html#input_cursor_mode
-			Input::setMouseCursorVisible(false);
-			Input::setMousePosition({ m_width/2, m_height/2 });
-			m_is_mouse_move = true;
-		}
-	}
-	else if(m_is_mouse_move)
+	// if (Input::isMouseDown(m_unlock_mouse_key))
+	// {
+	// 	if (not m_is_mouse_move)
+	// 	{
+	// 		m_mouse_pressed_position = glm::ivec2(Input::mousePosition());
+	// 		// TODO: see raylib's EnableCursor()/DisableCursor()
+	// 		//   also: https://www.glfw.org/docs/3.1/input.html#input_cursor_mode
+	// 		Input::setMouseCursorVisible(false);
+	// 		Input::setMousePosition({ m_width/2, m_height/2 });
+	// 		m_is_mouse_move = true;
+	// 	}
+	// }
+	if(m_is_mouse_move)
 	{
 		Input::setMousePosition(m_mouse_pressed_position);
 		Input::setMouseCursorVisible(true);
