@@ -138,74 +138,30 @@ public:
 	static void init(GLFWwindow * window);
 	static void update();
 
-	/**
-	 * @brief Check if key is currently being held down
-	 * @param KeyCode keycode
-	 */
 	static bool isKeyDown(KeyCode keyCode);
+	static bool wasKeyDown(KeyCode keyCode);
+	static bool wasKeyPressed(KeyCode keyCode);    // changed since last frame
+	static bool wasKeyReleased(KeyCode keyCode);   // changed since last frame
 
-	/**
-	 * @brief Check if key was just pressed
-	 * @param KeyCode keycode
-	 */
-	static bool wasKeyPressed(KeyCode keyCode);
-
-	/**
-	 * @brief Check if key was just released
-	 * @param KeyCode keycode
-	 */
-	static bool wasKeyReleased(KeyCode keyCode);
-
-	/**
-	 * @brief Check if mouse button is currently being held down
-	 * @param KeyCode keycode
-	 */
 	static bool isMouseDown(KeyCode keyCode);
-
-	/**
-	 * @brief Check if mouse button was just pressed
-	 * @param KeyCode keycode
-	 */
-	static bool wasMousePressed(KeyCode keyCode);
-
-	/**
-	 * @brief Check if mouse button was just released
-	 * @param KeyCode keycode
-	 */
-	static bool wasMouseReleased(KeyCode keyCode);
-
-	/**
-	 * @brief Get current cursor position
-	 * @return glm::vec2 that holds x and y coordinate
-	 *         of the cursor position within the
-	 *         current window.
-	 */
+	static bool wasMouseDown(KeyCode keyCode);
+	static bool wasMousePressed(KeyCode keyCode);  // changed since last frame
+	static bool wasMouseReleased(KeyCode keyCode); // changed since last frame
 	static glm::uvec2 mousePosition();
 	static void setMousePosition(const glm::uvec2 &pos);
-
 	static bool enableRawMouseMotion(bool enabled);
 	static bool isRawMouseMotionEnabled();
-
-	/**
-	 * @brief Enable or disable visibility of the cursor
-	 * @param bool TRUE: to show the cursor
-	 *             FALSE: to hide the cursor
-	 */
 	static void setMouseCursorVisible(bool visible);
 
+	void activateController(int idx);
 	static float controllerAxis(int controllerIdx, int axis);
-	static bool controllerButtonDown(int controllerIdx, int button);
+	static bool isControllerButtonDown(int controllerIdx, int button);
+	static bool wasControllerButtonDown(int controllerIdx, int button);
+	static bool wasControllerButtonPressed(int controllerIdx, int button);
+	static bool wasControllerButtonReleased(int controllerIdx, int button);
 
 private:
-	static GLFWwindow * m_window;
-
-	/**
-	 * States:
-	 * false -> key was not pressed
-	 * true  -> key was pressed
-	 */
-	static dense_map<KeyCode, bool> m_last_keys_states;
-	static dense_map<KeyCode, bool> m_last_mouse_states;
+	void populateControllerButtons(int idx);
 };
 
 } // RGL
