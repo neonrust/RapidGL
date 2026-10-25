@@ -131,12 +131,12 @@ void Cube::attach(GLenum attachment, GLenum internal_format, GLuint texture_id, 
 void Cube::set_position(const glm::vec3 pos)
 {
 	_position = pos;
-	_face_view_transforms[CubeFace::PositiveX] = glm::lookAt(pos, pos + AXIS_X, -AXIS_Y);
-	_face_view_transforms[CubeFace::NegativeX] = glm::lookAt(pos, pos - AXIS_X, -AXIS_Y);
-	_face_view_transforms[CubeFace::PositiveY] = glm::lookAt(pos, pos + AXIS_Y,  AXIS_Z);
-	_face_view_transforms[CubeFace::NegativeY] = glm::lookAt(pos, pos - AXIS_Y, -AXIS_Z);
-	_face_view_transforms[CubeFace::PositiveZ] = glm::lookAt(pos, pos + AXIS_Z, -AXIS_Y);
-	_face_view_transforms[CubeFace::NegativeZ] = glm::lookAt(pos, pos - AXIS_Z, -AXIS_Y);
+	_face_view_transforms[uint32_t(CubeFace::PositiveX)] = glm::lookAt(pos, pos + AXIS_X, -AXIS_Y);
+	_face_view_transforms[uint32_t(CubeFace::NegativeX)] = glm::lookAt(pos, pos - AXIS_X, -AXIS_Y);
+	_face_view_transforms[uint32_t(CubeFace::PositiveY)] = glm::lookAt(pos, pos + AXIS_Y,  AXIS_Z);
+	_face_view_transforms[uint32_t(CubeFace::NegativeY)] = glm::lookAt(pos, pos - AXIS_Y, -AXIS_Z);
+	_face_view_transforms[uint32_t(CubeFace::PositiveZ)] = glm::lookAt(pos, pos + AXIS_Z, -AXIS_Y);
+	_face_view_transforms[uint32_t(CubeFace::NegativeZ)] = glm::lookAt(pos, pos - AXIS_Z, -AXIS_Y);
 
 	_projection = glm::perspective(glm::radians(90.f), 1.f, 0.1f, 10.f);
 }
