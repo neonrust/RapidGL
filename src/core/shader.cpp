@@ -127,7 +127,11 @@ bool Shader::addShader(const std::filesystem::path & filepath, ShaderType type, 
 		return false;
 	}
 
-	_shaderFiles[filepath.string()] = ShaderItem{ shaderObject, conditionals };
+	_shaderFiles[filepath.string()] = {
+		type,
+		shaderObject,
+		conditionals,
+	};
 
 	return loadShader(shaderObject, type, filepath, conditionals);
 }

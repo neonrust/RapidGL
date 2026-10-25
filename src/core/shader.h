@@ -176,6 +176,7 @@ private:
 
 	struct ShaderItem
 	{
+		ShaderType type;
 		GLuint shaderObject;
 		string_set conditionals;
 	};
