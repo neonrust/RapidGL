@@ -51,20 +51,32 @@ static constexpr GridDistance s_camera_facing_dir[] = { // forward vector
 
 // ----------------------------------------------------------------------------
 
-CrawlerController::CrawlerController(const glm::uvec2 &grabTopLeft, const glm::uvec2 &grabSize, float grid_size) :
+CrawlerController::CrawlerController(RGL::Camera &camera, const ScreenRect &grabRect, float grid_size) :
+	_camera(camera),
 	_grid_size(grid_size),
 	_mouseScaleYaw(0.05f),
 	_mouseScalePitch(0.03f),
-	_grabTopLeft(grabTopLeft),
-	_grabSize(grabSize)
+	_controls("crawler"),
+	_grabTopLeft(grabRect.topLeft),
+	_grabSize(grabRect.size)
 {
+	_controls.add("forward"sv,    &_binds.forward);
+	_controls.add("backward"sv,   &_binds.back);
+	_controls.add("left"sv,       &_binds.left);
+	_controls.add("right"sv,      &_binds.right);
+	_controls.add("turn-left"sv,  &_binds.turnLeft);
+	_controls.add("turn-right"sv, &_binds.turnRight);
+	_controls.add("free-look-begin"sv, &_binds.freeLookBegin);
+	_controls.add("free-look-end"sv, &_binds.freeLookEnd);
+	_controls.add("free-look-yaw"sv,  &_binds.freeLookYaw);
+	_controls.add("free-look-pitch"sv,  &_binds.freeLookPitch);
 }
 
 // ----------------------------------------------------------------------------
 
 void CrawlerController::update(std::chrono::nanoseconds frameTime)
 {
-	if(_moveCommand == MoveCommand::None and not _mouseLooking)
+	if(_moveCommand == MoveCommand::None and not _freeLooking)
 	{
 		// in theory, '_moveCommand' could be multiplke moves at once,
 		// but now we're just setting one
@@ -83,22 +95,24 @@ void CrawlerController::update(std::chrono::nanoseconds frameTime)
 			_moveCommand = MoveCommand::TurnRight;
 	}
 
-	if(_animation.type == GridAnimation::None and not _mouseLooking)
+	if(_animation.type == GridAnimation::None and not _freeLooking)
 	{
 		// camera_animation_end = now; // if no move was made
 
-		if(_moveCommand == MoveCommand::None and _binds.mouseLook and _binds.mouseLook.triggered())
+		if(_moveCommand == MoveCommand::None and _binds.freeLookBegin and _binds.freeLookBegin.triggered())
 		{
-			if(not _mouseLooking)
+			if(not _freeLooking)
 			{
-				_mouseLooking = true;
-				_mouseLookGrab = RGL::Input::mousePosition();
+				_freeLooking = true;
+				// TODO: this should use _binds.freeLook axes
+				// _freeLookGrab = _binds.freeLook.grab(_grabTopLeft + _grabSize/2u);
+				_freeLookGrab = RGL::Input::mousePosition();
 				RGL::Input::setMouseCursorVisible(false);
 				RGL::Input::setMousePosition(_grabTopLeft + _grabSize/2u);
-				_mouseLookYaw = 0;
-				_mouseLookPitch = 0;
+				_freeLookYaw = 0;
+				_freeLookPitch = 0;
 
-				Log::debug("mouselook START @ {}", _mouseLookGrab);
+				Log::debug("freelook START @ {}", _freeLookGrab);
 			}
 		}
 
@@ -217,13 +231,15 @@ void CrawlerController::update(std::chrono::nanoseconds frameTime)
 			_animation.type = GridAnimation::None;
 		}
 	}
-	else if(_mouseLooking)
+	else if(_freeLooking)
 	{
-		if(_binds.mouseLook and not _binds.mouseLook.triggered())
+		if(_binds.freeLookEnd and not _binds.freeLookEnd.triggered())
 		{
-			_mouseLooking = false;
+			_freeLooking = false;
 			// return the cursor to where we started
-			RGL::Input::setMousePosition(_mouseLookGrab);
+			// TODO: this should use _binds.freeLook axes
+			// _binds.freeLook.restore(_freeLookGrab);
+			RGL::Input::setMousePosition(_freeLookGrab);
 			RGL::Input::setMouseCursorVisible(true);
 
 			_camera.lookAt(_camera.position() + s_camera_facing_dir[uint_fast8_t(_facing)] * _grid_size);
@@ -235,6 +251,8 @@ void CrawlerController::update(std::chrono::nanoseconds frameTime)
 		}
 		else
 		{
+			// TODO: this should use _binds.freeLook axes
+			// const auto currPos = _binds.freeLook.value();
 			const auto currPos = RGL::Input::mousePosition();
 			const auto dragCenter = _grabTopLeft + _grabSize/2u;
 			RGL::Input::setMousePosition(dragCenter);
@@ -243,16 +261,16 @@ void CrawlerController::update(std::chrono::nanoseconds frameTime)
 			const auto yawAdd = mouse_offset.x*_mouseScaleYaw;
 			const auto pitchAdd = mouse_offset.y*_mouseScalePitch;
 
-			_mouseLookYaw   = glm::clamp(_mouseLookYaw   + yawAdd,   -s_mouselook_max_yaw,   s_mouselook_max_yaw);
-			_mouseLookPitch = glm::clamp(_mouseLookPitch + pitchAdd, -s_mouselook_max_pitch, s_mouselook_max_pitch);
+			_freeLookYaw   = glm::clamp(_freeLookYaw   + yawAdd,   -s_mouselook_max_yaw,   s_mouselook_max_yaw);
+			_freeLookPitch = glm::clamp(_freeLookPitch + pitchAdd, -s_mouselook_max_pitch, s_mouselook_max_pitch);
 
 			auto target = s_camera_facing_dir[uint_fast8_t(_facing)] * _grid_size; // default target for this facing direction
-			// target = Vector3RotateByAxisAngle(target, AXIS_Z, -std::numbers::pi_v<float>/2*_mouseLookYaw);
-			auto targetMatrix = glm::rotate(glm::mat4(1), -std::numbers::pi_v<float>/2*_mouseLookYaw, AXIS_Z);
+			// target = Vector3RotateByAxisAngle(target, AXIS_Z, -std::numbers::pi_v<float>/2*_freeLookYaw);
+			auto targetMatrix = glm::rotate(glm::mat4(1), -std::numbers::pi_v<float>/2*_freeLookYaw, AXIS_Z);
 			target = glm::vec3(targetMatrix * glm::vec4(target, 1.f));
 			const auto rightVector = glm::cross(AXIS_Z, target);
 			// target = Vector3RotateByAxisAngle(target, rightVector, std::numbers::pi_v<float>/2*_mouseLookPitch);
-			targetMatrix = glm::rotate(glm::mat4(1), std::numbers::pi_v<float>/2*_mouseLookPitch, rightVector);
+			targetMatrix = glm::rotate(glm::mat4(1), std::numbers::pi_v<float>/2*_freeLookPitch, rightVector);
 			target = glm::vec3(targetMatrix * glm::vec4(target, 1.f));
 
 			_camera.lookAt(_camera.position() + target);
@@ -272,20 +290,24 @@ void CrawlerController::setMouseSensitivity(float yaw, float pitch)
 
 CrawlerController::Movement CrawlerController::wantsToMove(Movement directions) const
 {
+	// this is mostly useful for UI feedback
+
+	const auto dir_int = uint_fast8_t(directions);
+
 	switch(_moveCommand)
 	{
 	case MoveCommand::TurnLeft:
-		return Movement(uint_fast8_t(directions) & uint_fast8_t(Movement::TurnLeft));
+		return Movement(dir_int & uint_fast8_t(Movement::TurnLeft));
 	case MoveCommand::TurnRight:
-		return Movement(int_fast8_t(directions) & uint_fast8_t(Movement::TurnRight));
+		return Movement(dir_int& uint_fast8_t(Movement::TurnRight));
 	case MoveCommand::Forward:
-		return Movement(uint_fast8_t(directions) & uint_fast8_t(Movement::Forward));
+		return Movement(dir_int & uint_fast8_t(Movement::Forward));
 	case MoveCommand::Backward:
-		return Movement(uint_fast8_t(directions) & uint_fast8_t(Movement::Backward));
+		return Movement(dir_int & uint_fast8_t(Movement::Backward));
 	case MoveCommand::Left:
-		return Movement(uint_fast8_t(directions) & uint_fast8_t(Movement::Left));
+		return Movement(dir_int & uint_fast8_t(Movement::Left));
 	case MoveCommand::Right:
-		return Movement(uint_fast8_t(directions) & uint_fast8_t(Movement::Right));
+		return Movement(dir_int & uint_fast8_t(Movement::Right));
 	default:
 		return Movement::None;
 	}

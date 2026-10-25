@@ -4,11 +4,18 @@
 #include "scene.h"
 
 #include "input_bind.h"
+#include "control_map.h"
+
 #include <glm/vec2.hpp>
 
 #include <functional>
 #include <chrono>
 
+struct ScreenRect
+{
+	glm::uvec2 topLeft;
+	glm::uvec2 size;
+};
 
 class CrawlerController
 {
@@ -27,11 +34,14 @@ public:
 	};
 
 public:
-	CrawlerController(const glm::uvec2 &grabTopLeft, const glm::uvec2 &grabSize, float grid_size=2.f);  // TODO: "free-look area"
+	CrawlerController(RGL::Camera &camera, const ScreenRect &grabRect, float grid_size=2.f);  // TODO: "free-look area"
 
 	void update(std::chrono::nanoseconds frameTime);
 
 	inline void setWalkableQuery(std::function<bool(RGL::GridPos)> callback) { _queryWalkable = callback; }
+
+	inline       RGL::ControlMap &controls()       { return _controls; };
+	inline const RGL::ControlMap &controls() const { return _controls; };
 
 	// TODO: de-couple bind config from this class? e.g. the crawler could register its "commands" with a global registry)
 	void setForward(RGL::ActionBind bind)   { _binds.forward   = bind; }
@@ -40,7 +50,7 @@ public:
 	void setRight(RGL::ActionBind bind)     { _binds.right     = bind; }
 	void setTurnLeft(RGL::ActionBind bind)  { _binds.turnLeft  = bind; }
 	void setTurnRight(RGL::ActionBind bind) { _binds.turnRight = bind; }
-	void setMouseLook(RGL::ActionBind bind) { _binds.mouseLook = bind; }
+	void setFreeLook(RGL::ActionBind bind)  { _binds.freeLookBegin = bind; }
 
 	void setMouseSensitivity(float yaw, float pitch);
 
@@ -62,10 +72,10 @@ private:
 	void invalidate();
 
 private:
-	RGL::Camera _camera;
+	RGL::Camera &_camera;
 	float _grid_size;
 
-	bool _mouseLooking { false };
+	bool _freeLooking { false };
 	float _mouseScaleYaw;
 	float _mouseScalePitch;
 
@@ -92,6 +102,7 @@ private:
 		} facing;
 	} _animation;
 
+	RGL::ControlMap _controls;
 	struct {
 		RGL::ActionBind forward;
 		RGL::ActionBind back;
@@ -99,14 +110,17 @@ private:
 		RGL::ActionBind right;
 		RGL::ActionBind turnLeft;
 		RGL::ActionBind turnRight;
-		RGL::ActionBind mouseLook;
+		RGL::ActionBind freeLookBegin;
+		RGL::ActionBind freeLookEnd;
+		RGL::AxisBind   freeLookYaw;
+		RGL::AxisBind   freeLookPitch;
 	} _binds;
 
-	glm::uvec2 _mouseLookGrab;
+	glm::uvec2 _freeLookGrab;
 	glm::uvec2 _grabTopLeft;
 	glm::uvec2 _grabSize;
-	float _mouseLookYaw;
-	float _mouseLookPitch;
+	float _freeLookYaw;
+	float _freeLookPitch;
 
 	std::function<bool(RGL::GridPos)> _queryWalkable;
 
