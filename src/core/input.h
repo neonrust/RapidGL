@@ -116,15 +116,55 @@ enum class KeyCode
 	LeftAlt = GLFW_KEY_LEFT_ALT,
 	PrintScreen = GLFW_KEY_PRINT_SCREEN,
 	Menu = GLFW_KEY_MENU,
-	Mouse1 = GLFW_MOUSE_BUTTON_1,
-	Mouse2 = GLFW_MOUSE_BUTTON_2,
-	Mouse3 = GLFW_MOUSE_BUTTON_3,
+};
+
+enum MouseButton
+{
+	Left = GLFW_MOUSE_BUTTON_LEFT,
+	Middle = GLFW_MOUSE_BUTTON_MIDDLE,
+	Right = GLFW_MOUSE_BUTTON_RIGHT,
+	Mouse1 = GLFW_MOUSE_BUTTON_1,  // left
+	Mouse2 = GLFW_MOUSE_BUTTON_2,  // right
+	Mouse3 = GLFW_MOUSE_BUTTON_3,  // middle
 	Mouse4 = GLFW_MOUSE_BUTTON_4,
 	Mouse5 = GLFW_MOUSE_BUTTON_5,
 	Mouse6 = GLFW_MOUSE_BUTTON_6,
-	MouseLeft = GLFW_MOUSE_BUTTON_LEFT,
-	MouseMiddle = GLFW_MOUSE_BUTTON_MIDDLE,
-	MouseRight = GLFW_MOUSE_BUTTON_RIGHT
+	Mouse7 = GLFW_MOUSE_BUTTON_7,
+	Mouse8 = GLFW_MOUSE_BUTTON_8
+};
+
+enum MouseAxis
+{
+	Horizontal,
+	Vertical,
+};
+
+enum class ControllerButton
+{
+	A = GLFW_GAMEPAD_BUTTON_A,
+	B = GLFW_GAMEPAD_BUTTON_B,
+	X = GLFW_GAMEPAD_BUTTON_X,
+	Y = GLFW_GAMEPAD_BUTTON_Y,
+
+	CROSS = GLFW_GAMEPAD_BUTTON_CROSS,
+	CIRCLE = GLFW_GAMEPAD_BUTTON_CIRCLE,
+	SQUARE = GLFW_GAMEPAD_BUTTON_SQUARE,
+	TRIANGLE = GLFW_GAMEPAD_BUTTON_TRIANGLE,
+
+	LeftBumper = GLFW_GAMEPAD_BUTTON_LEFT_BUMPER,
+	RightBumper = GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER,
+
+	LeftThumb = GLFW_GAMEPAD_BUTTON_LEFT_THUMB,
+	RightThumb = GLFW_GAMEPAD_BUTTON_RIGHT_THUMB,
+
+	Up = GLFW_GAMEPAD_BUTTON_DPAD_UP,
+	Right = GLFW_GAMEPAD_BUTTON_DPAD_RIGHT,
+	Down = GLFW_GAMEPAD_BUTTON_DPAD_DOWN,
+	Left = GLFW_GAMEPAD_BUTTON_DPAD_LEFT,
+
+	Start = GLFW_GAMEPAD_BUTTON_START,
+	Back = GLFW_GAMEPAD_BUTTON_BACK,
+	Guide = GLFW_GAMEPAD_BUTTON_GUIDE,
 };
 
 class Input final
@@ -143,10 +183,10 @@ public:
 	static bool wasKeyPressed(KeyCode keyCode);    // changed since last frame
 	static bool wasKeyReleased(KeyCode keyCode);   // changed since last frame
 
-	static bool isMouseDown(KeyCode keyCode);
-	static bool wasMouseDown(KeyCode keyCode);
-	static bool wasMousePressed(KeyCode keyCode);  // changed since last frame
-	static bool wasMouseReleased(KeyCode keyCode); // changed since last frame
+	static bool isMouseDown(MouseButton button);
+	static bool wasMouseDown(MouseButton button);
+	static bool wasMousePressed(MouseButton button);  // changed since last frame
+	static bool wasMouseReleased(MouseButton button); // changed since last frame
 	static glm::uvec2 mousePosition();
 	static void setMousePosition(const glm::uvec2 &pos);
 	static bool enableRawMouseMotion(bool enabled);
@@ -155,10 +195,10 @@ public:
 
 	void activateController(int idx);
 	static float controllerAxis(int controllerIdx, int axis);
-	static bool isControllerButtonDown(int controllerIdx, int button);
-	static bool wasControllerButtonDown(int controllerIdx, int button);
-	static bool wasControllerButtonPressed(int controllerIdx, int button);
-	static bool wasControllerButtonReleased(int controllerIdx, int button);
+	static bool isControllerButtonDown(int controllerIdx, ControllerButton button);
+	static bool wasControllerButtonDown(int controllerIdx, ControllerButton button);
+	static bool wasControllerButtonPressed(int controllerIdx, ControllerButton button);
+	static bool wasControllerButtonReleased(int controllerIdx, ControllerButton button);
 
 private:
 	void populateControllerButtons(int idx);

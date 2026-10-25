@@ -94,11 +94,11 @@ bool ActionBind::current_state() const
 	case 0:
 		return Input::isKeyDown(std::get<KeyCode>(_button));
 	case 1:
-		return Input::isMouseDown(KeyCode(std::get<MouseButton>(_button)));
+		return Input::isMouseDown(std::get<MouseButton>(_button));
 	case 2:
 	{
 		const auto &def = std::get<ControllerDef>(_button);
-		return Input::isControllerButtonDown(def.idx, int(def.button));
+		return Input::isControllerButtonDown(def.idx, def.button);
 	}
 	}
 
@@ -114,11 +114,11 @@ bool ActionBind::previous_state() const
 	case 0:
 		return Input::wasKeyDown(std::get<KeyCode>(_button));
 	case 1:
-		return Input::wasMouseDown(KeyCode(std::get<MouseButton>(_button)));
+		return Input::wasMouseDown(std::get<MouseButton>(_button));
 	case 2:
 	{
 		const auto &def = std::get<ControllerDef>(_button);
-		return Input::wasControllerButtonDown(def.idx, int(def.button));
+		return Input::wasControllerButtonDown(def.idx, def.button);
 	}
 	}
 

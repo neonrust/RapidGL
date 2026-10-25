@@ -115,34 +115,35 @@ static dense_map<KeyCode, bool> s_last_keys_states = {
 	};
 
 // state of all known mouse buttons (after update() is called)
-static dense_map<KeyCode, bool> s_last_mouse_states = {
-	{ KeyCode::MouseLeft,       false },
-	{ KeyCode::MouseMiddle,     false },
-	{ KeyCode::MouseRight,      false },
-	{ KeyCode::Mouse4,          false },
-	{ KeyCode::Mouse5,          false },
-	{ KeyCode::Mouse6,          false },
+static dense_map<MouseButton, bool> s_last_mouse_states = {
+	{ MouseButton::Left,       false },
+	{ MouseButton::Middle,     false },
+	{ MouseButton::Right,      false },
+	{ MouseButton::Mouse4,     false },
+	{ MouseButton::Mouse5,     false },
+	{ MouseButton::Mouse6,     false },
 	};
 
 static dense_set<int> s_active_controllers;
-static dense_map<int, dense_map<int, bool>> s_last_controller_states;
+static dense_map<int, dense_map<ControllerButton, bool>> s_last_controller_states;
 
-static const dense_set<int> s_controller_buttons = {
-	GLFW_GAMEPAD_BUTTON_A,
-	GLFW_GAMEPAD_BUTTON_B,
-	GLFW_GAMEPAD_BUTTON_X,
-	GLFW_GAMEPAD_BUTTON_Y,
-	GLFW_GAMEPAD_BUTTON_LEFT_BUMPER,
-	GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER,
-	GLFW_GAMEPAD_BUTTON_BACK,
-	GLFW_GAMEPAD_BUTTON_START,
-	GLFW_GAMEPAD_BUTTON_GUIDE,
-	GLFW_GAMEPAD_BUTTON_LEFT_THUMB,
-	GLFW_GAMEPAD_BUTTON_RIGHT_THUMB,
-	GLFW_GAMEPAD_BUTTON_DPAD_UP,
-	GLFW_GAMEPAD_BUTTON_DPAD_RIGHT,
-	GLFW_GAMEPAD_BUTTON_DPAD_DOWN,
-	GLFW_GAMEPAD_BUTTON_DPAD_LEFT
+static const dense_set<ControllerButton> s_controller_buttons = {
+	ControllerButton::A,
+	ControllerButton::B,
+	ControllerButton::X,
+	ControllerButton::Y,
+	ControllerButton::LeftBumper,
+	ControllerButton::RightBumper,
+	ControllerButton::Back,
+	ControllerButton::Start,
+	ControllerButton::Guide,
+	ControllerButton::LeftThumb,
+	ControllerButton::RightThumb,
+	ControllerButton::Up,
+	ControllerButton::Right,
+	ControllerButton::Down,
+	ControllerButton::Left
+
 };
 
 void Input::init(GLFWwindow* window)
@@ -201,24 +202,24 @@ bool Input::wasKeyReleased(KeyCode keyCode)
 	return wasKeyDown(keyCode) and not isKeyDown(keyCode);
 }
 
-bool Input::isMouseDown(KeyCode keyCode)
+bool Input::isMouseDown(MouseButton button)
 {
-	return glfwGetMouseButton(s_window, static_cast<int>(keyCode)) == GLFW_PRESS;
+	return glfwGetMouseButton(s_window, static_cast<int>(button)) == GLFW_PRESS;
 }
 
-bool Input::wasMouseDown(KeyCode keyCode)
+bool Input::wasMouseDown(MouseButton button)
 {
-	return s_last_mouse_states[keyCode];
+	return s_last_mouse_states[button];
 }
 
-bool Input::wasMousePressed(KeyCode keyCode)
+bool Input::wasMousePressed(MouseButton button)
 {
-	return not wasMouseDown(keyCode) and isMouseDown(keyCode);
+	return not wasMouseDown(button) and isMouseDown(button);
 }
 
-bool Input::wasMouseReleased(KeyCode keyCode)
+bool Input::wasMouseReleased(MouseButton button)
 {
-	return s_last_mouse_states[keyCode] and not isMouseDown(keyCode);
+	return s_last_mouse_states[button] and not isMouseDown(button);
 }
 
 glm::uvec2 Input::mousePosition()
@@ -266,18 +267,18 @@ float Input::controllerAxis(int controllerIdx, int axis)
 	return 0;
 }
 
-bool Input::isControllerButtonDown(int controllerIdx, int button)
+bool Input::isControllerButtonDown(int controllerIdx, ControllerButton button)
 {
 	assert(controllerIdx >= GLFW_JOYSTICK_1 and controllerIdx <= GLFW_JOYSTICK_LAST);
 
 	GLFWgamepadstate state;
 	if(glfwGetGamepadState(controllerIdx, &state))
-		return state.buttons[button] == GLFW_PRESS;
+		return state.buttons[int(button)] == GLFW_PRESS;
 
 	return false;
 }
 
-bool Input::wasControllerButtonDown(int controllerIdx, int button)
+bool Input::wasControllerButtonDown(int controllerIdx, ControllerButton button)
 {
 	assert(s_last_controller_states.contains(controllerIdx));
 
@@ -286,19 +287,19 @@ bool Input::wasControllerButtonDown(int controllerIdx, int button)
 	auto bfound = buttons.find(button);
 	if(bfound == buttons.end())
 	{
-		Log::warning("controller {} used unexpected button: {}", controllerIdx, button);
+		Log::warning("controller {} used unexpected button: {}", controllerIdx, int(button));
 		assert(bfound != buttons.end());
 		return false;
 	}
 	return bfound->second;
 }
 
-bool Input::wasControllerButtonPressed(int controllerIdx, int button)
+bool Input::wasControllerButtonPressed(int controllerIdx, ControllerButton button)
 {
 	return not wasControllerButtonDown(controllerIdx, button) and isControllerButtonDown(controllerIdx, button);
 }
 
-bool Input::wasControllerButtonReleased(int controllerIdx, int button)
+bool Input::wasControllerButtonReleased(int controllerIdx, ControllerButton button)
 {
 	return wasControllerButtonDown(controllerIdx, button) and not isControllerButtonDown(controllerIdx, button);
 }
