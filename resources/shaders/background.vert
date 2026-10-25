@@ -1,6 +1,8 @@
 #version 460 core
 layout (location = 0) in vec3 in_pos;
 
+// TODO: this is the same as cubemap.vert
+
 uniform mat4 u_projection;
 uniform mat4 u_view_orientation;
 

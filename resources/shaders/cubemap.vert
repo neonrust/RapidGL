@@ -1,4 +1,7 @@
 #version 460 core
+
+// TODO: this is the same as background.vert
+
 layout (location = 0) in vec3 in_pos;
 
 layout (location = 0) out vec3 out_world_pos;
