@@ -45,7 +45,6 @@ set(SOURCE_FILES_CORE
 	room_portal.cpp
 	scene.cpp
 	scene_items.cpp
-	scene_loader.cpp
 	shader.cpp
 	shadow_atlas.cpp
 	skybox.cpp
@@ -142,7 +141,6 @@ set(HEADER_FILES_CORE
 	sample_window.h
 	scene.h
 	scene_items.h
-	scene_loader.h
 	scoped_timer.h
 	shader.h
 	shadow_atlas.h

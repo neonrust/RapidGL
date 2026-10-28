@@ -25,39 +25,36 @@
 using namespace std::chrono;
 using namespace std::literals;
 
-namespace RGL
-{
-
 namespace Property
 {
-static constexpr auto File = "file"sv;
-static constexpr auto Name = "name"sv;
-static constexpr auto Type = "type"sv;
-static constexpr auto Position = "position"sv;
-static constexpr auto Grid = "grid"sv;
+static constexpr auto File      = "file"sv;
+static constexpr auto Name      = "name"sv;
+static constexpr auto Type      = "type"sv;
+static constexpr auto Position  = "position"sv;
+static constexpr auto Grid      = "grid"sv;
 static constexpr auto Orientation = "ori"sv;
-static constexpr auto Scale = "scale"sv;
-static constexpr auto Bounds = "bounds"sv;
+static constexpr auto Scale     = "scale"sv;
+static constexpr auto Bounds    = "bounds"sv;
 static constexpr auto Animation = "anim"sv;
-static constexpr auto Color = "color"sv;
-static constexpr auto Effect1 = "fx1"sv;   // lights: wobble (o.e. live flame) - amplitude (float)
-static constexpr auto Effect2 = "fx2"sv;   // lights: intensity (float)
-static constexpr auto Effect3 = "fx3"sv;   // lights: fog (float)
-static constexpr auto Effect4 = "fx4"sv;   // TBD
-static constexpr auto Length = "len"sv;
-static constexpr auto Power = "pow"sv;
-static constexpr auto Flicker = "flicker"sv;
-static constexpr auto Radius = "radius"sv;
+static constexpr auto Color     = "color"sv;
+static constexpr auto Effect1   = "fx1"sv;   // lights: wobble (o.e. live flame) - amplitude (float)
+static constexpr auto Effect2   = "fx2"sv;   // lights: intensity (float)
+static constexpr auto Effect3   = "fx3"sv;   // lights: fog (float)
+static constexpr auto Effect4   = "fx4"sv;   // TBD
+static constexpr auto Length    = "len"sv;
+static constexpr auto Power     = "pow"sv;
+static constexpr auto Flicker   = "flicker"sv;
+static constexpr auto Radius    = "radius"sv;
 
 namespace Material
 {
 // suffixes (max 4 characters)
-static constexpr auto Albedo = "alb"sv;
-static constexpr auto Normals = "norm"sv;
-static constexpr auto Metallic = "met"sv;
+static constexpr auto Albedo    = "alb"sv;
+static constexpr auto Normals   = "norm"sv;
+static constexpr auto Metallic  = "met"sv;
 static constexpr auto Roughness = "ruff"sv;
-static constexpr auto Ambient = "ao"sv;
-static constexpr auto Emissive = "em"sv;
+static constexpr auto Ambient   = "ao"sv;
+static constexpr auto Emissive  = "em"sv;
 } // Material
 
 } // Property
@@ -70,7 +67,7 @@ enum class Control
 	Axis
 };
 
-using prop_value_t = std::variant<float, int64_t, std::string, glm::vec4, GridPos>;
+using prop_value_t = std::variant<float, int64_t, std::string, glm::vec4, RGL::GridPos>;
 using prop_map_t = string_map<prop_value_t>;
 
 static glm::vec3 to_vec3(const prop_value_t &p)
@@ -80,10 +77,10 @@ static glm::vec3 to_vec3(const prop_value_t &p)
 	return { pv.x, pv.y, pv.z };
 }
 
-static GridPos to_grid(const prop_value_t &p)
+static RGL::GridPos to_grid(const prop_value_t &p)
 {
-	assert(std::holds_alternative<GridPos>(p));
-	return std::get<GridPos>(p);
+	assert(std::holds_alternative<RGL::GridPos>(p));
+	return std::get<RGL::GridPos>(p);
 }
 
 static std::string_view pop_word(std::string_view &buffer)
@@ -140,7 +137,7 @@ static T pop_number(auto &buffer)
 	return pop_number_optional<T>(buffer).value();
 }
 
-SceneLoader::SceneLoader(AssetManager &assets, AnimationSystem &anims) :
+SceneLoader::SceneLoader(RGL::AssetManager &assets, RGL::AnimationSystem &anims) :
 	_assets(assets),
 	_anims(anims)
 {
@@ -152,17 +149,17 @@ static bool is_entry_start(std::string_view tag)
 	return tag[0] >= 'A' and tag[0] <= 'Z';
 }
 
-uint32_t SceneLoader::load(std::string_view name, Scene &scene)
+uint32_t SceneLoader::load(std::string_view name, RGL::Scene &scene)
 {
 	_filename = name;
 
 	const auto T0 = steady_clock::now();
 
-	auto file_path = FileSystem::getResourcesPath() / "scenes" / name;
+	auto file_path = RGL::FileSystem::getResourcesPath() / "scenes" / name;
 	if(file_path.extension().empty())
 		file_path.replace_extension(".scene");
 
-	tag_file fp(file_path);
+	RGL::tag_file fp(file_path);
 	if(not fp)
 		return 0;
 
@@ -335,7 +332,7 @@ static glm::vec3 pop_orientation(std::string_view &value)
 	return { ori.x, y.value(), z.value() };
 };
 
-static std::optional<anim::curve_ref<>> select_curve(std::string_view descriptor, AnimationSetup &anim)
+static std::optional<RGL::anim::curve_ref<>> select_curve(std::string_view descriptor, RGL::AnimationSetup &anim)
 {
 	if(descriptor.size() != 2 or descriptor.substr(0, 1).find_first_not_of("pos") != std::string::npos or descriptor.substr(1).find_first_not_of("xyz") != std::string::npos)
 	{
@@ -343,7 +340,7 @@ static std::optional<anim::curve_ref<>> select_curve(std::string_view descriptor
 		return std::nullopt;
 	}
 
-	auto select_property = [&anim](char p) -> std::array<anim::curve_ref<>, 3> & {
+	auto select_property = [&anim](char p) -> std::array<RGL::anim::curve_ref<>, 3> & {
 		switch(p)
 		{
 		case 'p': return anim.position; break;
@@ -352,14 +349,14 @@ static std::optional<anim::curve_ref<>> select_curve(std::string_view descriptor
 		}
 		Log::error("Invalid axis property: {}", p);
 		assert(false);
-		static std::array<anim::curve_ref<>, 3> sentinel;
+		static std::array<RGL::anim::curve_ref<>, 3> sentinel;
 		return sentinel;
 	};
 	auto &curveset = select_property(descriptor[0]);
 
 	auto ensure_created = [&](size_t idx) {
 		if(not curveset[idx])
-			curveset[idx].reset(new anim::animation_curve<>());
+			curveset[idx].reset(new RGL::anim::animation_curve<>());
 	};
 
 	switch(descriptor[1])
@@ -373,7 +370,7 @@ static std::optional<anim::curve_ref<>> select_curve(std::string_view descriptor
 	}
 };
 
-static bool add_curve_point(anim::curve_ref<> curve, std::string_view args)
+static bool add_curve_point(RGL::anim::curve_ref<> curve, std::string_view args)
 {
 	const auto interp_type = pop_word(args);
 	// only one interpolation type supported at the moment (and probably every woll be)
@@ -383,11 +380,11 @@ static bool add_curve_point(anim::curve_ref<> curve, std::string_view args)
 		return false;
 	}
 
-	const auto in_time = seconds_f(pop_number(args));
+	const auto in_time = RGL::seconds_f(pop_number(args));
 	const auto in_value = pop_number(args);
-	const auto cp_time = seconds_f(pop_number(args));
+	const auto cp_time = RGL::seconds_f(pop_number(args));
 	const auto cp_value = pop_number(args);
-	const auto out_time = seconds_f(pop_number(args));
+	const auto out_time = RGL::seconds_f(pop_number(args));
 	const auto out_value = pop_number(args);
 
 	curve->add({ cp_time, cp_value }, { in_time, in_value }, { out_time, out_value });
@@ -397,25 +394,25 @@ static bool add_curve_point(anim::curve_ref<> curve, std::string_view args)
 
 struct animation_params
 {
-	std::array<anim::animation_curve<>, 3> position_curves;
-	std::array<anim::animation_curve<>, 3> orientation_curves;
-	std::array<anim::animation_curve<>, 3> scale_curves;
-	seconds_f end_time;
+	std::array<RGL::anim::animation_curve<>, 3> position_curves;
+	std::array<RGL::anim::animation_curve<>, 3> orientation_curves;
+	std::array<RGL::anim::animation_curve<>, 3> scale_curves;
+	RGL::seconds_f end_time;
 };
 
-bool SceneLoader::read_anim_tag(tag_file &fp, AnimationSetup &anim)
+bool SceneLoader::read_anim_tag(RGL::tag_file &fp, RGL::AnimationSetup &anim)
 {
 	const auto &tag = fp.tag();
 	auto value = fp.value();
 
 	if(tag == "animlen"sv)
 	{
-		anim.end_time = seconds_f(pop_number(value));
+		anim.end_time = RGL::seconds_f(pop_number(value));
 		return true;
 	}
 	else if(tag == "animend"sv)
 	{
-		anim.end_state = value == "reset"? anim::EndState::Reset: anim::EndState::Clamp;
+		anim.end_state = value == "reset"? RGL::anim::EndState::Reset: RGL::anim::EndState::Clamp;
 		return true;
 	}
 	else if(tag == "animloop"sv)
@@ -438,7 +435,7 @@ bool SceneLoader::read_anim_tag(tag_file &fp, AnimationSetup &anim)
 	return false;
 }
 
-static bool pop_bounds(std::string_view &value, bounds::AABB &bounds)
+static bool pop_bounds(std::string_view &value, RGL::bounds::AABB &bounds)
 {
 	// NOTE: the model itself contains a bounds, is this even needed?
 	auto min_x = pop_number(value);
@@ -458,7 +455,7 @@ static bool pop_bounds(std::string_view &value, bounds::AABB &bounds)
 	return bounds.volume() > 0;
 }
 
-static bool read_material_override(tag_file &fp, dense_map<uint32_t, MaterialRef> &materials)
+static bool read_material_override(RGL::tag_file &fp, dense_map<uint32_t, RGL::MaterialRef> &materials)
 {
 	const auto prop = fp.tag().substr(4); // "mtl_"
 	auto value = fp.value();
@@ -478,7 +475,7 @@ static bool read_material_override(tag_file &fp, dense_map<uint32_t, MaterialRef
 	assert(index >= 0);
 
 	auto texture_name = value;
-	auto loaded = AssetManager::the().texture(texture_name);
+	auto loaded = RGL::AssetManager::the().texture(texture_name);
 	if(not loaded)
 		return false;
 
@@ -486,21 +483,21 @@ static bool read_material_override(tag_file &fp, dense_map<uint32_t, MaterialRef
 
 	auto &material = materials[index];
 	if(not material)
-		material.reset(new Material());
+		material.reset(new RGL::Material());
 
 	// see material.h
 	if(prop == Property::Material::Albedo)
-		material->set(Material::TextureType::ALBEDO, texture_name, texture);
+		material->set(RGL::Material::TextureType::ALBEDO, texture_name, texture);
 	else if(prop == Property::Material::Normals)
-		material->set(Material::TextureType::NORMAL, texture_name, texture);
+		material->set(RGL::Material::TextureType::NORMAL, texture_name, texture);
 	else if(prop == Property::Material::Metallic)
-		material->set(Material::TextureType::METALLIC, texture_name, texture);
+		material->set(RGL::Material::TextureType::METALLIC, texture_name, texture);
 	else if(prop == Property::Material::Roughness)
-		material->set(Material::TextureType::ROUGHNESS, texture_name, texture);
+		material->set(RGL::Material::TextureType::ROUGHNESS, texture_name, texture);
 	else if(prop == Property::Material::Ambient)
-		material->set(Material::TextureType::AO, texture_name, texture);
+		material->set(RGL::Material::TextureType::AO, texture_name, texture);
 	else if(prop == Property::Material::Emissive)
-		material->set(Material::TextureType::EMISSIVE, texture_name, texture);
+		material->set(RGL::Material::TextureType::EMISSIVE, texture_name, texture);
 	else
 	{
 		Log::warning("Unknown mateiral property: {}", prop);
@@ -509,7 +506,7 @@ static bool read_material_override(tag_file &fp, dense_map<uint32_t, MaterialRef
 	return true;
 }
 
-bool SceneLoader::read_config(tag_file &fp, Scene &)
+bool SceneLoader::read_config(RGL::tag_file &fp, RGL::Scene &)
 {
 	// Log::debug("[{}:{}] read_config", fp.file_path().filename().native(), fp.line_num());
 
@@ -534,7 +531,7 @@ bool SceneLoader::read_config(tag_file &fp, Scene &)
 	return false;
 }
 
-bool SceneLoader::read_mesh(tag_file &fp, Scene &scene)
+bool SceneLoader::read_mesh(RGL::tag_file &fp, RGL::Scene &scene)
 {
 	// Log::debug("[{}:{}] read_mesh: {}", fp.file_path().filename().native(), fp.line_num(), fp.value());
 
@@ -542,11 +539,11 @@ bool SceneLoader::read_mesh(tag_file &fp, Scene &scene)
 
 	prop_map_t props;
 
-	ModelCRef model;
-	MaterialCSet materials;
-	bounds::AABB bounds;
-	AnimationSetup animation;
-	component::Transform transform;
+	RGL::ModelCRef model;
+	RGL::MaterialCSet materials;
+	RGL::bounds::AABB bounds;
+	RGL::AnimationSetup animation;
+	RGL::component::Transform transform;
 	std::string object_name; // only required if it needs to be referred to by name
 	std::string anim_name;
 
@@ -572,7 +569,7 @@ bool SceneLoader::read_mesh(tag_file &fp, Scene &scene)
 		return false;
 	}
 
-	dense_map<uint32_t, MaterialRef> material_overrides;
+	dense_map<uint32_t, RGL::MaterialRef> material_overrides;
 
 	auto add_mesh = [&]() -> entt::entity {
 		// override materials (and constify)
@@ -588,7 +585,7 @@ bool SceneLoader::read_mesh(tag_file &fp, Scene &scene)
 			else
 				return scene.add(_roomName, model, materials, transform);
 		}
-		return NO_ENTITY_ID;
+		return RGL::NO_ENTITY_ID;
 	};
 	auto add_anim = [&](auto mesh_id) {
 		if(not anim_name.empty())
@@ -600,7 +597,7 @@ bool SceneLoader::read_mesh(tag_file &fp, Scene &scene)
 		}
 	};
 
-	entt::entity mesh_id { NO_ENTITY_ID };
+	entt::entity mesh_id { RGL::NO_ENTITY_ID };
 
 	while(fp)
 	{
@@ -648,7 +645,7 @@ bool SceneLoader::read_mesh(tag_file &fp, Scene &scene)
 	return true;
 }
 
-bool SceneLoader::read_light(tag_file &fp, Scene &scene)
+bool SceneLoader::read_light(RGL::tag_file &fp, RGL::Scene &scene)
 {
 	// Log::debug("[{}:{}] read_light: {}", fp.file_path().filename().native(), fp.line_num(), fp.value());
 
@@ -665,7 +662,7 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 	fp.next();
 	assert(fp.tag() == "type"sv);
 
-	LightType type = LightType::Point;
+	auto type = RGL::LightType::Point;
 
 	bool enabled { true };
 	std::optional<float> intensity { 10.f };
@@ -687,21 +684,21 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 	const auto type_name = fp.value();
 
 	if(type_name == "point"sv)
-		type = LightType::Point;
+		type = RGL::LightType::Point;
 	else if(type_name == "spot"sv)
-		type = LightType::Spot;
+		type = RGL::LightType::Spot;
 	else if(type_name== "rect"sv)
-		type = LightType::Rect;
+		type = RGL::LightType::Rect;
 	else if(type_name == "tube"sv)
-		type = LightType::Tube;
+		type = RGL::LightType::Tube;
 	else if(type_name == "sphere"sv)
-		type = LightType::Sphere;
+		type = RGL::LightType::Sphere;
 	else if(type_name == "disc"sv)
-		type = LightType::Disc;
+		type = RGL::LightType::Disc;
 	else
 	{
 		Log::warning("[{}:{}]: unknown light type: {} (using point)", _filename, start_line, fp.value());
-		type = LightType::Point;
+		type = RGL::LightType::Point;
 		return false;
 	}
 
@@ -769,12 +766,12 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 			unexpected_tag(fp, "light");
 	}
 
-	assert(type == LightType::Directional or position.has_value());
-	assert(type != LightType::Spot or angles.has_value());
+	assert(type == RGL::LightType::Directional or position.has_value());
+	assert(type != RGL::LightType::Spot or angles.has_value());
 	// TODO: validate other required properties
 
 	// we're just using the as a temporary container
-	component::LightGeneral general;
+	RGL::component::LightGeneral general;
 	general.light_type = type;
 	general.intensity = intensity.value();
 	general.color = color;
@@ -786,9 +783,9 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 	// TODO flicker support in the shading
 	// general.flicker = flicker;
 
-	component::Transform transform;
+	RGL::component::Transform transform;
 	transform.set_position(position.value());
-	if(type != LightType::Directional and type != LightType::Sphere)
+	if(type != RGL::LightType::Directional and type != RGL::LightType::Sphere)
 		transform.set_orientation_xyz(orientation.value());
 
 	auto light_id = NO_LIGHT_ID;
@@ -797,7 +794,7 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 
 	switch(type)
 	{
-	case LightType::Point:
+	case RGL::LightType::Point:
 	{
 		PointLightParams p;
 		p.color = general.color;
@@ -811,7 +808,7 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 			light_id = res.value();
 	}
 	break;
-	case LightType::Directional:
+	case RGL::LightType::Directional:
 	{
 		DirectionalLightParams d;
 		d.color = general.color;
@@ -825,7 +822,7 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 			light_id = res.value();
 	}
 	break;
-	case LightType::Spot:
+	case RGL::LightType::Spot:
 	{
 		SpotLightParams s;
 		s.position = transform.position();
@@ -842,7 +839,7 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 			light_id = res.value();
 	}
 	break;
-	case LightType::Rect:
+	case RGL::LightType::Rect:
 	{
 		RectLightParams r;
 		r.position = transform.position();
@@ -859,7 +856,7 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 			light_id = res.value();
 	}
 	break;
-	case LightType::Tube:
+	case RGL::LightType::Tube:
 	{
 		TubeLightParams t;
 		t.position = transform.position();
@@ -875,7 +872,7 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 			light_id = res.value();
 	}
 	break;
-	case LightType::Sphere:
+	case RGL::LightType::Sphere:
 	{
 		SphereLightParams s;
 		s.position = transform.position();
@@ -890,7 +887,7 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 			light_id = res.value();
 	}
 	break;
-	case LightType::Disc:
+	case RGL::LightType::Disc:
 	{
 		DiscLightParams d;
 		d.position = transform.position();
@@ -915,7 +912,7 @@ bool SceneLoader::read_light(tag_file &fp, Scene &scene)
 	return not at_next_entry;
 }
 
-bool SceneLoader::read_entity(tag_file &fp, Scene &scene)
+bool SceneLoader::read_entity(RGL::tag_file &fp, RGL::Scene &scene)
 {
 	// Log::debug("[{}:{}] read_entity: {}", fp.file_path().filename().native(), fp.line_num(), fp.value());
 
@@ -971,7 +968,7 @@ bool SceneLoader::read_entity(tag_file &fp, Scene &scene)
 	return true;
 }
 
-bool SceneLoader::read_control(tag_file &fp, Scene &scene)
+bool SceneLoader::read_control(RGL::tag_file &fp, RGL::Scene &scene)
 {
 	Log::debug("[{}:{}] read_control: {}", fp.file_path().filename().native(), fp.line_num(), fp.value());
 
@@ -1024,7 +1021,7 @@ bool SceneLoader::read_control(tag_file &fp, Scene &scene)
 	return true;
 }
 
-bool SceneLoader::read_trigger(tag_file &fp, Scene &scene)
+bool SceneLoader::read_trigger(RGL::tag_file &fp, RGL::Scene &scene)
 {
 	// Log::debug("[{}:{}] read_trigger: {}", fp.file_path().filename().native(), fp.line_num(), fp.value());
 
@@ -1034,7 +1031,7 @@ bool SceneLoader::read_trigger(tag_file &fp, Scene &scene)
 	auto name = std::string(fp.value());
 
 	glm::vec3 position(0);
-	bounds::AABB bounds;
+	RGL::bounds::AABB bounds;
 
 
 	auto add_trigger = [&name]() {
@@ -1063,12 +1060,12 @@ bool SceneLoader::read_trigger(tag_file &fp, Scene &scene)
 	return true;
 }
 
-bool SceneLoader::read_walkable(tag_file &fp, Scene &scene)
+bool SceneLoader::read_walkable(RGL::tag_file &fp, RGL::Scene &scene)
 {
 	// Log::debug("[{}:{}] read_walkable: {}", fp.file_path().filename().native(), fp.line_num(), fp.value());
 
 	glm::vec3 position(0);
-	bounds::AABB bounds;
+	RGL::bounds::AABB bounds;
 
 
 	auto add_walkable = [&scene, &position]() {
@@ -1096,9 +1093,7 @@ bool SceneLoader::read_walkable(tag_file &fp, Scene &scene)
 	return true;
 }
 
-void SceneLoader::unexpected_tag(const tag_file &fp, std::string_view context)
+void SceneLoader::unexpected_tag(const RGL::tag_file &fp, std::string_view context)
 {
 	Log::error("[{}:{}] (in {}) Unexpected tag: {} (item started @ {})", _filename, fp.line_num(), context, fp.tag(), _item_start_line);
 }
-
-} // RGL
