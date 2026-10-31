@@ -180,7 +180,7 @@ void LightManager::flush()
 		{
 			// NOTE: not '*subrange.end()'; that's the first index of the next range (or past the end of '_dirty_list')
 			const auto s = *subrange.begin();
-			const auto e = LightIndex(*std::prev(subrange.end()) + 1);  // exclusive
+			const auto e = *std::prev(subrange.end()) + 1;
 			_gpu_build(s, e);
 			_lights_ssbo.set(_lights.begin() + s, _lights.begin() + e, s);
 		}
