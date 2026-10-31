@@ -1301,7 +1301,6 @@ void ZigApp::renderShadowMaps()
 		glCullFace(GL_BACK);
 	glEnable(GL_SCISSOR_TEST);  // for slot slicing
 	glDepthMask(GL_TRUE);
-	glColorMask(GL_TRUE, GL_TRUE, GL_FALSE, GL_FALSE);  // writing 2-component normals
 	glDepthFunc(GL_LESS);
 	glEnable(GL_DEPTH_CLAMP);
 
@@ -1461,7 +1460,6 @@ void ZigApp::renderShadowMaps()
 		++_shadow_maps_rendered;
 	}
 
-	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);  // back to default; write all color channels
 	glDisable(GL_SCISSOR_TEST);
 	glDisable(GL_POLYGON_OFFSET_FILL); // might've been enabled above
 	glCullFace(GL_BACK);
@@ -1899,7 +1897,6 @@ void ZigApp::renderSceneShadow(const QueryResult &objects, uint16_t shadow_idx, 
 			const auto &tfm = transform.transform();
 
 			m_shadow_depth_shader->setUniform("u_model"sv, tfm);
-			m_shadow_depth_shader->setUniform("u_normal_matrix"sv, transform.normal_matrix());
 			model->RenderNoMaterial();
 		}
 	}
@@ -1909,7 +1906,6 @@ void ZigApp::renderSceneShadow(const QueryResult &objects, uint16_t shadow_idx, 
 		const auto &tfm = transform.transform();
 
 		m_shadow_depth_shader->setUniform("u_model"sv, tfm);
-		m_shadow_depth_shader->setUniform("u_normal_matrix"sv, transform.normal_matrix());
 		model->RenderNoMaterial();
 	}
 
@@ -1980,7 +1976,6 @@ void ZigApp::renderShading(const Camera &camera)
 	_pp_ao_result.Bind(11);
 
 	_shadow_atlas.bindShadowSampler(20);
-	_shadow_atlas.bindTextureSampler(21);   // encoded normals
 	_shadow_atlas.bindDepthTextureSampler(22);
 	m_depth_pass_rt.bindDepthTextureSampler(23); // for screen-space/contact shadows
 

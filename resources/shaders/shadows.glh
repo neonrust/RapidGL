@@ -3,7 +3,6 @@
 #include "shapes.glh"
 
 layout (binding = 20) uniform sampler2DShadow u_shadow_atlas_shadow;
-layout (binding = 21) uniform sampler2D       u_shadow_atlas_normals;
 layout (binding = 22) uniform sampler2D       u_shadow_atlas_single;
 layout (binding = 23) uniform sampler2D       u_camera_view_depth;
 layout (r16f, binding = 0) uniform image2D    u_shadow_contact_output;
@@ -215,19 +214,6 @@ vec2 calculateShadowUV(vec3 uv_pos, vec4 rect, out vec4 rect_uv)
 	vec2 face_uv = uv_pos.xy;
 	rect_uv = rect * vec4(shadow_atlas_texel_size, shadow_atlas_texel_size);
 	return rect_uv.xy + face_uv * rect_uv.zw;
-}
-
-vec3 unpackNormal(vec2 f)
-{
-    // float z = sqrt(max(0, 1 - dot(f, f)));
-    // return vec3(f, z);
-
-    // octahedral encoding
-    f = f * 2.0 - 1.0; // Back to [-1, 1]
-    vec3 n = vec3(f.xy, 1.0 - abs(f.x) - abs(f.y));
-    float t = clamp(-n.z, 0.0, 1.0);
-    n.xy -= sign(n.xy) * t;
-    return normalize(n);
 }
 
 float sampleViewDepth(vec2 uv)

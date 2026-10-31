@@ -104,10 +104,8 @@ bool ShadowAtlas::create()
 
 	namespace C = RenderTarget::Color;
 	namespace D = RenderTarget::Depth;
-	// store 2-omponent normals as well as depth
-	Texture2d::create("shadow-atlas", size, size, C::Texture | C::Float2, D::Texture | D::Float);
-	// TODO: if we only use the color attachment (i.e. the normals) for slope comparison,
-	//   we really only need a single-channel float (basically the cos(light_to_fragment_angle)).
+
+	Texture2d::create("shadow-atlas", size, size, C::None, D::Texture | D::Float);
 
 	return bool(this);
 }
