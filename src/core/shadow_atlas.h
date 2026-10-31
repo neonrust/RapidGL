@@ -56,6 +56,12 @@ public:
 		Single   = 1,
 		Cascades = 3,
 	};
+	struct SlotsProjection
+	{
+		std::array<glm::mat4, MAX_SLOTS> view_proj;
+		std::array<float, MAX_SLOTS>     texel_size;
+		size_t hash { 0 };  // of 'view_proj' (of the used slots)
+	};
 	struct AtlasLight
 	{
 		inline AtlasLight() : uuid(NO_LIGHT_ID), _dirty(true) {}
@@ -75,6 +81,15 @@ public:
 			_frames_skipped = 0;
 		}
 
+		// the projections the slots are rendered with, i.e. also what the shadow map lookups must use
+		inline const SlotsProjection &projection() const { return _projection; }
+		inline bool has_projection() const { return _has_projection; }
+		inline void set_projection(const SlotsProjection &projection) const // called from allocated_lights(); const
+		{
+			_projection = projection;
+			_has_projection = true;
+		}
+
 		LightID uuid;
 		SlotConfig slot_config { SlotConfig::Single };
 		uint_fast8_t num_slots;
@@ -82,6 +97,8 @@ public:
 		mutable size_t hash { 0 };
 
 	private:
+		mutable SlotsProjection _projection;
+		mutable bool _has_projection { false };
 		mutable bool _dirty { true };
 		mutable TimeT _last_rendered;   // TODO: define a "pixels per second" limit to dictate a limit for how many shadow map slots may be updated (in light-value/age order?)
 		mutable uint32_t _frames_skipped { 0 };
@@ -89,7 +106,7 @@ public:
 
 		friend class ShadowAtlas;
 	};
-	static_assert(sizeof(AtlasLight) == 192);
+	static_assert(sizeof(AtlasLight) == 608);
 
 	struct CSMParams
 	{
@@ -139,7 +156,10 @@ public:
 
 	[[nodiscard]] const dense_map<LightID, AtlasLight> &allocated_lights() const { return _id_to_allocated; }
 	[[nodiscard]] SlotMask need_render(const AtlasLight &atlas_light, TimeT now, size_t hash, const Scene &scene) const;
+	// projections of the light's slots, from its current properties
+	[[nodiscard]] SlotsProjection slots_projection(const AtlasLight &atlas_light, const LightWrapper &light) const;
 
+	// uploads the projections the slots were rendered with (see AtlasLight::set_projection())
 	void update_slots_ssbo();
 	const CSMParams &update_csm_params(LightID light_id, const Camera &camera);//, float radius_uv=0.5f);
 	inline const CSMParams &csm_params() const { return _csm_params; }
@@ -156,7 +176,8 @@ public:
 
 	bool remove_allocation(LightID light_id);
 
-	const QueryResult &pvs(const Scene &scene, LightID light_id, uint_fast8_t slot_idx=0) const;
+	// 'refresh' bypasses the query's throttling (see QueryResult::max_interval)
+	const QueryResult &pvs(const Scene &scene, LightID light_id, uint_fast8_t slot_idx=0, bool refresh=false) const;
 
 private:
 	struct Counters

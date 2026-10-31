@@ -245,8 +245,11 @@ private:
 	float _fog_density;
 	float _fog_blend_weight;
 
-	float _polygon_offset_factor { 0.6f };
-	float _polygon_offset_unit { 0.f };
+	// shadow pass polygon offset (factor, units), one for each face culling mode.
+	//   culling front faces stores the back faces, which need to be pulled towards the light (i.e. negative)
+	//   to not leak light where they intersect a receiver (e.g. the base of an object)
+	glm::vec2 _polygon_offset_cull_front { -1.f, 0.f };
+	glm::vec2 _polygon_offset_cull_back  { 0.6f, 0.f };
 
 	SampleWindow<std::chrono::microseconds, 30> m_cull_scene_time;
 	SampleWindow<std::chrono::microseconds, 30> m_depth_time;
@@ -266,8 +269,8 @@ private:
 	SampleWindow<std::chrono::microseconds, 30> m_debug_draw_time;
 
 	// SampleWindow<std::chrono::microseconds, 30> m_pp_blur_time;
-	size_t _shadow_atlas_slots_rendered;
-	size_t _light_shadow_maps_rendered;
+	size_t _shadow_map_atlas_slots_rendered;
+	size_t _shadow_maps_rendered;
 
 	string_map<RGL::GLTimer<4>> _gl_timers;
 

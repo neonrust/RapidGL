@@ -403,11 +403,10 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			ImGui::SameLine();
 			if(ImGui::RadioButton("Cull back faces",  _shadow_cull_face_front == false))
 				_shadow_cull_face_front = false;
-			if(not _shadow_cull_face_front)
-			{
-				ImGui::SliderFloat("Polygon offset",     &_polygon_offset_factor,       -5.f,    5.f,    "%.4f");
-				ImGui::SliderFloat("        unit",       &_polygon_offset_unit,         -5.f,    5.f,    "%.4f");
-			}
+			auto &polygon_offset = _shadow_cull_face_front? _polygon_offset_cull_front: _polygon_offset_cull_back;
+			ImGui::SliderFloat("Polygon offset",     &polygon_offset[0],            -5.f,    5.f,    "%.4f");
+			// with a float depth buffer, one unit is ~6e-8 (for depths in [0.5, 1)), hence the large range
+			ImGui::SliderFloat("        unit",       &polygon_offset[1],            -5000.f, 5000.f, "%.0f", ImGuiSliderFlags_Logarithmic);
 
 			static auto stabilize = _shadow_atlas.csm_stabilization();
 			if(ImGui::Checkbox("Stabilize light view", &stabilize))
@@ -430,7 +429,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			else
 				ImGui::Text("  %s", size_line.c_str());
 
-			ImGui::Text("Rendered:  Lights: %3lu  Slots: %lu", _light_shadow_maps_rendered, _shadow_atlas_slots_rendered);
+			ImGui::Text("Rendered:  Lights: %3lu  Slots: %lu", _shadow_maps_rendered, _shadow_map_atlas_slots_rendered);
 		}
 
 		if(ImGui::CollapsingHeader("Textures", ImGuiTreeNodeFlags_DefaultOpen))

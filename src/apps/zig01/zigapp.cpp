@@ -4,6 +4,7 @@
 #include "filesystem.h"
 #include "gl_lookup.h"
 #include "hash_combine.h"
+#include "hash_vec2.h"
 #include "input.h"
 #include "instance_attributes.h"
 #include "constants.h"
@@ -1310,14 +1311,6 @@ void ZigApp::renderShadowMaps()
 
 	static steady_clock::time_point last_eval_time;
 
-	// if there's a sun allocated, update its shadow parameters
-	if(const auto &sun_id = _light_mgr.sun_id(); sun_id != NO_LIGHT_ID)
-	{
-		// technically needed only if/when light's direction or camera changed, or objects moved,
-		//    but it's nearly always
-		_shadow_atlas.update_csm_params(sun_id, m_camera);//, _sun_radius_uv);
-	}
-
 	if(now - last_eval_time > 100ms)
 	{
 		last_eval_time = now;
@@ -1330,9 +1323,76 @@ void ZigApp::renderShadowMaps()
 	else
 		m_shadow_alloc_time.add(microseconds(0));
 
-	// light projections needs to be updated more often than the atlas allocations.
-	//   it also needs to be updated when the light has moved (new view-projection),
-	// for simplicity, all allocated light are updated every frame
+	// if there's a sun allocated, update its shadow parameters
+	//   after the allocations; otherwise, in the frame the sun is (re)allocated, they'd be cleared (or stale)
+	if(const auto &sun_id = _light_mgr.sun_id(); sun_id != NO_LIGHT_ID)
+	{
+		// technically needed only if/when light's direction or camera changed, or objects moved,
+		//    but it's nearly always
+		_shadow_atlas.update_csm_params(sun_id, m_camera);//, _sun_radius_uv);
+	}
+
+	const auto &polygon_offset = _shadow_cull_face_front? _polygon_offset_cull_front: _polygon_offset_cull_back;
+
+	// besides the light's projections, these also affect the content of the shadow maps
+	size_t render_state_hash { 0 };
+	render_state_hash = hash_combine(render_state_hash, _shadow_cull_face_front);
+	render_state_hash = hash_combine(render_state_hash, polygon_offset);
+
+	struct RenderLight
+	{
+		LightID light_id;
+		const RGL::ShadowAtlas::AtlasLight *atlas_light;
+		RGL::ShadowAtlas::SlotMask need_render_mask;
+		size_t light_hash;
+	};
+	static std::vector<RenderLight> render_lights;
+	render_lights.clear();
+
+	// TODO: limit the number of shadow maps to render in one frame, e.g. top N most important lights
+	//    the remaining will still by "dirty" so they will be rendered eventually.
+	//    "allocated_lights() is an unordered mapping, so we'd need to sort 'render_lights'
+
+	// determine which shadow maps need to be rendered.
+	//   the hash is calculated from the same projections that are used for rendering, and the shadow map lookups.
+	//   i.e. a light not rendered keeps the projections its shadow map was rendered with.
+	for(auto &[light_id, atlas_light]: _shadow_atlas.allocated_lights())
+	{
+		const auto light_index = _light_mgr.light_index(light_id);
+
+		// if this light did not contribute to the (previous) frame, no need to render its shadow map (yet)
+		//   except the sun; its cascades follow the camera, so they shouldn't wait for the affecting set (one frame behind)
+		if(light_id != _light_mgr.sun_id() and not _affecting_lights.contains(light_index))
+			continue;
+
+		const auto light = _light_mgr.get_light(light_id);
+		if(not light) // disabled lights will remain in the "allocated lights" set for a while (until it's updated)
+		{
+			Log::debug("shmap| {{{}}} not enabled", light_id);
+			continue;
+		}
+
+		const auto &projection = _shadow_atlas.slots_projection(atlas_light, *light);
+		const auto light_hash = hash_combine(projection.hash, render_state_hash);
+
+		// TODO: #4: Keep TWO shadow maps: one static-object only (cache) and one active (all objects)
+		//   1. render static objects first (also copy to active)
+		//   2. render dynamic objects to active map only
+		//   next frame:
+		//   - if dynamic objects moved: copy static to active (overwrite) & render dynamic objects "over"
+		//   - of course, if light moved/changed, go to step 1.
+
+		const auto need_render_mask = _shadow_atlas.need_render(atlas_light, now, light_hash, _scene);
+		if(need_render_mask)
+		{
+			// Log::debug("{} -> need mask: {:06b}", light_id, need_render_mask);
+			atlas_light.set_projection(projection);
+			render_lights.push_back({ light_id, &atlas_light, need_render_mask, light_hash });
+		}
+	}
+
+	// the allocated lights' projections (and shadow indices) are uploaded every frame,
+	//   since the set of allocated lights might change
 	_shadow_atlas.update_slots_ssbo();
 
 
@@ -1343,12 +1403,8 @@ void ZigApp::renderShadowMaps()
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 	};
 
-	_light_shadow_maps_rendered = 0;
-	_shadow_atlas_slots_rendered = 0;
-
-	// TODO: limit the number of shadow maps to render in one frame, e.g. top N most important lights
-	//    the remaining will still by "dirty" so they will be rendered eventually.
-	//    this implies a 2-pass algo; "allocated_lights() is an unordered mapping.
+	_shadow_maps_rendered = 0;
+	_shadow_map_atlas_slots_rendered = 0;
 
 #if defined(_DEBUG)
 	static dense_set<uint_fast16_t> seen_shadow_idx;
@@ -1356,86 +1412,53 @@ void ZigApp::renderShadowMaps()
 	seen_shadow_idx.clear();
 #endif
 
-	if(not _shadow_cull_face_front and (_polygon_offset_factor != 0 or _polygon_offset_unit != 0))
+	if(polygon_offset != glm::vec2(0))
 	{
 		glEnable(GL_POLYGON_OFFSET_FILL);
-		glPolygonOffset(_polygon_offset_factor, _polygon_offset_unit);
+		glPolygonOffset(polygon_offset[0], polygon_offset[1]);
 	}
 
-	for(auto &[light_id, atlas_light]: _shadow_atlas.allocated_lights())
+	for(const auto &[light_id, atlas_light, need_render_mask, light_hash]: render_lights)
 	{
-		const auto light_index = _light_mgr.light_index(light_id);
+		// render shadow map(s) for this light
 
-		// if this light did not contribute to the (previous) frame, no need to render its shadow map (yet)
-		if(not _affecting_lights.contains(light_index))
-			continue;
-
-		const auto light_ent = entt::entity(light_id);
-
-		const auto &[general, transform] = _entities.get<component::LightGeneral, component::Transform>(light_ent);
-		if(not general.enabled) // disabled lights will remain in the "allocated lights" set for a while (until it's updated)
+		const auto shadow_idx = _light_mgr.shadow_index(light_id);  // assigned by update_slots_ssbo()
+		if(shadow_idx == LIGHT_NO_SHADOW)
 		{
-			Log::debug("shmap| {{{}}} not enabled", light_id);
+			Log::warning("{{{}}} no shadow idx set", light_id);
 			continue;
 		}
-
-		auto light_hash = _light_mgr.hash(light_id, general, transform);
-		if(general.light_type == LightType::Directional)  // also affected by the camera's frustum
-			light_hash = hash_combine(light_hash, m_camera.hash());
-
-		// TODO: keep TWO shadow maps, one static-object only (cache) and one active (all objects)
-		//   1. render static objects first, to both maps (copy to active afterwards?)
-		//   2. render dynamic objects to active map only
-		//   next frame:
-		//   - if dynamic objects moved: copy static to active & render dynamic objects
-		//   - naturally, if light moved/changed, go to step 1.
-
-		const auto need_render = _shadow_atlas.need_render(atlas_light, now, light_hash, _scene);
-		if(need_render)
-		{
-			// render shadow map(s) for this light
-
-			const auto shadow_idx = general.shadow_index;
-			if(shadow_idx == LIGHT_NO_SHADOW)
-			{
-				Log::warning("{{{}}} no shadow idx set", light_id);
-				continue;
-			}
-			// Log::debug("[{}] -> shadow idx: {}", light_index, shadow_idx);
+		// Log::debug("[{}] -> shadow idx: {}", light_index, shadow_idx);
 #if defined(_DEBUG)
-			assert(not seen_shadow_idx.contains(shadow_idx));
-			seen_shadow_idx.insert(shadow_idx);
+		assert(not seen_shadow_idx.contains(shadow_idx));
+		seen_shadow_idx.insert(shadow_idx);
 #endif
 
-			uint_fast8_t slots_rendered { 0 };
+		for(uint_fast8_t slot_idx = 0u; slot_idx < atlas_light->num_slots; ++slot_idx)
+		{
+			const auto dynamic_only = false;
 
-			for(uint_fast8_t slot_idx = 0u; slot_idx < atlas_light.num_slots; ++slot_idx)
+			if((need_render_mask & (1u << slot_idx)) > 0)
 			{
-				const auto dynamic_only = false;
-
-				if((need_render & (1u << slot_idx)) > 0)
+				const auto &slot_rect = atlas_light->slots[slot_idx].rect;
+				// TODO: this doesn't clear the whole slot, just the 'slot_rect' which already has a 1-pixel margin
+				_shadow_atlas.bindRenderTarget(slot_rect);
+				if(not did_barrier)
 				{
-					const auto &slot_rect = atlas_light.slots[slot_idx].rect;
-					// TODO: this doesn't clear the whole slot, just the 'slot_rect' which already has a 1-pixel margin
-					_shadow_atlas.bindRenderTarget(slot_rect);
-					if(not did_barrier)
-					{
-						barrier();
-						did_barrier = true;
-					}
-
-					const auto &pvs = _shadow_atlas.pvs(_scene, light_id, slot_idx);
-
-					renderSceneShadow(pvs, shadow_idx, slot_idx, dynamic_only);
-					++_shadow_atlas_slots_rendered;
-					++slots_rendered;
+					barrier();
+					did_barrier = true;
 				}
-			}
-			assert(slots_rendered == atlas_light.num_slots);
 
-			atlas_light.on_rendered(now, light_hash);
-			++_light_shadow_maps_rendered;
+				// always a fresh query; a throttled (i.e. possibly stale) result would be latched along with the new hash
+				const auto &pvs = _shadow_atlas.pvs(_scene, light_id, slot_idx, true);
+
+				renderSceneShadow(pvs, uint16_t(shadow_idx), slot_idx, dynamic_only);
+				++_shadow_map_atlas_slots_rendered;
+			}
 		}
+
+		atlas_light->on_rendered(now, light_hash);
+		++_shadow_maps_rendered;
 	}
 
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);  // back to default; write all color channels

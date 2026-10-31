@@ -11,6 +11,7 @@
 #include "glm/gtc/epsilon.hpp"
 #include "camera.h"
 #include "scene.h"
+#include "hash_mat4.h"
 
 #include <chrono>
 #include <ranges>
@@ -380,30 +381,16 @@ void ShadowAtlas::update_slots_ssbo()
 		}
 		const auto &light = *light_;
 
-		std::array<glm::mat4, MAX_SLOTS>  view_projs;
 		std::array<glm::uvec4, MAX_SLOTS> rects;
-		std::array<float, MAX_SLOTS>      texel_sizes;
-
 		for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
-		{
 			rects[idx] = atlas_light.slots[idx].rect;
 
-			if(light.general.light_type == LightType::Directional)
-			{
-				view_projs[idx] = _csm_params.light_view_projection[idx];
-				texel_sizes[idx] = (_csm_params.view_aabb[idx].min().z - _csm_params.view_aabb[idx].max().z) / float(rects[idx].z);
-				// Log::debug("atlas|  csm[{}] view proj: {:.4f}", idx, view_projs[idx]);
-			}
-			else
-			{
-				const auto &[view, proj, nz, fz] = light_view_projection(light, idx);
-				view_projs[idx] = proj * view;
-				texel_sizes[idx] = (fz - nz) / float(rects[idx].z);
-			}
-		}
+		// use the projections the shadow map was rendered with (the light might have changed since then).
+		//   if never rendered, there's nothing to be consistent with; use the light's current projections
+		const auto &projection = atlas_light.has_projection()? atlas_light.projection(): slots_projection(atlas_light, light);
 
 		const auto shadow_idx = uint16_t(slots_params.size());  // i.e. the entry we're about to add
-		slots_params.emplace_back(view_projs, rects, texel_sizes);
+		slots_params.emplace_back(projection.view_proj, rects, projection.texel_size);
 
 		_lights.set_shadow_index(light_id, shadow_idx);
 	}
@@ -428,11 +415,44 @@ static constexpr glm::vec3 s_cube_face_up[] = {
 	-AXIS_Y,
 };
 
+ShadowAtlas::SlotsProjection ShadowAtlas::slots_projection(const AtlasLight &atlas_light, const LightWrapper &light) const
+{
+	SlotsProjection projection;
+
+	for(auto idx = 0u; idx < atlas_light.num_slots; ++idx)
+	{
+		const auto &rect = atlas_light.slots[idx].rect;
+
+		if(light.general.light_type == LightType::Directional)
+		{
+			projection.view_proj[idx]  = _csm_params.light_view_projection[idx];
+			projection.texel_size[idx] = (_csm_params.view_aabb[idx].min().z - _csm_params.view_aabb[idx].max().z) / float(rect.z);
+		}
+		else
+		{
+			const auto &[view, proj, nz, fz] = light_view_projection(light, idx);
+			projection.view_proj[idx]  = proj * view;
+			projection.texel_size[idx] = (fz - nz) / float(rect.z);
+		}
+
+		projection.hash = hash_combine(projection.hash, projection.view_proj[idx]);
+	}
+
+	return projection;
+}
+
 ShadowAtlas::LightViewProjection ShadowAtlas::light_view_projection(const LightWrapper &light, uint32_t idx) const
 {
 	// TODO: this is actually only needed if the light has changed. cache it where?
 
-	const auto far_z  = light.gpu_light.affect_radius;
+	// NOTE: use the light's component values, not 'light.gpu_light'; it's only updated by LightManager::flush(),
+	//   i.e. it might be from the previous frame
+
+	float far_z = 0;
+	if(const auto *point = std::get_if<component::PointLight>(&light.light))
+		far_z = _lights.affect_radius(light.general, *point);
+	else if(const auto *spot = std::get_if<component::SpotLight>(&light.light))
+		far_z = _lights.affect_radius(light.general, *spot);
 	const auto near_z = std::max(0.1f, far_z / 500.f);
 
 	const auto &position = light.transform.position();
@@ -456,12 +476,14 @@ ShadowAtlas::LightViewProjection ShadowAtlas::light_view_projection(const LightW
 		assert(idx == 0);
 		static constexpr auto square = 1.f;
 
-		const auto &view_forward = light.gpu_light.direction;
+		const auto &spot = std::get<component::SpotLight>(light.light);
+
+		const auto view_forward = light.transform.direction();
 		// if 'view_forward' is close to Y axis, use X axis as "up"
 		const auto &view_up      = glm::all(glm::lessThan(glm::abs(view_forward) - AXIS_Y, glm::vec3(1e-3f, 1e-3f, 1e-3f))) ? AXIS_X: AXIS_Y;
 
 		const auto light_view       = glm::lookAt(position, position + view_forward, view_up);
-		const auto light_projection = glm::perspective(light.gpu_light.outer_angle*2, square, near_z, far_z);
+		const auto light_projection = glm::perspective(spot.outer_angle*2, square, near_z, far_z);
 
 		return { light_view, light_projection, near_z, far_z };
 	}
@@ -474,7 +496,7 @@ ShadowAtlas::LightViewProjection ShadowAtlas::light_view_projection(const LightW
 	return { glm::mat4(1), glm::mat4(1), -1, -1 };
 }
 
-const QueryResult &ShadowAtlas::pvs(const Scene &scene, LightID light_id, uint_fast8_t slot_idx) const
+const QueryResult &ShadowAtlas::pvs(const Scene &scene, LightID light_id, uint_fast8_t slot_idx, bool refresh) const
 {
 	QueryResult *result { nullptr };
 	auto found = _light_pvs.find(LIGHT_PVS_KEY(light_id, slot_idx));
@@ -496,6 +518,9 @@ const QueryResult &ShadowAtlas::pvs(const Scene &scene, LightID light_id, uint_f
 	}
 
 	const auto &light = *light_;
+
+	if(refresh)
+		result->created_at = {};  // see SceneItems::start_query_maybe()
 
 	switch(light.general.light_type)
 	{
@@ -686,7 +711,8 @@ const ShadowAtlas::CSMParams &ShadowAtlas::update_csm_params(LightID light_id, c
 
 		const float ortho_depth = maxZ - minZ;
 
-		const auto light_pos = cascade_center_ws - sun.gpu_light.direction * -light_projection_distance;
+		// NOTE: not 'sun.gpu_light.direction'; see light_view_projection()
+		const auto light_pos = cascade_center_ws - sun.transform.direction() * -light_projection_distance;
 		auto light_view = glm::lookAt(light_pos, cascade_center_ws, AXIS_Y);
 		auto light_projection = glm::ortho(min_extents.x, max_extents.x, min_extents.y, max_extents.y, 0.f, ortho_depth);
 		_csm_params.view_aabb[cascade] = bounds::AABB({ min_extents.x, min_extents.y, 0.f }, { max_extents.x, max_extents.y, ortho_depth });
