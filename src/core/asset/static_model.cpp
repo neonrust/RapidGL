@@ -44,6 +44,9 @@ void StaticModel::RenderNoMaterial(uint32_t num_instances) const
 {
 	BindVAO();
 
+	// TODO: for the alpha-test discard to work (in shadow_depth.frag),
+	//   the albedo needs to be bound
+
 	for(uint32_t idx = 0; idx < m_mesh_parts.size(); idx++)
 		renderMeshPart(idx, num_instances);
 }
