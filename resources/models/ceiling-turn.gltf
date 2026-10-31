@@ -8,7 +8,8 @@
 		{
 			"name":"Scene",
 			"nodes":[
-				0
+				0,
+				1
 			]
 		}
 	],
@@ -16,6 +17,10 @@
 		{
 			"mesh":0,
 			"name":"ceiling-turn"
+		},
+		{
+			"mesh":1,
+			"name":"shadower"
 		}
 	],
 	"materials":[
@@ -32,6 +37,19 @@
 				"metallicFactor":0,
 				"roughnessFactor":0.949999988079071
 			}
+		},
+		{
+			"doubleSided":true,
+			"name":"shadower",
+			"pbrMetallicRoughness":{
+				"baseColorFactor":[
+					0.01599629782140255,
+					0.01599629782140255,
+					0.01599629782140255,
+					1
+				],
+				"metallicFactor":0
+			}
 		}
 	],
 	"meshes":[
@@ -47,6 +65,21 @@
 					},
 					"indices":4,
 					"material":0
+				}
+			]
+		},
+		{
+			"name":"shadower",
+			"primitives":[
+				{
+					"attributes":{
+						"POSITION":5,
+						"NORMAL":6,
+						"TEXCOORD_0":7,
+						"TANGENT":8
+					},
+					"indices":9,
+					"material":1
 				}
 			]
 		}
@@ -84,7 +117,7 @@
 				0.9980160593986511
 			],
 			"min":[
-				-1.0000004768371582,
+				-1.0016804933547974,
 				1,
 				-1
 			],
@@ -110,6 +143,46 @@
 		},
 		{
 			"bufferView":4,
+			"componentType":5123,
+			"count":138,
+			"type":"SCALAR"
+		},
+		{
+			"bufferView":5,
+			"componentType":5126,
+			"count":94,
+			"max":[
+				0.9999999403953552,
+				1.3219999074935913,
+				0.9980160593986511
+			],
+			"min":[
+				-1.0000004768371582,
+				0.999998927116394,
+				-1
+			],
+			"type":"VEC3"
+		},
+		{
+			"bufferView":6,
+			"componentType":5126,
+			"count":94,
+			"type":"VEC3"
+		},
+		{
+			"bufferView":7,
+			"componentType":5126,
+			"count":94,
+			"type":"VEC2"
+		},
+		{
+			"bufferView":8,
+			"componentType":5126,
+			"count":94,
+			"type":"VEC4"
+		},
+		{
+			"bufferView":9,
 			"componentType":5123,
 			"count":138,
 			"type":"SCALAR"
@@ -145,6 +218,36 @@
 			"byteLength":276,
 			"byteOffset":4512,
 			"target":34963
+		},
+		{
+			"buffer":0,
+			"byteLength":1128,
+			"byteOffset":4788,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":1128,
+			"byteOffset":5916,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":752,
+			"byteOffset":7044,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":1504,
+			"byteOffset":7796,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":276,
+			"byteOffset":9300,
+			"target":34963
 		}
 	],
 	"samplers":[
@@ -155,7 +258,7 @@
 	],
 	"buffers":[
 		{
-			"byteLength":4788,
+			"byteLength":9576,
 			"uri":"ceiling-turn.bin"
 		}
 	]

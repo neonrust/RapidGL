@@ -8,7 +8,8 @@
 		{
 			"name":"Scene",
 			"nodes":[
-				0
+				0,
+				1
 			]
 		}
 	],
@@ -16,6 +17,10 @@
 		{
 			"mesh":0,
 			"name":"ceiling"
+		},
+		{
+			"mesh":1,
+			"name":"shadower"
 		}
 	],
 	"materials":[
@@ -32,6 +37,19 @@
 				"metallicFactor":0,
 				"roughnessFactor":0.949999988079071
 			}
+		},
+		{
+			"doubleSided":true,
+			"name":"shadower",
+			"pbrMetallicRoughness":{
+				"baseColorFactor":[
+					0.01599629782140255,
+					0.01599629782140255,
+					0.01599629782140255,
+					1
+				],
+				"metallicFactor":0
+			}
 		}
 	],
 	"meshes":[
@@ -47,6 +65,21 @@
 					},
 					"indices":4,
 					"material":0
+				}
+			]
+		},
+		{
+			"name":"shadower",
+			"primitives":[
+				{
+					"attributes":{
+						"POSITION":5,
+						"NORMAL":6,
+						"TEXCOORD_0":7,
+						"TANGENT":8
+					},
+					"indices":9,
+					"material":1
 				}
 			]
 		}
@@ -113,6 +146,46 @@
 			"componentType":5123,
 			"count":72,
 			"type":"SCALAR"
+		},
+		{
+			"bufferView":5,
+			"componentType":5126,
+			"count":48,
+			"max":[
+				1,
+				1.3219999074935913,
+				1
+			],
+			"min":[
+				-1,
+				0.9999999403953552,
+				-1
+			],
+			"type":"VEC3"
+		},
+		{
+			"bufferView":6,
+			"componentType":5126,
+			"count":48,
+			"type":"VEC3"
+		},
+		{
+			"bufferView":7,
+			"componentType":5126,
+			"count":48,
+			"type":"VEC2"
+		},
+		{
+			"bufferView":8,
+			"componentType":5126,
+			"count":48,
+			"type":"VEC4"
+		},
+		{
+			"bufferView":9,
+			"componentType":5123,
+			"count":72,
+			"type":"SCALAR"
 		}
 	],
 	"bufferViews":[
@@ -145,6 +218,36 @@
 			"byteLength":144,
 			"byteOffset":2304,
 			"target":34963
+		},
+		{
+			"buffer":0,
+			"byteLength":576,
+			"byteOffset":2448,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":576,
+			"byteOffset":3024,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":384,
+			"byteOffset":3600,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":768,
+			"byteOffset":3984,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":144,
+			"byteOffset":4752,
+			"target":34963
 		}
 	],
 	"samplers":[
@@ -155,7 +258,7 @@
 	],
 	"buffers":[
 		{
-			"byteLength":2448,
+			"byteLength":4896,
 			"uri":"ceiling1.bin"
 		}
 	]

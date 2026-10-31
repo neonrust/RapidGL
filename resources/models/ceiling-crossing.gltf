@@ -8,7 +8,8 @@
 		{
 			"name":"Scene",
 			"nodes":[
-				0
+				0,
+				1
 			]
 		}
 	],
@@ -16,6 +17,10 @@
 		{
 			"mesh":0,
 			"name":"ceiling-crossing"
+		},
+		{
+			"mesh":1,
+			"name":"shadower"
 		}
 	],
 	"materials":[
@@ -32,6 +37,19 @@
 				"metallicFactor":0,
 				"roughnessFactor":0.949999988079071
 			}
+		},
+		{
+			"doubleSided":true,
+			"name":"shadower",
+			"pbrMetallicRoughness":{
+				"baseColorFactor":[
+					0.01599629782140255,
+					0.01599629782140255,
+					0.01599629782140255,
+					1
+				],
+				"metallicFactor":0
+			}
 		}
 	],
 	"meshes":[
@@ -47,6 +65,21 @@
 					},
 					"indices":4,
 					"material":0
+				}
+			]
+		},
+		{
+			"name":"shadower",
+			"primitives":[
+				{
+					"attributes":{
+						"POSITION":5,
+						"NORMAL":6,
+						"TEXCOORD_0":7,
+						"TANGENT":8
+					},
+					"indices":9,
+					"material":1
 				}
 			]
 		}
@@ -113,6 +146,46 @@
 			"componentType":5123,
 			"count":264,
 			"type":"SCALAR"
+		},
+		{
+			"bufferView":5,
+			"componentType":5126,
+			"count":184,
+			"max":[
+				1.000000238418579,
+				1.3219999074935913,
+				1
+			],
+			"min":[
+				-1.0000004768371582,
+				1.002220869064331,
+				-1
+			],
+			"type":"VEC3"
+		},
+		{
+			"bufferView":6,
+			"componentType":5126,
+			"count":184,
+			"type":"VEC3"
+		},
+		{
+			"bufferView":7,
+			"componentType":5126,
+			"count":184,
+			"type":"VEC2"
+		},
+		{
+			"bufferView":8,
+			"componentType":5126,
+			"count":184,
+			"type":"VEC4"
+		},
+		{
+			"bufferView":9,
+			"componentType":5123,
+			"count":264,
+			"type":"SCALAR"
 		}
 	],
 	"bufferViews":[
@@ -145,6 +218,36 @@
 			"byteLength":528,
 			"byteOffset":8832,
 			"target":34963
+		},
+		{
+			"buffer":0,
+			"byteLength":2208,
+			"byteOffset":9360,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":2208,
+			"byteOffset":11568,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":1472,
+			"byteOffset":13776,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":2944,
+			"byteOffset":15248,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":528,
+			"byteOffset":18192,
+			"target":34963
 		}
 	],
 	"samplers":[
@@ -155,7 +258,7 @@
 	],
 	"buffers":[
 		{
-			"byteLength":9360,
+			"byteLength":18720,
 			"uri":"ceiling-crossing.bin"
 		}
 	]
