@@ -17,7 +17,7 @@ static constexpr glm::ivec4 FullScreen { 0, 0, 0, 0 };
 // TODO: rename to something not containing the word "texture"... e.g. "flat" ?
 struct Texture2d
 {
-	void create(const char *name, size_t width, size_t height, Color::Config color_cfg=Color::Default, Depth::Config depth_cfg=Depth::Default);
+	void create(const char *name, uint32_t width, uint32_t height, Color::Config color_cfg=Color::Default, Depth::Config depth_cfg=Depth::Default);
 
 	// TODO: add attachments more generally?
 	//    attach(<channels>, <type>)

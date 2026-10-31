@@ -16,7 +16,7 @@ static constexpr uint8_t s_max_iterations { 18 }; // max number of mipmap levels
 // TODO: this is more of a "general" render target
 //   make a more texture-like specialization
 
-void Texture2d::create(const char *name, size_t width, size_t height, Color::Config color_cfg, Depth::Config depth_cfg)
+void Texture2d::create(const char *name, uint32_t width, uint32_t height, Color::Config color_cfg, Depth::Config depth_cfg)
 {
 	_name = name;
 	if(_fbo_id)
