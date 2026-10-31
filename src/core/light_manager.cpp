@@ -178,18 +178,11 @@ void LightManager::flush()
 		};
 		for(auto subrange : _dirty_list | std::views::chunk_by(contiguous))
 		{
-			auto s = *subrange.begin();
-			auto e = *std::prev(subrange.end());
-			if (s == e)
-			{
-				_gpu_build(s);
-				_lights_ssbo.set(s, _lights[s]);
-			}
-			else
-			{
-				_gpu_build(s, e);
-				_lights_ssbo.set(_lights.begin() + s, _lights.begin() + e+ 1, s);
-			}
+			// NOTE: not '*subrange.end()'; that's the first index of the next range (or past the end of '_dirty_list')
+			const auto s = *subrange.begin();
+			const auto e = LightIndex(*std::prev(subrange.end()) + 1);  // exclusive
+			_gpu_build(s, e);
+			_lights_ssbo.set(_lights.begin() + s, _lights.begin() + e, s);
 		}
 	}
 	_dirty.clear();
