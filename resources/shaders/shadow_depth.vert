@@ -4,7 +4,6 @@
 layout(location = 0) in vec3 in_pos;
 layout(location = 1) in vec2 in_texcoord;
 
-layout(location = 0) out vec3 out_world_pos;
 layout(location = 1) out vec2 out_texcoord;
 
 uniform mat4 u_model;
@@ -20,7 +19,6 @@ layout(std430, binding = SSBO_BIND_SHADOW_SLOTS_INFO) readonly buffer ShadowSlot
 void main()
 {
 	out_texcoord  = in_texcoord;
-	out_world_pos = vec3(u_model * vec4(in_pos, 1));
 
 	ShadowSlotInfo slot_info = ssbo_shadow_slots[u_light_shadow_index];
 
