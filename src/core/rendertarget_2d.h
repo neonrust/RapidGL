@@ -36,6 +36,7 @@ struct Texture2d
 	inline glm::uvec2 size() const { return { m_metadata.width, m_metadata.height }; }
 	void resize(size_t width, size_t height);
 
+	// TODO: this is incorrect if NoMips was specified. Also, color & depth might not have the same number of mips.
 	inline uint_fast8_t mip_levels() const { return _mip_levels; }
 
 	inline bool has_color() const { return _has_color; }
