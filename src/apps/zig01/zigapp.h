@@ -167,11 +167,6 @@ private:
 	float _shadow_contact_max_ray_length = 0.06f;
 	float _shadow_contact_max_zdiff      = 0.05f;
 	float _shadow_bias_constant          = 0.0000f;
-	float _shadow_bias_slope_scale       = 0;//-0.0011f;
-	float _shadow_bias_slope_power       = 1.f;
-	float _shadow_bias_distance_scale    = 0.0004f;
-	float _shadow_bias_texel_size_mix    = 0.48f;
-	float _shadow_bias_scale             = 1.f;
 	bool  _shadow_cull_face_front        = false;
 
 	bool      m_animate_lights             = false;

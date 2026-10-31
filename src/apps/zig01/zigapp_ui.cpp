@@ -393,11 +393,6 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 				_shadow_atlas.set_csm_backoff(backoff);
 			ImGui::SliderFloat("Shadow occlusion",   &m_shadow_occlusion,             .05f,  1.f,    "%.2f");
 			ImGui::SliderFloat("Bias constant",      &_shadow_bias_constant,        -.001f,  .001f, "%.6f");
-			ImGui::SliderFloat("Bias slope scale",   &_shadow_bias_slope_scale,     -.005f,  .005f, "%.6f");
-			ImGui::SliderFloat("Bias slope power",   &_shadow_bias_slope_power,      .01f,  5.f,    "%.3f");
-			ImGui::SliderFloat("Bias dist. scale",   &_shadow_bias_distance_scale, -2.f,    2.f,    "%.4f");
-			ImGui::SliderFloat("Bias texel sz mix",  &_shadow_bias_texel_size_mix,  0.f,    1.f,    "%.2f");
-			ImGui::SliderFloat("Bias scale",         &_shadow_bias_scale,          -2.f,    2.f,    "%.2f");
 			if(ImGui::RadioButton("Cull front faces", _shadow_cull_face_front == true))
 				_shadow_cull_face_front = true;
 			ImGui::SameLine();
