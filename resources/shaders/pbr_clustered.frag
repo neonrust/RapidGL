@@ -302,14 +302,20 @@ vec3 pointLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 
 	ShadowSlotInfo slot_info = ssbo_shadow_slots[shadow_idx];
 
-	vec3 light_to_frag = world_pos - light.position;
+	// a cube face's view depth is the major axis (and all faces are the same size)
+	vec3 abs_light_to_frag = abs(world_pos - light.position);
+	float view_depth = max(abs_light_to_frag.x, max(abs_light_to_frag.y, abs_light_to_frag.z));
+	vec3 lookup_pos = shadowNormalOffset(world_pos, normalize(in_normal), slot_info.texel_size[0], view_depth);
+
+	// the face is selected using the offset position; it might've moved across a face boundary
+	vec3 light_to_frag = lookup_pos - light.position;
 
 	mat4 view_proj;
 	vec4 slot_rect; // shadow slot rectangle in atlas, in absolute pixels
-	float texel_size;
-	uint cube_face = detectCubeFaceSlot(light_to_frag, slot_info, view_proj, slot_rect, texel_size);
+	float texel_size_not_used;
+	uint cube_face = detectCubeFaceSlot(light_to_frag, slot_info, view_proj, slot_rect, texel_size_not_used);
 
-	vec4 clip_pos = view_proj * vec4(world_pos, 1);
+	vec4 clip_pos = view_proj * vec4(lookup_pos, 1);
 	vec3 ndc_pos = clip_pos.xyz / clip_pos.w; // [-1, 1]
 	vec3 uv_pos = ndc_pos * 0.5 + 0.5; // [0, 1]
 	float uv_depth = uv_pos.z;
@@ -385,30 +391,38 @@ vec3 dirLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 
 	uvec4 slot_rect;
 	float texel_size;
+	mat4 view_proj;
 	float near_plane;
 	float far_plane;
 	if(cascade_index == 0)
 	{
 		slot_rect = slot_rect_0;
 		texel_size = texel_size_0;
+		view_proj = slot_info.view_proj[0];
 	}
 	else if(cascade_index == 1)
 	{
 		slot_rect = slot_rect_1;
 		texel_size = texel_size_1;
+		view_proj = slot_info.view_proj[1];
 	}
 	else if(cascade_index == 2)
 	{
 		slot_rect = slot_rect_2;
 		texel_size = texel_size_2;
+		view_proj = slot_info.view_proj[2];
 	}
 	else if(cascade_index == 3)
 	{
 		slot_rect = slot_rect_3;
 		texel_size = texel_size_3;
+		view_proj = slot_info.view_proj[3];
 	}
 
-	vec3 uv_pos = in_csm_light_uv_pos[cascade_index]; // [0, 1]
+	// not 'in_csm_light_uv_pos'; the lookup position is offset per fragment,
+	//   and should use the projection the cascade was rendered with (i.e. not necessarily the current one)
+	vec3 lookup_pos = shadowNormalOffset(world_pos, normalize(in_normal), texel_size, 1);  // orthographic, w = 1
+	vec3 uv_pos = (view_proj * vec4(lookup_pos, 1)).xyz * 0.5 + 0.5; // [0, 1]
 	float uv_depth = uv_pos.z;
 	if(uv_depth > 1)
 		return vec3(1);
@@ -484,7 +498,10 @@ vec3 spotLightVisibility(GPULight light, vec3 world_pos, float camera_distance)
 	vec4 slot_rect = slot_info.atlas_rect[0];
 	float texel_size = slot_info.texel_size[0];
 
-	vec4 clip_pos = view_proj * vec4(world_pos, 1);
+	float view_depth = max((view_proj * vec4(world_pos, 1)).w, 0);
+	vec3 lookup_pos = shadowNormalOffset(world_pos, normalize(in_normal), texel_size, view_depth);
+
+	vec4 clip_pos = view_proj * vec4(lookup_pos, 1);
 	vec3 ndc_pos = clip_pos.xyz / clip_pos.w; // [-1, 1]
 	vec3 uv_pos = ndc_pos * 0.5 + 0.5; // [0, 1]
 

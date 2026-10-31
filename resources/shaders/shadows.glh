@@ -17,6 +17,7 @@ uniform float u_shadow_bias_distance_scale;
 uniform float u_shadow_bias_slope_power;
 uniform float u_shadow_bias_scale;
 uniform float u_shadow_bias_texel_size_mix;
+uniform float u_shadow_normal_offset;  // in texels (their world-space size at the receiver)
 uniform float u_shadow_occlusion;
 uniform bool  u_shadow_colorize;
 uniform bool  u_shadow_contacts;
@@ -275,6 +276,14 @@ bool checkContactShadow(vec3 pos_vs, vec3 to_light_vs, mat4 projection)
 
 float sampleShadow(float sampling_ctrl, float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max, float texel_size, vec2 dzxy);
 
+// offsets the shadow map lookup position along the receiver's normal, i.e. away from the (lit) surface stored
+//   in the shadow map (when culling back faces), so that it's not self-shadowed (acne), without a depth bias.
+//   'texel_size' is ShadowSlotInfo.texel_size (world-space at unit depth), 'view_depth' is the light's clip.w
+vec3 shadowNormalOffset(vec3 world_pos, vec3 normal, float texel_size, float view_depth)
+{
+	return world_pos + normal * (u_shadow_normal_offset * texel_size * view_depth);
+}
+
 float shadowVisibility(vec3 uv_pos, float sampling_ctrl, GPULight light, vec4 slot_rect, float texel_size, vec2 dzxy, float general_bias)
 {
 	float uv_depth = uv_pos.z;
@@ -519,7 +528,7 @@ float sampleShadow(float sampling_ctrl, float frag_depth, vec2 atlas_uv, vec2 uv
 	// 	return sampleShadow9(frag_depth, atlas_uv, uv_min, uv_max, texel_size, dzxy);
 	// else if(sampling_ctrl > shadow_low_sampling) // i.e. between 'mid' and 'low'
 	// 	return sampleShadow5(frag_depth, atlas_uv, uv_min, uv_max, texel_size, dzxy);
-	// return sampleShadow1(frag_depth, atlas_uv, uv_min, uv_max, texel_size, dzxy);
+	return sampleShadow1(frag_depth, atlas_uv, uv_min, uv_max, texel_size, dzxy);
 	// return sampleShadow_raw(frag_depth, atlas_uv);
-	return sampleShadow_single(frag_depth, atlas_uv);
+	// return sampleShadow_single(frag_depth, atlas_uv);
 }

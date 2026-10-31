@@ -43,7 +43,7 @@ struct ShadowSlotInfo
 {
 	mat4 view_proj[6];
 	uvec4 atlas_rect[6];
-	float texel_size[6];
+	float texel_size[6];  // world-space size of a texel at unit view depth, i.e. scale by clip.w (orthographic: w = 1)
 };
 
 struct AABB

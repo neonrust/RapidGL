@@ -172,7 +172,7 @@ private:
 	float _shadow_bias_distance_scale    = 0.0004f;
 	float _shadow_bias_texel_size_mix    = 0.48f;
 	float _shadow_bias_scale             = 1.f;
-	bool  _shadow_cull_face_front        = true;
+	bool  _shadow_cull_face_front        = false;
 
 	bool      m_animate_lights             = false;
 	float     m_animation_speed            = 0.4f;
@@ -249,7 +249,12 @@ private:
 	//   culling front faces stores the back faces, which need to be pulled towards the light (i.e. negative)
 	//   to not leak light where they intersect a receiver (e.g. the base of an object)
 	glm::vec2 _polygon_offset_cull_front { -1.f, 0.f };
-	glm::vec2 _polygon_offset_cull_back  { 0.6f, 0.f };
+	glm::vec2 _polygon_offset_cull_back  { 1.f, 0.f };
+	// shadow lookup normal offset, in texels, one for each face culling mode.
+	//   culling back faces stores the lit faces, which the receivers are then offset away from (instead of a depth bias).
+	//   ~1 for the 2x2 HW PCF, ~1.5 for the wider kernels (sampleShadow5/9)
+	float _shadow_normal_offset_cull_front { 0.f };
+	float _shadow_normal_offset_cull_back  { 1.f };
 
 	SampleWindow<std::chrono::microseconds, 30> m_cull_scene_time;
 	SampleWindow<std::chrono::microseconds, 30> m_depth_time;

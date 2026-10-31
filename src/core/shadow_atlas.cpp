@@ -423,16 +423,19 @@ ShadowAtlas::SlotsProjection ShadowAtlas::slots_projection(const AtlasLight &atl
 	{
 		const auto &rect = atlas_light.slots[idx].rect;
 
+		// the slots are square, so [0][0] == [1][1]:
+		//   orthographic: 2/width  ->  texel size = width/res
+		//   perspective:  1/tan(fov/2)  ->  texel size = 2*tan(fov/2)/res at unit depth
 		if(light.general.light_type == LightType::Directional)
 		{
 			projection.view_proj[idx]  = _csm_params.light_view_projection[idx];
-			projection.texel_size[idx] = (_csm_params.view_aabb[idx].min().z - _csm_params.view_aabb[idx].max().z) / float(rect.z);
+			projection.texel_size[idx] = 2.f / (_csm_params.light_projection[idx][0][0] * float(rect.z));
 		}
 		else
 		{
 			const auto &[view, proj, nz, fz] = light_view_projection(light, idx);
 			projection.view_proj[idx]  = proj * view;
-			projection.texel_size[idx] = (fz - nz) / float(rect.z);
+			projection.texel_size[idx] = 2.f / (proj[0][0] * float(rect.z));
 		}
 
 		projection.hash = hash_combine(projection.hash, projection.view_proj[idx]);

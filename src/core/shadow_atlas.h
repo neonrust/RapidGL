@@ -59,7 +59,7 @@ public:
 	struct SlotsProjection
 	{
 		std::array<glm::mat4, MAX_SLOTS> view_proj;
-		std::array<float, MAX_SLOTS>     texel_size;
+		std::array<float, MAX_SLOTS>     texel_size;  // world-space size at unit view depth (see ShadowSlotInfo)
 		size_t hash { 0 };  // of 'view_proj' (of the used slots)
 	};
 	struct AtlasLight

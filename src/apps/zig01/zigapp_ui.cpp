@@ -407,6 +407,8 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			ImGui::SliderFloat("Polygon offset",     &polygon_offset[0],            -5.f,    5.f,    "%.4f");
 			// with a float depth buffer, one unit is ~6e-8 (for depths in [0.5, 1)), hence the large range
 			ImGui::SliderFloat("        unit",       &polygon_offset[1],            -5000.f, 5000.f, "%.0f", ImGuiSliderFlags_Logarithmic);
+			auto &normal_offset = _shadow_cull_face_front? _shadow_normal_offset_cull_front: _shadow_normal_offset_cull_back;
+			ImGui::SliderFloat("Normal offset",      &normal_offset,                 0.f,    4.f,    "%.2f texels");
 
 			static auto stabilize = _shadow_atlas.csm_stabilization();
 			if(ImGui::Checkbox("Stabilize light view", &stabilize))
