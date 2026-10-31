@@ -54,7 +54,8 @@ void Texture2d::create(const char *name, size_t width, size_t height, Color::Con
 	if(_has_color and (color_cfg & Color::Texture))
 	{
 		// TODO: bake this into attach() ?
-		bool ok = _color_texture.Create(width, height, _color_format, _mip_levels);
+		const auto no_mips = (color_cfg & Color::NoMips) > 0;
+		bool ok = _color_texture.Create(width, height, _color_format, no_mips? 1: _mip_levels);
 		assert(ok);
 
 		_color_texture.SetFiltering(TextureFiltering::Minify,  TextureFilteringParam::Linear);
@@ -66,7 +67,8 @@ void Texture2d::create(const char *name, size_t width, size_t height, Color::Con
 	if(_has_depth and (depth_cfg & Depth::Texture))
 	{
 		// TODO: bake this into attach() ?
-		bool ok = _depth_texture.Create(width, height, _depth_format, _mip_levels);
+		const auto no_mips = (depth_cfg & Depth::NoMips) > 0;
+		bool ok = _depth_texture.Create(width, height, _depth_format, no_mips? 1: _mip_levels);
 		assert(ok);
 
 		_depth_texture.SetFiltering(TextureFiltering::Minify,  TextureFilteringParam::Nearest);

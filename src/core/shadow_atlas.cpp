@@ -105,7 +105,7 @@ bool ShadowAtlas::create()
 	namespace C = RenderTarget::Color;
 	namespace D = RenderTarget::Depth;
 
-	Texture2d::create("shadow-atlas", size, size, C::None, D::Texture | D::Float);
+	Texture2d::create("shadow-atlas", size, size, C::None, D::Texture | D::Float | D::NoMip);
 
 	return bool(this);
 }

@@ -16,6 +16,7 @@ namespace Color
 	static constexpr Config HalfFloat = 0x1000'0000;
 	static constexpr Config Texture   = 0x2000'0000;
 	static constexpr Config Default   = Float | Texture;
+	static constexpr Config NoMips     = 0x8000'0000;
 
 	static constexpr Config custom_mask = 0x00ff'ffff; // anything in the lower bits is treated as a custom format
 	inline bool is_custom(Config f)
@@ -32,6 +33,7 @@ namespace Depth
 	static constexpr Config Float    = 0x0400'0000;
 	static constexpr Config Texture  = 0x2000'0000;
 	static constexpr Config Default  = Float;
+	static constexpr Config NoMips    = 0x8000'0000;
 }
 
 using BufferMask = uint32_t;
