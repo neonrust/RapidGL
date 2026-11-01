@@ -13,7 +13,8 @@
 		{
 			"name":"Scene",
 			"nodes":[
-				0
+				0,
+				1
 			]
 		}
 	],
@@ -21,6 +22,10 @@
 		{
 			"mesh":0,
 			"name":"base-wall-button-large-button"
+		},
+		{
+			"mesh":1,
+			"name":"shadower"
 		}
 	],
 	"materials":[
@@ -63,11 +68,24 @@
 				],
 				"metallicFactor":0
 			}
+		},
+		{
+			"doubleSided":true,
+			"name":"shadower",
+			"pbrMetallicRoughness":{
+				"baseColorFactor":[
+					0.01599629782140255,
+					0.01599629782140255,
+					0.01599629782140255,
+					1
+				],
+				"metallicFactor":0
+			}
 		}
 	],
 	"meshes":[
 		{
-			"name":"wall.001",
+			"name":"base-wall-button-large-button",
 			"primitives":[
 				{
 					"attributes":{
@@ -88,6 +106,21 @@
 					},
 					"indices":9,
 					"material":1
+				}
+			]
+		},
+		{
+			"name":"shadower",
+			"primitives":[
+				{
+					"attributes":{
+						"POSITION":10,
+						"NORMAL":11,
+						"TEXCOORD_0":12,
+						"TANGENT":13
+					},
+					"indices":14,
+					"material":2
 				}
 			]
 		}
@@ -203,6 +236,46 @@
 			"componentType":5123,
 			"count":42,
 			"type":"SCALAR"
+		},
+		{
+			"bufferView":10,
+			"componentType":5126,
+			"count":64,
+			"max":[
+				1.0277782678604126,
+				0.5616523623466492,
+				0.7811989188194275
+			],
+			"min":[
+				0.9983711838722229,
+				0.1963551938533783,
+				0.2913345396518707
+			],
+			"type":"VEC3"
+		},
+		{
+			"bufferView":11,
+			"componentType":5126,
+			"count":64,
+			"type":"VEC3"
+		},
+		{
+			"bufferView":12,
+			"componentType":5126,
+			"count":64,
+			"type":"VEC2"
+		},
+		{
+			"bufferView":13,
+			"componentType":5126,
+			"count":64,
+			"type":"VEC4"
+		},
+		{
+			"bufferView":14,
+			"componentType":5123,
+			"count":90,
+			"type":"SCALAR"
 		}
 	],
 	"bufferViews":[
@@ -265,6 +338,36 @@
 			"byteLength":84,
 			"byteOffset":3168,
 			"target":34963
+		},
+		{
+			"buffer":0,
+			"byteLength":768,
+			"byteOffset":3252,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":768,
+			"byteOffset":4020,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":512,
+			"byteOffset":4788,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":1024,
+			"byteOffset":5300,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":180,
+			"byteOffset":6324,
+			"target":34963
 		}
 	],
 	"samplers":[
@@ -275,7 +378,7 @@
 	],
 	"buffers":[
 		{
-			"byteLength":3252,
+			"byteLength":6504,
 			"uri":"base-wall-button-large1-button.bin"
 		}
 	]
