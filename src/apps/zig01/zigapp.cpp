@@ -898,24 +898,6 @@ void ZigApp::updateLightsSSBOs()
 	_light_mgr.flush();
 }
 
-void ZigApp::HdrEquirectangularToCubemap(const std::shared_ptr<RenderTarget::Cube>& cubemap_rt, const std::shared_ptr<Texture2D>& equirectangular_map)
-{
-    /* Update all faces per frame */
-    m_equirectangular_to_cubemap_shader->bind();
-	m_equirectangular_to_cubemap_shader->setUniform("u_projection"sv, cubemap_rt->projection());
-
-	equirectangular_map->Bind(1);
-
-    for (uint8_t side = 0; side < 6; ++side)
-    {
-		m_equirectangular_to_cubemap_shader->setUniform("u_view"sv, cubemap_rt->face_view_transform(side));
-		cubemap_rt->bindRenderTarget(side);
-
-		_skybox.drawBox();
-    }
-	glViewport(0, 0, GLsizei(Window::width()), GLsizei(Window::height()));
-}
-
 void ZigApp::PrecomputeIndirectLight(const std::filesystem::path& hdri_map_filepath)
 {
 	auto envmap_hdr = std::make_shared<Texture2D>();
@@ -928,6 +910,24 @@ void ZigApp::PrecomputeIndirectLight(const std::filesystem::path& hdri_map_filep
 
 	IrradianceConvolution(m_irradiance_cubemap_rt);
 	PrefilterEnvCubemap(m_prefiltered_env_map_rt);
+}
+
+void ZigApp::HdrEquirectangularToCubemap(const std::shared_ptr<RenderTarget::Cube>& cubemap_rt, const std::shared_ptr<Texture2D>& equirectangular_map)
+{
+	// Update all faces per frame
+	m_equirectangular_to_cubemap_shader->bind();
+	m_equirectangular_to_cubemap_shader->setUniform("u_projection"sv, cubemap_rt->projection());
+
+	equirectangular_map->Bind(1);
+
+	for(auto face: CubeFaces)
+	{
+		m_equirectangular_to_cubemap_shader->setUniform("u_view"sv, cubemap_rt->face_view_transform(face));
+		cubemap_rt->bindRenderTarget(face);
+
+		_skybox.drawBox();
+	}
+	glViewport(0, 0, GLsizei(Window::width()), GLsizei(Window::height()));
 }
 
 void ZigApp::IrradianceConvolution(const std::shared_ptr<RenderTarget::Cube>&cubemap_rt)
@@ -1138,13 +1138,13 @@ void ZigApp::render()
 
 	renderShading(m_camera);
 
+	if(m_draw_surface_lights_geometry)
+		renderLightGeometry(); // to '_rt'
+
 	if(auto d = _gl_timers["shading"].elapsed<microseconds>(); d)
 		m_shading_time.add(*d);
 	// ------------------------------------------------------------------
 	_gl_timers["skybox"].start();
-
-	if(m_draw_surface_lights_geometry)
-		renderLightGeometry(); // to '_rt'
 
 	// to '_rt'
 	_skybox.render(m_camera, m_env_cubemap_rt->color_texture());
