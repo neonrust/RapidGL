@@ -503,10 +503,10 @@ float shadow_mid_sampling = 0.85;
 float sampleShadow(float sampling_ctrl, float frag_depth, vec2 atlas_uv, vec2 uv_min, vec2 uv_max, float texel_size)
 {
 	// select samplinmg algorithm basec on distance to camera
-	// if(sampling_ctrl > shadow_mid_sampling)
-	// 	return sampleShadow9(frag_depth, atlas_uv, uv_min, uv_max, texel_size);
-	// else if(sampling_ctrl > shadow_low_sampling) // i.e. between 'mid' and 'low'
-	// 	return sampleShadow5(frag_depth, atlas_uv, uv_min, uv_max, texel_size);
+	if(sampling_ctrl > shadow_mid_sampling)
+		return sampleShadow9(frag_depth, atlas_uv, uv_min, uv_max, texel_size);
+	else if(sampling_ctrl > shadow_low_sampling) // i.e. between 'mid' and 'low'
+		return sampleShadow5(frag_depth, atlas_uv, uv_min, uv_max, texel_size);
 	return sampleShadow1(frag_depth, atlas_uv, uv_min, uv_max, texel_size);
 	// return sampleShadow_raw(frag_depth, atlas_uv);
 	// return sampleShadow_single(frag_depth, atlas_uv);
