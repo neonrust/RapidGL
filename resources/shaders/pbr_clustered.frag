@@ -1,11 +1,14 @@
 #version 460 core
 
+uniform float u_time;
+
 #include "light.glh"
 #include "pbr_lighting.glh"
 #include "shadows.glh"
 #include "volumetrics.glh"  // 'tile_grid' for the debug mode
 
 out vec4 frag_color;
+
 uniform mat4 u_view;
 uniform mat4 u_projection;
 

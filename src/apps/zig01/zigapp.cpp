@@ -1922,6 +1922,7 @@ void ZigApp::renderShading(const Camera &camera)
 	shader.bind();
 
 	camera.setUniforms(shader);
+	shader.setUniform("u_time"sv,                       _running_time.count());
 	shader.setUniform("u_cluster_resolution"sv,         m_cluster_resolution);
 	shader.setUniform("u_cluster_size_ss"sv,            glm::uvec2(m_cluster_block_size));
 	shader.setUniform("u_log_cluster_res_y"sv,          m_log_cluster_res_y);

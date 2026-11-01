@@ -436,63 +436,63 @@ ori     09265 350 0
 angle   0b0.234 0.234
 LIGHT   05Torch
 type    05point
-color   0a244 186 99
+color   0a250 122 22
 power   05100.0
 shadows 011
 rangecmp011
 contacts010
 fog     011
-flicker 030.3
+flicker 011
 position0e4.89 0.1 -4.81
 LIGHT   09Torch.001
 type    05point
-color   0a244 186 99
+color   0a250 122 22
 power   05100.0
 shadows 011
 rangecmp011
 contacts010
 fog     011
-flicker 030.3
+flicker 011
 position0f-4.92 0.1 -4.81
 LIGHT   09Torch.002
 type    05point
-color   0a244 186 99
+color   0a250 122 22
 power   05100.0
 shadows 011
 rangecmp011
 contacts010
 fog     011
-flicker 030.3
+flicker 011
 position0f-4.92 0.1 -8.97
 LIGHT   09Torch.003
 type    05point
-color   0a244 186 99
+color   0a250 122 22
 power   05100.0
 shadows 011
 rangecmp011
 contacts010
 fog     011
-flicker 030.3
+flicker 011
 position0e4.89 0.1 -8.97
 LIGHT   09Torch.004
 type    05point
-color   0a244 186 99
+color   0a250 122 22
 power   05100.0
 shadows 011
 rangecmp011
 contacts010
 fog     011
-flicker 030.3
+flicker 011
 position0e1.94 0.1 -1.13
 LIGHT   09Torch.005
 type    05point
-color   0a244 186 99
+color   0a250 122 22
 power   05100.0
 shadows 011
 rangecmp011
 contacts010
 fog     011
-flicker 030.3
+flicker 011
 position0f-1.92 0.1 -1.13
 LIGHT   08Spot.005
 type    04spot

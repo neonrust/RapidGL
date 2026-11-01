@@ -30,8 +30,10 @@ struct LightGeneral
 			.is_volumetric = volumetric,
 			.has_surface = false,
 			.fog = 1.f,
+			.flicker = 0.f,
 			.shadow_compression = s_default_shadow_compression,
 			.shadow_index = LIGHT_NO_SHADOW,
+			._name = {},
 		};
 	}
 	static LightGeneral create_directional(const glm::vec3 color, float intensity, bool shadows, bool contact, bool volumetric=true) {
@@ -45,8 +47,10 @@ struct LightGeneral
 			.is_volumetric = volumetric,
 			.has_surface = false,
 			.fog = 1.f,
+			.flicker = 0.f,
 			.shadow_compression = 0,//s_default_shadow_compression,
 			.shadow_index = LIGHT_NO_SHADOW,
+			._name = {},
 		};
 	}
 	static LightGeneral create_spot(const glm::vec3 color, float intensity, bool shadows, bool contact, bool volumetric=true) {
@@ -60,8 +64,10 @@ struct LightGeneral
 			.is_volumetric = volumetric,
 			.has_surface = false,
 			.fog = 1.f,
+			.flicker = 0.f,
 			.shadow_compression = s_default_shadow_compression,
 			.shadow_index = LIGHT_NO_SHADOW,
+			._name = {},
 		};
 	}
 	static LightGeneral create_rect(const glm::vec3 color, float intensity, bool volumetric=true) {
@@ -75,8 +81,10 @@ struct LightGeneral
 			.is_volumetric = volumetric,
 			.has_surface = true,
 			.fog = 1.f,
+			.flicker = 0.f,
 			.shadow_compression = 0,
 			.shadow_index = LIGHT_NO_SHADOW,
+			._name = {},
 		};
 	}
 	static LightGeneral create_tube(const glm::vec3 color, float intensity, bool volumetric=true) {
@@ -90,8 +98,10 @@ struct LightGeneral
 			.is_volumetric = volumetric,
 			.has_surface = true,
 			.fog = 1.f,
+			.flicker = 0.f,
 			.shadow_compression = 0,
 			.shadow_index = LIGHT_NO_SHADOW,
+			._name = {},
 		};
 	}
 	static LightGeneral create_sphere(const glm::vec3 color, float intensity, bool volumetric=true) {
@@ -105,8 +115,10 @@ struct LightGeneral
 			.is_volumetric = volumetric,
 			.has_surface = true,
 			.fog = 1.f,
+			.flicker = 0.f,
 			.shadow_compression = 0,
 			.shadow_index = LIGHT_NO_SHADOW,
+			._name = {},
 		};
 	}
 	static LightGeneral create_disc(const glm::vec3 color, float intensity, bool volumetric=true) {
@@ -120,13 +132,15 @@ struct LightGeneral
 			.is_volumetric = volumetric,
 			.has_surface = true,
 			.fog = 1.f,
+			.flicker = 0.f,
 			.shadow_compression = 0,
 			.shadow_index = LIGHT_NO_SHADOW,
+			._name = {},
 		};
 	}
 
-	void set_name(std::string_view name_);
-	inline std::string_view name() const { return __name; };
+	void set_name(std::string_view name);
+	inline std::string_view name() const { return _name; };
 
 	LightType light_type         { LightType::Point };
 	glm::vec3 color              { 1, 1, 1 };
@@ -136,23 +150,21 @@ struct LightGeneral
 	bool      contact_shadows    { false };
 	bool      is_volumetric      { false };
 	bool      has_surface        { false };  // TODO: move to area light components (rect, tube, sphere, disc)
-	float     fog                { 1.f };            // >= 0
+	float     fog                { 1.f };    // >= 0
+	float     flicker            { 0.f };
 	float     shadow_compression { 0.f }; // [0, 1) (0 = full range)
 	uint16_t  shadow_index { LIGHT_NO_SHADOW };  // >= 0   OR  LIGHT_NO_SHADOW
 
 	static constexpr size_t NAME_LEN = 15;
-	char      __name[NAME_LEN + 1] { '\0' };
+	std::string _name;
 };
-static_assert(sizeof(LightGeneral) == 56);
 
-inline void LightGeneral::set_name(std::string_view name_)
+inline void LightGeneral::set_name(std::string_view name)
 {
-	if(name_.size() > 0)
-	{
-		name_ = name_.substr(0, std::min(name_.size(), NAME_LEN));
-		std::strcpy(__name, name_.data());
-	}
-	__name[name_.size()] = '\0';
+	if(name.size() > 0)
+		_name = name.substr(0, std::min(name.size(), NAME_LEN));
+	else
+		_name.clear();
 }
 
 

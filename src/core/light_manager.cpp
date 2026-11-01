@@ -638,7 +638,9 @@ void LightManager::create_components(LightID light_id, const PointLightParams &l
 	_entities.emplace<component::Transform>(light_ent, lp.position);
 	_entities.emplace<component::PointLight>(light_ent);
 	// LightGeneral must be added last; it's used as trigger (see: _light_added())
-	_entities.emplace<component::LightGeneral>(light_ent, component::LightGeneral::create_point(lp.color, lp.intensity, lp.shadow_caster, lp.contact_shadows, lp.fog > 0));
+	auto general = component::LightGeneral::create_point(lp.color, lp.intensity, lp.shadow_caster, lp.contact_shadows, lp.fog > 0);
+	general.flicker = lp.flicker;
+	_entities.emplace<component::LightGeneral>(light_ent, general);
 }
 
 void LightManager::create_components(LightID light_id, const DirectionalLightParams &lp)
@@ -846,6 +848,8 @@ void LightManager::_gpu_set_properties(GPULight &L, LightID light_id) const
 		SET_SHADOW_COMPRESSION(L, general.shadow_compression);
 	else
 		SET_SHADOW_COMPRESSION(L, 0);
+
+	SET_LIGHT_FLICKERING(L, general.flicker);
 
 	if(general.light_type != LightType::Directional)
 		L.position = transform.position();

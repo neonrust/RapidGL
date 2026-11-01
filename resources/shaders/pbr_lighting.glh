@@ -63,6 +63,8 @@ struct MaterialProperties
     float opacity;
 };
 
+GPULight lightFlicker(GPULight light, float frequency);
+
 // returns [1, 0] whther the fragment corresponding to 'atlas_uv' has LOS to the light
 float fadeByDistance(float distance, float hard_limit)
 {
@@ -283,6 +285,9 @@ vec3 calcPointLight(GPULight light, vec3 world_pos, MaterialProperties material)
     vec3  light_direction = light.position - world_pos;
     float distance_sq = dot(light_direction, light_direction);
 	float attenuation = lightFalloff(distance_sq, light.affect_radius*light.affect_radius);
+
+	if(LIGHT_FLICKERING(light) > 0)
+		light = lightFlicker(light, 10);
 
     return pbr(light, light_direction, world_pos, attenuation, material);
 }
@@ -510,4 +515,18 @@ vec3 calcDiscLight(GPULight light, vec3 world_pos, MaterialProperties material)
 	faux_rect.shape_data[3] = vec4(- offset_h + offset_v, 1);
 
 	return calcRectLight(faux_rect, world_pos, material);
+}
+
+GPULight lightFlicker(GPULight light, float frequency)
+{
+	float intensity = LIGHT_FLICKERING(light);
+	float seed = (light.position.x * 2 + light.position.y * 1.7 + light.position.z * 1.4) * 0.1;
+
+	light.intensity *= 0.9 + 0.1 * (
+		sin(u_time * frequency + seed)
+		+ 0.6 * sin(u_time*1.2 * frequency + seed)
+		+ 0.4 * sin(u_time*1.4 * frequency + seed)
+	) * intensity;
+	// TODO light.position =
+	return light;
 }

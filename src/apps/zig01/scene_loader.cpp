@@ -780,8 +780,7 @@ bool SceneLoader::read_light(RGL::tag_file &fp, RGL::Scene &scene)
 	general.shadow_compression = shadow_range_comp;
 	general.contact_shadows = contact_shadows;
 	general.has_surface = true;
-	// TODO flicker support in the shading
-	// general.flicker = flicker;
+	general.flicker = flicker;
 
 	RGL::component::Transform transform;
 	transform.set_position(position.value());
@@ -803,6 +802,7 @@ bool SceneLoader::read_light(RGL::tag_file &fp, RGL::Scene &scene)
 		p.shadow_caster = general.shadow_caster;
 		p.contact_shadows = general.contact_shadows;
 		p.position = transform.position();
+		p.flicker = general.flicker;
 
 		if(auto res = lights.add(p); res)
 			light_id = res.value();

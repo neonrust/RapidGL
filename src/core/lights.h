@@ -37,7 +37,8 @@ private:                                        \
 	LightID uuid        { NO_LIGHT_ID }
 
 #define POINT                        \
-	glm::vec3 position  { 0, 0, 0 }
+	glm::vec3 position  { 0, 0, 0 };  \
+	float     flicker   { false } /* stored in shape_data[4].z */
 
 #define SURFACE           \
 	bool visible_surface
