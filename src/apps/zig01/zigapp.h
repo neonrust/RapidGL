@@ -170,9 +170,6 @@ private:
 	float _shadow_bias_constant          = 0.0000f;
 	bool  _shadow_cull_face_front        = false;
 
-	bool      m_animate_lights             = false;
-	float     m_animation_speed            = 0.4f;
-	bool      m_rect_lights_two_sided      = true;
 	bool      m_draw_surface_lights_geometry  = true;
 
 	bool      m_debug_draw_aabb            = false;
@@ -222,8 +219,6 @@ private:
 		"citrus_orchard_puresky_2k.hdr",
 	};
 	uint8_t m_current_hdr_map_idx = 3;
-
-    GLuint m_skybox_vao, m_skybox_vbo;
 
 	RGL::SkyBox _skybox;
 	RGL::PP::Bloom m_bloom_pp;
