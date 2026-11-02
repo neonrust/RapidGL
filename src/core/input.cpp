@@ -146,6 +146,8 @@ static const dense_set<ControllerButton> s_controller_buttons = {
 
 };
 
+static bool s_mouse_infinite_mode { false };
+
 void Input::init(GLFWwindow* window)
 {
 	s_window = window;
@@ -256,15 +258,46 @@ void Input::setMouseCursorVisible(bool visible)
 	glfwSetInputMode(s_window, GLFW_CURSOR, visible? GLFW_CURSOR_NORMAL: GLFW_CURSOR_DISABLED);
 }
 
-float Input::controllerAxis(int controllerIdx, int axis)
+bool Input::isMouseInfiniteMode()
+{
+	return s_mouse_infinite_mode;
+}
+
+bool Input::setMouseInfiniteMode(bool enable)
+{
+	if(enable and s_mouse_infinite_mode)
+		return false;
+	s_mouse_infinite_mode = enable;
+	return true;
+}
+
+float Input::controllerAxis(int controllerIdx, ControllerAxis1d axis)
 {
 	assert(controllerIdx >= GLFW_JOYSTICK_1 and controllerIdx <= GLFW_JOYSTICK_LAST);
 
 	GLFWgamepadstate state;
 	if(glfwGetGamepadState(controllerIdx, &state))
-		return state.axes[axis];
+		return state.axes[int(axis)];
 
 	return 0;
+}
+
+glm::vec2 Input::controllerAxis(int controllerIdx, ControllerAxis2d axis)
+{
+	switch(axis)
+	{
+	case ControllerAxis2d::LeftThumb:
+		return {
+			controllerAxis(controllerIdx, ControllerAxis1d::LeftThumbH),
+			controllerAxis(controllerIdx, ControllerAxis1d::LeftThumbV),
+		};
+	case ControllerAxis2d::RightThumb:
+		return {
+			controllerAxis(controllerIdx, ControllerAxis1d::RightThumbH),
+			controllerAxis(controllerIdx, ControllerAxis1d::RightThumbV),
+		};
+	}
+	std::unreachable();
 }
 
 bool Input::isControllerButtonDown(int controllerIdx, ControllerButton button)

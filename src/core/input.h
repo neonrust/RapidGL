@@ -133,12 +133,6 @@ enum MouseButton
 	Mouse8 = GLFW_MOUSE_BUTTON_8
 };
 
-enum MouseAxis
-{
-	Horizontal,
-	Vertical,
-};
-
 enum class ControllerButton
 {
 	A = GLFW_GAMEPAD_BUTTON_A,
@@ -167,6 +161,34 @@ enum class ControllerButton
 	Guide = GLFW_GAMEPAD_BUTTON_GUIDE,
 };
 
+enum class MouseAxis2d
+{
+	Position,
+};
+
+enum class MouseAxis1d
+{
+	Horizontal,
+	Vertical,
+};
+
+enum class ControllerAxis2d
+{
+	LeftThumb,   // { LeftThumbH, LeftThumbV }
+	RightThumb,  // { RightThumbH, RightThumbV }
+};
+
+enum class ControllerAxis1d : int
+{
+	LeftThumbH   = GLFW_GAMEPAD_AXIS_LEFT_X,
+	LeftThumbV   = GLFW_GAMEPAD_AXIS_LEFT_Y,
+	RightThumbH  = GLFW_GAMEPAD_AXIS_RIGHT_Y,
+	RightThumbV  = GLFW_GAMEPAD_AXIS_RIGHT_Y,
+
+	LeftTrigger  = GLFW_GAMEPAD_AXIS_LEFT_TRIGGER,
+	RightTrigger = GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER,
+};
+
 class Input final
 {
 public:
@@ -192,9 +214,12 @@ public:
 	static bool enableRawMouseMotion(bool enabled);
 	static bool isRawMouseMotionEnabled();
 	static void setMouseCursorVisible(bool visible);
+	static bool isMouseInfiniteMode();
+	static bool setMouseInfiniteMode(bool enable);
 
 	void activateController(int idx);
-	static float controllerAxis(int controllerIdx, int axis);
+	static float controllerAxis(int controllerIdx, ControllerAxis1d axis);
+	static glm::vec2 controllerAxis(int controllerIdx, ControllerAxis2d axis);
 	static bool isControllerButtonDown(int controllerIdx, ControllerButton button);
 	static bool wasControllerButtonDown(int controllerIdx, ControllerButton button);
 	static bool wasControllerButtonPressed(int controllerIdx, ControllerButton button);
