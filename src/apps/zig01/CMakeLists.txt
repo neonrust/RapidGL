@@ -5,6 +5,7 @@ set(DEMO_NAME "zig01")
 # Add source files
 set(SOURCE_FILES_EXE
 	crawler_controller.cpp
+	scene_loader.cpp
 	zigapp.cpp
 	zigapp_debug_draw.cpp
 	zigapp_ui.cpp
@@ -14,6 +15,7 @@ set(SOURCE_FILES_EXE
 # Add header files
 set(HEADER_FILES_EXE
 	crawler_controller.h
+	scene_loader.h
 	zigapp.h
 )
 
