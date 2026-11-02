@@ -1646,14 +1646,12 @@ void ZigApp::collectRelevantLights(const Camera &view)
 			// static dense_set<uint> previous_pvs;
 			// previous_pvs.insert(_lightsPvs.begin(), _lightsPvs.end());
 			_lightsPvs.clear();
-			uint32_t total_lights { 0 };
 
 			// TODO: something like:
 			// for(const auto &[light_id, general, transform]: _scene.relevantLights(view_pos))
 			auto light_view = _entities.view<component::LightGeneral, component::Transform>();
 			for(const auto &[l_index, L]: std::views::enumerate(_light_mgr))
 			{
-				++total_lights;
 				const auto light_index = LightIndex(l_index);
 
 				if(not IS_ENABLED(L))
@@ -1682,9 +1680,6 @@ void ZigApp::collectRelevantLights(const Camera &view)
 			}
 			// TODO: ideally these should be sorted by distance from camera
 			_relevant_lights_index_ssbo.set(_lightsPvs);
-
-			// const auto duration = steady_clock::now() - T0;
-			// Log::debug("Relevant lights collected: {} of {} lights [{}]", _lightsPvs.size(), total_lights, duration);
 		}
 	}
 }
