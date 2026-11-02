@@ -5,6 +5,7 @@
 
 #include "input_bind.h"
 #include "control_map.h"
+#include "transform_controller.h"
 
 #include <glm/vec2.hpp>
 
@@ -17,7 +18,7 @@ struct ScreenRect
 	glm::uvec2 size;
 };
 
-class CrawlerController
+class CrawlerController : public RGL::TransformController
 {
 public:
 	enum class Facing : uint32_t { North, East, South, West };
@@ -34,14 +35,11 @@ public:
 	};
 
 public:
-	CrawlerController(RGL::Camera &camera, const ScreenRect &grabRect, float grid_size=2.f);  // TODO: "free-look area"
+	CrawlerController(entt::registry &entities, entt::entity camera_id, RGL::Camera &camera, const ScreenRect &grabRect, float grid_size=2.f);  // TODO: "free-look area"
 
-	void update(std::chrono::nanoseconds frameTime);
+	void update(std::chrono::nanoseconds frameTime) override;
 
 	inline void setWalkableQuery(std::function<bool(RGL::GridPos)> callback) { _queryWalkable = callback; }
-
-	inline       RGL::ControlMap &controls()       { return _controls; };
-	inline const RGL::ControlMap &controls() const { return _controls; };
 
 	// TODO: de-couple bind config from this class? e.g. the crawler could register its "commands" with a global registry)
 	void setForward(RGL::ActionBind bind)   { _binds.forward   = bind; }
@@ -102,7 +100,6 @@ private:
 		} facing;
 	} _animation;
 
-	RGL::ControlMap _controls;
 	struct {
 		RGL::ActionBind forward;
 		RGL::ActionBind back;
@@ -112,8 +109,7 @@ private:
 		RGL::ActionBind turnRight;
 		RGL::ActionBind freeLookBegin;
 		RGL::ActionBind freeLookEnd;
-		RGL::AxisBind   freeLookYaw;
-		RGL::AxisBind   freeLookPitch;
+		RGL::AxisBind2d freeLook;
 	} _binds;
 
 	glm::uvec2 _freeLookGrab;

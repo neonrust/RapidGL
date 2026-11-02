@@ -1,4 +1,4 @@
-#include "CrawlerController.h"
+#include "crawler_controller.h"
 
 #include "formatters_glm.h"  // IWYU pragma: keep
 #include "constants.h"
@@ -51,25 +51,29 @@ static constexpr GridDistance s_camera_facing_dir[] = { // forward vector
 
 // ----------------------------------------------------------------------------
 
-CrawlerController::CrawlerController(RGL::Camera &camera, const ScreenRect &grabRect, float grid_size) :
+CrawlerController::CrawlerController(entt::registry &entities, entt::entity camera_id, RGL::Camera &camera, const ScreenRect &grabRect, float grid_size) :
+	RGL::TransformController(entities, camera_id),
 	_camera(camera),
 	_grid_size(grid_size),
 	_mouseScaleYaw(0.05f),
 	_mouseScalePitch(0.03f),
-	_controls("crawler"),
 	_grabTopLeft(grabRect.topLeft),
 	_grabSize(grabRect.size)
 {
-	_controls.add("forward"sv,    &_binds.forward);
-	_controls.add("backward"sv,   &_binds.back);
-	_controls.add("left"sv,       &_binds.left);
-	_controls.add("right"sv,      &_binds.right);
-	_controls.add("turn-left"sv,  &_binds.turnLeft);
-	_controls.add("turn-right"sv, &_binds.turnRight);
-	_controls.add("free-look-begin"sv, &_binds.freeLookBegin);
-	_controls.add("free-look-end"sv, &_binds.freeLookEnd);
-	_controls.add("free-look-yaw"sv,  &_binds.freeLookYaw);
-	_controls.add("free-look-pitch"sv,  &_binds.freeLookPitch);
+	auto &cc = controls();
+	cc.set_name("crawler");
+	cc.add("forward"sv,    &_binds.forward);
+	cc.add("backward"sv,   &_binds.back);
+	cc.add("left"sv,       &_binds.left);
+	cc.add("right"sv,      &_binds.right);
+	cc.add("turn-left"sv,  &_binds.turnLeft);
+	cc.add("turn-right"sv, &_binds.turnRight);
+	cc.add("free-look-begin"sv, &_binds.freeLookBegin);
+	cc.add("free-look-end"sv, &_binds.freeLookEnd);
+	cc.add("free-look"sv,  &_binds.freeLook);
+
+	// TODO: set default binds?
+	// _binds.forward = RGL::ActionBind(RGL::KeyCode::E, RGL::ActionBind::Hold);
 }
 
 // ----------------------------------------------------------------------------
@@ -106,7 +110,7 @@ void CrawlerController::update(std::chrono::nanoseconds frameTime)
 				_freeLooking = true;
 				// TODO: this should use _binds.freeLook axes
 				// _freeLookGrab = _binds.freeLook.grab(_grabTopLeft + _grabSize/2u);
-				_freeLookGrab = RGL::Input::mousePosition();
+				_freeLookGrab = _binds.freeLook.rawValue();
 				RGL::Input::setMouseCursorVisible(false);
 				RGL::Input::setMousePosition(_grabTopLeft + _grabSize/2u);
 				_freeLookYaw = 0;

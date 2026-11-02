@@ -4,7 +4,7 @@ set(DEMO_NAME "zig01")
 
 # Add source files
 set(SOURCE_FILES_EXE
-	CrawlerController.cpp
+	crawler_controller.cpp
 	zigapp.cpp
 	zigapp_debug_draw.cpp
 	zigapp_ui.cpp
@@ -13,7 +13,7 @@ set(SOURCE_FILES_EXE
 
 # Add header files
 set(HEADER_FILES_EXE
-	CrawlerController.h
+	crawler_controller.h
 	zigapp.h
 )
 
