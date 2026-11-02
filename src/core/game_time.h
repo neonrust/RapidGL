@@ -10,7 +10,7 @@ namespace RGL
 using TimePoint = std::chrono::steady_clock::time_point;
 using Duration = std::chrono::nanoseconds;
 
-using seconds_f = std::chrono::duration<float, std::ratio<1>>;
+using seconds_f = std::chrono::duration<double, std::ratio<1>>;
 
 template <typename T>
 struct is_duration : std::false_type {};
