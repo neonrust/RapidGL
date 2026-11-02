@@ -4,6 +4,8 @@
 #include <glm/mat4x4.hpp>
 #include <numbers>
 
+namespace RGL
+{
 namespace bounds
 {
 
@@ -215,11 +217,8 @@ void bounds::Sphere::clear()
 	_squaredRadius = -1.f;
 }
 
-}
+} // bounds
 
-
-namespace RGL
-{
 
 namespace intersect
 {

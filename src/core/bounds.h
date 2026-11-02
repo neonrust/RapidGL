@@ -4,6 +4,8 @@
 #include <glm/fwd.hpp>
 #include <glm/vec3.hpp>
 
+namespace RGL
+{
 namespace bounds
 {
 
@@ -89,9 +91,6 @@ protected:
 };
 
 } // bounds
-
-namespace RGL
-{
 
 namespace intersect
 {
