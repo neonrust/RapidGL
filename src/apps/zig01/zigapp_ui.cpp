@@ -155,7 +155,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 					if (ImGui::Selectable(m_hdr_maps_names[idx].data(), is_selected))
 					{
 						m_current_hdr_map_idx = idx;
-						PrecomputeIndirectLight(FileSystem::getResourcesPath() / "textures/skyboxes/IBL" / m_hdr_maps_names[m_current_hdr_map_idx]);
+						PrecomputeIndirectLight(FileSystem::getResourcesPath() / "textures" / "skyboxes" / "IBL" / m_hdr_maps_names[m_current_hdr_map_idx]);
 					}
 
 					if (is_selected)
