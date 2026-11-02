@@ -659,8 +659,8 @@ void ZigApp::update(nanoseconds delta_time)
 	else if (m_animate_lights)
     {
 		// time_accum  += float(delta_time * m_animation_speed);
-		const auto orbit_mat = glm::rotate(glm::mat4(1), glm::radians(seconds_f(delta_time).count()) * 10.f * m_animation_speed, AXIS_Y);
-		const auto spin_mat = glm::angleAxis(glm::radians(15*seconds_f(delta_time).count() * m_animation_speed), AXIS_Y);
+		const auto orbit_mat = glm::rotate(glm::mat4(1), float(glm::radians(seconds_f(delta_time).count()) * 10.f * m_animation_speed), AXIS_Y);
+		const auto spin_mat = glm::angleAxis(float(glm::radians(15*seconds_f(delta_time).count() * m_animation_speed)), AXIS_Y);
 
 		// auto spin_mat  = glm::rotate(glm::mat4(1), glm::radians(60.f * float(delta_time)) * 2.f * m_animation_speed, AXIS_Y);
 
@@ -1922,7 +1922,7 @@ void ZigApp::renderShading(const Camera &camera)
 	shader.bind();
 
 	camera.setUniforms(shader);
-	shader.setUniform("u_time"sv,                       _running_time.count());
+	shader.setUniform("u_time"sv,                       float(_running_time.count()));
 	shader.setUniform("u_cluster_resolution"sv,         m_cluster_resolution);
 	shader.setUniform("u_cluster_size_ss"sv,            glm::uvec2(m_cluster_block_size));
 	shader.setUniform("u_log_cluster_res_y"sv,          m_log_cluster_res_y);
