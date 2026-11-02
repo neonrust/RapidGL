@@ -202,9 +202,6 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			ImGui::Checkbox("Draw light icons", &m_debug_draw_light_markers);
 			ImGui::Checkbox("Draw surface light geometry", &m_draw_surface_lights_geometry);
 
-			ImGui::Checkbox   ("Animate Lights",    &m_animate_lights);
-			ImGui::SliderFloat("Animation Speed",   &m_animation_speed, 0.0f, 15.0f, "%.1f");
-
 			ImGui::PopItemWidth();
 		}
 
