@@ -19,6 +19,7 @@ set(SOURCE_FILES_CORE
 	buffer.cpp
 	buffer_binds.h
 	camera.cpp
+	control_map.cpp
 	core_app.cpp
 	filesystem.cpp
 	frustum.cpp
@@ -94,6 +95,7 @@ set(HEADER_FILES_CORE
 	camera.h
 	common.h
 	container_types.h
+	control_map.h
 	core_app.h
 	debug_output_gl.h
 	dynamic_tree.h
