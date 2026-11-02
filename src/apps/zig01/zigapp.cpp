@@ -828,7 +828,7 @@ void ZigApp::IrradianceConvolution(const std::shared_ptr<RenderTarget::Cube>&cub
 	m_irradiance_convolution_shader->bind();
 	m_irradiance_convolution_shader->setUniform("u_projection"sv, cubemap_rt->projection());
 
-    m_env_cubemap_rt->bindTexture(1);
+	m_env_cubemap_rt->bindTexture(1);
 
 	for(auto face: CubeFaces)
 	{
@@ -842,15 +842,15 @@ void ZigApp::IrradianceConvolution(const std::shared_ptr<RenderTarget::Cube>&cub
 
 void ZigApp::PrefilterEnvCubemap(const std::shared_ptr<RenderTarget::Cube>& cubemap_rt)
 {
-    m_prefilter_env_map_shader->bind();
+	m_prefilter_env_map_shader->bind();
 	m_prefilter_env_map_shader->setUniform("u_projection"sv, cubemap_rt->projection());
 
-    m_env_cubemap_rt->bindTexture(1);
+	m_env_cubemap_rt->bindTexture(1);
 
 	const auto max_mip_levels = uint8_t(glm::log2(float(cubemap_rt->width())));
 
 	for(auto mip = 0u; mip < max_mip_levels; ++mip)
-    {
+	{
 		const auto mip_width  = std::max(1u, uint32_t(cubemap_rt->width())  >> mip);
 		const auto mip_height = std::max(1u, uint32_t(cubemap_rt->height()) >> mip);
 
@@ -861,13 +861,13 @@ void ZigApp::PrefilterEnvCubemap(const std::shared_ptr<RenderTarget::Cube>& cube
 		const auto roughness = float(mip) / std::max(1.f, float(max_mip_levels - 1));
 		m_prefilter_env_map_shader->setUniform("u_roughness"sv, roughness);
 
-		for(auto face = 0u; face < 6; ++face)
-        {
+		for(auto face: CubeFaces)
+		{
 			m_prefilter_env_map_shader->setUniform("u_view"sv, cubemap_rt->face_view_transform(face));
 			cubemap_rt->bindRenderTargetMip(face, mip);
 
 			_skybox.drawBox();
-        }
+		}
 
 	}
 	bindScreenRenderTarget();
