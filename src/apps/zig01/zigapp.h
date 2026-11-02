@@ -5,6 +5,7 @@
 
 #include "common.h"
 #include "camera.h"
+#include "input_bind.h"
 #include "sample_window.h"
 #include "scene.h"
 #include "skybox.h"
@@ -230,6 +231,13 @@ private:
 	RGL::PP::GroundTruthAmbientOcclusion m_gtao_pp;
 
 	RGL::seconds_f _running_time { 0 };
+
+	RGL::ActionBind _exit_shortcut;
+	RGL::ActionBind _debug_ui_shortcut;
+	RGL::ActionBind _screenshot_shortcut;
+	RGL::ActionBind _toggle_volumetrics_shortcut;
+	RGL::ActionBind _toggle_bloom_shortcut;
+	RGL::ActionBind _toggle_ao_shortcut;
 
 	float m_bloom_threshold;
 	float m_bloom_knee;

@@ -4,7 +4,6 @@
 #include "filesystem.h"
 #include "gl_lookup.h"
 #include "hash_combine.h"
-#include "hash_vec2.h"
 #include "input.h"
 #include "instance_attributes.h"
 #include "constants.h"
@@ -22,7 +21,6 @@
 
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/random.hpp>
-// #include <glm/gtx/string_cast.hpp>  // glm::to_string
 #include "formatters_glm.h"   // IWYU pragma: keep
 
 #include <chrono>
@@ -94,6 +92,12 @@ ZigApp::ZigApp() :
 	_animSystem(_entities),
 	m_gamma               (2.2f),
 	_ibl_mip_level        (1.2f),
+	_exit_shortcut(KeyCode::Escape),
+	_debug_ui_shortcut(KeyCode::Backtick),
+	_screenshot_shortcut(KeyCode::F12),
+	_toggle_volumetrics_shortcut(KeyCode::F),
+	_toggle_bloom_shortcut(KeyCode::B),
+	_toggle_ao_shortcut(KeyCode::O),
 	m_bloom_threshold     (1.5f),
 	m_bloom_knee          (0.1f),
 	m_bloom_intensity     (0.9f),
@@ -540,25 +544,13 @@ void ZigApp::prepareClusterBuffers()
 
 void ZigApp::input()
 {
-    /* Close the application when Esc is released. */
-	if (Input::wasKeyPressed(KeyCode::Escape))
+	if(_exit_shortcut)
         stop();
 
-	if(Input::wasKeyPressed(KeyCode::Backtick))
+	if(_debug_ui_shortcut)
 		_debug_ui_enabled = not _debug_ui_enabled;
 
-	if(Input::isKeyDown(KeyCode::Equals))
-		m_camera_fov = std::min(m_camera_fov + 0.5f, 140.f);
-	else if(Input::isKeyDown(KeyCode::Minus))
-		m_camera_fov = std::max(m_camera_fov - 0.5f, 3.f);
-
-	if(_pov_light_id != NO_LIGHT_ID and Input::wasKeyPressed(KeyCode::F3))
-		_light_mgr.set_enabled(_pov_light_id, not _light_mgr.is_enabled(_pov_light_id));
-
-	if(_light_mgr.sun_id() != NO_LIGHT_ID and Input::wasKeyPressed(KeyCode::F4))
-		_light_mgr.set_enabled(_light_mgr.sun_id(), not _light_mgr.is_enabled(_light_mgr.sun_id()));
-
-	if (Input::wasKeyReleased(KeyCode::F12))
+	if(_screenshot_shortcut)
     {
 		// TODO: add "slot numer" suffix
         std::string filename = "27_clustered_shading";
@@ -568,11 +560,11 @@ void ZigApp::input()
 			Log::error("Failed screenshot [{}]", filename);
     }
 
-	if(Input::wasKeyPressed(KeyCode::F))
+	if(_toggle_volumetrics_shortcut)
 		m_volumetrics_pp.setEnabled(not m_volumetrics_pp.enabled());
-	if(Input::wasKeyPressed(KeyCode::B))
+	if(_toggle_bloom_shortcut)
 		m_bloom_pp.setEnabled(not m_bloom_pp.enabled());
-	if(Input::wasKeyPressed(KeyCode::O))
+	if(_toggle_ao_shortcut)
 		m_gtao_pp.setEnabled(not m_gtao_pp.enabled());
 
 	// if (Input::wasKeyReleased(KeyCode::Space))
