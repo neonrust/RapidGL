@@ -1158,8 +1158,7 @@ void ZigApp::render()
 	}
 
 	// Apply tone mapping
-	// TODO: continuously adjust 'm_exposure' depending on how bright the image is (see above)
-	m_tmo_pp.setExposure(m_camera.exposure());
+	m_tmo_pp.setBrightness(m_camera.brightness());
 	m_tmo_pp.setGamma(m_gamma);
 	m_tmo_pp.render(_rt, _final_rt);
 

@@ -280,9 +280,9 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 		if (ImGui::CollapsingHeader("Tonemapper"))
 		{
 			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.5f);
-			static float exposure = m_camera.exposure();
-			if(ImGui::SliderFloat("Exposure",             &exposure,             0.f, 10.f, "%.1f"))
-				m_camera.setExposure(exposure);
+			static float brighrness = m_camera.brightness();
+			if(ImGui::SliderFloat("Brightness",        &brighrness,             0.f, 10.f, "%.1f"))
+				m_camera.setBrightness(brighrness);
 			ImGui::SliderFloat("Gamma",                &m_gamma,                0.f, 10.f, "%.1f");
 			static float saturation { 1.f };
 			if(ImGui::SliderFloat("Saturation",        &saturation,             0.f, 5.0f, "%.1f"))

@@ -20,7 +20,7 @@ struct Tonemapping : public PostProcess
 
 	operator bool() const override;
 
-	void setExposure(float exposure);
+	void setBrightness(float brighrness);
 	void setGamma(float gamma);
 	void setSaturation(float saturation);
 

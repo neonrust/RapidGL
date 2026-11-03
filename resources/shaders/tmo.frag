@@ -7,7 +7,7 @@ out vec4 frag_color;
 
 layout(binding = 0) uniform sampler2D u_filter_texture;
 
-uniform float u_exposure;
+uniform float u_brightness;
 uniform float u_gamma;
 uniform float u_saturation;
 

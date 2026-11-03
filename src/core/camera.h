@@ -90,8 +90,8 @@ public:
 
 	inline glm::uvec2 viewportSize() const { return { m_width, m_height }; }
 
-	inline float exposure() const { return _exposure; }
-	inline void setExposure(float exposure) { _exposure = exposure; }
+	inline float brightness() const { return _brightness; }
+	inline void setBrightness(float brightness) { _brightness = brightness; }
 
 	size_t hash() const;
 
@@ -122,7 +122,6 @@ private:
 	float _yaw;
 	float _pitch;
 	Frustum _frustum;
-	float _exposure { .4f };
 
 	glm::quat m_orientation;
 	glm::vec3 m_position;
@@ -140,6 +139,7 @@ private:
 	glm::ivec2 m_mouse_pressed_position;
 	bool       m_is_dirty;
 	bool       m_is_mouse_move;
+	float _brightness { .4f };
 };
 
 } // RGL

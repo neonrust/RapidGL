@@ -48,9 +48,9 @@ void Tonemapping::render(const RGL::RenderTarget::Texture2d &in, RGL::RenderTarg
 	glDrawArrays(GL_TRIANGLES, 0, 3);
 }
 
-void Tonemapping::setExposure(float exposure)
+void Tonemapping::setBrightness(float brighrness)
 {
-	_shader->setUniform("u_exposure"sv, exposure);
+	_tmo_shader.setUniform("u_brightness"sv, brighrness);
 }
 
 void Tonemapping::setGamma(float gamma)
