@@ -153,7 +153,7 @@ int CoreApp::run_app()
 			const auto now = steady_clock::now();
 			const auto frame_duration = now - last_frame_time;
 			last_frame_time = now;
-			update(duration_cast<nanoseconds>(frame_duration));//m_frame_time);
+			update(duration_cast<nanoseconds>(frame_duration));
 
 			Input::update();
 
