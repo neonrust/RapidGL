@@ -139,7 +139,7 @@ private:
 	glm::ivec2 m_mouse_pressed_position;
 	bool       m_is_dirty;
 	bool       m_is_mouse_move;
-	float _brightness { .4f };
+	float _brightness { 0 };
 };
 
 } // RGL
