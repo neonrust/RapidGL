@@ -10,6 +10,9 @@ using namespace std::literals;
 namespace RGL::PP
 {
 
+static constexpr uint8_t s_downscale_limit { 8 }; // essentially max blur radius   TODO: should be screen size dependent
+static constexpr uint8_t s_max_iterations { 18 }; // max number of mipmap levels
+
 bool Bloom::create()
 {
 	static const std::filesystem::path dir = FileSystem::getResourcesPath() / "shaders";
@@ -67,8 +70,11 @@ void Bloom::render(const RenderTarget::Texture2d &in, RenderTarget::Texture2d &o
 	// if(not printed)
 	// 	std::printf("PP mip_levels: %d\n", in.mip_levels());
 
+
+	const auto mip_levels = Texture::calculateMipMapLevels(in.width(), in.height(), 0, s_downscale_limit, s_max_iterations);
+
 	// TODO: couldn't these loops be made entirely in the compute shader, i.e. binding all mips at once
-	for (auto idx = 0u; idx < in.mip_levels() - mip_cap; ++idx)
+	for (auto idx = 0u; idx < mip_levels - mip_cap; ++idx)
 	{
 		// if(not printed)
 		// 	std::fprintf(stderr, "PP dn size[%d]: %d x %d\n", idx, mip_size.x, mip_size.y);

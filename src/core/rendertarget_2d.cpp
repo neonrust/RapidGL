@@ -8,9 +8,6 @@ using namespace std::literals;
 namespace RGL::RenderTarget
 {
 
-// relevant for bloom downscale/upscale (blur)
-static constexpr uint8_t s_downscale_limit { 8 }; // essentially max blur radius   TODO: should be screen size dependent
-static constexpr uint8_t s_max_iterations { 18 }; // max number of mipmap levels
 static string_map<Texture2d *> s_all;
 
 std::vector<std::string_view> all_names()
@@ -42,6 +39,7 @@ void Texture2d::create(std::string_view name, uint32_t width, uint32_t height, C
 
 	if(not _name.empty())
 		s_all[_name] = this;
+
 	_has_color = color_cfg != Color::None;
 	_has_depth = depth_cfg != Depth::None;
 
@@ -51,7 +49,7 @@ void Texture2d::create(std::string_view name, uint32_t width, uint32_t height, C
 	m_metadata.height = GLuint(height);
 
 	if(color_cfg & Color::Texture or depth_cfg & Depth::Texture)
-		_mip_levels = Texture::calculateMipMapLevels(width, height, 0, s_downscale_limit, s_max_iterations);
+		_mip_levels = Texture::calculateMipMapLevels(width, height, 0, 0, 0);
 	else
 		_mip_levels = 1;
 
