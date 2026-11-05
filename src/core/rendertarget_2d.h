@@ -12,12 +12,16 @@
 namespace RGL::RenderTarget
 {
 
+std::vector<std::string_view> all_names();
+struct Texture2d;
+Texture2d *get(std::string_view name);
+
 static constexpr glm::ivec4 FullScreen { 0, 0, 0, 0 };
 
 // TODO: rename to something not containing the word "texture"... e.g. "flat" ?
 struct Texture2d
 {
-	void create(const char *name, uint32_t width, uint32_t height, Color::Config color_cfg=Color::Default, Depth::Config depth_cfg=Depth::Default);
+	void create(std::string_view name, uint32_t width, uint32_t height, Color::Config color_cfg=Color::Default, Depth::Config depth_cfg=Depth::Default);
 
 	// TODO: add attachments more generally?
 	//    attach(<channels>, <type>)
@@ -112,7 +116,7 @@ private:
 	uint_fast8_t _mip_levels { 1 };
 	ImageMeta m_metadata;
 
-	const char *_name { nullptr };
+	std::string_view _name;
 };
 
 } // RGL::RenderTarget

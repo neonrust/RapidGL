@@ -11,17 +11,37 @@ namespace RGL::RenderTarget
 // relevant for bloom downscale/upscale (blur)
 static constexpr uint8_t s_downscale_limit { 8 }; // essentially max blur radius   TODO: should be screen size dependent
 static constexpr uint8_t s_max_iterations { 18 }; // max number of mipmap levels
+static string_map<Texture2d *> s_all;
 
+std::vector<std::string_view> all_names()
+{
+	std::vector<std::string_view> names;
+	names.reserve(s_all.size());
+	for(const auto &[name, _]: s_all)
+		names.push_back(name);
+	return names;
+}
+
+Texture2d *get(std::string_view name)
+{
+	auto found = s_all.find(name);
+	if(found == s_all.end())
+		return nullptr;
+	return found->second;
+}
 
 // TODO: this is more of a "general" render target
 //   make a more texture-like specialization
 
-void Texture2d::create(const char *name, uint32_t width, uint32_t height, Color::Config color_cfg, Depth::Config depth_cfg)
+void Texture2d::create(std::string_view name, uint32_t width, uint32_t height, Color::Config color_cfg, Depth::Config depth_cfg)
 {
-	_name = name;
 	if(_fbo_id)
 		release();
 
+	_name = name;
+
+	if(not _name.empty())
+		s_all[_name] = this;
 	_has_color = color_cfg != Color::None;
 	_has_depth = depth_cfg != Depth::None;
 
@@ -117,6 +137,9 @@ void Texture2d::attach(GLenum attachment, GLenum internal_format, GLuint texture
 
 void Texture2d::release()
 {
+	if(not _name.empty())
+		s_all.erase(_name);
+
 	if(_fbo_id)
 		glDeleteFramebuffers(1, &_fbo_id);
 	_fbo_id = 0;
