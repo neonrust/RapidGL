@@ -86,10 +86,15 @@ void Texture2d::create(const char *name, uint32_t width, uint32_t height, Color:
 		attach(GL_DEPTH_ATTACHMENT, _depth_format, _depth_texture.texture_id(), _depth_rbo_id);
 
 	if(_has_color)
+	{
 		glNamedFramebufferDrawBuffer(_fbo_id, GL_COLOR_ATTACHMENT0);
+		glNamedFramebufferReadBuffer(_fbo_id, GL_COLOR_ATTACHMENT0);
+	}
 	else
-		glNamedFramebufferDrawBuffer(_fbo_id, GL_NONE);  // disable writing color
-	glNamedFramebufferReadBuffer(_fbo_id, GL_NONE);
+	{
+		glNamedFramebufferDrawBuffer(_fbo_id, GL_NONE);
+		glNamedFramebufferReadBuffer(_fbo_id, GL_NONE);
+	}
 
 	check_fbo(_fbo_id);
 #if defined(DEBUG)
