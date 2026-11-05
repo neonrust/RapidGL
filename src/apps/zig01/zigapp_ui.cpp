@@ -281,7 +281,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 		{
 			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.5f);
 			static float brighrness = m_camera.brightness();
-			if(ImGui::SliderFloat("Brightness",        &brighrness,             0.f, 10.f, "%.1f"))
+			if(ImGui::SliderFloat("Lightocity",        &brighrness,             -5.f, 5.f, "%.1f"))
 				m_camera.setBrightness(brighrness);
 			ImGui::SliderFloat("Gamma",                &m_gamma,                0.f, 10.f, "%.1f");
 			static float saturation { 1.f };
@@ -442,15 +442,16 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 				"pp_full_rt",
 				"final_rt",
 				"shadow_atlas",
+				"luma_filter",
 
-				"AO: lin-depth", // 10
+				"AO: lin-depth", // 11
 				"AO: filter depth",
 				"AO: noisy:0",
 				"AO: noisy:1",
 				"AO: result",
 
 				// 3d
-				"volumetric froxels [3d]",  // 15
+				"volumetric froxels [3d]",  // 16
 				"volumetric froxels back [3d]",
 				"volumetric froxels acc [3d]",
 			};
@@ -474,17 +475,19 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			case  7: rt = &_pp_full_rt; break;
 			case  8: rt = &_final_rt; break;
 			case  9: rt = &_shadow_atlas; break;
+			case 10: rt = RGL::RenderTarget::get("luma_filter"); break;
 			// 2d
-			case 10: t2 = &m_gtao_pp.linearDepthTexture(); break;
-			case 11: t2 = &m_gtao_pp.filteredDepthTexture(); break;
-			case 12: t2 = &m_gtao_pp.noisyTexture(0); break;
-			case 13: t2 = &m_gtao_pp.noisyTexture(1); break;
-			case 14: t2 = &_pp_ao_result; break;
+			case 11: t2 = &m_gtao_pp.linearDepthTexture(); break;
+			case 12: t2 = &m_gtao_pp.filteredDepthTexture(); break;
+			case 13: t2 = &m_gtao_pp.noisyTexture(0); break;
+			case 14: t2 = &m_gtao_pp.noisyTexture(1); break;
+			case 15: t2 = &_pp_ao_result; break;
 			// 3d
-			case 15: t3 = &m_volumetrics_pp.froxel_texture(0); break;
-			case 16: t3 = &m_volumetrics_pp.froxel_texture(1); break;
-			case 17: t3 = &m_volumetrics_pp.froxel_texture(2); break;
+			case 16: t3 = &m_volumetrics_pp.froxel_texture(0); break;
+			case 17: t3 = &m_volumetrics_pp.froxel_texture(1); break;
+			case 18: t3 = &m_volumetrics_pp.froxel_texture(2); break;
 			}
+			assert(rt != nullptr or t2 != nullptr or t3 != nullptr);
 			// const bool is_cube = current_image >= 1 and current_image <= 3;
 			// const bool is_depth = current_image == 4;
 

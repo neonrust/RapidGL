@@ -1,0 +1,56 @@
+#version 460
+
+#include "buffer_binds.h"
+
+layout(binding = 1, rgba16f) uniform readonly image2D u_input_image;
+
+uniform float u_weights[KERNEL_W * KERNEL_H];
+uniform float u_frame_time;
+uniform vec2  u_luma_range;
+uniform vec2  u_adaptation_rate;  // units per second {up, down}
+uniform float u_brightness;
+
+layout(std430, binding = SSBO_EXPOSURE_REGL) buffer ExposureRegl
+{
+	float exposure;    // used by tonemapper
+	float adapted_luma;
+	uint  initialized; // in practice a bool, but using a 4 byte type for uniformity
+	float luma_log_sum;
+};
+
+float luma(vec3 color)
+{
+    return dot(color, vec3(0.2126729, 0.7151522, 0.0721750));
+}
+
+layout(local_size_x = 1, local_size_y = 1) in;
+void main()
+{
+	luma_log_sum = 0;
+	uint weight_index = 0;
+	for(int y = 0; y < KERNEL_H; ++y)
+	{
+		for(int x = 0; x < KERNEL_W; ++x)
+		{
+			vec4 pixel_color = imageLoad(u_input_image, ivec2(x, y));
+			float pixel_luma = luma(pixel_color.rgb);
+			pixel_luma = max(1e-4, pixel_luma);
+			luma_log_sum += log2(pixel_luma) * u_weights[weight_index++];
+		}
+	}
+
+    float clamped_luma = clamp(luma_log_sum, u_luma_range.x, u_luma_range.y);
+
+    if(initialized == 0)
+    {
+    	adapted_luma = clamped_luma;
+     	initialized = 1;
+    }
+    else
+    {
+    	const float rate = clamped_luma > adapted_luma? u_adaptation_rate.x: u_adaptation_rate.y;
+	    adapted_luma += (clamped_luma - adapted_luma) * (1.0 - exp(-u_frame_time * rate));
+    }
+
+    exposure = 0.18 * exp2(u_brightness - adapted_luma);
+}

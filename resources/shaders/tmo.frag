@@ -1,5 +1,7 @@
 #version 450
 
+#include "buffer_binds.h"
+
 // Soruce: https://github.com/TheRealMJP/BakingLab/blob/master/BakingLab/ACES.hlsl
 
 in vec2 v_uv;
@@ -7,9 +9,16 @@ out vec4 frag_color;
 
 layout(binding = 0) uniform sampler2D u_filter_texture;
 
-uniform float u_brightness;
 uniform float u_gamma;
 uniform float u_saturation;
+
+layout(std430, binding = SSBO_EXPOSURE_REGL) readonly buffer ExposureRegl
+{
+	float exposure;    // used by tonemapper
+	float adapted_luma;
+	uint  initialized; // in practice a bool, but using a 4 byte type for uniformity
+	float luma_log_sum;
+};
 
 vec3 gammaCorrect(vec3 color)
 {
@@ -51,7 +60,8 @@ vec3 rgb2hsv(vec3 rgbColor);
 
 void main()
 {
-	vec4 x = u_exposure * texture(u_filter_texture, v_uv);
+	vec4 in_pixel = texture(u_filter_texture, v_uv);
+	vec4 x = exposure * in_pixel;
 
     vec3 color = Tonemap_Filmic_UC2Default(x.rgb);
 		 color = gammaCorrect(color);

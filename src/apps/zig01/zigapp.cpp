@@ -271,7 +271,7 @@ void ZigApp::init_app()
 	assert(_skybox);
 
 	// Post-processing steps
-	m_tmo_pp.create();
+	m_tmo_pp.create(Window::width(), Window::height());
 	assert(m_tmo_pp);
 
 	m_bloom_pp.create();
@@ -573,7 +573,10 @@ void ZigApp::input()
 
 void ZigApp::update(nanoseconds delta_time)
 {
+	// Log::debug(" frame_time: {}", delta_time.count() / 1000);
+
 	_running_time += seconds_f(delta_time);
+	m_tmo_pp.setFrameTime(float(seconds_f(delta_time).count()));
 
 	m_camera.update(delta_time);
 }
