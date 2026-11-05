@@ -72,7 +72,6 @@ struct Texture2d
 
 	// copy this texture to another texture
 	void copyTo(Texture2d &dest, BufferMask mask=ColorBuffer | DepthBuffer, TextureFilteringParam filter=TextureFilteringParam::Linear) const;
-	void copyFrom(const Texture2d &source, BufferMask mask=ColorBuffer | DepthBuffer, TextureFilteringParam filter=TextureFilteringParam::Linear);
 
 	void clear();
 	void clear(const glm::uvec4 &rect);

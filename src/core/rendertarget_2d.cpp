@@ -336,11 +336,6 @@ void Texture2d::copyTo(Texture2d &dest, BufferMask mask, TextureFilteringParam f
 						   GLenum(filter));
 }
 
-void Texture2d::copyFrom(const Texture2d &source, BufferMask mask, TextureFilteringParam filter)
-{
-	source.copyTo(*this, mask, filter);
-}
-
 void Texture2d::clear()
 {
 	if(_has_color)
