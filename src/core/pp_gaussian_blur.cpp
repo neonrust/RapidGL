@@ -1,4 +1,5 @@
 #include "pp_gaussian_blur.h"
+#include "log.h"
 
 using namespace std::literals;
 
@@ -40,7 +41,7 @@ void Blur::setSigma(float sigma)
 	if(kernelSize > MAX_WEIGHTS)
 	{
 		auto new_sigma = float(MAX_WEIGHTS) / sigma_kernel_factor;
-		std::fprintf(stderr, "PP::Blur: capped kernel size 17; sigma %.1f -> %.1f\n", sigma, new_sigma);
+		Log::debug("PP::Blur: capped kernel size 17; sigma {:.1f} -> {:.1f}\n", sigma, new_sigma);
 		assert(kernelSize <= MAX_WEIGHTS); // limit dictated by shader code (MAX_SIZE + 1)
 		sigma = new_sigma;
 		kernelSize = MAX_WEIGHTS;
@@ -81,7 +82,7 @@ void Blur::computeWeights(float sigma, size_t kernelSize)
 	_weights[kernelSize - 1] = 1.f; // center pixel is always 1 (before normalization); e^0 == 1
 	sum += 1.f;
 
-	std::printf("PP::Blur: sigma %.1f -> %lu weights\n", sigma, _weights.size());
+	Log::debug("PP::Blur: sigma {:.1f} -> {} weights\n", sigma, _weights.size());
 
 	// normalize the weights (total should be 1.0)
 	for(auto &w: _weights)
