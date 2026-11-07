@@ -26,6 +26,20 @@ CPMAddPackage("gh:g-truc/glm#1.0.3")
 CPMAddPackage("gh:martinus/unordered_dense@4.11.0")
 CPMAddPackage("gh:martinus/svector@1.4.0")
 #CPMAddPackage("gh:libjxl/libjxl@0.7.2")   TODO fails with "set_target_properties can not be used on an ALIAS target"
+CPMAddPackage(
+    NAME signals
+    GITHUB_REPOSITORY TheWisp/signals
+    GIT_TAG 7ff59d1bc6387337ef34856a450be34cfa2c9e51
+    DOWNLOAD_ONLY TRUE   # its own CMakeLists only builds a benchmark executable
+)
+if(signals_ADDED)
+    # header is flat in the repo root; stage it so it's included as <TheWisp/signals.hpp>
+    set(signals_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/signals-include)
+    configure_file(${signals_SOURCE_DIR}/signals.hpp ${signals_INCLUDE_DIR}/TheWisp/signals.hpp COPYONLY)
+    add_library(signals INTERFACE)
+    target_include_directories(signals INTERFACE ${signals_INCLUDE_DIR})
+endif()
+
 
 CPMAddPackage(
     NAME boost-ut
