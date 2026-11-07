@@ -85,6 +85,7 @@ set(HEADER_FILES_CORE
 	component/material.h
 	component/model.h
 	component/transform.h
+	component/trigger.h
 	gui/font.h
 	gui/gui.h
 	gui/imgui_impl_glfw.h
