@@ -51,6 +51,7 @@ set(SOURCE_FILES_CORE
 	skybox.cpp
 	tag_file.cpp
 	texture.cpp
+	trigger.cpp
 	util.cpp
 	variable.cpp
 	variable_master.cpp
@@ -152,6 +153,7 @@ set(HEADER_FILES_CORE
 	tag_file.h
 	texture.h
 	timer.h
+	trigger.h
 	ubo.h
 	util.h
 	variable.h
@@ -199,6 +201,7 @@ target_link_libraries(${CORE_LIB_NAME}
 	imguizmo
 	glm::glm
 	tinyddsloader
+	signals
 )
 
 # target_compile_options(${CORE_LIB_NAME}
