@@ -51,7 +51,8 @@ set(SOURCE_FILES_CORE
 	skybox.cpp
 	tag_file.cpp
 	texture.cpp
-	trigger.cpp
+	# trigger.cpp
+	trigger_state.cpp
 	util.cpp
 	variable.cpp
 	variable_master.cpp
@@ -151,18 +152,18 @@ set(HEADER_FILES_CORE
 	skybox.h
 	spatial_allocator.h
 	ssbo.h
+	stack_container.h
 	tag_file.h
 	texture.h
 	timer.h
-	trigger.h
+	# trigger.h
+	trigger_state.h
 	ubo.h
 	util.h
 	variable.h
 	variable_master.h
 	window.h
 	zstr.h
-	stack_container.h
-	constants.h
 )
 
 
