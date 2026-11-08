@@ -114,6 +114,7 @@ public:
 	[[nodiscard]] bounds::AABB proxyAABB(TreeProxyID id) const;
 
 	DynamicTreeStats query(bounds::AABB aabb, uint64_t maskBits, bool requireAllBits, QueryCb callback) const; // DynamicTreeStats b3DynamicTree_Query
+	DynamicTreeStats query(glm::vec3 point, uint64_t maskBits, bool requireAllBits, QueryCb callback) const; // all proxies containing 'point'
 	DynamicTreeStats queryClosest(glm::vec3 point, uint64_t maskBits, bool requireAllBits, QueryClosestCb callback, float &minDistanceSqr) const; // b3DynamicTree_QueryClosest
 	DynamicTreeStats castRay(const TreeRayCastInput &input, uint64_t maskBits, bool requireAllBits, CastRayCb callback) const; // DynamicTreeStats b3DynamicTree_RayCast
 	DynamicTreeStats castBox(const TreeBoxCastInput &input, uint64_t maskBits, bool requireAllBits, CastBoxCb callback) const;
@@ -1085,6 +1086,13 @@ DynamicTreeStats DynamicTree<UserT>::query(bounds::AABB aabb, uint64_t maskBits,
 	}
 
 	return stats;
+}
+
+template<typename UserT>
+DynamicTreeStats DynamicTree<UserT>::query(glm::vec3 point, uint64_t maskBits, bool requireAllBits, QueryCb callback) const
+{
+	// zero-size box; the AABB overlap test is inclusive, so points on a face count as inside
+	return query(bounds::AABB(point, point), maskBits, requireAllBits, std::move(callback));
 }
 
 template<typename UserT>
