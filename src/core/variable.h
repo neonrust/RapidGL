@@ -50,6 +50,7 @@ struct ColorRgba
 };
 using BitMask32 = uint32_t;
 
+using VariableValue = std::variant<int_t, real_t, std::string, ColorRgb, ColorRgba, glm::vec3, glm::vec4, glm::mat4>;;
 
 class Variable
 {
@@ -131,7 +132,7 @@ private:
 	static std::pair<std::string_view, std::string_view> name_split(std::string_view name);
 	void set_name(std::string_view name);
 
-	using value_t = std::variant<int_t, real_t, std::string, ColorRgb, ColorRgba, glm::vec3, glm::vec4, glm::mat4>;
+	using value_t = VariableValue;
 
 	void value2string(const value_t &value, std::string &s) const;
 
