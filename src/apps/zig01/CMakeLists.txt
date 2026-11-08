@@ -9,6 +9,7 @@ set(SOURCE_FILES_EXE
 	zigapp.cpp
 	zigapp_debug_draw.cpp
 	zigapp_ui.cpp
+	zig_scene.cpp
 	main.cpp
 )
 
@@ -17,6 +18,7 @@ set(HEADER_FILES_EXE
 	crawler_controller.h
 	scene_loader.h
 	zigapp.h
+	zig_scene.h
 )
 
 
