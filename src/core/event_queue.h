@@ -9,7 +9,7 @@
 namespace RGL
 {
 
-template<typename EventT, typename EventID>
+template<typename EventT>
 class EventQueue
 {
 public:
@@ -26,21 +26,21 @@ private:
 	std::deque<EventT> _queue;
 };
 
-template<typename EventT, typename EventID>
-inline EventQueue<EventT, EventID>::EventQueue(size_t reserve)
+template<typename EventT>
+inline EventQueue<EventT>::EventQueue(size_t reserve)
 {
 	_queue.reserve(std::max(reserve, 32lu));
 }
 
-template<typename EventT, typename EventID>
-inline void EventQueue<EventT, EventID>::push(const EventT event, bool replace_equivalent)
+template<typename EventT>
+inline void EventQueue<EventT>::push(const EventT event, bool replace_equivalent)
 {
 	// TODO: `replace_equivalent`
 	_queue.push_back(event);
 }
 
-template<typename EventT, typename EventID>
-inline size_t EventQueue<EventT, EventID>::process(std::function<bool (const EventT &)> handler)
+template<typename EventT>
+inline size_t EventQueue<EventT>::process(std::function<bool (const EventT &)> handler)
 {
 	if(_queue.empty())
 		return 0;
@@ -68,8 +68,8 @@ inline size_t EventQueue<EventT, EventID>::process(std::function<bool (const Eve
 	}
 }
 
-template<typename EventT, typename EventID>
-inline size_t EventQueue<EventT, EventID>::remove(std::function<bool (const EventT &)> predicate)
+template<typename EventT>
+inline size_t EventQueue<EventT>::remove(std::function<bool (const EventT &)> predicate)
 {
 	static std::vector<typename decltype(_queue)::const_iterator> to_remove;
 	to_remove.reserve(8);
