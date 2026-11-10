@@ -23,13 +23,17 @@ public:
 
 	dense_set<entt::entity> queryTriggers(const RGL::bounds::AABB &aabb);
 
+
+	// struct TriggerProxy
+	// {
+	// 	entt::entity trigger_ent;
+	// 	RGL::component::TriggerGeneral general;
+	// };
+	const RGL::DynamicTree<entt::entity> &triggers() const { return _trigger_bvh; }
+
 private:
-	struct TriggerProxy
-	{
-		entt::entity trigger_ent;
-		RGL::component::TriggerGeneral general;
-	};
-	RGL::DynamicTree<TriggerProxy> _trigger_bvh;
+	// global (rationale; triggers might be connected across rooms)
+	RGL::DynamicTree<entt::entity> _trigger_bvh;
 	// std::vector<std::pair<Plane, TriggerProxy>> _trigger_half_space;
 
 	string_map<entt::entity> _nameToTrigger;
