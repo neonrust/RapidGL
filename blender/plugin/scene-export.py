@@ -397,10 +397,10 @@ def write_scene_data_wrapped(fp, context, options=None):
 
 	for obj in bpy.context.scene.objects:
 		if obj.type == 'MESH':
-			# only linked objects
 			if obj.get('walkable') == True:
 				walkable.add(grid_of(obj))
 			else:
+				# only linked objects
 				is_linked = obj.data.library is not None
 				if is_linked:
 					collect_anim_lengths(obj)
