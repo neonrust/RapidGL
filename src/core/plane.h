@@ -18,13 +18,15 @@ struct Plane
 	void set(const glm::vec3 &normal, float offset);
 	void set(const glm::vec4 &normal_and_offset);
 
-	inline glm::vec3 normal() const { return _normal; }
-	inline float offset() const { return _offset; }
+	[[nodiscard]] inline glm::vec3 normal() const { return _normal; }
+	[[nodiscard]] inline float offset() const { return _offset; }
 
-	inline operator glm::vec4 () const { return { _normal, _offset }; }
+	[[nodiscard]] inline operator glm::vec4 () const { return { _normal, _offset }; }
+
+	[[nodiscard]] inline operator bool () const { return _normal != glm::vec3(0); }
 
 private:
-	glm::vec3 _normal { 0.f, 1.f, 0.f };
+	glm::vec3 _normal { 0.f };
 	float _offset { 0.f };
 };
 
