@@ -103,6 +103,7 @@ set(HEADER_FILES_CORE
 	debug_output_gl.h
 	dynamic_tree.h
 	entity_system.h
+	event_queue.h
 	filesystem.h
 	formatters_entt.h
 	formatters_glm.h
