@@ -19,7 +19,16 @@ enum class TriggerShape
 
 struct TriggerGeneral
 {
+	inline TriggerGeneral(TriggerShape s) : shape(s) {};
+
 	TriggerShape shape;
+
+	bool enabled { true };
+	uint8_t trigger_limit { 0 }; // 0 = no limit
+	uint8_t triggered_count { 0 };
+	uint8_t ignore_count  { 0 };
+	glm::vec3 facing_direction { 0 };
+	float direction_tolerance { 45.f };
 };
 
 // preferrably, these should not have a spatial location or orientation,
