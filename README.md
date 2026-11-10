@@ -55,9 +55,3 @@ and [Jeremiah van Oosten's DX12 demo](https://github.com/jpvanoosten/VolumeTiled
 For light culling, I used view aligned AABB grid. During the lighting stage. 
 Only the visible clusters are taken into account (it greatly improves the performance as we limit the searching domain). 
 Also, the contributing lights read back from the GPU to determine if its shadow map rendering may be skipped.
-
-The demo is able to render ~100k lights at interactive frame rates (> 30FPS) on NVidia GTX 1660 Ti with Max-Q Design at 1920x1080 resolution.
-
-<img src="screenshots/27_clustered_shading0.png" width="50%" height="50%" alt="Clustered Forward Shading implementation." />
-
-<img src="screenshots/27_clustered_shading1.png" width="50%" height="50%" alt="Clustered Forward Shading implementation with Area Lights." />
