@@ -10,10 +10,12 @@ namespace RGL
 class ControlMap
 {
 public:
-	ControlMap(std::string_view name);
+	ControlMap();
+
+	void set_name(std::string_view name);
 
 	bool add(std::string_view name, ActionBind *bind);
-	bool add(std::string_view name, AxisBind   *bind);
+	bool add(std::string_view name, AxisBind *bind);
 
 	inline       string_map<ActionBind *> &actions()       { return _actions; };
 	inline const string_map<ActionBind *> &actions() const { return _actions; };
@@ -23,8 +25,12 @@ public:
 		  ActionBind &action(std::string_view bind_name);
 	const ActionBind &action(std::string_view bind_name) const;
 
-		  AxisBind &axis(std::string_view bind_name);
-	const AxisBind &axis(std::string_view bind_name) const;
+		  AxisBind1d &axis(std::string_view bind_name);
+	const AxisBind1d &axis(std::string_view bind_name) const;
+		  AxisBind2d &axis2d(std::string_view bind_name);
+	const AxisBind2d &axis2d(std::string_view bind_name) const;
+
+	bool verify_bound();
 
 private:
 	string_map<ActionBind *> _actions;
