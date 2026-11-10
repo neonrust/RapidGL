@@ -44,6 +44,8 @@ public:
 
 	[[nodiscard]] AABB transform(const glm::mat4 &tfm) const;
 
+	[[nodiscard]] inline operator bool () const { return not empty(); }
+
 protected:
 	glm::vec3 _min;
 	glm::vec3 _max;
