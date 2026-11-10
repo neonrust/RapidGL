@@ -33,7 +33,7 @@ This framework consists of two major parts:
   - contact shadows
   - multi-sampling (3z3 or 5-tap fixed layout)
 - Volumetric light scattering; inject + accumulate method (all lights supported, with varying degrees of realism).
-- SS Ambient Occlusion (GTAO) - shader lifted from box3d's sample renderer 
+- Screen-space Ambient Occlusion (GTAO) - shader lifted from box3d's sample renderer 
 - BVH-based scene culling (not really rendering, but it's pretty closely related) - BVH tree lifted (and ported to C++) from box3d
 - Automatic exposure - based on a weighted 8x8 grid of the rendered image
 
