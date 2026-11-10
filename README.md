@@ -25,26 +25,26 @@ This framework consists of two major parts:
 ### Rendering features
 
 - Clustered light culling (a.k.a. forward+, I think?)
-- PBR shading
-- Light types: point, directional, spot, rectangle, tube, sphere and disc.
+- PBR shading (albedo, metallic, roughness, emission & ambient occlusion)
+- Light types: point, directional, spot, rectangle, tube, sphere and disc (with varying degrees of realism).
 - Shadow mapping. Uses one large atlas. Supports point, directional and spot lights.
   - CSM
   - shadow range compression
   - contact shadows
 - Volumetric light scattering; inject + accumulate method (all lights supported, with varying degrees of realism).
-- Ambient Occlusion (GTAO) - shader lifted from box3d
-- BVH-based scene culling (not really rendering, but it's pretty closely related) - BVH tree lifted from box3d
-
+- SS Ambient Occlusion (GTAO) - shader lifted from box3d's sample renderer 
+- BVH-based scene culling (not really rendering, but it's pretty closely related) - BVH tree lifted (and ported to C++) from box3d
+- Automatic exposure - based on a weighted 8x8 grid of the rendered image
 
 ## Building
 
-After cloning the repository, run the following command in the root directory to generate project files with the default build system for your system:
+After cloning the repository, run the following command in the root directory to generate build files for your system:
 
 ```
-cmake -B build
+cmake -B mybuild
 ```
 
-Will result in a buildable "solution" in the *build* directory.
+Will result in a buildable "solution" in the *mybuild* directory.
 
 ### Clustered Forward Shading
 
