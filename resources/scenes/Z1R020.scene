@@ -423,6 +423,16 @@ WALKABLE00
 grid    062 0 -4
 WALKABLE00
 grid    062 0 -3
+WALKABLE00
+grid    061 0 -3
+WALKABLE00
+grid    061 0 -4
+WALKABLE00
+grid    071 -1 -6
+WALKABLE00
+grid    072 -1 -6
+WALKABLE00
+grid    073 -1 -6
 LIGHT   04Moon
 type    04spot
 color   0a77 156 248
