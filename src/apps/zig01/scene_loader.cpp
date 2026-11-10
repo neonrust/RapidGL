@@ -10,11 +10,12 @@
 #include "game_time.h"
 #include "lights.h"
 #include "log.h"
-#include "scene.h"
 #include "filesystem.h"
 #include "tag_file.h"
 #include "light_type.h"
 #include "light_manager.h"
+
+#include "zig_scene.h"
 
 #include <variant>
 #include <chrono>
@@ -149,7 +150,7 @@ static bool is_entry_start(std::string_view tag)
 	return tag[0] >= 'A' and tag[0] <= 'Z';
 }
 
-uint32_t SceneLoader::load(std::string_view name, RGL::Scene &scene)
+uint32_t SceneLoader::load(std::string_view name, ZigScene &scene)
 {
 	_filename = name;
 
@@ -506,7 +507,7 @@ static bool read_material_override(RGL::tag_file &fp, dense_map<uint32_t, RGL::M
 	return true;
 }
 
-bool SceneLoader::read_config(RGL::tag_file &fp, RGL::Scene &)
+bool SceneLoader::read_config(RGL::tag_file &fp, ZigScene &)
 {
 	// Log::debug("[{}:{}] read_config", fp.file_path().filename().native(), fp.line_num());
 
@@ -531,7 +532,7 @@ bool SceneLoader::read_config(RGL::tag_file &fp, RGL::Scene &)
 	return false;
 }
 
-bool SceneLoader::read_mesh(RGL::tag_file &fp, RGL::Scene &scene)
+bool SceneLoader::read_mesh(RGL::tag_file &fp, ZigScene &scene)
 {
 	// Log::debug("[{}:{}] read_mesh: {}", fp.file_path().filename().native(), fp.line_num(), fp.value());
 
@@ -645,7 +646,7 @@ bool SceneLoader::read_mesh(RGL::tag_file &fp, RGL::Scene &scene)
 	return true;
 }
 
-bool SceneLoader::read_light(RGL::tag_file &fp, RGL::Scene &scene)
+bool SceneLoader::read_light(RGL::tag_file &fp, ZigScene &scene)
 {
 	// Log::debug("[{}:{}] read_light: {}", fp.file_path().filename().native(), fp.line_num(), fp.value());
 
@@ -912,7 +913,7 @@ bool SceneLoader::read_light(RGL::tag_file &fp, RGL::Scene &scene)
 	return not at_next_entry;
 }
 
-bool SceneLoader::read_entity(RGL::tag_file &fp, RGL::Scene &scene)
+bool SceneLoader::read_entity(RGL::tag_file &fp, ZigScene &scene)
 {
 	// Log::debug("[{}:{}] read_entity: {}", fp.file_path().filename().native(), fp.line_num(), fp.value());
 
@@ -968,7 +969,7 @@ bool SceneLoader::read_entity(RGL::tag_file &fp, RGL::Scene &scene)
 	return true;
 }
 
-bool SceneLoader::read_control(RGL::tag_file &fp, RGL::Scene &scene)
+bool SceneLoader::read_control(RGL::tag_file &fp, ZigScene &scene)
 {
 	Log::debug("[{}:{}] read_control: {}", fp.file_path().filename().native(), fp.line_num(), fp.value());
 
@@ -1021,7 +1022,7 @@ bool SceneLoader::read_control(RGL::tag_file &fp, RGL::Scene &scene)
 	return true;
 }
 
-bool SceneLoader::read_trigger(RGL::tag_file &fp, RGL::Scene &scene)
+bool SceneLoader::read_trigger(RGL::tag_file &fp, ZigScene &scene)
 {
 	// Log::debug("[{}:{}] read_trigger: {}", fp.file_path().filename().native(), fp.line_num(), fp.value());
 
@@ -1031,11 +1032,33 @@ bool SceneLoader::read_trigger(RGL::tag_file &fp, RGL::Scene &scene)
 	auto name = std::string(fp.value());
 
 	glm::vec3 position(0);
-	RGL::bounds::AABB bounds;
+	RGL::bounds::AABB aabb;
+	RGL::bounds::Sphere sphere;
+	RGL::Plane plane;
 
+	std::string_view bounds_type;
 
-	auto add_trigger = [&name]() {
-		Log::warning("Add trigger NOT IMPLEMENTED: {}", name);
+	// NOTE: the trigger connection is a separate entity, connecting trigger name to something
+
+	auto add_trigger = [&]() {
+
+		if(bounds_type == "aabb")
+		{
+			assert(aabb);
+			scene.addTrigger(name, aabb);
+		}
+		else if(bounds_type == "sphere")
+		{
+			assert(sphere);
+			scene.addTrigger(name, sphere);
+		}
+		// else if(bounds_type == "plane")
+		// {
+		// 	assert(plane);
+		// 	scene.addTrigger(name, plane);
+		// }
+		else if(not name.empty())
+			assert(false);
 	};
 
 	while(fp)
@@ -1047,10 +1070,27 @@ bool SceneLoader::read_trigger(RGL::tag_file &fp, RGL::Scene &scene)
 			add_trigger();
 			return false;
 		}
-		else if(tag == Property::Grid)
-			position = pop_grid_pos(value);
-		else if(tag == "bounds"sv and pop_bounds(value, bounds))
-			;
+		else if(tag == Property::Position)
+			position = pop_vec3(value);
+		else if(tag == "bounds"sv)
+			bounds_type = value;
+		else if(tag == "extent"sv and bounds_type == "aabb")
+		{
+			const auto extent = pop_vec3(value);
+			aabb = RGL::bounds::AABB(position - extent/2.f, position + extent/2.f);
+		}
+		else if(tag == "radius"sv and bounds_type == "sphere")
+		{
+			const auto radius = pop_number(value);
+			sphere.setCenter(position);
+			sphere.setRadius(radius);
+		}
+		// else if(tag == "plane"sv and bounds_type == "plane")
+		// {
+		// 	const auto normal = pop_vec3(value);
+		// 	const auto offset = pop_number(value);
+		// 	plane = RGL::Plane(normal, offset);
+		// }
 		else
 			unexpected_tag(fp, "trigger");
 	}
