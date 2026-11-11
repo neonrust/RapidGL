@@ -29,7 +29,7 @@ def to_engine_space(point):
 
 def fv(value, decimals=None):
 	if isinstance(value, float):
-		return '%g' % (value if decimals is None else round(value, decimals))
+		return '%g' % ((value if decimals is None else round(value, decimals)) + 0.0)  # + 0.0: no "-0"
 	else:
 		return ' '.join(( fv(v, decimals) for v in value ))
 
@@ -324,6 +324,24 @@ def dump_walkable(fp, obj):
 	wtag(fp, 'WALKABLE', '')
 	wgrid_pos(fp, obj)
 
+def dump_trigger(fp, obj):
+	center, extent, radius, warnings = trigger_bounds(obj)
+	for warning in warnings:
+		print('WARNING: trigger %s: %s' % (obj.name, warning))
+
+	shape = obj.game_trigger.shape
+	wtag(fp, 'TRIGGER', obj.name)
+	wtag(fp, 'bounds', TRIGGER_BOUNDS_NAME[shape])
+	# position must come before the size tags (the loader uses it when reading them)
+	wtag(fp, 'position', fv(to_engine_space(center), 2))
+	if shape == 'BOX':
+		extent = to_engine_space(extent)
+		wtag(fp, 'extent', fv([ abs(v) for v in extent ], 2))  # the Y-up conversion negates one axis
+	elif shape == 'SPHERE':
+		wtag(fp, 'radius', fv(radius, 2))
+	elif shape == 'CYLINDER':
+		wtag(fp, 'axis', fv(to_engine_space(extent), 2))  # bottom-to-top cap vector
+		wtag(fp, 'radius', fv(radius, 2))
 
 def dump_empty(fp, obj):
 	name = obj.name
@@ -434,8 +452,12 @@ def write_scene_data_wrapped(fp, context, options=None):
 			dump_light(fp, obj)
 
 		elif obj.type == 'EMPTY':
-			print('dump_empty:', obj.name)
-			dump_empty(fp, obj)
+			if obj.game_trigger.enabled:
+				print('dump_trigger:', obj.name)
+				dump_trigger(fp, obj)
+			else:
+				print('dump_empty:', obj.name)
+				dump_empty(fp, obj)
 
 	if hidden_skipped:
 		print('Hidden objects skipped:', hidden_skipped)
@@ -718,6 +740,193 @@ class VIEW3D_GGT_tube_light_length(bpy.types.GizmoGroup):
 		self.length_gizmo.matrix_basis = obj.matrix_world.normalized() @ Matrix.Rotation(PI/2, 4, 'Y')
 
 # ----------------------------------------------------------------------------
+# Game triggers
+#
+# A trigger is an empty with game_trigger.enabled; its shape is defined like Blender's own empty
+# display shapes, i.e. size = Empty "Size" * scale (default size 1 = 2x2x2, one grid cube):
+#   box:      cube empty, axis-aligned in the engine (rotation is locked; a rotated box exports its bounds)
+#   sphere:   sphere empty, radius = size
+#   cylinder: along local Z, radius = size, height = 2*size (no such empty shape, drawn as an overlay)
+
+# enum items are stored by index in .blend files: only append
+TRIGGER_SHAPE_ITEMS = (
+	('BOX', "Box", "Axis-aligned box", 'MESH_CUBE', 0),
+	('SPHERE', "Sphere", "Sphere", 'MESH_UVSPHERE', 1),
+	('CYLINDER', "Cylinder", "Cylinder along local Z", 'MESH_CYLINDER', 2),
+)
+TRIGGER_ICONS = { item[0]: item[3] for item in TRIGGER_SHAPE_ITEMS }
+TRIGGER_EMPTY_DISPLAY = { 'BOX': 'CUBE', 'SPHERE': 'SPHERE', 'CYLINDER': 'PLAIN_AXES' }
+TRIGGER_BOUNDS_NAME = { 'BOX': 'aabb', 'SPHERE': 'sphere', 'CYLINDER': 'cylinder' }
+
+
+def trigger_settings_update(self, context):
+	'''match the empty's display to the trigger shape'''
+	obj = self.id_data
+	if self.enabled:
+		obj.empty_display_type = TRIGGER_EMPTY_DISPLAY[self.shape]
+	# the engine's boxes are axis-aligned
+	obj.lock_rotation = [ self.enabled and self.shape == 'BOX' ]*3
+
+
+class GameTriggerSettings(PropertyGroup):
+	enabled: BoolProperty(
+		name="Game Trigger",
+		description="Export this empty as a trigger",
+		default=False,
+		update=trigger_settings_update,
+	)
+	shape: EnumProperty(
+		name="Shape",
+		items=TRIGGER_SHAPE_ITEMS,
+		default='BOX',
+		update=trigger_settings_update,
+	)
+
+
+def is_axis_aligned(m3):
+	return all(max(abs(v) for v in col.normalized()) > 0.9999 for col in m3.col)
+
+def trigger_bounds(obj):
+	'''trigger shape in Blender world space: center, extent (box size, or cylinder axis), radius, warnings'''
+	m3 = obj.matrix_world.to_3x3()
+	center = obj.matrix_world.translation.copy()
+	size = obj.empty_display_size
+	shape = obj.game_trigger.shape
+	extent, radius, warnings = None, None, []
+
+	if shape == 'BOX':
+		# world-space bounds of the box (the same box when it's not rotated)
+		extent = Vector([ 2*size*sum(abs(v) for v in row) for row in m3 ])
+		if not is_axis_aligned(m3):
+			warnings.append("Rotated: exports its axis-aligned bounds")
+	elif shape == 'SPHERE':
+		scales = [ col.length for col in m3.col ]
+		radius = size*max(scales)
+		if max(scales) - min(scales) > 1e-4*max(scales):
+			warnings.append("Non-uniform scale: uses the largest radius")
+	elif shape == 'CYLINDER':
+		extent = m3 @ Vector((0, 0, 2*size))
+		rx, ry = m3.col[0].length, m3.col[1].length
+		radius = size*max(rx, ry)
+		if abs(rx - ry) > 1e-4*max(rx, ry):
+			warnings.append("X & Y scale differ: uses the largest radius")
+
+	return center, extent, radius, warnings
+
+
+class DATA_PT_game_trigger(Panel):
+	bl_label = "Game Trigger"
+	bl_space_type = 'PROPERTIES'
+	bl_region_type = 'WINDOW'
+	bl_context = 'data'
+
+	@classmethod
+	def poll(cls, context):
+		obj = context.object
+		return obj is not None and obj.type == 'EMPTY'
+
+	def draw_header(self, context):
+		self.layout.prop(context.object.game_trigger, 'enabled', text="")
+
+	def draw(self, context):
+		layout = self.layout
+		obj = context.object
+		settings = obj.game_trigger
+
+		if not settings.enabled:
+			layout.label(text="Not a trigger (tick the box to make it one)")
+			return
+
+		box = layout.box()
+		box.label(text="Exports as: %s TRIGGER" % TRIGGER_BOUNDS_NAME[settings.shape].upper(), icon=TRIGGER_ICONS[settings.shape])
+
+		layout.prop(settings, 'shape', expand=True)
+		layout.prop(obj, 'empty_display_size', text="Size")
+
+		center, extent, radius, warnings = trigger_bounds(obj)
+		col = layout.column(align=True)
+		if settings.shape == 'BOX':
+			col.label(text="Extent: %s" % ' × '.join('%.2f' % v for v in extent))
+		elif settings.shape == 'SPHERE':
+			col.label(text="Radius: %.2f" % radius)
+		elif settings.shape == 'CYLINDER':
+			col.label(text="Radius: %.2f   Height: %.2f" % (radius, extent.length))
+		for warning in warnings:
+			row = col.row()
+			row.alert = True
+			row.label(text=warning, icon='ERROR')
+
+
+class OBJECT_OT_add_game_trigger(Operator):
+	bl_idname = "object.add_game_trigger"
+	bl_label = "Add Game Trigger"
+	bl_options = {'REGISTER', 'UNDO'}
+
+	shape: EnumProperty(name="Shape", items=TRIGGER_SHAPE_ITEMS)
+
+	def execute(self, context):
+		bpy.ops.object.empty_add(type=TRIGGER_EMPTY_DISPLAY[self.shape], radius=1.0)
+		obj = context.active_object
+		obj.name = "Trigger"
+		obj.game_trigger.shape = self.shape
+		obj.game_trigger.enabled = True
+		return {'FINISHED'}
+
+
+class VIEW3D_MT_game_trigger_add(bpy.types.Menu):
+	bl_idname = "VIEW3D_MT_game_trigger_add"
+	bl_label = "Game Trigger"
+
+	def draw(self, context):
+		for shape, name, _, icon, _ in TRIGGER_SHAPE_ITEMS:
+			self.layout.operator(OBJECT_OT_add_game_trigger.bl_idname, text=name, icon=icon).shape = shape
+
+
+def menu_func_add_trigger(self, context):
+	self.layout.separator()
+	self.layout.menu(VIEW3D_MT_game_trigger_add.bl_idname, icon='MESH_CUBE')
+
+
+# cylinder along Z = tube outline (along X) rotated
+TRIGGER_CYLINDER_OUTLINE = Matrix.Rotation(-PI/2, 4, 'Y')
+
+def draw_trigger_cylinders():
+	context = bpy.context
+	theme = context.preferences.themes[0].view_3d
+	active = context.view_layer.objects.active
+
+	lines = {}  # color -> coords
+	for obj in context.scene.objects:
+		if obj.type != 'EMPTY' or not obj.game_trigger.enabled or obj.game_trigger.shape != 'CYLINDER' or not obj.visible_get():
+			continue
+		# same colors as Blender's own empties
+		if obj.select_get():
+			color = theme.object_active if obj == active else theme.object_selected
+		else:
+			color = getattr(theme, 'empty', (0.0, 0.0, 0.0))
+		size = obj.empty_display_size
+		m = obj.matrix_world @ TRIGGER_CYLINDER_OUTLINE
+		lines.setdefault(tuple(color), []).extend(m @ v for v in tube_outline(size, 2*size, segments=32))
+	if not lines:
+		return
+
+	shader = gpu.shader.from_builtin('UNIFORM_COLOR')
+	gpu.state.depth_test_set('LESS_EQUAL')  # hidden behind geometry, like the other empties
+	for color, coords in lines.items():
+		batch = batch_for_shader(shader, 'LINES', {'pos': coords})
+		shader.uniform_float('color', (*color, 1.0))
+		batch.draw(shader)
+	gpu.state.depth_test_set('NONE')
+
+
+def draw_overlays():
+	overlay = getattr(bpy.context.space_data, 'overlay', None)
+	if overlay is not None and not (overlay.show_overlays and overlay.show_extras):
+		return
+	draw_tube_lights()
+	draw_trigger_cylinders()
+
+# ----------------------------------------------------------------------------
 # glTF exporter hook
 #
 # Picked up by Blender's glTF exporter from any enabled add-on. Together with the exporter's
@@ -768,6 +977,10 @@ classes = (
 	DATA_PT_game_light,
 	OBJECT_OT_add_game_light,
 	VIEW3D_GGT_tube_light_length,
+	GameTriggerSettings,
+	DATA_PT_game_trigger,
+	OBJECT_OT_add_game_trigger,
+	VIEW3D_MT_game_trigger_add,
 	GameGltfSettings,
 )
 
@@ -778,12 +991,14 @@ def register():
 	for cls in classes:
 		bpy.utils.register_class(cls)
 	bpy.types.Light.game_light = PointerProperty(type=GameLightSettings)
+	bpy.types.Object.game_trigger = PointerProperty(type=GameTriggerSettings)
 	bpy.types.Scene.game_gltf = PointerProperty(type=GameGltfSettings)
 	bpy.types.TOPBAR_MT_file_export.append(menu_func_export)
 	bpy.types.VIEW3D_MT_light_add.append(menu_func_add_light)
+	bpy.types.VIEW3D_MT_add.append(menu_func_add_trigger)
 
 	global _draw_handle
-	_draw_handle = bpy.types.SpaceView3D.draw_handler_add(draw_tube_lights, (), 'WINDOW', 'POST_VIEW')
+	_draw_handle = bpy.types.SpaceView3D.draw_handler_add(draw_overlays, (), 'WINDOW', 'POST_VIEW')
 
 	try:
 		from io_scene_gltf2 import exporter_extension_layout_draw
@@ -804,9 +1019,11 @@ def unregister():
 	except ImportError:
 		pass
 
+	bpy.types.VIEW3D_MT_add.remove(menu_func_add_trigger)
 	bpy.types.VIEW3D_MT_light_add.remove(menu_func_add_light)
 	bpy.types.TOPBAR_MT_file_export.remove(menu_func_export)
 	del bpy.types.Scene.game_gltf
+	del bpy.types.Object.game_trigger
 	del bpy.types.Light.game_light
 	for cls in reversed(classes):
 		bpy.utils.unregister_class(cls)
