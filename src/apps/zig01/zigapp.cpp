@@ -24,6 +24,7 @@
 #include "formatters_glm.h"   // IWYU pragma: keep
 #include "formatters_entt.h"  // IWYU pragma: keep
 
+#include <memory>
 #include <chrono>
 #include <ranges>
 #include <vector>
