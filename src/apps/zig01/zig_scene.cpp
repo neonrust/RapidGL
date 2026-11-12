@@ -1,6 +1,6 @@
 #include "zig_scene.h"
+#include "component/trigger.h"
 
-#include "formatters_glm.h"
 
 using namespace RGL;
 

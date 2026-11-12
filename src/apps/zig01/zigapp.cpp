@@ -17,7 +17,7 @@
 #include "component/model.h"
 #include "component/transform.h"
 #include "component/light_general.h"
-#include "component/light_spot.h"
+#include "component//trigger.h"
 
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/random.hpp>
