@@ -9,12 +9,14 @@
 namespace RGL
 {
 
+// TODO: instead model as a "trigger system", sending "enter/exit" messages?
+
 class TriggerState
 {
 public:
 	TriggerState(entt::registry &entities, const DynamicTree<entt::entity> &triggerTree);
 
-	// TODO: or a transform?
+	// TODO: or a Transform instead of `point` and `direction`
 	std::pair<uint32_t, uint32_t> check(const glm::vec3 &point, const glm::vec3 &direction, std::function<bool(entt::entity)> on_enter, std::function<bool(entt::entity)> on_exit);
 
 private:

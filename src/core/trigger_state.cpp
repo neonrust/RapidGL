@@ -27,11 +27,21 @@ std::pair<uint32_t, uint32_t> TriggerState::check(const glm::vec3 &point, const 
 
 	_triggerTree.query(point, ~0u, false, [&](auto, auto, entt::entity trigger_ent) {
 
+		auto general = _entities.get<component::TriggerGeneral>(trigger_ent);
+		if(not general.enabled)
+			return true;
+		if(general.facing_direction != glm::vec3(0))
+		{
+			assert(std::abs(glm::length(direction) - 1.f) < 1e-4);
+			float diff_angle = glm::degrees(std::acos(glm::dot(general.facing_direction, direction)));
+			if(diff_angle > general.direction_tolerance)
+				return true;
+		}
+
+		// currently in triggered state, but wasn't before -> ENTERED
 		if(not _triggered.contains(trigger_ent))
 		{
-			auto general = _entities.get<component::TriggerGeneral>(trigger_ent);
-			if(not general.enabled)
-				return true;
+			// first time entering triggering state, check counters
 			if(general.ignore_count > 0)
 			{
 				--general.ignore_count;
@@ -44,21 +54,14 @@ std::pair<uint32_t, uint32_t> TriggerState::check(const glm::vec3 &point, const 
 				_entities.replace<component::TriggerGeneral>(trigger_ent, general);
 				return true;
 			}
-			if(general.facing_direction != glm::vec3(0))
-			{
-				assert(std::abs(glm::length(direction) - 1.f) < 1e-4);
-				float diff_angle = glm::degrees(std::acos(glm::dot(general.facing_direction, direction)));
-				if(diff_angle > general.direction_tolerance)
-					return true;
-			}
 
-			// currently in triggered state, but wasn't before -> ENTERED
 			_triggered.insert(trigger_ent);
-			currently_triggering.insert(trigger_ent);
 			++num_entered;
-
 			on_enter(trigger_ent);
 		}
+
+		currently_triggering.insert(trigger_ent);
+
 		return true;
 	});
 
