@@ -27,6 +27,7 @@
 #include "zig_scene.h"
 
 #include <memory>
+#include <trigger_state.h>
 #include <vector>
 
 enum struct BlendMode
@@ -199,6 +200,8 @@ private:
 
 	RGL::AnimationSystem _animSystem;
 
+	RGL::TriggerState _triggerState;
+
 	// Tonemapping variables
 	RGL::RenderTarget::Texture2d _rt;
 	RGL::RenderTarget::Texture2d _pp_low_rt;
@@ -219,7 +222,7 @@ private:
 		"rogland_clear_night_2k.hdr",
 		"citrus_orchard_puresky_2k.hdr",
 	};
-	uint8_t m_current_hdr_map_idx = 3;
+	uint8_t m_current_hdr_map_idx = 0;
 
 	RGL::SkyBox _skybox;
 	RGL::PP::Bloom m_bloom_pp;
