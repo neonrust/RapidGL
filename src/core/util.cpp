@@ -264,7 +264,7 @@ Util::TextureData Util::LoadTextureData(const fs::path& filepath, ImageMeta & im
 		if (data)
 			image_data.channels = desired_number_of_channels == 0 ? GLuint(channels_in_file) : GLuint(desired_number_of_channels);
 		else
-			Log::error("Load failed: {}", stbi_failure_reason());
+			Log::error("[{}] Load failed: {}", filepath.native(), stbi_failure_reason());
 		// data.size = image_data.width * image_data.height * image_data.channels;
 	}
 
