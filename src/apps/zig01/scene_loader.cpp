@@ -1036,29 +1036,37 @@ bool SceneLoader::read_trigger(RGL::tag_file &fp, ZigScene &scene)
 	RGL::bounds::Sphere sphere;
 	RGL::Plane plane;
 
-	std::string_view bounds_type;
+	std::string bounds_type;
 
 	// NOTE: the trigger connection is a separate entity, connecting trigger name to something
 
 	auto add_trigger = [&]() {
 
-		if(bounds_type == "aabb")
+		if(not name.empty())
 		{
-			assert(aabb);
-			scene.addTrigger(name, aabb);
+			if(bounds_type == "aabb")
+			{
+				assert(aabb);
+				scene.addTrigger(name, aabb);
+			}
+			else if(bounds_type == "sphere")
+			{
+				assert(sphere);
+				scene.addTrigger(name, sphere);
+			}
+			else if(bounds_type == "cylinder")
+			{
+				assert(cylinder);
+				scene.addTrigger(name, cylinder);
+			}
+			// else if(bounds_type == "plane")
+			// {
+			// 	assert(plane);
+			// 	scene.addTrigger(name, plane);
+			// }
+			else
+				assert(false);
 		}
-		else if(bounds_type == "sphere")
-		{
-			assert(sphere);
-			scene.addTrigger(name, sphere);
-		}
-		// else if(bounds_type == "plane")
-		// {
-		// 	assert(plane);
-		// 	scene.addTrigger(name, plane);
-		// }
-		else if(not name.empty())
-			assert(false);
 	};
 
 	while(fp)
@@ -1074,23 +1082,37 @@ bool SceneLoader::read_trigger(RGL::tag_file &fp, ZigScene &scene)
 			position = pop_vec3(value);
 		else if(tag == "bounds"sv)
 			bounds_type = value;
-		else if(tag == "extent"sv and bounds_type == "aabb")
+		else if(not bounds_type.empty())
 		{
-			const auto extent = pop_vec3(value);
-			aabb = RGL::bounds::AABB(position - extent/2.f, position + extent/2.f);
+			if(tag == "extent"sv and bounds_type == "aabb")
+			{
+				const auto extent = pop_vec3(value);
+				aabb = RGL::bounds::AABB(position - extent/2.f, position + extent/2.f);
+			}
+			else if(tag == "radius"sv and bounds_type == "sphere")
+			{
+				const auto radius = pop_number(value);
+				sphere.setCenter(position);
+				sphere.setRadius(radius);
+			}
+			else if(tag == "radius"sv and bounds_type == "cylinder")
+			{
+				cylinder.setCenter(position);
+				cylinder.setRadius(pop_number(value));
+			}
+			else if(tag == "axis"sv and bounds_type == "cylinder")
+			{
+				// full axis vector, bottom to top cap
+				cylinder.setCenter(position);
+				cylinder.setHalfExtent(pop_vec3(value)/2.f);
+			}
+			// else if(tag == "plane"sv and bounds_type == "plane")
+			// {
+			// 	const auto normal = pop_vec3(value);
+			// 	const auto offset = pop_number(value);
+			// 	plane = RGL::Plane(normal, offset);
+			// }
 		}
-		else if(tag == "radius"sv and bounds_type == "sphere")
-		{
-			const auto radius = pop_number(value);
-			sphere.setCenter(position);
-			sphere.setRadius(radius);
-		}
-		// else if(tag == "plane"sv and bounds_type == "plane")
-		// {
-		// 	const auto normal = pop_vec3(value);
-		// 	const auto offset = pop_number(value);
-		// 	plane = RGL::Plane(normal, offset);
-		// }
 		else
 			unexpected_tag(fp, "trigger");
 	}

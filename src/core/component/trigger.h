@@ -23,6 +23,8 @@ struct TriggerGeneral
 
 	TriggerShape shape;
 
+	std::string name;
+
 	bool enabled { true };
 	uint8_t trigger_limit { 0 }; // 0 = no limit
 	uint8_t triggered_count { 0 };
