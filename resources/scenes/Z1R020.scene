@@ -2,6 +2,14 @@ ENTITY  05spawn
 type    06player
 grid    050 0 0
 rotation010
+TRIGGER 09at-button
+bounds  04aabb
+position070 0 -12
+extent  052 2 2
+TRIGGER 0bwall-button
+bounds  04aabb
+position0d0.53 0.37 -13
+extent  0d0.35 0.27 0.1
 MESH    08ceiling1
 grid    060 0 -5
 ori     03180
