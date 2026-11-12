@@ -168,7 +168,7 @@ bool Sphere::expand(const glm::vec3 &point)
 
     if(empty()) // empty
     {
-        _center = point;
+		_center = point;
         _radius = 0.f;
 		return true;
     }
