@@ -92,6 +92,7 @@ ZigApp::ZigApp() :
 	_relevant_lights_index_ssbo("relevant-lights-index"sv),
 	m_shadow_map_slots_ssbo("shadow-map-slots"sv),
 	_animSystem(_entities),
+	_triggerState(_entities, _scene.triggers()),
 	m_gamma               (2.2f),
 	_ibl_mip_level        (1.2f),
 	_exit_shortcut(KeyCode::Escape),
