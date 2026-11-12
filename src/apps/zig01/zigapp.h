@@ -24,6 +24,7 @@
 #include "pp_ao.h"
 #include "shadow_atlas.h"
 #include "light_manager.h"
+#include "zig_scene.h"
 
 #include <memory>
 #include <vector>
@@ -94,7 +95,7 @@ private:
 	entt::registry _entities;
 
 	RGL::LightManager _light_mgr;
-	RGL::Scene _scene;
+	ZigScene _scene;
 
 	RGL::ShadowAtlas _shadow_atlas;
 	RGL::Texture2D _contact_shadow_buffer;
