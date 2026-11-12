@@ -553,8 +553,7 @@ void ZigApp::input()
 
 	if(_screenshot_shortcut)
     {
-		// TODO: add "slot numer" suffix
-        std::string filename = "27_clustered_shading";
+		std::string filename = "screenshot";  // TODO: add "slot numer" suffix
 		if (take_screenshot(filename))
 			Log::info("Screenshot: {}.png", filename);
         else
