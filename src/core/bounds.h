@@ -73,7 +73,7 @@ public:
 
 	explicit Sphere(const AABB &aabb);
 
-	bool expand(const glm::vec3 &vertex);
+	bool expand(const glm::vec3 &point);
 	[[nodiscard]] float volume() const;
 	[[nodiscard]] inline bool empty() const { return _radius < 0; }
     void clear();
@@ -87,9 +87,41 @@ public:
 	[[nodiscard]] inline operator bool () const { return not empty(); }
 
 protected:
-	glm::vec3 _center;
-    float _radius;
-	float _squaredRadius;
+	glm::vec3 _center { 0 };
+	float _radius { -1.f };
+	float _squaredRadius { -1.f };
+};
+
+// =======================================================================
+
+class Cylinder
+{
+public:
+	Cylinder();
+	Cylinder(const glm::vec3 &center, const glm::vec3 &half_extent, float radius);
+
+	// bool expand(const glm::vec3 &point); // only expand radius ang length
+
+	[[nodiscard]] float volume() const;
+	[[nodiscard]] inline bool empty() const { return _radius <= 0 or _half_extent == glm::vec3(0); };
+
+	void clear();
+	void setCenter(const glm::vec3 &center);
+	void setHalfExtent(const glm::vec3 &half_extent);
+	void setRadius(float radius);
+
+	[[nodiscard]] inline glm::vec3 center() const { return _center; }
+	[[nodiscard]] inline glm::vec3 halfExtent() const { return _half_extent; }
+	[[nodiscard]] inline float radius() const { return empty()? 0: _radius; };
+	[[nodiscard]] inline float squaredRadius() const { return _squaredRadius; };
+
+	[[nodiscard]] inline operator bool () const { return not empty(); }
+
+private:
+	glm::vec3 _center { 0 };
+	glm::vec3 _half_extent { 0 };
+	float _radius { 0 };
+	float _squaredRadius { 0 };
 };
 
 } // bounds
@@ -97,11 +129,12 @@ protected:
 namespace intersect
 {
 
-bool check(const bounds::AABB   &A,       const bounds::AABB   &B);
-bool check(const bounds::AABB   &box,     const bounds::Sphere &sphere);
-bool check(const bounds::AABB   &box,     const    glm::vec3   &point);
-bool check(const bounds::Sphere &sphereA, const bounds::Sphere &sphereB);
-bool check(const bounds::Sphere &sphere,  const    glm::vec3   &point);
+bool check(const bounds::AABB     &A,        const bounds::AABB   &B);
+bool check(const bounds::AABB     &box,      const bounds::Sphere &sphere);
+bool check(const bounds::AABB     &box,      const    glm::vec3   &point);
+bool check(const bounds::Sphere   &sphereA,  const bounds::Sphere &sphereB);
+bool check(const bounds::Sphere   &sphere,   const    glm::vec3   &point);
+bool check(const bounds::Cylinder &cylinder, const    glm::vec3   &point);
 
 } // intersect
 
@@ -113,6 +146,8 @@ bool valid(const bounds::AABB &box);
 
 bounds::Sphere sphere_cast(const bounds::AABB &box);
 bounds::AABB aabb_cast(const bounds::Sphere &sphere);
+bounds::AABB aabb_cast(const bounds::Cylinder &cylinder);
+
 } // math
 
 } // RGL

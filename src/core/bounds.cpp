@@ -217,6 +217,57 @@ void bounds::Sphere::clear()
 	_squaredRadius = -1.f;
 }
 
+
+// =======================================================================
+
+
+Cylinder::Cylinder()
+{
+	clear();
+}
+
+Cylinder::Cylinder(const glm::vec3 &center, const glm::vec3 &half_extent, float radius) :
+	_center(center),
+	_half_extent(half_extent),
+	_radius(radius),
+	_squaredRadius(_radius*_radius)
+{
+}
+
+float Cylinder::volume() const
+{
+	if(empty())
+		return 0;
+
+	float h = glm::length(_half_extent)*2;
+	// V = h * r^2 * pi
+	return h * _squaredRadius * std::numbers::pi_v<float>;
+}
+
+void Cylinder::clear()
+{
+	_center = glm::zero<glm::vec3>();
+	_half_extent = glm::zero<glm::vec3>();
+	_radius = 0;
+	_squaredRadius = 0;
+}
+
+void Cylinder::setCenter(const glm::vec3 &center)
+{
+	_center = center;
+}
+
+void Cylinder::setHalfExtent(const glm::vec3 &half_extent)
+{
+	_half_extent = half_extent;
+}
+
+void Cylinder::setRadius(float radius)
+{
+	_radius = radius;
+	_squaredRadius = _radius * _radius;
+}
+
 } // bounds
 
 
@@ -273,6 +324,13 @@ bool check(const bounds::Sphere &sphere, const glm::vec3 &point)
 	return sqDistance < sphere.squaredRadius();
 }
 
+bool check(const bounds::Cylinder &cylinder, const glm::vec3 &point)
+{
+	assert(false);
+	// TODO
+	return false;
+}
+
 } // intersect
 
 namespace math
@@ -308,6 +366,12 @@ bounds::AABB aabb_cast(const bounds::Sphere &sphere)
 	const auto min = sphere.center() - glm::vec3{sphere.radius() };
 	const auto max = sphere.center() + glm::vec3{ sphere.radius() };
 	return bounds::AABB{ min, max };
+}
+
+bounds::AABB aabb_cast(const bounds::Cylinder &cylinder)
+{
+	assert(false);
+	return bounds::AABB{};
 }
 
 } // math
