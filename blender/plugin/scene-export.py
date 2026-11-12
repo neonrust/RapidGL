@@ -1,6 +1,7 @@
 import bpy
 from bpy_extras import anim_utils
 from mathutils import Matrix, Vector
+import sys
 from sys import float_info
 import math
 
@@ -327,7 +328,7 @@ def dump_walkable(fp, obj):
 def dump_trigger(fp, obj):
 	center, extent, radius, warnings = trigger_bounds(obj)
 	for warning in warnings:
-		print('WARNING: trigger %s: %s' % (obj.name, warning))
+		print('WARNING: trigger %s: %s' % (obj.name, warning), file=sys.stderr)
 
 	shape = obj.game_trigger.shape
 	wtag(fp, 'TRIGGER', obj.name)
@@ -335,8 +336,8 @@ def dump_trigger(fp, obj):
 	# position must come before the size tags (the loader uses it when reading them)
 	wtag(fp, 'position', fv(to_engine_space(center), 2))
 	if shape == 'BOX':
-		extent = to_engine_space(extent)
-		wtag(fp, 'extent', fv([ abs(v) for v in extent ], 2))  # the Y-up conversion negates one axis
+		extent = [abs(v) for v in to_engine_space(extent)] # the Y-up conversion negates one axis
+		wtag(fp, 'extent', fv(extent, 2))
 	elif shape == 'SPHERE':
 		wtag(fp, 'radius', fv(radius, 2))
 	elif shape == 'CYLINDER':
@@ -787,7 +788,7 @@ def is_axis_aligned(m3):
 	return all(max(abs(v) for v in col.normalized()) > 0.9999 for col in m3.col)
 
 def trigger_bounds(obj):
-	'''trigger shape in Blender world space: center, extent (box size, or cylinder axis), radius, warnings'''
+	'''trigger shape in Blender world-space: center, extent (box size, or cylinder axis), radius, warnings'''
 	m3 = obj.matrix_world.to_3x3()
 	center = obj.matrix_world.translation.copy()
 	size = obj.empty_display_size
@@ -798,18 +799,18 @@ def trigger_bounds(obj):
 		# world-space bounds of the box (the same box when it's not rotated)
 		extent = Vector([ 2*size*sum(abs(v) for v in row) for row in m3 ])
 		if not is_axis_aligned(m3):
-			warnings.append("Rotated: exports its axis-aligned bounds")
+			warnings.append("AABB rotated: using its axis-aligned bounds")
 	elif shape == 'SPHERE':
 		scales = [ col.length for col in m3.col ]
 		radius = size*max(scales)
 		if max(scales) - min(scales) > 1e-4*max(scales):
-			warnings.append("Non-uniform scale: uses the largest radius")
+			warnings.append("Non-uniform scale: using largest radius")
 	elif shape == 'CYLINDER':
 		extent = m3 @ Vector((0, 0, 2*size))
 		rx, ry = m3.col[0].length, m3.col[1].length
 		radius = size*max(rx, ry)
 		if abs(rx - ry) > 1e-4*max(rx, ry):
-			warnings.append("X & Y scale differ: uses the largest radius")
+			warnings.append("X & Y scale differ: using largest radius")
 
 	return center, extent, radius, warnings
 
