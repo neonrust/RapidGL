@@ -1,5 +1,7 @@
 #include "zig_scene.h"
 
+#include "formatters_glm.h"
+
 using namespace RGL;
 
 ZigScene::ZigScene(entt::registry &entities, LightManager &lights) :
@@ -17,11 +19,13 @@ entt::entity ZigScene::addTrigger(std::string_view name, const bounds::AABB &aab
 	_nameToTrigger[name] = trigger_ent;
 
 	component::TriggerGeneral general(component::TriggerShape::AABB);
+	general.name = name;
 
 	auto centered_aabb = aabb;
+	// remove center offset from the AABB (use Transform for that)
 	centered_aabb.min() -= aabb.center();
 	centered_aabb.max() -= aabb.center();
-	assert(centered_aabb.center() == glm::vec3(0)); // or very close to it
+	assert(glm::length(centered_aabb.center()) < 1e-5); // the new center should be ~zero
 	component::Transform transform;
 	transform.set_position(aabb.center());
 
@@ -29,7 +33,7 @@ entt::entity ZigScene::addTrigger(std::string_view name, const bounds::AABB &aab
 	entities().emplace<component::Transform>(trigger_ent, transform);
 	entities().emplace<component::TriggerGeneral>(trigger_ent, general);
 
-	// auto bvhProxy = TriggerProxy { .trigger_ent = trigger_ent, .general = general };
+	// add world-space AABB to BVH
 	_trigger_bvh.addProxy(aabb, trigger_ent);//bvhProxy);
 
 	return trigger_ent;
@@ -43,6 +47,7 @@ entt::entity ZigScene::addTrigger(std::string_view name, const bounds::Sphere &s
 	_nameToTrigger[name] = trigger_ent;
 
 	component::TriggerGeneral general(component::TriggerShape::Sphere);
+	general.name = name;
 
 	component::Transform transform;
 	transform.set_position(sphere.center());
@@ -51,7 +56,7 @@ entt::entity ZigScene::addTrigger(std::string_view name, const bounds::Sphere &s
 	entities().emplace<component::Transform>(trigger_ent, transform);
 	entities().emplace<component::TriggerGeneral>(trigger_ent, general);
 
-	// auto bvhProxy = TriggerProxy { .trigger_ent = trigger_ent, .general = general };
+	// add world-space AABB to BVH
 	_trigger_bvh.addProxy(math::aabb_cast(sphere), trigger_ent);//bvhProxy);
 
 	return trigger_ent;
@@ -65,6 +70,7 @@ entt::entity ZigScene::addTrigger(std::string_view name, const bounds::Cylinder 
 	_nameToTrigger[name] = trigger_ent;
 
 	component::TriggerGeneral general(component::TriggerShape::Cylinder);
+	general.name = name;
 
 	component::Transform transform;
 	transform.set_position(cylinder.center());
@@ -76,7 +82,7 @@ entt::entity ZigScene::addTrigger(std::string_view name, const bounds::Cylinder 
 	entities().emplace<component::Transform>(trigger_ent, transform);
 	entities().emplace<component::TriggerGeneral>(trigger_ent, general);
 
-	// auto bvhProxy = TriggerProxy { .trigger_ent = trigger_ent, .general = general };
+	// add world-space AABB to BVH
 	_trigger_bvh.addProxy(math::aabb_cast(cylinder), trigger_ent);//bvhProxy);
 
 	return trigger_ent;
