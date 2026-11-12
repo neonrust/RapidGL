@@ -22,6 +22,7 @@
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/random.hpp>
 #include "formatters_glm.h"   // IWYU pragma: keep
+#include "formatters_entt.h"  // IWYU pragma: keep
 
 #include <chrono>
 #include <ranges>
@@ -579,6 +580,16 @@ void ZigApp::update(nanoseconds delta_time)
 	m_tmo_pp.setFrameTime(float(seconds_f(delta_time).count()));
 
 	m_camera.update(delta_time);
+
+	_triggerState.check(m_camera.position(), m_camera.directionVector(), [&](auto entered_id) {
+		const auto &general = _entities.get<component::TriggerGeneral>(entered_id);
+		Log::debug("Trigger entered: {} '{}'", entered_id, general.name);
+		return true;
+	}, [&](auto exited_id) {
+		const auto &general = _entities.get<component::TriggerGeneral>(exited_id);
+		Log::debug("Trigger exited: {} '{}'", exited_id, general.name);
+		return true;
+	});
 }
 
 void ZigApp::createLights()
