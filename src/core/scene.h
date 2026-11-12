@@ -40,6 +40,8 @@ private:
 public:
 	Scene(entt::registry &entities, LightManager &lights, size_t reserve=0);
 
+	[[nodiscard]] inline entt::registry &entities() { return _entities; }
+
 	EntityID add(std::shared_ptr<const StaticModel> model, const MaterialCSet &materials, const component::Transform &transforn, bool is_dynamic=false);
 
 	void addRoom(std::string_view roomName, const bounds::AABB &aabb);
