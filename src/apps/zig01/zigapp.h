@@ -279,7 +279,7 @@ private:
 	string_map<RGL::GLTimer<4>> _gl_timers;
 
 	RGL::Texture2DArray _light_icons;
-	bool _debug_ui_enabled { true };
+	bool _debug_ui_enabled { false };
 };
 
 namespace color
