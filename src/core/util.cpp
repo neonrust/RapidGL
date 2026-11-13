@@ -26,7 +26,7 @@ WFLCG s_rng; // TODO seed(s)
 
 bool Util::FileExist(const std::filesystem::path &filepath)
 {
-	return std::filesystem::exists(filepath);
+	return fs::exists(filepath);
 }
 
 std::tuple<std::string, bool> Util::LoadFile(const fs::path & filename, bool fail_ok)
@@ -38,12 +38,15 @@ std::tuple<std::string, bool> Util::LoadFile(const fs::path & filename, bool fai
 
 	fs::path filepath = FileSystem::rootPath() / filename;
 	std::ifstream inFile(filepath);
-
 	if(not inFile)
 	{
 		if(not fail_ok)
-			Log::error("Could not open file {}", filepath.string());
-		inFile.close();
+		{
+			if(not FileExist(filename))
+				Log::error("[{}] could not open file: no such file", filepath.native());
+			else
+				Log::error("[{}] could not open file", filepath.native());
+		}
 
 		return { std::string(), false };
 	}
@@ -62,12 +65,12 @@ std::tuple<std::string, bool> Util::LoadFile(const fs::path & filename, bool fai
 	return { filetext, true };
 }
 
-std::tuple<std::string, bool> Util::LoadShaderFile(const std::filesystem::path &filepath)
+std::tuple<std::string, bool> Util::LoadShaderFile(const fs::path &filepath)
 {
 	const auto &[file_content, okf] = Util::LoadFile(filepath);
 	if(not okf)
 	{
-		Log::error("Load shader failed: {}", filepath.string());
+		Log::error("[{}] Load shader failed", filepath.native());
 		return { std::string(), false };
 	}
 
@@ -108,13 +111,14 @@ std::streamsize Util::GetFileSize(std::ifstream &strm)
 std::vector<uint8_t> Util::LoadFileBinary(const fs::path& filename)
 {
 	fs::path filepath = FileSystem::rootPath() / filename;
+
 	std::ifstream file(filepath, std::ios::binary);
-
-	if (!file)
+	if(not file)
 	{
-		Log::error("Could not open file {}", filepath.string());
-		file.close();
-
+		if(not FileExist(filepath))
+			Log::error("[{}] could not open file: no such file", filepath.native());
+		else
+			Log::error("[{}] could not open file", filepath.native());
 		return {};
 	}
 
