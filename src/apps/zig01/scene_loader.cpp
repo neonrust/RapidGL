@@ -112,7 +112,7 @@ static std::optional<T> pop_number_optional(auto &buffer)
 
 	T number;
 	auto result = std::from_chars(word.data(), word.data() + word.size(), number);
-	if(result.ec != std::errc(0))
+	if(result.ec != std::errc{})
 	{
 		if constexpr (std::is_integral_v<T>)
 			Log::error("Failed to parse '{}' as integer value, error: {}", word, uint32_t(result.ec));
@@ -120,7 +120,7 @@ static std::optional<T> pop_number_optional(auto &buffer)
 			Log::error("Failed to parse '{}' as float value, error: {}", word, uint32_t(result.ec));
 		else
 			Log::error("Failed to parse '{}' (not int, nor float), error: {}", word, uint32_t(result.ec));
-		assert(result.ec == std::errc(0));
+		assert(result.ec == std::errc{});
 		return std::nullopt;
 	}
 
