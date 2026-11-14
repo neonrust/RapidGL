@@ -431,7 +431,7 @@ bool SceneLoader::read_anim_tag(RGL::tag_file &fp, RGL::AnimationSetup &anim)
 		return true;
 	}
 	else
-		unexpected_tag(fp, "anim");
+		unexpected_tag(fp, "anim"sv);
 
 	return false;
 }
@@ -526,7 +526,7 @@ bool SceneLoader::read_config(RGL::tag_file &fp, ZigScene &)
 			_gridSize = glm::vec3(width, height, depth);
 		}
 		else
-			unexpected_tag(fp, "config");
+			unexpected_tag(fp, "config"sv);
 	}
 
 	return false;
@@ -635,7 +635,7 @@ bool SceneLoader::read_mesh(RGL::tag_file &fp, ZigScene &scene)
 		else if(not anim_name.empty() and read_anim_tag(fp, animation))
 			;
 		else
-			unexpected_tag(fp, "mesh");
+			unexpected_tag(fp, "mesh"sv);
 	}
 
 	// if we got here, we ran into EOF
@@ -764,7 +764,7 @@ bool SceneLoader::read_light(RGL::tag_file &fp, ZigScene &scene)
 		else if(tag == "dblsided"sv)
 			double_sided = pop_bool(value);
 		else
-			unexpected_tag(fp, "light");
+			unexpected_tag(fp, "light"sv);
 	}
 
 	assert(type == RGL::LightType::Directional or position.has_value());
@@ -1084,23 +1084,23 @@ bool SceneLoader::read_trigger(RGL::tag_file &fp, ZigScene &scene)
 			bounds_type = value;
 		else if(not bounds_type.empty())
 		{
-			if(tag == "extent"sv and bounds_type == "aabb")
+			if(tag == "extent"sv and bounds_type == "aabb"sv)
 			{
 				const auto extent = pop_vec3(value);
 				aabb = RGL::bounds::AABB(position - extent/2.f, position + extent/2.f);
 			}
-			else if(tag == "radius"sv and bounds_type == "sphere")
+			else if(tag == Property::Radius and bounds_type == "sphere"sv)
 			{
 				const auto radius = pop_number(value);
 				sphere.setCenter(position);
 				sphere.setRadius(radius);
 			}
-			else if(tag == "radius"sv and bounds_type == "cylinder")
+			else if(tag == Property::Radius and bounds_type == "cylinder"sv)
 			{
 				cylinder.setCenter(position);
 				cylinder.setRadius(pop_number(value));
 			}
-			else if(tag == "axis"sv and bounds_type == "cylinder")
+			else if(tag == "axis"sv and bounds_type == "cylinder"sv)
 			{
 				// full axis vector, bottom to top cap
 				cylinder.setCenter(position);
@@ -1114,7 +1114,7 @@ bool SceneLoader::read_trigger(RGL::tag_file &fp, ZigScene &scene)
 			// }
 		}
 		else
-			unexpected_tag(fp, "trigger");
+			unexpected_tag(fp, "trigger"sv);
 	}
 
 	add_trigger();
@@ -1147,7 +1147,7 @@ bool SceneLoader::read_walkable(RGL::tag_file &fp, RGL::Scene &scene)
 		else if(tag == Property::Grid)
 			position = pop_grid_pos(value);
 		else
-			unexpected_tag(fp, "walkable");
+			unexpected_tag(fp, "walkable"sv);
 	}
 
 	add_walkable();
