@@ -539,17 +539,12 @@ const QueryResult &ShadowAtlas::pvs(const Scene &scene, LightID light_id, uint_f
 	break;
 
 	case LightType::Point:
-	{
-		const auto &[view, proj, near, far] = light_view_projection(light, slot_idx);
-		Frustum frustum;
-		frustum.setFromView(proj, view, light.transform.position());
-		scene.query(frustum, *result);
-	}
-	break;
-
 	case LightType::Spot:
 	{
-		const auto &[view, proj, near, far] = light_view_projection(light);
+		if(light.general.light_type == LightType::Spot)
+			assert(slot_idx == 0);
+
+		const auto &[view, proj, near, far] = light_view_projection(light, slot_idx);
 		Frustum frustum;
 		frustum.setFromView(proj, view, light.transform.position());
 		scene.query(frustum, *result);
