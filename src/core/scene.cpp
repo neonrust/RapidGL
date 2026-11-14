@@ -25,8 +25,8 @@ Scene::Scene(entt::registry &entities, LightManager &lights, size_t reserve) :
 	// _items.reserve(std::max(256ul, reserve));
 	// TODO: init the whatever-tree
 
-	_entityToRoom.reserve(256);
-	_idToProxy.reserve(256);
+	_entityToRoom.reserve(std::max(reserve, 64lu));
+	_idToProxy.reserve(std::max(reserve, 64lu));
 }
 
 EntityID Scene::add(std::shared_ptr<const StaticModel> model, const MaterialCSet &materials, const component::Transform &transform, bool is_dynamic)
