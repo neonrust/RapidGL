@@ -12,13 +12,17 @@ float_min = float_info.min
 bl_info = {
 	"name": "Game Scene Exporter",
 	"author": "André Jonsson",
-	"version": (0, 4, 0),
+	"version": (0, 5, 2),
 	"blender": (5, 0, 0),
 	"location": "File > Export > Game Scene",
 	"category": "Import-Export",
 }
 
-GRID_SIZE = 2
+log_fp = None
+def log(*msg):
+	print(*msg, file=log_fp)
+
+GRID_SIZE = 2     # should be argument to exporter
 NAME_LENGTH = 22  # max length std::string can store on the stack
 
 option_y_up = False
@@ -28,7 +32,12 @@ def to_engine_space(point):
 		return Vector((point.x, point.z, -point.y))
 	return point
 
-def fv(value, decimals=None):
+def to_engine_scale(scale):
+	if option_y_up:
+		return Vector((scale.x, scale.z, scale.y))
+	return scale
+
+def fv(value, decimals:int|None=None) -> str:
 	if isinstance(value, float):
 		return '%g' % ((value if decimals is None else round(value, decimals)) + 0.0)  # + 0.0: no "-0"
 	else:
@@ -57,6 +66,17 @@ def wbounds(fp, obj):
 	return
 
 
+def wscale(fp, obj):
+	s = to_engine_scale(obj.scale)
+	if s.x != 1 or s.y != 1 or s.z != 1:
+		wtag(fp, 'scale', '%.3f %.3f %.3f' % (s.x, s.y, s.z))
+	
+def wgrid_or_pos(fp, obj):
+	if is_on_grid(obj.location.x) and is_on_grid(obj.location.y) and is_on_grid(obj.location.z):
+		wgrid_pos(fp, obj)
+	else:
+		wtag(fp, 'position', fv(to_engine_space(obj.location), 3))
+
 def wgrid_pos(fp, obj):
 	x, y, z = grid_of(obj)
 	wtag(fp, 'grid', '%d %d %d' % (x, y, z))
@@ -65,7 +85,7 @@ def grid_of(obj, check_align=True):
 	loc = to_engine_space(obj.location)
 	if check_align:
 		if not is_on_grid(loc.x) or not is_on_grid(loc.y) or not is_on_grid(loc.z):
-			print('NOT GRID ALIGNED:', obj.name, loc.x, loc.y, loc.z)
+			log('[%s] NOT GRID ALIGNED:' % obj.name, loc.x, loc.y, loc.z)
 
 	# truncate location to grid squares (well, cubes)
 	x = round(loc.x)//GRID_SIZE
@@ -73,8 +93,8 @@ def grid_of(obj, check_align=True):
 	z = round(loc.z)//GRID_SIZE
 	return x, y, z
 
-def is_on_grid(pos):
-	diff = abs(round(pos/GRID_SIZE, 4)*GRID_SIZE - pos)
+def is_on_grid(value):
+	diff = round(abs(value - round(value/float(GRID_SIZE))*float(GRID_SIZE)), 4)
 	return diff < 0.05
 
 array_index_names = [ 'x',  'y', 'z' ]
@@ -118,7 +138,7 @@ def wanim_keys(fp, obj):
 	anim_name = obj.get('animation', '').strip()
 	if not anim_name:
 		if not obj.get('button'):
-			print('WARNING: %s has no "animation" property (animation will not work)' % obj.name)
+			log('WARNING: %s has no "animation" property (animation will not work)' % obj.name)
 		else:
 			# generate a unique name
 			global anim_serial
@@ -131,25 +151,25 @@ def wanim_keys(fp, obj):
 	wtag(fp, 'animlen', anim_lengths[anim_name])
 
 	if adata.action_influence != 1:
-		print('WARNING: animation action influence is not 1.0: %s' % adata.action_influence)
+		log('WARNING: animation action influence is not 1.0: %s' % adata.action_influence)
 	if adata.action_blend_type != 'REPLACE':
-		print('WARNING: animation action blend type is not REPLACE: %s' % adata.action_blend_type)
+		log('WARNING: animation action blend type is not REPLACE: %s' % adata.action_blend_type)
 
 	interpolation = 'BEZIER'
 
 	for curve in action_fcurves(adata):
 		category, axis = curve_data_name(curve)
 		if category is None:
-			print('WARNING: %s: unsupported animation curve: %s' % (obj.name, curve.data_path))
+			log('WARNING: %s: unsupported animation curve: %s' % (obj.name, curve.data_path))
 			continue
 		if category == 'o' and obj.rotation_mode != 'XYZ':
-			print('WARNING: %s: rotation mode must be XYZ euler, got %s' % (obj.name, obj.rotation_mode))
+			log('WARNING: %s: rotation mode must be XYZ euler, got %s' % (obj.name, obj.rotation_mode))
 		axis, transform = engine_channel(category, axis)
 		key = 'kf-%s%s' % (category, axis)
 
 		for keyframe in curve.keyframe_points:
 			if keyframe.interpolation != interpolation:
-				print('WARNING: keyframe interpolation != %s' % interpolation)
+				log('WARNING: keyframe interpolation != %s' % interpolation)
 
 			wanim_key_bezier(fp, key, keyframe, transform)
 
@@ -212,7 +232,8 @@ def dump_mesh(fp, obj):
 	# chopping it off should result in the correct name
 	linked_source = serial_ptn.sub('', linked_source)
 	wtag(fp, 'MESH', linked_source)
-	wgrid_pos(fp, obj)
+	wgrid_or_pos(fp, obj)
+	wscale(fp, obj)
 	if obj.rotation_euler.x == 0 and obj.rotation_euler.y == 0:
 		if obj.rotation_euler.z != 0:
 			wtag(fp, 'ori', ori_angle(obj.rotation_euler.z))
@@ -234,7 +255,7 @@ def dump_control(fp, obj):
 	wtag(fp, 'CONTROL', linked_source)
 	wgrid_pos(fp, obj)
 	wtag(fp, 'type', 'button')  # TODO: lever, knob, wheel, slider, etc...
-	wtag(fp, 'position', fv(obj.location, 2))
+	wtag(fp, 'position', fv(to_engine_space(obj.location), 2))
 	wtag(fp, 'ori', fv(obj.rotation_euler, 3))
 	wbounds(fp, obj)
 	if obj.get('animation'):
@@ -265,7 +286,7 @@ def dump_light(fp, obj):
 	light = obj.data
 	light_type = game_light_type(light)
 	if light_type is None:
-		print('WARNING: %s: unsupported light: %s %s' % (obj.name, light.type, getattr(light, 'shape', '')))
+		log('WARNING: %s: unsupported light: %s %s' % (obj.name, light.type, getattr(light, 'shape', '')))
 		return
 
 	wtag(fp, 'LIGHT', obj.name)
@@ -312,7 +333,7 @@ def dump_light(fp, obj):
 def dump_spawn(fp, obj):
 	spawn = obj.get('spawn')
 	if not spawn:
-		print('Object %s has empty "spawn" property' % obj.name)
+		log('Object %s has empty "spawn" property' % obj.name)
 		return
 
 	wtag(fp, 'ENTITY', 'spawn')
@@ -328,7 +349,7 @@ def dump_walkable(fp, obj):
 def dump_trigger(fp, obj):
 	center, extent, radius, warnings = trigger_bounds(obj)
 	for warning in warnings:
-		print('WARNING: trigger %s: %s' % (obj.name, warning), file=sys.stderr)
+		log('WARNING: trigger %s: %s' % (obj.name, warning), file=sys.stderr)
 
 	shape = obj.game_trigger.shape
 	wtag(fp, 'TRIGGER', obj.name)
@@ -352,7 +373,7 @@ def dump_empty(fp, obj):
 
 def verify_walkable():
 	if not walkable:
-		print('NO WALKABLE')
+		log('NO WALKABLE')
 		return False
 
 	visited = set()
@@ -378,7 +399,7 @@ def verify_walkable():
 	# TODO: also visit all at a teleporter destination
 	unvisited = len(walkable) - len(visited)
 	if unvisited:
-		print('%d unvisited grids' % unvisited)
+		log('%d unvisited grids' % unvisited)
 	return unvisited > 0
 
 def collect_anim_lengths(obj):
@@ -445,23 +466,23 @@ def write_scene_data_wrapped(fp, context, options=None):
 				if is_linked:
 					dump_mesh(fp, obj)
 				else:
-					print('non-linked mesh ignored:', obj.name)
+					log('non-linked mesh ignored:', obj.name)
 					# export as separate file?
 
 		elif obj.type == 'LIGHT':
-			print('dump_light:', obj.name)
+			log('dump_light:', obj.name)
 			dump_light(fp, obj)
 
 		elif obj.type == 'EMPTY':
 			if obj.game_trigger.enabled:
-				print('dump_trigger:', obj.name)
+				log('dump_trigger:', obj.name)
 				dump_trigger(fp, obj)
 			else:
-				print('dump_empty:', obj.name)
+				log('dump_empty:', obj.name)
 				dump_empty(fp, obj)
 
 	if hidden_skipped:
-		print('Hidden objects skipped:', hidden_skipped)
+		log('Hidden objects skipped:', hidden_skipped)
 
 	return {'FINISHED'}
 
@@ -518,8 +539,13 @@ class ExportGameScene(Operator, ExportHelper):
 		global option_y_up
 		option_y_up = self.y_up_setting
 
-		with open(self.filepath, 'w') as fp:
-			return write_scene_data(fp, context, options)
+		global log_fp
+		with open(self.filepath + '.log', 'w') as log_fp:
+			log(bl_info['name'], 'v%d.%d.%d' % bl_info['version'])
+			log('Exporting:', self.filepath)
+			
+			with open(self.filepath, 'w') as fp:
+				return write_scene_data(fp, context, options)
 
 
 # Only needed if you want to add into a dynamic menu
@@ -928,6 +954,115 @@ def draw_overlays():
 	draw_trigger_cylinders()
 
 # ----------------------------------------------------------------------------
+# Add assets as library overrides
+#
+# Blender's asset import methods are Link/Append/Append (Reuse Data)/Pack; a plain linked object
+# can't be moved, so it needs a library override (Object > Library Override > Make). This does
+# both in one go: right-click an asset in the Asset Browser > "Add with Library Override".
+# The mesh data stays linked (which is what dump_mesh() expects).
+
+def add_asset_override(context, blend_path, id_type, name):
+	'''link an object or collection asset and add it as an editable library override at the
+	3D cursor, in the active collection; returns the added top-level objects'''
+	attr = 'objects' if id_type == 'OBJECT' else 'collections'
+	relative = context.preferences.filepaths.use_relative_paths and bool(bpy.data.filepath)
+	with bpy.data.libraries.load(blend_path, link=True, relative=relative) as (data_from, data_to):
+		setattr(data_to, attr, [name])
+	linked = getattr(data_to, attr)[0]
+	if linked is None:
+		return []
+
+	# (without do_fully_editable they're "system overrides", greyed out in the UI)
+	override = linked.override_hierarchy_create(context.scene, context.view_layer, do_fully_editable=True)
+
+	# it ends up in the scene collection; move it to the active collection, like a regular add
+	target = context.view_layer.active_layer_collection.collection
+	cursor = context.scene.cursor.location
+	if id_type == 'OBJECT':
+		if target not in override.users_collection:
+			for collection in list(override.users_collection):
+				collection.objects.unlink(override)
+			target.objects.link(override)
+		override.location = cursor
+		return [override]
+
+	if target != context.scene.collection:
+		for parent in [ context.scene.collection, *bpy.data.collections ]:
+			if parent.library is None and any(child == override for child in parent.children):
+				parent.children.unlink(override)
+		target.children.link(override)
+	objects = [ obj for obj in override.all_objects if obj.parent is None ]
+	offset = cursor - override.instance_offset
+	for obj in objects:
+		obj.location += offset
+	return objects
+
+
+class OBJECT_OT_add_asset_override(Operator):
+	'''Link the selected assets and add them as editable library overrides, at the 3D cursor'''
+	bl_idname = "object.add_asset_override"
+	bl_label = "Add with Library Override"
+	bl_options = {'REGISTER', 'UNDO'}
+
+	@classmethod
+	def poll(cls, context):
+		return bool(getattr(context, 'selected_assets', None))
+
+	def execute(self, context):
+		added = []
+		for asset in context.selected_assets:
+			if asset.local_id is not None:
+				self.report({'WARNING'}, "%s is in this file, nothing to link" % asset.name)
+			elif asset.id_type not in ('OBJECT', 'COLLECTION'):
+				self.report({'WARNING'}, "%s: only objects and collections can be added" % asset.name)
+			else:
+				added += add_asset_override(context, asset.full_library_path, asset.id_type, asset.name)
+		if not added:
+			return {'CANCELLED'}
+
+		for obj in context.view_layer.objects:
+			obj.select_set(False)
+		for obj in added:
+			obj.select_set(True)
+		context.view_layer.objects.active = added[0]
+		return {'FINISHED'}
+
+
+class WM_OT_reload_all_libraries(Operator):
+	'''Reload all linked libraries from disk, e.g. after saving changes to an asset file
+	(linked data is only read when first linked, or when the file is opened)'''
+	bl_idname = "wm.reload_all_libraries"
+	bl_label = "Reload All Libraries"
+
+	@classmethod
+	def poll(cls, context):
+		return len(bpy.data.libraries) > 0
+
+	def execute(self, context):
+		reloaded, missing = 0, []
+		for library in list(bpy.data.libraries):
+			if library.is_missing:
+				missing.append(library.name)
+			else:
+				library.reload()
+				reloaded += 1
+		if missing:
+			self.report({'WARNING'}, "Reloaded %d libraries; missing: %s" % (reloaded, ', '.join(missing)))
+		else:
+			self.report({'INFO'}, "Reloaded %d libraries" % reloaded)
+		return {'FINISHED'}
+
+
+def menu_func_asset_override(self, context):
+	self.layout.separator()
+	self.layout.operator(OBJECT_OT_add_asset_override.bl_idname, icon='LIBRARY_DATA_OVERRIDE')
+	self.layout.operator(WM_OT_reload_all_libraries.bl_idname, icon='FILE_REFRESH')
+
+def menu_func_reload_libraries(self, context):
+	self.layout.separator()
+	self.layout.operator(WM_OT_reload_all_libraries.bl_idname, icon='FILE_REFRESH')
+
+# ----------------------------------------------------------------------------
 # glTF exporter hook
 #
 # Picked up by Blender's glTF exporter from any enabled add-on. Together with the exporter's
@@ -982,6 +1117,8 @@ classes = (
 	DATA_PT_game_trigger,
 	OBJECT_OT_add_game_trigger,
 	VIEW3D_MT_game_trigger_add,
+	OBJECT_OT_add_asset_override,
+	WM_OT_reload_all_libraries,
 	GameGltfSettings,
 )
 
@@ -997,6 +1134,8 @@ def register():
 	bpy.types.TOPBAR_MT_file_export.append(menu_func_export)
 	bpy.types.VIEW3D_MT_light_add.append(menu_func_add_light)
 	bpy.types.VIEW3D_MT_add.append(menu_func_add_trigger)
+	bpy.types.ASSETBROWSER_MT_context_menu.append(menu_func_asset_override)
+	bpy.types.TOPBAR_MT_file_external_data.append(menu_func_reload_libraries)
 
 	global _draw_handle
 	_draw_handle = bpy.types.SpaceView3D.draw_handler_add(draw_overlays, (), 'WINDOW', 'POST_VIEW')
@@ -1020,6 +1159,8 @@ def unregister():
 	except ImportError:
 		pass
 
+	bpy.types.TOPBAR_MT_file_external_data.remove(menu_func_reload_libraries)
+	bpy.types.ASSETBROWSER_MT_context_menu.remove(menu_func_asset_override)
 	bpy.types.VIEW3D_MT_add.remove(menu_func_add_trigger)
 	bpy.types.VIEW3D_MT_light_add.remove(menu_func_add_light)
 	bpy.types.TOPBAR_MT_file_export.remove(menu_func_export)
