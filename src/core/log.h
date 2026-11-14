@@ -49,7 +49,7 @@ public:
 		std::print(fp, fmt, std::forward<Args>(args)...);
 		end(fp);
 
-		if(lvl >= error_level and fp != stdout and fp != stderr)
+		if(lvl >= error_level and fp != stdout and not also_stdout)
 		{
 			preamble(lvl, stderr);
 			std::print(stderr, fmt, std::forward<Args>(args)...);
