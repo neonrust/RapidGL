@@ -500,15 +500,18 @@ ShadowAtlas::LightViewProjection ShadowAtlas::light_view_projection(const LightW
 const QueryResult &ShadowAtlas::pvs(const Scene &scene, LightID light_id, uint_fast8_t slot_idx, bool refresh) const
 {
 	QueryResult *result { nullptr };
-	auto found = _light_pvs.find(LIGHT_PVS_KEY(light_id, slot_idx));
+	const auto pvs_key = LIGHT_PVS_KEY(light_id, slot_idx);
+	auto found = _light_pvs.find(pvs_key);
 	if(found != _light_pvs.end())
 		result = &found->second;
 	else
 	{
 		QueryResult res;
 		// insert & get address of inserted object
-		// TODO: possibly to do in a cleaner way?
-		result = &((*_light_pvs.insert({ LIGHT_PVS_KEY(light_id, slot_idx), res }).first).second);
+		// TODO: possible to do in a cleaner way?
+		result = &((*_light_pvs.insert({ pvs_key, res }).first).second);
+		// the returned inserted object in a 'dense map' is not stored,
+		//   only used directly afterwards, so it's safe.
 	}
 
 	const auto light_ = _lights.get_light(light_id);
