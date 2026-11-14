@@ -10,6 +10,37 @@ TRIGGER 0bwall-button
 bounds  04aabb
 position0d0.53 0.37 -13
 extent  0d0.35 0.27 0.1
+MESH    08sandpile
+position14-0.816 -1.331 -5.211
+scale   111.000 0.509 1.000
+ori     03359
+MESH    08sandpile
+position14-4.952 -1.033 -12.93
+scale   111.000 0.454 1.000
+ori     03109
+MESH    08sandpile
+position15-4.854 -1.311 -12.117
+scale   110.811 0.544 0.811
+ori     03299
+MESH    08sandpile
+position14-0.816 -1.395 -8.667
+scale   111.000 0.613 1.000
+ori     03226
+MESH    08sandpile
+position130.673 -1.299 -5.242
+scale   111.000 0.497 1.000
+ori     0248
+MESH    04sand
+position14-0.428 -1.022 -6.082
+scale   111.000 0.201 1.000
+MESH    04sand
+position14-0.806 -1.022 -8.124
+scale   111.000 0.201 1.000
+ori     03315
+MESH    06bright
+position060 6 -7
+scale   115.000 5.000 5.000
+ori     07180 0 0
 MESH    08ceiling1
 grid    060 0 -5
 ori     03180
@@ -222,8 +253,15 @@ ori     0290
 MESH    11base-corner-inner
 grid    07-2 0 -1
 ori     03180
+MESH    09base-wall
+grid    050 0 0
+ori     03270
+MESH    09base-wall
+grid    050 1 0
+ori     03270
 MESH    0bfloor-brick
 grid    050 0 0
+ori     03180
 MESH    0bbase-pillar
 grid    060 0 -2
 MESH    0bbase-pillar
@@ -235,12 +273,14 @@ MESH    0bfloor-brick
 grid    060 0 -1
 MESH    0bfloor-brick
 grid    060 0 -2
+ori     03180
 MESH    0bfloor-brick
 grid    060 0 -3
 MESH    0bfloor-brick
 grid    07-1 0 -1
 MESH    0bfloor-brick
 grid    07-2 0 -1
+ori     03180
 MESH    0bfloor-brick
 grid    07-1 0 -2
 MESH    0bfloor-brick
@@ -249,6 +289,7 @@ MESH    0bfloor-brick
 grid    07-2 0 -2
 MESH    0bfloor-brick
 grid    07-2 0 -3
+ori     03180
 MESH    0bfloor-brick
 grid    07-2 0 -5
 MESH    0bfloor-brick
@@ -259,6 +300,7 @@ MESH    0bfloor-brick
 grid    061 0 -2
 MESH    0bfloor-brick
 grid    061 0 -3
+ori     03180
 MESH    0bfloor-brick
 grid    062 0 -1
 MESH    0bfloor-brick
@@ -268,9 +310,8 @@ grid    062 0 -3
 MESH    0bfloor-brick
 grid    060 0 -4
 MESH    0bfloor-brick
-grid    07-1 0 -4
-MESH    0bfloor-brick
 grid    07-2 0 -4
+ori     03179
 MESH    0bfloor-brick
 grid    061 0 -4
 MESH    0bfloor-brick
@@ -311,10 +352,13 @@ MESH    11floor-brick-thick
 grid    060 0 -5
 MESH    11floor-brick-thick
 grid    061 0 -5
+ori     03180
 MESH    11floor-brick-thick
 grid    062 0 -5
+ori     03180
 MESH    11floor-brick-thick
 grid    07-1 0 -6
+ori     03180
 MESH    11floor-brick-thick
 grid    07-1 0 -5
 MESH    11floor-brick-thick
