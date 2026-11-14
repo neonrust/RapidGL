@@ -5,20 +5,34 @@
 
 #include <entt/fwd.hpp>
 
+#include <variant>
+
+
 namespace RGL
 {
 class LightManager;
 };
+
+
+struct TriggerParams
+{
+	uint8_t   trigger_limit { 0 }; // 0 = no limit
+	uint8_t   ignore_count  { 0 };
+	glm::vec3 facing_direction { 0 };
+	float     direction_tolerance { 45.f };
+
+	uint8_t   triggered_count { 0 };
+
+	std::variant<std::monostate, RGL::bounds::AABB, RGL::bounds::Sphere, RGL::bounds::Cylinder, RGL::Plane> shape;
+};
+
 
 class ZigScene : public RGL::Scene
 {
 public:
 	ZigScene(entt::registry &entities, RGL::LightManager &lights);
 
-	entt::entity addTrigger(std::string_view name, const RGL::bounds::AABB     &aabb);
-	entt::entity addTrigger(std::string_view name, const RGL::bounds::Sphere   &sphere);
-	entt::entity addTrigger(std::string_view name, const RGL::bounds::Cylinder &cylinder);
-	// EntityID addTrigger(std::string_view name, const RGL::Plane            &plane);
+	entt::entity addTrigger(std::string_view name, const TriggerParams &params);
 	entt::entity trigger(std::string_view name) const;
 
 	dense_set<entt::entity> queryTriggers(const RGL::bounds::AABB &aabb);

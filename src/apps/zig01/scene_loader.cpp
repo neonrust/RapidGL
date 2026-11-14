@@ -175,6 +175,7 @@ uint32_t SceneLoader::load(std::string_view name, ZigScene &scene)
 		Control,    // button, lever, knob, wheel/valve, slider, etc
 		Trigger,
 		Walkable,
+		Connection,
 	};
 	static const string_map<ItemType> item_name_type {
 		{ "CONFIG",   ItemType::Config },
@@ -185,6 +186,7 @@ uint32_t SceneLoader::load(std::string_view name, ZigScene &scene)
 		{ "CONTROL",  ItemType::Control },   // interactible "thing"
 		{ "TRIGGER",  ItemType::Trigger },
 		{ "WALKABLE", ItemType::Walkable },
+		{ "CONNECT", ItemType::Connection },
 	};
 
 	auto entry_num { 0u };
@@ -192,6 +194,8 @@ uint32_t SceneLoader::load(std::string_view name, ZigScene &scene)
 	auto num_lights { 0u };
 	auto num_entities { 0u };
 	auto num_walkables { 0u };
+	auto num_triggers { 0u };
+	auto num_connects { 0u };
 
 	ItemType item_type { ItemType::None };
 	bool first { true };
@@ -263,6 +267,7 @@ uint32_t SceneLoader::load(std::string_view name, ZigScene &scene)
 		case ItemType::Control:  eat_next = read_control(fp, scene);  break;
 		case ItemType::Trigger:  eat_next = read_trigger(fp, scene);  break;
 		case ItemType::Walkable: eat_next = read_walkable(fp, scene); break;
+		case ItemType::Connection:eat_next = read_connection(fp, scene); break;
 		}
 
 		item_type = ItemType::None;
@@ -550,7 +555,7 @@ bool SceneLoader::read_mesh(RGL::tag_file &fp, ZigScene &scene)
 
 	auto mesh_name = std::string(fp.value());
 	// if no extension, default to ".gltf"  (this decision should probably be in AssetManager)
-	if(std::string_view(mesh_name).substr(mesh_name.size() - 5).find('.') == std::string::npos)
+	if(not mesh_name.contains('.'))
 		mesh_name += ".gltf"sv;
 
 	auto loaded = _assets.staticMesh(mesh_name);
@@ -613,9 +618,11 @@ bool SceneLoader::read_mesh(RGL::tag_file &fp, ZigScene &scene)
 			return false;
 		}
 		else if(tag == Property::Name)
-			object_name = fp.value();
+			object_name = value;
 		else if(tag == Property::Position)
 			transform.set_position(pop_vec3(value));
+		else if(tag == Property::Scale)
+			transform.set_scale(pop_vec3(value));
 		else if(tag == Property::Grid)
 			transform.set_position(pop_grid_pos(value));
 		else if(tag == Property::Orientation)
@@ -1032,40 +1039,19 @@ bool SceneLoader::read_trigger(RGL::tag_file &fp, ZigScene &scene)
 	auto name = std::string(fp.value());
 
 	glm::vec3 position(0);
-	RGL::bounds::AABB aabb;
-	RGL::bounds::Sphere sphere;
-	RGL::Plane plane;
+
+	TriggerParams params;
 
 	std::string bounds_type;
 
-	// NOTE: the trigger connection is a separate entity, connecting trigger name to something
+	// NOTE: the trigger connection is a separate entity, connecting trigger's `name` to something
 
 	auto add_trigger = [&]() {
 
 		if(not name.empty())
 		{
-			if(bounds_type == "aabb")
-			{
-				assert(aabb);
-				scene.addTrigger(name, aabb);
-			}
-			else if(bounds_type == "sphere")
-			{
-				assert(sphere);
-				scene.addTrigger(name, sphere);
-			}
-			else if(bounds_type == "cylinder")
-			{
-				assert(cylinder);
-				scene.addTrigger(name, cylinder);
-			}
-			// else if(bounds_type == "plane")
-			// {
-			// 	assert(plane);
-			// 	scene.addTrigger(name, plane);
-			// }
-			else
-				assert(false);
+
+			scene.addTrigger(name, params);
 		}
 	};
 
@@ -1080,29 +1066,52 @@ bool SceneLoader::read_trigger(RGL::tag_file &fp, ZigScene &scene)
 		}
 		else if(tag == Property::Position)
 			position = pop_vec3(value);
-		else if(tag == "bounds"sv)
+		else if(tag == Property::Bounds)
+		{
 			bounds_type = value;
+			if(bounds_type == "aabb"sv)
+				params.shape = RGL::bounds::AABB();
+			else if(bounds_type == "sphere"sv)
+				params.shape = RGL::bounds::Sphere();
+			else if(bounds_type == "cylinder"sv)
+				params.shape = RGL::bounds::Cylinder();
+			// else if(bounds_type == "plane"sv)
+			// 	params.shape = RGL::Plane();
+		}
+		else if(tag == "num_ign"sv)
+			params.ignore_count = pop_number<uint_fast8_t>(value);
+		else if(tag == "max_trig"sv)
+			params.trigger_limit = pop_number<uint_fast8_t>(value);
+		else if(tag == "dir"sv)
+			params.facing_direction = pop_vec3(value);
+		else if(tag == "dir_tol"sv)
+			params.direction_tolerance = pop_number(value);
 		else if(not bounds_type.empty())
 		{
 			if(tag == "extent"sv and bounds_type == "aabb"sv)
 			{
 				const auto extent = pop_vec3(value);
-				aabb = RGL::bounds::AABB(position - extent/2.f, position + extent/2.f);
+				auto &aabb = std::get<RGL::bounds::AABB>(params.shape);
+				aabb.min() = position - extent/2.f;
+				aabb.max() = position + extent/2.f;
 			}
 			else if(tag == Property::Radius and bounds_type == "sphere"sv)
 			{
 				const auto radius = pop_number(value);
+				auto &sphere = std::get<RGL::bounds::Sphere>(params.shape);
 				sphere.setCenter(position);
 				sphere.setRadius(radius);
 			}
 			else if(tag == Property::Radius and bounds_type == "cylinder"sv)
 			{
+				auto &cylinder = std::get<RGL::bounds::Cylinder>(params.shape);
 				cylinder.setCenter(position);
 				cylinder.setRadius(pop_number(value));
 			}
 			else if(tag == "axis"sv and bounds_type == "cylinder"sv)
 			{
-				// full axis vector, bottom to top cap
+				// full axis vector, bottom to top
+				auto &cylinder = std::get<RGL::bounds::Cylinder>(params.shape);
 				cylinder.setCenter(position);
 				cylinder.setHalfExtent(pop_vec3(value)/2.f);
 			}
@@ -1112,6 +1121,8 @@ bool SceneLoader::read_trigger(RGL::tag_file &fp, ZigScene &scene)
 			// 	const auto offset = pop_number(value);
 			// 	plane = RGL::Plane(normal, offset);
 			// }
+			else
+				unexpected_tag(fp, std::format("trigger.bounds[{}]", bounds_type));
 		}
 		else
 			unexpected_tag(fp, "trigger"sv);
@@ -1122,7 +1133,12 @@ bool SceneLoader::read_trigger(RGL::tag_file &fp, ZigScene &scene)
 	return true;
 }
 
-bool SceneLoader::read_walkable(RGL::tag_file &fp, RGL::Scene &scene)
+bool SceneLoader::read_connection(RGL::tag_file &fp, ZigScene &scene)
+{
+	return true;
+}
+
+bool SceneLoader::read_walkable(RGL::tag_file &fp, ZigScene &scene)
 {
 	// Log::debug("[{}:{}] read_walkable: {}", fp.file_path().filename().native(), fp.line_num(), fp.value());
 
