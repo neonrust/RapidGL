@@ -36,6 +36,7 @@ public:
 
 public:
 	CrawlerController(entt::registry &entities, entt::entity camera_id, RGL::Camera &camera, const ScreenRect &grabRect, float grid_size=2.f);  // TODO: "free-look area"
+	virtual ~CrawlerController() {};
 
 	void update(std::chrono::nanoseconds frameTime) override;
 
