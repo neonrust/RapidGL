@@ -574,7 +574,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 							label.clear();
 
 							const auto light_ent = entt::entity(light_id);
-							const auto &general = _entities.get<component::LightGeneral>(light_ent);
+							const auto &general = entities().get<component::LightGeneral>(light_ent);
 							std::format_to(std::back_inserter(label), "{{{}}} {}: {} slots", light_id, _light_mgr.type_name(general.light_type), atlas_light.num_slots);
 							if(light_id == _pov_light_id)
 								label.append(" pov");
@@ -740,7 +740,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			{
 				const auto light_id = _light_mgr.light_id(idx);
 				const auto light_ent = entt::entity(light_id);
-				const auto &general = _entities.get<component::LightGeneral>(light_ent);
+				const auto &general = entities().get<component::LightGeneral>(light_ent);
 
 				static std::string label;
 				label.reserve(32);
@@ -764,7 +764,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 
 		if(selected_light_id != NO_LIGHT_ID)
 		{
-			auto general = _entities.get<component::LightGeneral>(entt::entity(selected_light_id));
+			auto general = entities().get<component::LightGeneral>(entt::entity(selected_light_id));
 
 			if(ImGui::Checkbox("Enabled", &general.enabled))
 			{
@@ -790,7 +790,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 				_light_mgr.set_intensity(selected_light_id, general.intensity);
 			if(general.light_type == LightType::Directional)
 			{
-				auto transform = _entities.get<component::Transform>(entt::entity(selected_light_id));
+				auto transform = entities().get<component::Transform>(entt::entity(selected_light_id));
 				auto direction = transform.direction();
 				float elevation = glm::degrees(-std::asin(direction.y));
 				float azimuth   = glm::degrees(std::atan2(direction.x, direction.z));
@@ -812,7 +812,7 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 			}
 			if(general.light_type == LightType::Spot)
 			{
-				const auto &spot = _entities.get<component::SpotLight>(entt::entity(selected_light_id));
+				const auto &spot = entities().get<component::SpotLight>(entt::entity(selected_light_id));
 				float outer_angle = glm::degrees(spot.outer_angle);
 				float inner_angle = glm::degrees(spot.inner_angle);
 				float angle_ratio = inner_angle * 100.f / outer_angle;

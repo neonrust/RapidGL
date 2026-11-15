@@ -65,7 +65,7 @@ void ZigApp::debugDrawSceneBounds()
 	m_line_draw_shader->setUniform("u_line_color"sv, glm::vec4(0.3, 1.0, 0.7, 1));
 	m_line_draw_shader->setUniform("u_mvp"sv, view_projection); // no model transform needed; we'll generate vertices in world-space
 
-	for(const auto &[entity_id, tfm, model]: _entities.view<component::Transform, component::Model>().each()) // _scenePvs
+	for(const auto &[entity_id, tfm, model]: entities().view<component::Transform, component::Model>().each()) // _scenePvs
 	{
 		bounds::AABB tfm_aabb;
 		for(const auto &corner: model->aabb().corners())
@@ -173,7 +173,7 @@ void ZigApp::debugDrawLightMarkers()
 		if(light_id == _pov_light_id)
 			continue;
 
-		const auto &[general, transform] = _entities.get<component::LightGeneral, component::Transform>(light_ent);
+		const auto &[general, transform] = entities().get<component::LightGeneral, component::Transform>(light_ent);
 
 		const auto to_light = transform.position() - m_camera.position();
 		float distance_sq = glm::dot(to_light, to_light);

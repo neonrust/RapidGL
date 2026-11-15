@@ -81,8 +81,8 @@ glm::mat3 make_common_space_from_direction(const glm::vec3 &direction)
 using namespace RGL;
 
 ZigApp::ZigApp() :
-	_light_mgr(_entities),
-	_scene(_entities, _light_mgr),
+	_light_mgr(entities()),
+	_scene(entities(), _light_mgr),
 	_shadow_atlas(8192, _light_mgr),
 	m_cluster_aabb_ssbo("cluster-aabb"sv),
 	m_cluster_discovery_ssbo("cluster-discovery"sv),
@@ -92,8 +92,8 @@ ZigApp::ZigApp() :
 	m_affecting_lights_bitfield_ssbo("affecting-lights-bitfield"sv),
 	_relevant_lights_index_ssbo("relevant-lights-index"sv),
 	m_shadow_map_slots_ssbo("shadow-map-slots"sv),
-	_animSystem(_entities),
-	_triggerState(_entities, _scene.triggers()),
+	_animSystem(entities()),
+	_triggerState(entities(), _scene.triggers()),
 	m_gamma               (2.2f),
 	_ibl_mip_level        (1.2f),
 	_exit_shortcut(KeyCode::Escape),
@@ -596,21 +596,26 @@ void ZigApp::input()
 	// 	m_animate_lights = !m_animate_lights;
 }
 
-void ZigApp::update(nanoseconds delta_time)
+void ZigApp::update(nanoseconds frame_time)
 {
 	// Log::debug(" frame_time: {}", delta_time.count() / 1000);
 
-	_running_time += seconds_f(delta_time);
-	m_tmo_pp.setFrameTime(float(seconds_f(delta_time).count()));
+	_running_time += seconds_f(frame_time);
+	m_tmo_pp.setFrameTime(float(seconds_f(frame_time).count()));
 
-	m_camera.update(delta_time);
+	_crawler->update(entities(), frame_time);
+	// TODO: other controllers, AI, etc
+
+	_moveSystem.update(entities(), frame_time);
+	_cameraSystem.update(entities(), frame_time);
+	m_camera.update(frame_time); // TODO: remove, replaced by camera system
 
 	_triggerState.check(m_camera.position(), m_camera.directionVector(), [&](auto entered_id) {
-		const auto &general = _entities.get<component::TriggerGeneral>(entered_id);
+		const auto &general = entities().get<component::TriggerGeneral>(entered_id);
 		Log::debug("Trigger entered: {} '{}'", entered_id, general.name);
 		return true;
 	}, [&](auto exited_id) {
-		const auto &general = _entities.get<component::TriggerGeneral>(exited_id);
+		const auto &general = entities().get<component::TriggerGeneral>(exited_id);
 		Log::debug("Trigger exited: {} '{}'", exited_id, general.name);
 		return true;
 	});
@@ -1511,7 +1516,7 @@ void ZigApp::renderLightGeometry()
 	{
 		// draw a "sun" disc (or moon, I suppose); only supports one
 		// const auto &L = _light_mgr.gpu_get_by_id(sun_id);
-		const auto &[general, transform] = _entities.get<component::LightGeneral, component::Transform>(entt::entity(sun_id));
+		const auto &[general, transform] = entities().get<component::LightGeneral, component::Transform>(entt::entity(sun_id));
 		if(general.enabled)
 		{
 			const auto cam_pos = m_camera.position();
@@ -1693,7 +1698,7 @@ void ZigApp::collectRelevantLights(const Camera &view)
 
 			// TODO: something like:
 			// for(const auto &[light_id, general, transform]: _scene.relevantLights(view_pos))
-			// auto light_view = _entities.view<component::LightGeneral, component::Transform>();
+			// auto light_view = entities().view<component::LightGeneral, component::Transform>();
 			for(const auto &[l_index, L]: std::views::enumerate(_light_mgr))
 			{
 				const auto light_index = LightIndex(l_index);
@@ -1737,7 +1742,7 @@ void ZigApp::renderScene(const glm::mat4 &view_projection, Shader &shader, RGL::
 	{
 		for(const auto &entity_id: _cameraPvs.dynamic_entities)
 		{
-			const auto &[model, materials, transform] = _entities.get<component::Model, component::MaterialSet, component::Transform>(entity_id);
+			const auto &[model, materials, transform] = entities().get<component::Model, component::MaterialSet, component::Transform>(entity_id);
 			const auto &tfm = transform.transform();
 
 			shader.setUniform("u_mvp"sv,           view_projection * tfm);
@@ -1749,7 +1754,7 @@ void ZigApp::renderScene(const glm::mat4 &view_projection, Shader &shader, RGL::
 
 		for(const auto &entity_id: _cameraPvs.static_entities)
 		{
-			const auto &[model, materials, transform] = _entities.get<component::Model, component::MaterialSet, component::Transform>(entity_id);
+			const auto &[model, materials, transform] = entities().get<component::Model, component::MaterialSet, component::Transform>(entity_id);
 			const auto &tfm = transform.transform();
 
 			shader.setUniform("u_mvp"sv,           view_projection * tfm);
@@ -1774,7 +1779,7 @@ void ZigApp::renderScene(const glm::mat4 &view_projection, Shader &shader, RGL::
 
 		for(const auto &entity_id: _cameraPvs.dynamic_entities)
 		{
-			const auto &[model, transform] = _entities.get<component::Model, component::Transform>(entity_id);
+			const auto &[model, transform] = entities().get<component::Model, component::Transform>(entity_id);
 			const auto &tfm = transform.transform();
 
 			shader.setUniform("u_mvp"sv,           view_projection * tfm);
@@ -1786,7 +1791,7 @@ void ZigApp::renderScene(const glm::mat4 &view_projection, Shader &shader, RGL::
 
 		for(const auto &entity_id: _cameraPvs.static_entities)
 		{
-			const auto &[model, transform] = _entities.get<component::Model, component::Transform>(entity_id);
+			const auto &[model, transform] = entities().get<component::Model, component::Transform>(entity_id);
 			const auto &tfm = transform.transform();
 
 			shader.setUniform("u_mvp"sv,           view_projection * tfm);
@@ -1824,7 +1829,7 @@ void ZigApp::renderSceneShadow(const QueryResult &objects, uint16_t shadow_idx, 
 	{
 		for(const auto &entity_id: objects.static_entities)
 		{
-			const auto &[transform, model] = _entities.get<component::Transform, component::Model>(entity_id);
+			const auto &[transform, model] = entities().get<component::Transform, component::Model>(entity_id);
 			const auto &tfm = transform.transform();
 
 			m_shadow_depth_shader->setUniform("u_model"sv, tfm);
@@ -1833,7 +1838,7 @@ void ZigApp::renderSceneShadow(const QueryResult &objects, uint16_t shadow_idx, 
 	}
 	for(const auto &entity_id: objects.dynamic_entities)
 	{
-		const auto &[transform, model] = _entities.get<component::Transform, component::Model>(entity_id);
+		const auto &[transform, model] = entities().get<component::Transform, component::Model>(entity_id);
 		const auto &tfm = transform.transform();
 
 		m_shadow_depth_shader->setUniform("u_model"sv, tfm);
@@ -2020,5 +2025,5 @@ void ZigApp::loadScene([[maybe_unused]] std::string_view name)
 	for(const auto &name: _animSystem.names())
 		Log::debug("  animation: {}", name);
 
-	_entities.compact();
+	entities().compact();
 }

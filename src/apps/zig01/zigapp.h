@@ -1,11 +1,13 @@
 #pragma once
 
 #include "animation/animation_system.h"
+#include "camera_system.h"
 #include "core_app.h"
 
 #include "common.h"
 #include "camera.h"
 #include "input_bind.h"
+#include "movement_system.h"
 #include "sample_window.h"
 #include "scene.h"
 #include "skybox.h"
@@ -48,7 +50,7 @@ public:
 
     void init_app()                override;
     void input()                   override;
-	void update(std::chrono::nanoseconds delta_time) override;
+	void update(std::chrono::nanoseconds frame_time) override;
     void render()                  override;
     void render_gui()              override;
 
@@ -95,8 +97,6 @@ private:
 	void debugDrawClusterGrid();
 
 private:
-	entt::registry _entities;
-
 	RGL::LightManager _light_mgr;
 	ZigScene _scene;
 
@@ -202,6 +202,8 @@ private:
 	// std::shared_ptr<RGL::Texture2DArray> _csm_shadow_maps;
 	RGL::Texture3D _random_angles;
 
+	RGL::CameraSystem _cameraSystem;
+	RGL::MovementSystem _moveSystem;
 	RGL::AnimationSystem _animSystem;
 
 	RGL::TriggerState _triggerState;

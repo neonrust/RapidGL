@@ -2,6 +2,9 @@
 
 #include "asset/asset_manager.h"
 #include "sample_window.h"
+
+#include <entt/entity/registry.hpp>
+
 #include <string>
 #include <cstdint>
 #include <chrono>
@@ -34,12 +37,17 @@ namespace RGL
 		bool take_screenshot(const std::string & filename);
 
 	protected:
+		inline entt::registry &entities() { return _entities; };
+
+	protected:
 		double   m_frame_time;
 
     private:
 		int run_app();
 
-        uint32_t m_fps;
+	private:
+		entt::registry _entities;
+		uint32_t m_fps;
         bool     m_is_running;
 		SampleWindow<std::chrono::microseconds, 30> _render_time;
 	};
