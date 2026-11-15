@@ -2,7 +2,7 @@
 
 #include <entt/fwd.hpp>
 
-#include "game_time.h"
+#include <chrono>
 
 namespace RGL
 {
@@ -10,12 +10,11 @@ namespace RGL
 class EntitySystem
 {
 public:
-	EntitySystem(entt::registry &entities) : _entities(entities) {};
+	EntitySystem() {};
 
-	virtual void update(seconds_f elapsed) = 0;
+	virtual void register_subscriptions(entt::registry &entities) { (void)entities; };
 
-protected:
-	entt::registry &_entities;
+	virtual void update(entt::registry &entities, std::chrono::nanoseconds frame_time) = 0;
 };
 
 } // RGL

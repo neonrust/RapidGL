@@ -19,6 +19,7 @@ set(SOURCE_FILES_CORE
 	buffer.cpp
 	buffer_binds.h
 	camera.cpp
+	camera_system.cpp
 	control_map.cpp
 	core_app.cpp
 	filesystem.cpp
@@ -98,6 +99,7 @@ set(HEADER_FILES_CORE
 	bounds.h
 	buffer.h
 	camera.h
+	camera_system.h
 	common.h
 	constants.h
 	container_types.h
@@ -134,6 +136,7 @@ set(HEADER_FILES_CORE
 	mesh_part.h
 	movement_system.h
 	plane.h
+	player_controller.h
 	postprocess.h
 	pp_ao.h
 	pp_bloom.h

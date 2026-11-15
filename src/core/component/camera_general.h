@@ -3,6 +3,8 @@
 #include <cstdint>
 #include "frustum.h"
 
+#include <glm/vec2.hpp>
+
 namespace RGL
 {
 
@@ -19,11 +21,10 @@ struct CameraGeneral
 {
 	CameraProjection projection_type { CameraProjection::Perspective };
 
-	uint32_t width { 1920 };
-	uint32_t height { 1080 };
-	float exposure { 1.f };
+	glm::uvec2 view_size { 1920, 1080 };
+	float brightness { 1.f };
 
-	[[nodiscard]] inline float aspect() const { return float(width) / float(height); }
+	[[nodiscard]] inline float aspect() const { return float(view_size.x) / float(view_size.y); }
 };
 
 using CameraFrustum = Frustum;
