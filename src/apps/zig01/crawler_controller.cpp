@@ -2,9 +2,13 @@
 
 #include "formatters_glm.h"  // IWYU pragma: keep
 #include "constants.h"
+#include "component/movement.h"
 
+#include <entt/entity/registry.hpp>
 #include <input.h>
 #include <numbers>
+
+#include "game_time.h"
 
 using namespace std::chrono;
 using namespace std::literals;
@@ -51,9 +55,8 @@ static constexpr GridDistance s_camera_facing_dir[] = { // forward vector
 
 // ----------------------------------------------------------------------------
 
-CrawlerController::CrawlerController(entt::entity camera_id, RGL::Camera &camera, const ScreenRect &grabRect, float grid_size) :
-	RGL::MovementController(camera_id),
-	_camera(camera),
+CrawlerController::CrawlerController(entt::entity camera_id, const ScreenRect &grabRect, float grid_size) :
+	RGL::PlayerController(camera_id),
 	_grid_size(grid_size),
 	_mouseScaleYaw(0.05f),
 	_mouseScalePitch(0.03f),
@@ -78,8 +81,10 @@ CrawlerController::CrawlerController(entt::entity camera_id, RGL::Camera &camera
 
 // ----------------------------------------------------------------------------
 
-void CrawlerController::update(std::chrono::nanoseconds frameTime)
+void CrawlerController::update(entt::registry &entities, std::chrono::nanoseconds frameTime)
 {
+	auto [movement, transform] = entities.get<RGL::component::Movement, RGL::component::Transform>(subject());
+
 	if(_moveCommand == MoveCommand::None and not _freeLooking)
 	{
 		// in theory, '_moveCommand' could be multiplke moves at once,
@@ -101,15 +106,12 @@ void CrawlerController::update(std::chrono::nanoseconds frameTime)
 
 	if(_animation.type == GridAnimation::None and not _freeLooking)
 	{
-		// camera_animation_end = now; // if no move was made
-
 		if(_moveCommand == MoveCommand::None and _binds.freeLookBegin and _binds.freeLookBegin.triggered())
 		{
 			if(not _freeLooking)
 			{
 				_freeLooking = true;
 				// TODO: this should use _binds.freeLook axes
-				// _freeLookGrab = _binds.freeLook.grab(_grabTopLeft + _grabSize/2u);
 				_freeLookGrab = _binds.freeLook.rawValue();
 				RGL::Input::setMouseCursorVisible(false);
 				RGL::Input::setMousePosition(_grabTopLeft + _grabSize/2u);
@@ -188,12 +190,16 @@ void CrawlerController::update(std::chrono::nanoseconds frameTime)
 		{
 			if(_animation.type == GridAnimation::Move)
 			{
-				_camera.setPosition(glm::lerp(_animation.position.prev * _grid_size, _animation.position.next * _grid_size, animation_progress));
-				_camera.lookAt(_camera.position() + s_camera_facing_dir[uint_fast8_t(_facing)] * _grid_size);
-				// TODO: add camera bobbing
+				movement.end_position = _animation.position.next * _grid_size;
+				const auto diff = _animation.position.next * _grid_size - _animation.position.prev * _grid_size;;
+				// for now, constant speed to end poition
+				// TODO: ease-in, ease-out
+				movement.velocity = diff / float(duration_cast<RGL::seconds_f>(_animation.duration).count());
+				entities.replace<RGL::component::Movement>(subject(), movement);
 
-				// std::cout << "progress: " << std::fixed << std::setprecision(1) << animation_progress << ": "
-				// 		  << _camera.position << ' ' << _animation.position.next << '\n';
+				// _camera.lookAt(transform.position() + s_camera_facing_dir[uint_fast8_t(_facing)] * _grid_size);
+				transform.set_direction(s_camera_facing_dir[uint_fast8_t(_facing)] * 1.f);
+				// TODO: add camera bobbing
 			}
 			else // TurnLeft or TurnRight
 			{
@@ -205,12 +211,8 @@ void CrawlerController::update(std::chrono::nanoseconds frameTime)
 				// const auto facing = Vector3RotateByAxisAngle(facing_from * _grid_size, AXIS_Z, right? -angle: angle);
 				const auto facingMatrix = glm::rotate(glm::mat4(1), right? -angle: angle, AXIS_Z);
 				const auto facing = glm::vec3(facingMatrix * glm::vec4(facing_from * _grid_size, 1.f));
-				_camera.lookAt(_camera.position() + facing);
-
+				// _camera.lookAt(transform.position() + facing);
 				// TODO: "lean" camera left/right to fake inertia?
-
-				// std::cout << "progress: " << std::fixed << std::setprecision(1) << animation_progress << ": "
-				// 		  << facing << '\n';
 			}
 
 			if(animation_progress >= 0.5f) // allow next movement input halfway through current animation
@@ -220,17 +222,14 @@ void CrawlerController::update(std::chrono::nanoseconds frameTime)
 		{
 			if(_animation.type == GridAnimation::Move)
 			{
-				_grid_position = _animation.position.next; // though, this should already be set when animation started
-				_camera.setPosition(_grid_position * _grid_size);
-				// std::cout << "DONE " << _position << " -> " << _camera.position << '\n';
+				// _grid_position = _animation.position.next; // though, this should already be set when animation started
+				// _camera.setPosition(_grid_position * _grid_size);
 			}
 			else // TurnLeft or TurnRight
-			{
 				_facing = _animation.facing.next;
-				// std::cout << "DONE " << _facing << " -> " << s_camera_facing_pos[_facing] << '\n';
-			}
 
-			_camera.lookAt(_camera.position() + s_camera_facing_dir[uint_fast8_t(_facing)] * _grid_size);
+			// _camera.lookAt(transform.position() + s_camera_facing_dir[uint_fast8_t(_facing)] * _grid_size);
+			transform.set_direction(transform.position() + s_camera_facing_dir[uint_fast8_t(_facing)] * _grid_size);
 
 			_animation.type = GridAnimation::None;
 		}
@@ -246,9 +245,8 @@ void CrawlerController::update(std::chrono::nanoseconds frameTime)
 			RGL::Input::setMousePosition(_freeLookGrab);
 			RGL::Input::setMouseCursorVisible(true);
 
-			_camera.lookAt(_camera.position() + s_camera_facing_dir[uint_fast8_t(_facing)] * _grid_size);
-
-			// std::cout << "mouselook END\n";
+			// _camera.lookAt(transform.position() + s_camera_facing_dir[uint_fast8_t(_facing)] * _grid_size);
+			transform.set_direction(transform.position() + s_camera_facing_dir[uint_fast8_t(_facing)] * _grid_size);
 
 			// TODO: releasing while looking far left/right should snap facing to nearest direction
 			//  also the "snap" shouldn't be instant, but instead a "very quick" animation, lika 20% of anormal turn tine
@@ -269,15 +267,14 @@ void CrawlerController::update(std::chrono::nanoseconds frameTime)
 			_freeLookPitch = glm::clamp(_freeLookPitch + pitchAdd, -s_mouselook_max_pitch, s_mouselook_max_pitch);
 
 			auto target = s_camera_facing_dir[uint_fast8_t(_facing)] * _grid_size; // default target for this facing direction
-			// target = Vector3RotateByAxisAngle(target, AXIS_Z, -std::numbers::pi_v<float>/2*_freeLookYaw);
 			auto targetMatrix = glm::rotate(glm::mat4(1), -std::numbers::pi_v<float>/2*_freeLookYaw, AXIS_Z);
 			target = glm::vec3(targetMatrix * glm::vec4(target, 1.f));
 			const auto rightVector = glm::cross(AXIS_Z, target);
-			// target = Vector3RotateByAxisAngle(target, rightVector, std::numbers::pi_v<float>/2*_mouseLookPitch);
 			targetMatrix = glm::rotate(glm::mat4(1), std::numbers::pi_v<float>/2*_freeLookPitch, rightVector);
 			target = glm::vec3(targetMatrix * glm::vec4(target, 1.f));
 
-			_camera.lookAt(_camera.position() + target);
+			// _camera.lookAt(transform.position() + target);
+			transform.set_direction(transform.position() + target);
 		}
 	}
 }
@@ -319,13 +316,13 @@ CrawlerController::Movement CrawlerController::wantsToMove(Movement directions) 
 
 // ----------------------------------------------------------------------------
 
-void CrawlerController::invalidate()
-{
-	_camera.setPosition({ float(_grid_position.x) * _grid_size,
-						  float(_grid_position.y) * _grid_size,
-						  float(_grid_position.z) * _grid_size });
+// void CrawlerController::invalidate()
+// {
+// 	_camera.setPosition({ float(_grid_position.x) * _grid_size,
+// 						  float(_grid_position.y) * _grid_size,
+// 						  float(_grid_position.z) * _grid_size });
 
-	_camera.lookAt(_camera.position() + s_camera_facing_dir[uint_fast8_t(_facing)] * _grid_size);
-}
+// 	_camera.lookAt(_camera.position() + s_camera_facing_dir[uint_fast8_t(_facing)] * _grid_size);
+// }
 
 // ----------------------------------------------------------------------------

@@ -4,8 +4,7 @@
 #include "scene.h"
 
 #include "input_bind.h"
-#include "control_map.h"
-#include "movement_controller.h"
+#include "player_controller.h"
 
 #include <glm/vec2.hpp>
 
@@ -18,7 +17,7 @@ struct ScreenRect
 	glm::uvec2 size;
 };
 
-class CrawlerController : public RGL::MovementController
+class CrawlerController : public RGL::PlayerController
 {
 public:
 	enum class Facing : uint32_t { North, East, South, West };
@@ -35,10 +34,10 @@ public:
 	};
 
 public:
-	CrawlerController(entt::entity camera_id, RGL::Camera &camera, const ScreenRect &grabRect, float grid_size=2.f);  // TODO: "free-look area"
+	CrawlerController(entt::entity camera_id, const ScreenRect &grabRect, float grid_size=2.f);  // TODO: "free-look area"
 	virtual ~CrawlerController() {};
 
-	void update(std::chrono::nanoseconds frameTime) override;
+	void update(entt::registry &entities, std::chrono::nanoseconds frameTime) override;
 
 	inline void setWalkableQuery(std::function<bool(RGL::GridPos)> callback) { _queryWalkable = callback; }
 
@@ -57,21 +56,15 @@ public:
 	void pushX(int offset) { (void)offset; };
 	void pushY(int offset) { (void)offset; };
 
-	inline void setPosition(const RGL::GridPos &p) { _grid_position = p; invalidate(); };
-	inline void setFacing(Facing facing) { _facing = facing; invalidate(); }
+	// inline void setPosition(const RGL::GridPos &p) { _grid_position = p; invalidate(); };
+	// inline void setFacing(Facing facing) { _facing = facing; invalidate(); }
 
 	inline const RGL::GridPos &grid() const { return _grid_position; }
 	inline Facing facing() const { return _facing; }
 
-	inline const RGL::Camera &camera() const { return _camera; }
-
 	Movement wantsToMove(Movement directions) const;
 
 private:
-	void invalidate();
-
-private:
-	RGL::Camera &_camera;
 	float _grid_size;
 
 	bool _freeLooking { false };
