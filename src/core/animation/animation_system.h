@@ -6,7 +6,7 @@
 #include "entity_system.h"
 #include "component/animation.h"
 
-#include <entt/fwd.hpp>
+#include <entt/entity/registry.hpp>
 #include <glm/vec3.hpp>
 #include <glm/gtc/quaternion.hpp>
 
@@ -72,11 +72,12 @@ public:
 
 	bool is_playing(std::string_view name) const;
 
-	void update(seconds_f elapsed) override;
+	void update(entt::registry &, std::chrono::nanoseconds frame_time) override;
 
 	std::vector<std::string_view> names() const;
 
 private:
+	entt::registry &_entities;
 	string_map<entt::entity> _nameToId;
 
 	struct sampler_ctrl

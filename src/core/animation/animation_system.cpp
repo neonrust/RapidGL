@@ -1,7 +1,5 @@
 #include "animation_system.h"
 
-#include <entt/entity/registry.hpp>
-
 #include "component/animation.h"
 #include "component/transform.h"
 #include "log.h"
@@ -23,7 +21,7 @@ static constexpr auto ident_quat = glm::quat_identity<float, glm::defaultp>();
 
 
 AnimationSystem::AnimationSystem(entt::registry &entities) :
-	EntitySystem(entities)
+	_entities(entities)
 {
 }
 
@@ -159,7 +157,7 @@ bool AnimationSystem::play(std::string_view name, seconds_f elapsed, const glm::
 
 // ----------------------------------------------------------------------------
 
-void AnimationSystem::update(seconds_f elapsed)
+void AnimationSystem::update(entt::registry &, std::chrono::nanoseconds frame_time)
 {
 	for(const auto &[name, ctrl]: _active)
 	{
