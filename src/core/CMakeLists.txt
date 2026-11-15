@@ -51,6 +51,7 @@ set(SOURCE_FILES_CORE
 	skybox.cpp
 	tag_file.cpp
 	texture.cpp
+	transform_controller.cpp
 	# trigger.cpp
 	trigger_state.cpp
 	util.cpp
@@ -97,6 +98,7 @@ set(HEADER_FILES_CORE
 	buffer.h
 	camera.h
 	common.h
+	constants.h
 	container_types.h
 	control_map.h
 	core_app.h
@@ -157,6 +159,7 @@ set(HEADER_FILES_CORE
 	tag_file.h
 	texture.h
 	timer.h
+	transform_controller.h
 	# trigger.h
 	trigger_state.h
 	ubo.h

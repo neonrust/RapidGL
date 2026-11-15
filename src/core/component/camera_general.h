@@ -6,7 +6,7 @@
 namespace RGL
 {
 
-enum class CameraType : uint_fast8_t
+enum class CameraProjection : uint_fast8_t
 {
 	Perspective,
 	Ortho
@@ -17,7 +17,7 @@ namespace component
 
 struct CameraGeneral
 {
-	CameraType camera_type { CameraType::Perspective };
+	CameraProjection projection_type { CameraProjection::Perspective };
 
 	uint32_t width { 1920 };
 	uint32_t height { 1080 };

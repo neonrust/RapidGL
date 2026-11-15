@@ -66,8 +66,6 @@ public:
 		UniformType type;
 	};
 
-	void enableLiveReload();
-
 	Shader();
 	explicit Shader(const std::filesystem::path & compute_shader_filepath, const string_set &conditionals={});
 
@@ -94,6 +92,9 @@ public:
 		   const string_set &conditionals={});
 
 	~Shader();
+
+	std::vector<std::filesystem::path> shaderFiles() const;
+	bool reload();
 
 	inline uint32_t program_id() const { return m_program_id; }
 	bool link();

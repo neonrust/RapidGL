@@ -5,8 +5,10 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 
+#include "component/transform.h"
 #include "frustum.h"
 #include "input.h"
+
 
 namespace RGL
 {
@@ -56,29 +58,29 @@ public:
 
 	// set/get vertical fov (degrees)
 	void setFov(float fov);
-	inline float verticalFov() const { return m_fovy; }
+	inline float verticalFov() const { return _fovy; }
 	float horizontalFov() const;
 
 	void setFarPlane(float f);
 	void setNearPlane(float n);
 
-	inline glm::vec3 position()    const { return m_position; }
-	inline glm::quat orientation() const { return m_orientation; }
+	inline glm::vec3 position()    const { return _transform.position(); }
+	inline glm::quat orientation() const { return _transform.orientation(); }
 
-	inline glm::vec3 directionVector() const { return m_direction; }
-	inline glm::vec3 forwardVector()   const { return -m_direction; }
+	inline glm::vec3 directionVector() const { return _direction; }
+	inline glm::vec3 forwardVector()   const { return -_direction; }
 		   glm::vec3 rightVector()     const;
 		   glm::vec3 upVector()        const;
-	inline float aspectRatio()   const { return float(m_width) / float(m_height); }
-	inline float nearPlane()     const { return m_near; }
-	inline float farPlane()      const { return m_far; }
+	inline float aspectRatio()   const { return float(_width) / float(_height); }
+	inline float nearPlane()     const { return _near; }
+	inline float farPlane()      const { return _far; }
 	
 	const Frustum &frustum() const;
 
 	void lookAt(const glm::vec3 &point);
 
 	inline const glm::mat4 &projectionTransform() const { return m_projection; }
-	inline const glm::mat4 &viewTransform() const { return m_view; }
+	inline const glm::mat4 &viewTransform() const { return _view; }
 
 	// create same projection as current, except different near & far planes
 	glm::mat4 projectionTransform(float z_near, float z_far) const;
@@ -88,7 +90,7 @@ public:
 	// TODO: this shouldn't be here (better in a controller-type thing)
 	void update(std::chrono::nanoseconds dt);
 
-	inline glm::uvec2 viewportSize() const { return { m_width, m_height }; }
+	inline glm::uvec2 viewportSize() const { return { _width, _height }; }
 
 	inline float brightness() const { return _brightness; }
 	inline void setBrightness(float brightness) { _brightness = brightness; }
@@ -96,14 +98,14 @@ public:
 	size_t hash() const;
 
 private:
-	glm::mat4 m_view;
+	glm::mat4 _view;
 	glm::mat4 m_projection;
-	bool m_is_ortho;
+	bool _is_ortho;
 
 	float m_sensitivity;
 	float m_move_speed;
 
-	// KeyCode m_unlock_mouse_key;
+	MouseButton m_unlock_mouse_button;
 	KeyCode m_forward_key;
 	KeyCode m_backward_key;
 	KeyCode m_left_key;
@@ -112,6 +114,7 @@ private:
 	KeyCode m_down_key;
 
 private:
+	void updateView();
 	void updateDirection();
 	void updateFrustum();
 	void move(const glm::vec3 & position, const glm::vec3& dir, float amount);
@@ -122,24 +125,25 @@ private:
 	float _yaw;
 	float _pitch;
 	Frustum _frustum;
-
-	glm::quat m_orientation;
-	glm::vec3 m_position;
-	glm::vec3 m_direction;
-	size_t m_width;
-	size_t m_height;
-	float m_near;
-	float m_far;
-	float m_left;
-	float m_right;
-	float m_top;
-	float m_bottom;
-	float m_fovy; // in degrees
-
-	glm::ivec2 m_mouse_pressed_position;
-	bool       m_is_dirty;
-	bool       m_is_mouse_move;
 	float _brightness { 0 };
+
+	component::Transform _transform;
+	// glm::quat m_orientation;
+	// glm::vec3 m_position;
+	glm::vec3 _direction;
+	size_t _width;
+	size_t _height;
+	float _near;
+	float _far;
+	float _left;
+	float _right;
+	float _top;
+	float _bottom;
+	float _fovy; // in degrees
+
+	glm::ivec2 _mouse_pressed_position;
+	bool       _is_dirty;
+	bool       _is_mouse_move;
 };
 
 } // RGL

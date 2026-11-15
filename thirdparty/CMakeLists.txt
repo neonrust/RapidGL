@@ -75,6 +75,19 @@ if(imgui_ADDED)
     target_include_directories(imgui PUBLIC ${imgui_SOURCE_DIR})
 endif()
 
+CPMAddPackage("gh:CedricGuillemet/ImGuizmo#a15acd87a3f3241a29ea1363ceafc680dca3a96b")
+if(ImGuizmo_ADDED)
+    set(ImGuizmo_SOURCE_DIR ${ImGuizmo_SOURCE_DIR} CACHE INTERNAL "")
+    add_library(imguizmo
+        STATIC
+        ${ImGuizmo_SOURCE_DIR}/GraphEditor.cpp
+        ${ImGuizmo_SOURCE_DIR}/ImCurveEdit.cpp
+        ${ImGuizmo_SOURCE_DIR}/ImGradient.cpp
+        ${ImGuizmo_SOURCE_DIR}/ImGuizmo.cpp
+        # ${ImGuizmo_SOURCE_DIR}/ImSequencer.cpp
+    )
+    target_include_directories(imguizmo PUBLIC ${ImGuizmo_SOURCE_DIR})
+    target_link_libraries(imguizmo PUBLIC imgui)
 endif()
 
 # CPMAddPackage(
@@ -101,9 +114,11 @@ set_target_properties(glad
                       glm 
                       imgui 
                       # implot
+                      imguizmo
 					  unordered_dense
 					  svector
 					  tinyddsloader
+					  signals
 					  PROPERTIES FOLDER "thirdparty")
 
 if (TARGET zlibstatic)

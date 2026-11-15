@@ -21,6 +21,7 @@
 
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/random.hpp>
+#include "crawler_controller.h"
 #include "formatters_glm.h"   // IWYU pragma: keep
 #include "formatters_entt.h"  // IWYU pragma: keep
 
@@ -180,10 +181,13 @@ void ZigApp::init_app()
 	m_camera = Camera(m_camera_fov, 0.1f, 200);
 	m_camera.setSize(Window::width(), Window::height());
 	m_camera.setPosition({ 0.f, 0.f, 0.f });
-	m_camera.setOrientationEuler({ 0, 0, 0 });
-	// shadow bias study:
-	m_camera.setPosition({ 4.1f, 0.4f, 4.9f });
-	m_camera.setOrientationEuler({ 16.8f, -125.2f, 0 });
+	m_camera.setOrientationEuler({0, 0, 0 });
+	// shadow study: (shadowtest)
+	// m_camera.setPosition({ 4.1f, 0.4f, 4.9f });
+	// m_camera.setOrientationEuler({ 16.8f, -125.2f, 0 });
+	// shadow study: (cathedral)
+	// m_camera.setPosition({ 10.6f, 0.4f, 8.3f });
+	// m_camera.setOrientationEuler({ 12.4f, 13.4f, 0 });
 	// rect light fog artifact study
 	// m_camera.setPosition({ -8.6f, 2.4f, 10.5f });
 	// m_camera.setOrientationEuler({ 3.f, -90.f, 0 });
@@ -195,11 +199,30 @@ void ZigApp::init_app()
 	// m_camera.setOrientationEuler({ 0.f, -90.f, 0 });
 
 
+	// const auto mouseLookGrab = ScreenRect{ { 0, 0 }, { Window::width(), Window::height() } };
+	// _crawler = std::make_unique<CrawlerController>(m_camera, mouseLookGrab, 2.f);
+	// {
+	// 	auto &cc = _crawler->controls();
+	// 	cc.action("forward"sv).bind(KeyCode::E, ActionBind::Hold);
+	// 	cc.action("backward"sv).bind(KeyCode::D, ActionBind::Hold);
+	// 	cc.action("left"sv).bind(KeyCode::S, ActionBind::Hold);
+	// 	cc.action("right"sv).bind(KeyCode::F, ActionBind::Hold);
+	// 	cc.action("turn-left"sv).bind(KeyCode::W);
+	// 	cc.action("turn-right"sv).bind(KeyCode::R);
+	// 	cc.action("free-look-begin"sv).bind(MouseButton::Left);
+	// 	cc.action("free-look-end"sv).bind(MouseButton::Left, ActionBind::Release);
+	// 	cc.axis2d("free-look"sv).bind(MouseAxis2d::Position, { uint_fast16_t(Window::width()), uint_fast16_t(Window::height()) });
+	// 	_crawler->setWalkableQuery([](auto gp) -> bool {
+	// 		// TODO: check if grid position 'gp' is walkable
+	// 		(void)gp;
+	// 		return true;
+	// 	});
 
-	Log::debug("Horizontal FOV: {}", m_camera.horizontalFov());
+	// 	cc.verify_bound();
+	// }
 
 	// m_light_counts_ubo.clear();
-	// createLights();
+	createLights();
 
     /// Prepare lights' SSBOs.
 	updateLightsSSBOs();  // initial update will create the GL buffers
@@ -604,16 +627,18 @@ void ZigApp::createLights()
 
 	static constexpr auto ident_quat = glm::quat_identity<float, glm::defaultp>();
 
-	// auto light_dir = glm::normalize(glm::vec3(5, -3, 5));
-	// Log::debug("light dir: {:.3f}", light_dir);
-	// auto lid = _light_mgr.add(DirectionalLightParams{
-	// 	.color = { 1.f, 0.97f, 0.9f },
-	// 	.intensity = 20.f,
-	// 	.fog = 1.f,
-	// 	.shadow_caster = true,
-	// 	.contact_shadows = false,
-	// 	.direction = light_dir,
-	// });
+	// {
+	// 	const auto light_dir = glm::normalize(glm::vec3(5, -3, 5));
+	// 	auto lid = _light_mgr.add(DirectionalLightParams{
+	// 		.color = { 1.f, 0.97f, 0.9f },
+	// 		.intensity = 20.f,
+	// 		.fog = 1.f,
+	// 		.shadow_caster = true,
+	// 		.contact_shadows = false,
+	// 		.direction = light_dir,
+	// 		});
+	// 	assert(lid);
+	// }
 
 	// auto l = _light_mgr.add(SpotLightParams{
 	// 	.color = { 1.f, 0.85f, 0.7f },
@@ -628,6 +653,19 @@ void ZigApp::createLights()
 	// });
 	// if(l)
 	// 	_pov_light_id = *l;
+
+
+	// {
+	// 	auto lid = _light_mgr.add(PointLightParams{
+	// 		.color = { 1, 1, 1 },
+	// 		.intensity = 400.f,
+	// 		.fog = 1.f,
+	// 		.shadow_caster = true,
+	// 		.contact_shadows = false,
+	// 		.position = { -2, 10, 0 },
+	// 		});
+	// 	assert(lid);
+	// }
 
 
 	glm::vec3 offset { 0.f, 0.f, 0.f };
@@ -855,7 +893,7 @@ void ZigApp::IrradianceConvolution(const std::shared_ptr<RenderTarget::Cube>&cub
 	glViewport(0, 0, GLsizei(Window::width()), GLsizei(Window::height()));
 }
 
-void ZigApp::PrefilterEnvCubemap(const std::shared_ptr<RenderTarget::Cube>& cubemap_rt)
+void ZigApp::PrefilterEnvCubemap(const std::shared_ptr<RenderTarget::Cube>&cubemap_rt)
 {
 	m_prefilter_env_map_shader->bind();
 	m_prefilter_env_map_shader->setUniform("u_projection"sv, cubemap_rt->projection());
@@ -1149,14 +1187,6 @@ void ZigApp::render()
 		m_volumetrics_render_time.clear();
 	}
 
-
-	// TODO: compute average luminance of rendered image
-	//   and gradually adjust exposure over time (see tone mapping, below)
-	// m_detect_brightness_shader.bind();
-	// m_detect_brightness_shader.invoke(GLuint(glm::ceil(float(_rt.width()) / 8.f)),
-	// 				  GLuint(glm::ceil(float(_rt.height()) / 8.f)));
-	// write the result to some SSBO, so tonemapping can pick it up
-	// TODO: compute new desired exposure, blend 'm_eposure' over time towards that value
 
 	// ------------------------------------------------------------------
 	// Bloom
@@ -1663,7 +1693,7 @@ void ZigApp::collectRelevantLights(const Camera &view)
 
 			// TODO: something like:
 			// for(const auto &[light_id, general, transform]: _scene.relevantLights(view_pos))
-			auto light_view = _entities.view<component::LightGeneral, component::Transform>();
+			// auto light_view = _entities.view<component::LightGeneral, component::Transform>();
 			for(const auto &[l_index, L]: std::views::enumerate(_light_mgr))
 			{
 				const auto light_index = LightIndex(l_index);
@@ -1734,11 +1764,11 @@ void ZigApp::renderScene(const glm::mat4 &view_projection, Shader &shader, RGL::
 		// render using no materials, i.e. for shadow maps or depth-only
 
 		// TODO: sort '_cameraPvs' by state changes, e.g. mesh + material
-		std::sort(_cameraPvs.dynamic_entities.begin(), _cameraPvs.dynamic_entities.end(), [this](const auto &A, const auto &B) {
+		std::sort(_cameraPvs.dynamic_entities.begin(), _cameraPvs.dynamic_entities.end(), [](const auto &A, const auto &B) {
 			return A < B;
 		});
 		// TODO: sort '_cameraPvs' by state changes, e.g. mesh + material
-		std::sort(_cameraPvs.static_entities.begin(), _cameraPvs.static_entities.end(), [this](const auto &A, const auto &B) {
+		std::sort(_cameraPvs.static_entities.begin(), _cameraPvs.static_entities.end(), [](const auto &A, const auto &B) {
 			return A < B;
 		});
 
@@ -1976,6 +2006,14 @@ void ZigApp::debug_message(GLenum type, std::string_view severity, std::string_v
 
 void ZigApp::loadScene([[maybe_unused]] std::string_view name)
 {
+	// auto mesh_ = assets().staticMesh("shadowtest.gltf");
+	// assert(mesh_);
+	// if(mesh_)
+	// {
+	// 	auto &[mesh, materials, _] = mesh_.value();
+	// 	_scene.add(mesh, materials, component::Transform{});
+	// }
+
 	SceneLoader loader(assets(), _animSystem);
 	loader.load(name, _scene);
 

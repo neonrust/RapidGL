@@ -58,6 +58,8 @@ public:
 	void rebalance(const glm::vec3 &origin);
 	void clear();
 
+	EntityID addCamera(std::shared_ptr<Camera> camera);
+
 	inline       LightManager &lights()       { return _lights; }
 	inline const LightManager &lights() const { return _lights; }
 

@@ -87,20 +87,6 @@ Shader::~Shader()
 	}
 }
 
-void Shader::enableLiveReload()
-{
-
-	for(const auto &[filepath, item]: _shaderFiles)
-	{
-		// TODO: use inotify to monitor 'filepath' for changes
-		//   if changed, after a delay, call loadShader()
-		Log::warning("Shader::monitorFile() NOT IMPLEMENTED: {}", filepath);
-		// Util::MonitorFileChanges(filepath, [this, filepath, item]() {
-		// 	loadShader(fs::path(filepath), item.shaderObject, item.conditionals);
-		// });
-	}
-}
-
 bool Shader::addShader(const std::filesystem::path & filepath, ShaderType type, const string_set &conditionals)
 {
 	if (filepath.empty())
@@ -134,6 +120,33 @@ bool Shader::addShader(const std::filesystem::path & filepath, ShaderType type, 
 	};
 
 	return loadShader(shaderObject, type, filepath, conditionals);
+}
+
+std::vector<std::filesystem::path> Shader::shaderFiles() const
+{
+	std::vector<std::filesystem::path> files;
+	files.reserve(_shaderFiles.size());
+	for(const auto &[filepath, _]: _shaderFiles)
+		files.push_back(filepath);
+	return files;
+}
+
+bool Shader::reload()
+{
+	auto files = _shaderFiles;
+
+	Shader reloadShader;
+	for(const auto &[filepath, item]: files)
+	{
+		if(not reloadShader.addShader(filepath, item.type, item.conditionals))
+			return false;
+	}
+	if(not reloadShader.link())
+		return false;
+
+	std::swap(*this, reloadShader);
+
+	return true;
 }
 
 bool Shader::loadShader(GLuint shaderObject, ShaderType type, const std::filesystem::path &filepath, const string_set &conditionals)

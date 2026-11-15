@@ -38,6 +38,8 @@ enum struct BlendMode
 	Alpha,
 };
 
+class CrawlerController;
+
 class ZigApp : public RGL::CoreApp
 {
 public:
@@ -139,6 +141,8 @@ private:
 	std::shared_ptr<RGL::Shader> m_imgui_3d_texture_shader;
 	std::shared_ptr<RGL::Shader> m_fsq_shader;
 
+	std::unique_ptr<CrawlerController> _crawler;
+
 	// GLuint m_depth_tex2D_id;
 	// GLuint m_depth_pass_fbo_id;
 	RGL::RenderTarget::Texture2d m_depth_pass_rt;
@@ -172,12 +176,12 @@ private:
 	float _shadow_bias_constant          = 0.0000f;
 	bool  _shadow_cull_face_front        = false;
 
-	bool      m_draw_surface_lights_geometry  = true;
+	bool   m_draw_surface_lights_geometry  = true;
 
-	bool      m_debug_draw_aabb            = false;
-	bool      m_debug_draw_light_markers   = false;
-	bool      m_debug_draw_cluster_grid    = false;
-	GLuint    m_debug_draw_vbo             = 0;
+	bool   m_debug_draw_aabb             = false;
+	bool   m_debug_draw_light_markers    = false;
+	bool   m_debug_draw_cluster_grid     = false;
+	GLuint m_debug_draw_vbo              = 0;
 
 
 	float _sun_size { 1.f };               // only affects the visible disc in the sky
