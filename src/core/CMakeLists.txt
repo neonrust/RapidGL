@@ -30,6 +30,7 @@ set(SOURCE_FILES_CORE
 	ktx_loader.cpp
 	light_manager.cpp
 	log.cpp
+	movement_system.cpp
 	plane.cpp
 	postprocess.cpp
 	pp_ao.cpp
@@ -51,7 +52,6 @@ set(SOURCE_FILES_CORE
 	skybox.cpp
 	tag_file.cpp
 	texture.cpp
-	transform_controller.cpp
 	# trigger.cpp
 	trigger_state.cpp
 	util.cpp
@@ -86,6 +86,7 @@ set(HEADER_FILES_CORE
 	component/light_tube.h
 	component/material.h
 	component/model.h
+	component/movement.h
 	component/transform.h
 	component/trigger.h
 	gui/font.h
@@ -131,6 +132,7 @@ set(HEADER_FILES_CORE
 	lights.h
 	log.h
 	mesh_part.h
+	movement_system.h
 	plane.h
 	postprocess.h
 	pp_ao.h
@@ -159,7 +161,7 @@ set(HEADER_FILES_CORE
 	tag_file.h
 	texture.h
 	timer.h
-	transform_controller.h
+	movement_controller.h
 	# trigger.h
 	trigger_state.h
 	ubo.h

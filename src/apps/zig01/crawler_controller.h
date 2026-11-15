@@ -5,7 +5,7 @@
 
 #include "input_bind.h"
 #include "control_map.h"
-#include "transform_controller.h"
+#include "movement_controller.h"
 
 #include <glm/vec2.hpp>
 
@@ -18,7 +18,7 @@ struct ScreenRect
 	glm::uvec2 size;
 };
 
-class CrawlerController : public RGL::TransformController
+class CrawlerController : public RGL::MovementController
 {
 public:
 	enum class Facing : uint32_t { North, East, South, West };
@@ -35,7 +35,7 @@ public:
 	};
 
 public:
-	CrawlerController(entt::registry &entities, entt::entity camera_id, RGL::Camera &camera, const ScreenRect &grabRect, float grid_size=2.f);  // TODO: "free-look area"
+	CrawlerController(entt::entity camera_id, RGL::Camera &camera, const ScreenRect &grabRect, float grid_size=2.f);  // TODO: "free-look area"
 	virtual ~CrawlerController() {};
 
 	void update(std::chrono::nanoseconds frameTime) override;

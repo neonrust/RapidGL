@@ -51,8 +51,8 @@ static constexpr GridDistance s_camera_facing_dir[] = { // forward vector
 
 // ----------------------------------------------------------------------------
 
-CrawlerController::CrawlerController(entt::registry &entities, entt::entity camera_id, RGL::Camera &camera, const ScreenRect &grabRect, float grid_size) :
-	RGL::TransformController(entities, camera_id),
+CrawlerController::CrawlerController(entt::entity camera_id, RGL::Camera &camera, const ScreenRect &grabRect, float grid_size) :
+	RGL::MovementController(camera_id),
 	_camera(camera),
 	_grid_size(grid_size),
 	_mouseScaleYaw(0.05f),
