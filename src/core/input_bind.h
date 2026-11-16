@@ -14,7 +14,9 @@ public:
 		Press,   // once
 		Hold,    // continuously, until released
 		Repeat,  // like hold, but fires at the defined rate
-		Release  // oppositve of Press; once, but when released
+		Release,  // oppositve of Press; once, but when released
+		PressOrRelease,
+		StateChange = PressOrRelease
 	};
 	enum TriggerState
 	{

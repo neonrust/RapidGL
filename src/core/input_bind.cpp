@@ -177,6 +177,8 @@ ActionBind::TriggerState ActionBind::triggered() const
 		return NotTriggered;//IsKeyPressedRepeat(_key) ? Triggered : NotTriggered;
 	case Release:
 		return not active_now and was_active ? Triggered : NotTriggered;;
+	case PressOrRelease:
+		return ((not active_now and was_active) or (active_now and not was_active)) ? Triggered : NotTriggered;
 	}
 	return NotTriggered;
 }
