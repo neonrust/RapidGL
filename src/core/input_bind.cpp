@@ -6,7 +6,6 @@
 #include <format>
 #include <string_view>
 #include <cassert>
-#include "log.h"
 
 using namespace std::literals;
 
@@ -40,26 +39,39 @@ ActionBind::ActionBind(int controllerIdx, ControllerButton button, Trigger trigg
 
 // ----------------------------------------------------------------------------
 
+ActionBind::~ActionBind()
+{
+	deregister_bind();
+}
+
+// ----------------------------------------------------------------------------
+
 void ActionBind::bind(KeyCode key, Trigger trigger)
 {
+	deregister_bind();
 	_button = key;
 	_trigger = trigger;
+	register_bind();
 }
 
 // ----------------------------------------------------------------------------
 
 void ActionBind::bind(MouseButton button, Trigger trigger)
 {
+	deregister_bind();
 	_button = button;
 	_trigger = trigger;
+	register_bind();
 }
 
 // ----------------------------------------------------------------------------
 
 void ActionBind::bind(int controllerIdx, ControllerButton button, Trigger trigger)
 {
+	deregister_bind();
 	_button = ControllerDef{ button ,controllerIdx };
 	_trigger = trigger;
+	register_bind();
 }
 
 // ----------------------------------------------------------------------------
@@ -89,6 +101,13 @@ std::string ActionBind::description() const
 
 // ----------------------------------------------------------------------------
 
+ActionBind::ActionType ActionBind::action_type() const
+{
+	return ActionType(_button.index());
+}
+
+// ----------------------------------------------------------------------------
+
 KeyCode ActionBind::key() const
 {
 	assert(std::holds_alternative<KeyCode>(_button));
@@ -97,7 +116,7 @@ KeyCode ActionBind::key() const
 
 // ----------------------------------------------------------------------------
 
-MouseButton ActionBind::button() const
+MouseButton ActionBind::mouse_button() const
 {
 	assert(std::holds_alternative<MouseButton>(_button));
 	return std::get<MouseButton>(_button);
@@ -105,7 +124,7 @@ MouseButton ActionBind::button() const
 
 // ----------------------------------------------------------------------------
 
-std::pair<size_t, ControllerButton> ActionBind::controllerButton() const
+std::pair<int, ControllerButton> ActionBind::controller_button() const
 {
 	assert(std::holds_alternative<ControllerDef>(_button));
 	const auto &def = std::get<ControllerDef>(_button);
@@ -118,12 +137,9 @@ bool ActionBind::current_state() const
 {
 	switch(_button.index())
 	{
-	case 0:
-		return false;
-	case 1:
-		return Input::isKeyDown(std::get<KeyCode>(_button));
-	case 2:
-		return Input::isMouseDown(std::get<MouseButton>(_button));
+	case 0:  return false;
+	case 1:  return Input::isKeyDown(std::get<KeyCode>(_button));
+	case 2: return Input::isMouseDown(std::get<MouseButton>(_button));
 	case 3:
 	{
 		const auto &def = std::get<ControllerDef>(_button);
@@ -140,12 +156,9 @@ bool ActionBind::previous_state() const
 {
 	switch(_button.index())
 	{
-	case 0:
-		return false;
-	case 1:
-		return Input::wasKeyDown(std::get<KeyCode>(_button));
-	case 2:
-		return Input::wasMouseDown(std::get<MouseButton>(_button));
+	case 0: return false;
+	case 1: return Input::wasKeyDown(std::get<KeyCode>(_button));
+	case 2: return Input::wasMouseDown(std::get<MouseButton>(_button));
 	case 3:
 	{
 		const auto &def = std::get<ControllerDef>(_button);
@@ -158,8 +171,30 @@ bool ActionBind::previous_state() const
 
 // ----------------------------------------------------------------------------
 
+bool ActionBind::toggled_state(bool onPress) const
+{
+	switch(_button.index())
+	{
+	case 0: return false;
+	case 1: return Input::keyToggledState(std::get<KeyCode>(_button), onPress);
+	case 2: return Input::mouseToggledState(std::get<MouseButton>(_button), onPress);
+	case 3:
+	{
+		const auto &def = std::get<ControllerDef>(_button);
+		return Input::controllerButtonToggledState(def.idx, def.button, onPress);
+	}
+	}
+
+	return false;
+}
+
+// ----------------------------------------------------------------------------
+
 ActionBind::TriggerState ActionBind::triggered() const
 {
+	if(not is_bound())
+		return NotTriggered;
+
 	const auto active_now = current_state();
 	const auto was_active = previous_state();
 
@@ -179,8 +214,38 @@ ActionBind::TriggerState ActionBind::triggered() const
 		return not active_now and was_active ? Triggered : NotTriggered;;
 	case PressOrRelease:
 		return ((not active_now and was_active) or (active_now and not was_active)) ? Triggered : NotTriggered;
+	case Toggle:
+		return toggled_state()? Triggered: NotTriggered;
+	case ToggleOnRelease:
+		return toggled_state(false)? Triggered: NotTriggered;
 	}
 	return NotTriggered;
+}
+
+// ----------------------------------------------------------------------------
+
+void ActionBind::register_bind()
+{
+	switch(_button.index())
+	{
+	case 0: break;
+	case 1: Input::addUsage(key()); break;
+	case 2: Input::addUsage(mouse_button()); break;
+	case 3: Input::addUsage(controller_button()); break;
+	}
+}
+
+// ----------------------------------------------------------------------------
+
+void ActionBind::deregister_bind()
+{
+	switch(_button.index())
+	{
+	case 0: break;
+	case 1: Input::removeUsage(key()); break;
+	case 2: Input::removeUsage(mouse_button()); break;
+	case 3: Input::removeUsage(controller_button()); break;
+	}
 }
 
 // ----------------------------------------------------------------------------
@@ -205,13 +270,15 @@ AxisBind2d &AxisBind::as_2d()
 AxisBind1d::AxisBind1d() :
 	AxisBind()
 {
+	set_scaler(1.f);
+	set_no_limits();
 }
 
 // ----------------------------------------------------------------------------
 
-AxisBind1d::AxisBind1d(MouseAxis1d axis, uint_fast16_t rangeMax, float threshold, ThresholdDirection dir)
+AxisBind1d::AxisBind1d(MouseAxis1d axis, float threshold, ThresholdDirection dir)
 {
-	bind(axis, rangeMax, threshold, dir);
+	bind(axis, threshold, dir);
 }
 
 // ----------------------------------------------------------------------------
@@ -244,8 +311,10 @@ std::string AxisBind1d::description() const
 
 // ----------------------------------------------------------------------------
 
-void AxisBind1d::bind(MouseAxis1d axis, uint_fast16_t rangeMax, float threshold, ThresholdDirection dir)
+void AxisBind1d::bind(MouseAxis1d axis, float threshold, ThresholdDirection dir)
 {
+
+	const auto rangeMax = axis == MouseAxis1d::Horizontal? Input::mouseRange().x: Input::mouseRange().y;
 	_axis = MouseDef{ axis, float(rangeMax) };
 	set_threshold(float(threshold) / float(rangeMax), dir);
 }
@@ -372,8 +441,6 @@ bool AxisBind1d::set_infinite(bool enabled)
 	if(enabled)
 	{
 		_infinite.value = 0.f;
-		set_scaler(1.f);
-		set_no_limits();
 		Input::setMouseCursorVisible(false); // optional?
 		const auto pos = Input::mousePosition();
 		_infinite.grab_pos = pos;
@@ -440,13 +507,16 @@ void AxisBind1d::set_no_limits()
 AxisBind2d::AxisBind2d() :
 	AxisBind()
 {
+	set_scaler({ 10.f, 10.f });
+	set_no_limits_x();
+	set_no_limits_y();
 }
 
 // ----------------------------------------------------------------------------
 
-AxisBind2d::AxisBind2d(MouseAxis2d axis, glm::uvec2 rangeMax, glm::vec2 threshold, ThresholdDirection dir)
+AxisBind2d::AxisBind2d(MouseAxis2d axis, glm::vec2 threshold, ThresholdDirection dir)
 {
-	bind(axis, rangeMax, threshold, dir);
+	bind(axis, threshold, dir);
 }
 
 // ----------------------------------------------------------------------------
@@ -480,9 +550,9 @@ std::string AxisBind2d::description() const
 
 // ----------------------------------------------------------------------------
 
-void AxisBind2d::bind(MouseAxis2d axis, glm::uvec2 rangeMax, glm::vec2 threshold, ThresholdDirection dir)
+void AxisBind2d::bind(MouseAxis2d axis, glm::vec2 threshold, ThresholdDirection dir)
 {
-	_axis = MouseDef{ axis, rangeMax };
+	_axis = MouseDef{ axis, Input::mouseRange() };
 	set_threshold(threshold, dir);
 }
 
@@ -609,9 +679,6 @@ bool AxisBind2d::set_infinite(bool enabled)
 		const auto &def = std::get<MouseDef>(_axis);
 
 		_infinite.value = { 0.f, 0.f };
-		set_scaler({ 10.f, 10.f });
-		set_no_limits_x();
-		set_no_limits_y();
 		Input::setMouseCursorVisible(false);
 		const auto pos = Input::mousePosition();
 		_infinite.grab_pos = pos;

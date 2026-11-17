@@ -189,26 +189,40 @@ enum class ControllerAxis1d : int
 	RightTrigger = GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER,
 };
 
+class ActionBind;
+
 class Input final
 {
+	friend class ActionBind;
+	friend class AxisBind1d;
+	friend class AxisBind2d;
+
 public:
+	static void init(GLFWwindow * window);
+	static void update();
+
+protected:
 	Input() = delete;
 	~Input() = delete;
 	Input(const Input &) = delete;
 	Input & operator=(const Input &) = delete;
 
-	static void init(GLFWwindow * window);
-	static void update();
+	static void addBind(ActionBind *bind);
+	static void removeBind(ActionBind *bind);
 
 	static bool isKeyDown(KeyCode keyCode);
 	static bool wasKeyDown(KeyCode keyCode);
 	static bool wasKeyPressed(KeyCode keyCode);    // changed since last frame
 	static bool wasKeyReleased(KeyCode keyCode);   // changed since last frame
+	static bool keyToggledState(KeyCode keyCode, bool toggleOnPress=true);
 
 	static bool isMouseDown(MouseButton button);
 	static bool wasMouseDown(MouseButton button);
 	static bool wasMousePressed(MouseButton button);  // changed since last frame
 	static bool wasMouseReleased(MouseButton button); // changed since last frame
+	static bool mouseToggledState(MouseButton button, bool toggleOnPress=true);
+
+	static glm::uvec2 mouseRange();
 	static glm::uvec2 mousePosition();
 	static void setMousePosition(const glm::uvec2 &pos);
 	static bool enableRawMouseMotion(bool enabled);
@@ -224,9 +238,14 @@ public:
 	static bool wasControllerButtonDown(int controllerIdx, ControllerButton button);
 	static bool wasControllerButtonPressed(int controllerIdx, ControllerButton button);
 	static bool wasControllerButtonReleased(int controllerIdx, ControllerButton button);
+	static bool controllerButtonToggledState(int controllerIdx, ControllerButton button, bool toggleOnPress=true);
 
-private:
-	void populateControllerButtons(int idx);
+	static void addUsage(KeyCode key);
+	static void addUsage(MouseButton btn);
+	static void addUsage(std::pair<int, ControllerButton> btn);
+	static void removeUsage(KeyCode key);
+	static void removeUsage(MouseButton btn);
+	static void removeUsage(std::pair<int, ControllerButton> btn);
 };
 
 } // RGL

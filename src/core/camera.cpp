@@ -25,13 +25,6 @@ Camera::Camera(bool is_ortho)
 	_is_ortho              (is_ortho),
 	m_sensitivity           (0.2f),
 	m_move_speed            (10),
-	m_unlock_mouse_button   (MouseButton::Right),
-	m_forward_key           (KeyCode::W),
-	m_backward_key          (KeyCode::S),
-	m_left_key              (KeyCode::A),
-	m_right_key             (KeyCode::D),
-	m_up_key                (KeyCode::E),
-	m_down_key              (KeyCode::Q),
 	_yaw                    (0),
 	_pitch                  (0),
 	// m_orientation           (glm::vec3(0)),
@@ -42,10 +35,21 @@ Camera::Camera(bool is_ortho)
 	_near                  (0.1f),
 	_far                   (200),
 	_fovy                  (60),
-	_mouse_pressed_position(glm::vec2(0)),
-	_is_dirty              (true),
-	_is_mouse_move         (false)
+	_is_dirty              (true)
 {
+	_move_slow_bind.bind(KeyCode::LeftShift, ActionBind::Trigger::Hold);
+	_move_fast_bind2.bind(KeyCode::LeftControl, ActionBind::Trigger::Hold);
+	_move_fast_bind2.bind(MouseButton::Mouse4, ActionBind::Trigger::Hold);
+	_forward_bind.bind(KeyCode::W, ActionBind::Trigger::Hold);
+	_backward_bind.bind(KeyCode::S, ActionBind::Trigger::Hold);
+	_left_bind.bind(KeyCode::A, ActionBind::Trigger::Hold);
+	_right_bind.bind(KeyCode::D, ActionBind::Trigger::Hold);
+	_up_bind.bind(KeyCode::E, ActionBind::Trigger::Hold);
+	_down_bind.bind(KeyCode::Q, ActionBind::Trigger::Hold);
+	_freelook_bind.bind(MouseButton::Right, ActionBind::Trigger::Hold);
+	_freelook_axis.bind(MouseAxis2d::Position);
+	_freelook_axis.set_limits_x(-180, 180, AxisBind::LimitMode::Wrap);
+	_freelook_axis.set_limits_y(-90, 90, AxisBind::LimitMode::Clamp);
 }
 
 void Camera::setSize(size_t width, size_t height)
@@ -130,79 +134,58 @@ void Camera::setUniforms(Shader &shader) const
 void Camera::update(std::chrono::nanoseconds dt)
 {
 	// Camera Movement
-	auto movement_amount = m_move_speed * duration_cast<seconds_f>(dt).count();
+	auto movement_amount = m_move_speed * float(duration_cast<seconds_f>(dt).count());
 
-	if(Input::isKeyDown(KeyCode::LeftShift))
+	if(_move_slow_bind)
 		movement_amount *= 0.1f;
-	else if(Input::isKeyDown(KeyCode::LeftControl) or Input::isMouseDown(MouseButton::Mouse4))
+	else if(_move_fast_bind1 or _move_fast_bind2)
 		movement_amount *= 5;
 
 
-	if (Input::isKeyDown(m_forward_key))
+	if (_forward_bind)
 		// move(m_position, glm::conjugate(m_orientation) * glm::vec3(0, 0, -1), movement_amount);
 		move(_transform.position(), forwardVector(), movement_amount);
 
-	if (Input::isKeyDown(m_backward_key))
+	if (_backward_bind)
 		// move(m_position, glm::conjugate(m_orientation) * glm::vec3(0, 0, 1), movement_amount);
 		move(_transform.position(), -forwardVector(), movement_amount);
 
-	if (Input::isKeyDown(m_right_key))
+	if (_right_bind)
 		// move(m_position, glm::conjugate(m_orientation) * glm::vec3(1, 0, 0), movement_amount);
 		move(_transform.position(), rightVector(), movement_amount);
 
-	if (Input::isKeyDown(m_left_key))
+	if (_left_bind)
 		// move(m_position, glm::conjugate(m_orientation) * glm::vec3(-1, 0, 0), movement_amount);
 		move(_transform.position(), -rightVector(), movement_amount);
 
-	if (Input::isKeyDown(m_up_key))
+	if (_up_bind)
 		move(_transform.position(), AXIS_Y, movement_amount); // regardless of orientation
 
-	if (Input::isKeyDown(m_down_key))
+	if (_down_bind)
 		move(_transform.position(), -AXIS_Y, movement_amount); // regardless of orientation
 
 	// Camera Rotation
-	if (Input::isMouseDown(m_unlock_mouse_button))
+	if (_freelook_bind)
 	{
-		if (not _is_mouse_move)
+		if (not _freelook_axis.is_infinite())
 		{
-			_mouse_pressed_position = glm::ivec2(Input::mousePosition());
-			// TODO: see raylib's EnableCursor()/DisableCursor()
-			//   also: https://www.glfw.org/docs/3.1/input.html#input_cursor_mode
-			Input::setMouseCursorVisible(false);
-			Input::setMousePosition({ _width/2, _height/2 });
-			_is_mouse_move = true;
+			_freelook_axis.set_infinite(true);
+			// _mouse_pressed_position = glm::ivec2(Input::mousePosition());
+			// // TODO: see raylib's EnableCursor()/DisableCursor()
+			// //   also: https://www.glfw.org/docs/3.1/input.html#input_cursor_mode
+			// Input::setMouseCursorVisible(false);
+			// Input::setMousePosition({ _width/2, _height/2 });
 		}
 	}
-	else if(_is_mouse_move)
+	else if(_freelook_axis.is_infinite())
+		_freelook_axis.set_infinite(false);
+
+	if(_freelook_axis.is_infinite())
 	{
-		Input::setMousePosition(_mouse_pressed_position);
-		Input::setMouseCursorVisible(true);
-		_is_mouse_move = false;
-	}
+		const auto look_pos = _freelook_axis.value();
 
-	if(_is_mouse_move)
-	{
-		const auto mouse_pos = glm::ivec2(Input::mousePosition());
-		const auto delta_pos = mouse_pos - glm::ivec2{ _width/2, _height/2 };
-		Input::setMousePosition({ _width/2, _height/2 });
-
-		// TODO: This should instead keep track of yaw & pitch (as floats)
-		//   and here just update those, and at the end build 'm_orientation' from those
-		//   Also, this all should be in a "controller" class, not in the camera itself.
-
-		// yaw   (rotation around the Y axis)
-		if(delta_pos.x)
-		{
-			addYaw(glm::radians(float(delta_pos.x) * m_sensitivity));
-			// setOrientation(m_orientation * glm::angleAxis(angle, AXIS_Y));
-		}
-
-		// pitch  (rotation around the X axis)
-		if(delta_pos.y)
-		{
-			addPitch(glm::radians(float(delta_pos.y) * m_sensitivity));
-			// setOrientation(glm::angleAxis(angle, AXIS_X) * m_orientation);
-		}
+		setYaw(look_pos.x);
+		setPitch(look_pos.y);
 	}
 
 	if(_is_dirty)
@@ -246,8 +229,8 @@ void Camera::setOrientationEuler(const glm::vec3 &euler)
 	_yaw = glm::radians(euler.y);
 	_pitch = glm::radians(euler.x);
 	// to apply limits
-	addYaw(0);
-	addPitch(0);
+	setYaw(_yaw);
+	setPitch(_pitch);
 
 	updateDirection();
 	_is_dirty  = true;
@@ -297,10 +280,10 @@ void Camera::move(const glm::vec3& position, const glm::vec3& dir, float amount)
 	setPosition(position + (dir * amount));
 }
 
-void Camera::addYaw(float angle)
+void Camera::setYaw(float yaw)
 {
-	_is_dirty = angle != 0;
-	_yaw += angle;
+	_is_dirty = yaw != _yaw;
+	_yaw += yaw;
 
 	if(_yaw > std::numbers::pi_v<float>)
 		_yaw -= std::numbers::pi_v<float>*2;
@@ -308,10 +291,10 @@ void Camera::addYaw(float angle)
 		_yaw += std::numbers::pi_v<float>*2;
 }
 
-void Camera::addPitch(float angle)
+void Camera::setPitch(float pitch)
 {
-	_is_dirty = angle != 0;
-	_pitch = glm::clamp(_pitch + angle, -std::numbers::pi_v<float>/2, std::numbers::pi_v<float>/2);
+	_is_dirty = pitch != _pitch;
+	_pitch = glm::clamp(pitch, -std::numbers::pi_v<float>/2, std::numbers::pi_v<float>/2);
 }
 
 void Camera::setFov(float fov)

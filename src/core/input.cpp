@@ -1,171 +1,186 @@
 #include "input.h"
 #include "log.h"
 
+#include "input_bind.h"
+
+#include <chrono>
+
 namespace RGL
 {
 
 static GLFWwindow *s_window = nullptr;
+static glm::uvec2 s_windowSize;
 
 // state of all known keys (after update() is called)
-static dense_map<KeyCode, bool> s_last_keys_states = {
-	{ KeyCode::Backspace,      false },
-	{ KeyCode::Delete,         false },
-	{ KeyCode::Tab,            false },
-	{ KeyCode::Return,         false },
-	{ KeyCode::Pause,          false },
-	{ KeyCode::Escape,         false },
-	{ KeyCode::Space,          false },
-	{ KeyCode::Keypad0,        false },
-	{ KeyCode::Keypad1,        false },
-	{ KeyCode::Keypad2,        false },
-	{ KeyCode::Keypad3,        false },
-	{ KeyCode::Keypad4,        false },
-	{ KeyCode::Keypad5,        false },
-	{ KeyCode::Keypad6,        false },
-	{ KeyCode::Keypad7,        false },
-	{ KeyCode::Keypad8,        false },
-	{ KeyCode::Keypad9,        false },
-	{ KeyCode::KeypadPeriod,   false },
-	{ KeyCode::KeypadDivide,   false },
-	{ KeyCode::KeypadMultiply, false },
-	{ KeyCode::KeypadMinus,    false },
-	{ KeyCode::KeypadPlus,     false },
-	{ KeyCode::KeypadEnter,    false },
-	{ KeyCode::KeypadEquals,   false },
-	{ KeyCode::UpArrow,        false },
-	{ KeyCode::DownArrow,      false },
-	{ KeyCode::RightArrow,     false },
-	{ KeyCode::LeftArrow,      false },
-	{ KeyCode::Insert,         false },
-	{ KeyCode::Home,           false },
-	{ KeyCode::End,            false },
-	{ KeyCode::PageUp,         false },
-	{ KeyCode::PageDown,       false },
-	{ KeyCode::F1,             false },
-	{ KeyCode::F2,             false },
-	{ KeyCode::F3,             false },
-	{ KeyCode::F4,             false },
-	{ KeyCode::F5,             false },
-	{ KeyCode::F6,             false },
-	{ KeyCode::F7,             false },
-	{ KeyCode::F8,             false },
-	{ KeyCode::F9,             false },
-	{ KeyCode::F10,            false },
-	{ KeyCode::F11,            false },
-	{ KeyCode::F12,            false },
-	{ KeyCode::F13,            false },
-	{ KeyCode::F14,            false },
-	{ KeyCode::F15,            false },
-	{ KeyCode::Alpha0,         false },
-	{ KeyCode::Alpha1,         false },
-	{ KeyCode::Alpha2,         false },
-	{ KeyCode::Alpha3,         false },
-	{ KeyCode::Alpha4,         false },
-	{ KeyCode::Alpha5,         false },
-	{ KeyCode::Alpha6,         false },
-	{ KeyCode::Alpha7,         false },
-	{ KeyCode::Alpha8,         false },
-	{ KeyCode::Alpha9,         false },
-	{ KeyCode::Comma,          false },
-	{ KeyCode::Minus,          false },
-	{ KeyCode::Period,         false },
-	{ KeyCode::Slash,          false },
-	{ KeyCode::Semicolon,      false },
-	{ KeyCode::Equals,         false },
-	{ KeyCode::LeftBracket,    false },
-	{ KeyCode::RightBracket,   false },
-	{ KeyCode::Backslash,      false },
-	{ KeyCode::A,              false },
-	{ KeyCode::B,              false },
-	{ KeyCode::C,              false },
-	{ KeyCode::D,              false },
-	{ KeyCode::E,              false },
-	{ KeyCode::F,              false },
-	{ KeyCode::G,              false },
-	{ KeyCode::H,              false },
-	{ KeyCode::I,              false },
-	{ KeyCode::J,              false },
-	{ KeyCode::K,              false },
-	{ KeyCode::L,              false },
-	{ KeyCode::M,              false },
-	{ KeyCode::N,              false },
-	{ KeyCode::O,              false },
-	{ KeyCode::P,              false },
-	{ KeyCode::Q,              false },
-	{ KeyCode::R,              false },
-	{ KeyCode::S,              false },
-	{ KeyCode::T,              false },
-	{ KeyCode::U,              false },
-	{ KeyCode::V,              false },
-	{ KeyCode::W,              false },
-	{ KeyCode::X,              false },
-	{ KeyCode::Y,              false },
-	{ KeyCode::Z,              false },
-	{ KeyCode::Numlock,        false },
-	{ KeyCode::CapsLock,       false },
-	{ KeyCode::ScrollLock,     false },
-	{ KeyCode::RightShift,     false },
-	{ KeyCode::LeftShift,      false },
-	{ KeyCode::RightControl,   false },
-	{ KeyCode::LeftControl,    false },
-	{ KeyCode::RightAlt,       false },
-	{ KeyCode::LeftAlt,        false },
-	{ KeyCode::PrintScreen,    false },
-	{ KeyCode::Menu,           false },
-	};
+static dense_map<KeyCode, bool> s_last_keys_states;
+static dense_map<KeyCode, std::pair<bool, bool>> s_toggled_key_states;
 
 // state of all known mouse buttons (after update() is called)
-static dense_map<MouseButton, bool> s_last_mouse_states = {
-	{ MouseButton::Left,       false },
-	{ MouseButton::Middle,     false },
-	{ MouseButton::Right,      false },
-	{ MouseButton::Mouse4,     false },
-	{ MouseButton::Mouse5,     false },
-	{ MouseButton::Mouse6,     false },
-	};
+static dense_map<MouseButton, bool> s_last_mouse_states;
+static dense_map<MouseButton, std::pair<bool, bool>> s_toggled_mouse_states;
 
 static dense_set<int> s_active_controllers;
-static dense_map<int, dense_map<ControllerButton, bool>> s_last_controller_states;
-
-static const dense_set<ControllerButton> s_controller_buttons = {
-	ControllerButton::A,
-	ControllerButton::B,
-	ControllerButton::X,
-	ControllerButton::Y,
-	ControllerButton::LeftBumper,
-	ControllerButton::RightBumper,
-	ControllerButton::Back,
-	ControllerButton::Start,
-	ControllerButton::Guide,
-	ControllerButton::LeftThumb,
-	ControllerButton::RightThumb,
-	ControllerButton::Up,
-	ControllerButton::Right,
-	ControllerButton::Down,
-	ControllerButton::Left
-
-};
+static dense_map<std::pair<int, ControllerButton>, bool> s_last_controller_states;
+static dense_map<std::pair<int, ControllerButton>, std::pair<bool, bool>> s_toggled_controller_states;
 
 static bool s_mouse_infinite_mode { false };
 
-void Input::init(GLFWwindow* window)
+static dense_map<KeyCode, uint32_t>                          s_keys_used;
+static dense_map<MouseButton, uint32_t>                      s_mouse_buttons_used;
+static dense_map<std::pair<int, ControllerButton>, uint32_t> s_controller_buttons_used;
+
+
+void Input::init(GLFWwindow *window)
 {
 	s_window = window;
-	s_last_controller_states.reserve(4);
+
+	glfwGetWindowSize(s_window, reinterpret_cast<int *>(&s_windowSize.x), reinterpret_cast<int *>(&s_windowSize.y));
+
+	s_keys_used.reserve(64);
+	s_toggled_key_states.reserve(8u);
+
+	s_mouse_buttons_used.reserve(6);
+	s_toggled_mouse_states.reserve(6);
+
+	s_active_controllers.reserve(2);
+	s_controller_buttons_used.reserve(32);
+	s_last_controller_states.reserve(32);
+	s_toggled_controller_states.reserve(8);
 }
+
+using namespace std::chrono;
 
 void Input::update()
 {
-	for(auto &[key, state]: s_last_keys_states)
-		state = isKeyDown(key);
+	// const auto T0 = steady_clock::now();
 
-	for(auto &[button, state]: s_last_mouse_states)
-		state = isMouseDown(button);
-
-	for(auto idx: s_active_controllers)
+	for(auto &[key, _]: s_keys_used)
 	{
-		for(auto &[button, state]: s_last_controller_states[idx])
-			state = isControllerButtonDown(idx, button);
+		s_last_keys_states[key] = isKeyDown(key);
+
+		auto found = s_toggled_key_states.find(key);
+		assert(found != s_toggled_key_states.end());
+		auto &states = found->second;
+		if(wasKeyPressed(key))
+			states.first = not states.first;
+		else if(wasKeyReleased(key))
+			states.second = not states.second;
+	}
+
+	for(auto &[button, _]: s_mouse_buttons_used)
+	{
+		s_last_mouse_states[button] = isMouseDown(button);
+
+		auto found = s_toggled_mouse_states.find(button);
+		assert(found != s_toggled_mouse_states.end());
+		auto &states = found->second;
+		if(wasMousePressed(button))
+			states.first = not states.first;
+		else if(wasMouseReleased(button))
+			states.second = not states.second;
+	}
+
+	for(auto [btn_key, _]: s_controller_buttons_used)
+	{
+		const auto &[idx, button] = btn_key;
+		s_last_controller_states[btn_key] = isControllerButtonDown(idx, button);
+
+		auto found = s_toggled_controller_states.find(btn_key);
+		assert(found != s_toggled_controller_states.end());
+		auto &states = found->second;
+		if(wasControllerButtonPressed(idx, button))
+			states.first = not states.first;
+		else if(wasControllerButtonReleased(idx, button))
+			states.second = not states.second;
+	}
+
+	// const auto T1 = steady_clock::now();
+	// Log::debug("input state updated, in {}    (keys: {}, m-btns: {}, c-btns: {})",
+	// 		   T1 - T0,
+	// 		   s_keys_used.size(),
+	// 		   s_mouse_buttons_used.size(),
+	// 		   s_controller_buttons_used.size());
+}
+
+void Input::addUsage(KeyCode key)
+{
+	auto found = s_keys_used.find(key);
+	if(found != s_keys_used.end())
+		++found->second;
+	else
+	{
+		s_keys_used[key] = 1;
+		s_last_keys_states[key] = Input::isKeyDown(key);
+		s_toggled_key_states[key] = { false, false };
+	}
+}
+
+void Input::addUsage(MouseButton btn)
+{
+	auto found = s_mouse_buttons_used.find(btn);
+	if(found != s_mouse_buttons_used.end())
+		++found->second;
+	else
+	{
+		s_mouse_buttons_used[btn] = 1;
+		s_last_mouse_states[btn] = Input::isMouseDown(btn);
+		s_toggled_mouse_states[btn] = { false, false };
+	}
+}
+
+void Input::addUsage(std::pair<int, ControllerButton> btn)
+{
+	auto found = s_controller_buttons_used.find(btn);
+	if(found != s_controller_buttons_used.end())
+		++found->second;
+	else
+	{
+		s_controller_buttons_used[btn] = 1;
+		s_last_controller_states[btn] = Input::isControllerButtonDown(btn.first, btn.second);
+		s_toggled_controller_states[btn] = { false, false };
+	}
+}
+
+void Input::removeUsage(KeyCode key)
+{
+	auto found = s_keys_used.find(key);
+	if(found != s_keys_used.end())
+	{
+		--found->second;
+		if(--found->second == 0)
+		{
+			s_keys_used.erase(found);
+			s_last_keys_states.erase(key);
+			s_toggled_key_states.erase(key);
+		}
+	}
+}
+
+void Input::removeUsage(MouseButton btn)
+{
+	auto found = s_mouse_buttons_used.find(btn);
+	if(found != s_mouse_buttons_used.end())
+	{
+		--found->second;
+		if(--found->second == 0)
+		{
+			s_mouse_buttons_used.erase(found);
+			s_last_mouse_states.erase(btn);
+		}
+	}
+}
+
+void Input::removeUsage(std::pair<int, ControllerButton> btn)
+{
+	auto found = s_controller_buttons_used.find(btn);
+	if(found != s_controller_buttons_used.end())
+	{
+		--found->second;
+		if(--found->second == 0)
+		{
+			s_controller_buttons_used.erase(found);
+			s_last_controller_states.erase(btn);
+		}
 	}
 }
 
@@ -173,15 +188,7 @@ void Input::activateController(int idx)
 {
 	const auto &[_, inserted] = s_active_controllers.insert(idx);
 	if(inserted)
-		populateControllerButtons(idx);
-}
-
-void Input::populateControllerButtons(int idx)
-{
-	auto &m = s_last_controller_states[idx];
-
-	for(auto button: s_controller_buttons)
-		m[button] = isControllerButtonDown(idx, button);
+		Log::debug("Controller {} activated", idx);
 }
 
 bool Input::isKeyDown(KeyCode keyCode)
@@ -204,6 +211,12 @@ bool Input::wasKeyReleased(KeyCode keyCode)
 	return wasKeyDown(keyCode) and not isKeyDown(keyCode);
 }
 
+bool Input::keyToggledState(KeyCode keyCode, bool toggleOnPress)
+{
+	auto &toggled = s_toggled_key_states[keyCode];
+	return toggleOnPress? toggled.first: toggled.second;
+}
+
 bool Input::isMouseDown(MouseButton button)
 {
 	return glfwGetMouseButton(s_window, static_cast<int>(button)) == GLFW_PRESS;
@@ -222,6 +235,17 @@ bool Input::wasMousePressed(MouseButton button)
 bool Input::wasMouseReleased(MouseButton button)
 {
 	return s_last_mouse_states[button] and not isMouseDown(button);
+}
+
+bool Input::mouseToggledState(MouseButton button, bool toggleOnPress)
+{
+	auto &toggled = s_toggled_mouse_states[button];
+	return toggleOnPress? toggled.first: toggled.second;
+}
+
+glm::uvec2 Input::mouseRange()
+{
+	return s_windowSize;
 }
 
 glm::uvec2 Input::mousePosition()
@@ -313,18 +337,13 @@ bool Input::isControllerButtonDown(int controllerIdx, ControllerButton button)
 
 bool Input::wasControllerButtonDown(int controllerIdx, ControllerButton button)
 {
-	assert(s_last_controller_states.contains(controllerIdx));
-
-	const auto &buttons = s_last_controller_states[controllerIdx];
-
-	auto bfound = buttons.find(button);
-	if(bfound == buttons.end())
+	if(not s_last_controller_states.contains({ controllerIdx, button }))
 	{
-		Log::warning("controller {} used unexpected button: {}", controllerIdx, int(button));
-		assert(bfound != buttons.end());
+		Log::warning("Unreferenced controller button queried: {}/{}", controllerIdx, int(button));
 		return false;
 	}
-	return bfound->second;
+
+	return s_last_controller_states[{ controllerIdx, button }];
 }
 
 bool Input::wasControllerButtonPressed(int controllerIdx, ControllerButton button)
@@ -335,6 +354,12 @@ bool Input::wasControllerButtonPressed(int controllerIdx, ControllerButton butto
 bool Input::wasControllerButtonReleased(int controllerIdx, ControllerButton button)
 {
 	return wasControllerButtonDown(controllerIdx, button) and not isControllerButtonDown(controllerIdx, button);
+}
+
+bool Input::controllerButtonToggledState(int controllerIdx, ControllerButton button, bool toggleOnPress)
+{
+	auto &toggled = s_toggled_controller_states[{ controllerIdx, button }];
+	return toggleOnPress? toggled.first: toggled.second;
 }
 
 } // RGL

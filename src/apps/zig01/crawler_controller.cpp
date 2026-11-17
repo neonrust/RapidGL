@@ -39,8 +39,8 @@ struct std::formatter<RGL::GridPos>
 };
 
 
-const float s_mouselook_max_yaw = 0.9f;
-const float s_mouselook_max_pitch = 0.7f;
+const float s_mouselook_max_yaw = 85.f;
+const float s_mouselook_max_pitch = 70.f;
 
 static const auto s_move_duration { 400ms };
 static const auto s_turn_duration { 250ms };
@@ -58,8 +58,6 @@ static constexpr GridDistance s_camera_facing_dir[] = { // forward vector
 CrawlerController::CrawlerController(entt::entity camera_id, const ScreenRect &grabRect, float grid_size) :
 	RGL::PlayerController(camera_id),
 	_grid_size(grid_size),
-	_mouseScaleYaw(0.05f),
-	_mouseScalePitch(0.03f),
 	_grabTopLeft(grabRect.topLeft),
 	_grabSize(grabRect.size)
 {
@@ -71,9 +69,12 @@ CrawlerController::CrawlerController(entt::entity camera_id, const ScreenRect &g
 	cc.add("right"sv,      &_binds.right);
 	cc.add("turn-left"sv,  &_binds.turnLeft);
 	cc.add("turn-right"sv, &_binds.turnRight);
-	cc.add("free-look-begin"sv, &_binds.freeLookBegin);
-	cc.add("free-look-end"sv, &_binds.freeLookEnd);
+	cc.add("free-look-enable"sv, &_binds.freeLookEnable);
 	cc.add("free-look"sv,  &_binds.freeLook);
+
+	_binds.freeLook.set_limits_x(-s_mouselook_max_yaw, s_mouselook_max_yaw, RGL::AxisBind::LimitMode::Wrap);
+	_binds.freeLook.set_limits_y(-s_mouselook_max_pitch, s_mouselook_max_pitch, RGL::AxisBind::LimitMode::Clamp);
+	_binds.freeLook.set_scaler({ 100.f, 100.f });
 
 	// TODO: set default binds?
 	// _binds.forward = RGL::ActionBind(RGL::KeyCode::E, RGL::ActionBind::Hold);
@@ -85,40 +86,40 @@ void CrawlerController::update(entt::registry &entities, std::chrono::nanosecond
 {
 	auto [movement, transform] = entities.get<RGL::component::Movement, RGL::component::Transform>(subject());
 
-	if(_moveCommand == MoveCommand::None and not _freeLooking)
+	if(_moveCommand == MoveCommand::None and not _binds.freeLook.is_infinite())
 	{
 		// in theory, '_moveCommand' could be multiplke moves at once,
 		// but now we're just setting one
 
-		if(_binds.forward and _binds.forward.triggered())
+		if(_binds.forward and _binds.forward)
 			_moveCommand = MoveCommand::Forward;
-		else if(_binds.back and _binds.back.triggered())
+		else if(_binds.back and _binds.back)
 			_moveCommand = MoveCommand::Backward;
-		else if(_binds.left and _binds.left.triggered())
+		else if(_binds.left and _binds.left)
 			_moveCommand = MoveCommand::Left;
-		else if(_binds.right and _binds.right.triggered())
+		else if(_binds.right and _binds.right)
 			_moveCommand = MoveCommand::Right;
-		else if(_binds.turnLeft and _binds.turnLeft.triggered())
+		else if(_binds.turnLeft and _binds.turnLeft)
 			_moveCommand = MoveCommand::TurnLeft;
-		else if(_binds.turnRight and _binds.turnRight.triggered())
+		else if(_binds.turnRight and _binds.turnRight)
 			_moveCommand = MoveCommand::TurnRight;
 	}
 
-	if(_animation.type == GridAnimation::None and not _freeLooking)
+	if(_animation.type == GridAnimation::None and not _binds.freeLook.is_infinite())
 	{
-		if(_moveCommand == MoveCommand::None and _binds.freeLookBegin and _binds.freeLookBegin.triggered())
+		if(_moveCommand == MoveCommand::None and _binds.freeLookEnable)
 		{
-			if(not _freeLooking)
+			if(not _binds.freeLook.is_infinite())
 			{
-				_freeLooking = true;
 				// TODO: this should use _binds.freeLook axes
-				_freeLookGrab = _binds.freeLook.rawValue();
-				RGL::Input::setMouseCursorVisible(false);
-				RGL::Input::setMousePosition(_grabTopLeft + _grabSize/2u);
+				_binds.freeLook.set_infinite(true);
+				// _freeLookGrab = _binds.freeLook.rawValue();
+				// RGL::Input::setMouseCursorVisible(false);
+				// RGL::Input::setMousePosition(_grabTopLeft + _grabSize/2u);
 				_freeLookYaw = 0;
 				_freeLookPitch = 0;
 
-				Log::debug("freelook START @ {}", _freeLookGrab);
+				Log::debug("crawler| freelook START");
 			}
 		}
 
@@ -234,16 +235,11 @@ void CrawlerController::update(entt::registry &entities, std::chrono::nanosecond
 			_animation.type = GridAnimation::None;
 		}
 	}
-	else if(_freeLooking)
+	else if(_binds.freeLook.is_infinite())
 	{
-		if(_binds.freeLookEnd and not _binds.freeLookEnd.triggered())
+		if(not _binds.freeLookEnable)
 		{
-			_freeLooking = false;
-			// return the cursor to where we started
-			// TODO: this should use _binds.freeLook axes
-			// _binds.freeLook.restore(_freeLookGrab);
-			RGL::Input::setMousePosition(_freeLookGrab);
-			RGL::Input::setMouseCursorVisible(true);
+			_binds.freeLook.set_infinite(false);
 
 			// _camera.lookAt(transform.position() + s_camera_facing_dir[uint_fast8_t(_facing)] * _grid_size);
 			transform.set_direction(transform.position() + s_camera_facing_dir[uint_fast8_t(_facing)] * _grid_size);
@@ -253,18 +249,10 @@ void CrawlerController::update(entt::registry &entities, std::chrono::nanosecond
 		}
 		else
 		{
-			// TODO: this should use _binds.freeLook axes
-			// const auto currPos = _binds.freeLook.value();
-			const auto currPos = RGL::Input::mousePosition();
-			const auto dragCenter = _grabTopLeft + _grabSize/2u;
-			RGL::Input::setMousePosition(dragCenter);
+			const auto look_pos = _binds.freeLook.value();
 
-			const auto mouse_offset = glm::vec2(currPos) - glm::vec2(dragCenter);
-			const auto yawAdd = mouse_offset.x*_mouseScaleYaw;
-			const auto pitchAdd = mouse_offset.y*_mouseScalePitch;
-
-			_freeLookYaw   = glm::clamp(_freeLookYaw   + yawAdd,   -s_mouselook_max_yaw,   s_mouselook_max_yaw);
-			_freeLookPitch = glm::clamp(_freeLookPitch + pitchAdd, -s_mouselook_max_pitch, s_mouselook_max_pitch);
+			_freeLookYaw   = look_pos.x;
+			_freeLookPitch = look_pos.y;
 
 			auto target = s_camera_facing_dir[uint_fast8_t(_facing)] * _grid_size; // default target for this facing direction
 			auto targetMatrix = glm::rotate(glm::mat4(1), -std::numbers::pi_v<float>/2*_freeLookYaw, AXIS_Z);
@@ -283,8 +271,10 @@ void CrawlerController::update(entt::registry &entities, std::chrono::nanosecond
 
 void CrawlerController::setMouseSensitivity(float yaw, float pitch)
 {
-	_mouseScaleYaw   =  yaw  / float(_grabSize.x*2);
-	_mouseScalePitch = pitch / float(_grabSize.y*2);
+	_binds.freeLook.set_scaler({
+		yaw  / float(_grabSize.x*2),
+		pitch / float(_grabSize.y*2)
+	});
 }
 
 // ----------------------------------------------------------------------------

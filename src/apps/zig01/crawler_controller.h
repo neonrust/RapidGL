@@ -41,15 +41,6 @@ public:
 
 	inline void setWalkableQuery(std::function<bool(RGL::GridPos)> callback) { _queryWalkable = callback; }
 
-	// TODO: de-couple bind config from this class? e.g. the crawler could register its "commands" with a global registry)
-	void setForward(RGL::ActionBind bind)   { _binds.forward   = bind; }
-	void setBack(RGL::ActionBind bind)      { _binds.back      = bind; }
-	void setLeft(RGL::ActionBind bind)      { _binds.left      = bind; }
-	void setRight(RGL::ActionBind bind)     { _binds.right     = bind; }
-	void setTurnLeft(RGL::ActionBind bind)  { _binds.turnLeft  = bind; }
-	void setTurnRight(RGL::ActionBind bind) { _binds.turnRight = bind; }
-	void setFreeLook(RGL::ActionBind bind)  { _binds.freeLookBegin = bind; }
-
 	void setMouseSensitivity(float yaw, float pitch);
 
 	// push the crawler in some direction (meaning a quick movement that the player can't control)
@@ -66,10 +57,6 @@ public:
 
 private:
 	float _grid_size;
-
-	bool _freeLooking { false };
-	float _mouseScaleYaw;
-	float _mouseScalePitch;
 
 	enum class MoveCommand : int { None, Forward, Right, Backward, Left, TurnLeft, TurnRight };
 	MoveCommand _moveCommand { MoveCommand::None };
@@ -101,12 +88,11 @@ private:
 		RGL::ActionBind right;
 		RGL::ActionBind turnLeft;
 		RGL::ActionBind turnRight;
-		RGL::ActionBind freeLookBegin;
-		RGL::ActionBind freeLookEnd;
+		RGL::ActionBind freeLookEnable;
 		RGL::AxisBind2d freeLook;
 	} _binds;
 
-	glm::uvec2 _freeLookGrab;
+	// glm::uvec2 _freeLookGrab;
 	glm::uvec2 _grabTopLeft;
 	glm::uvec2 _grabSize;
 	float _freeLookYaw;

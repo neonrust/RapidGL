@@ -603,7 +603,7 @@ void ZigApp::update(nanoseconds frame_time)
 	_running_time += seconds_f(frame_time);
 	m_tmo_pp.setFrameTime(float(seconds_f(frame_time).count()));
 
-	_crawler->update(entities(), frame_time);
+	//_crawler->update(entities(), frame_time);
 	// TODO: other controllers, AI, etc
 
 	_moveSystem.update(entities(), frame_time);

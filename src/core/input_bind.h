@@ -9,6 +9,13 @@ namespace RGL
 class ActionBind
 {
 public:
+	enum class ActionType
+	{
+		None       = 0,
+		Keyboard   = 1,
+		Mouse      = 2,
+		Controller = 3
+	};
 	enum Trigger
 	{
 		Press,   // once
@@ -16,7 +23,9 @@ public:
 		Repeat,  // like hold, but fires at the defined rate
 		Release,  // oppositve of Press; once, but when released
 		PressOrRelease,
-		StateChange = PressOrRelease
+		StateChange = PressOrRelease,
+		Toggle,
+		ToggleOnRelease,
 	};
 	enum TriggerState
 	{
@@ -31,25 +40,30 @@ public:
 	ActionBind(KeyCode key, Trigger trigger=Press);
 	ActionBind(MouseButton button, Trigger trigger=Press);
 	ActionBind(int controllerIdx, ControllerButton button, Trigger trigger=Press);
+	~ActionBind();
 
 	void bind(KeyCode key, Trigger trigger=Press);
 	void bind(MouseButton button, Trigger trigger=Press);
 	void bind(int controllerIdx, ControllerButton button, Trigger trigger=Press);
 
 	[[nodiscard]] bool is_bound() const { return _button.index() > 0; }
+	[[nodiscard]] ActionType action_type() const;
 
 	[[nodiscard]] std::string description() const;
 
 	[[nodiscard]] KeyCode key() const;
-	[[nodiscard]] MouseButton button() const;
-	[[nodiscard]] std::pair<size_t, ControllerButton> controllerButton() const;
+	[[nodiscard]] MouseButton mouse_button() const;
+	[[nodiscard]] std::pair<int, ControllerButton> controller_button() const;
 
 	[[nodiscard]] TriggerState triggered() const;
 	[[nodiscard]] inline operator bool () const { return triggered() != TriggerState::NotTriggered; };
 
 private:
+	void register_bind();
+	void deregister_bind();
 	[[nodiscard]] bool current_state() const;
 	[[nodiscard]] bool previous_state() const;
+	[[nodiscard]] bool toggled_state(bool onPress=true) const;
 
 	Trigger _trigger;
 	struct ControllerDef
@@ -57,7 +71,8 @@ private:
 		ControllerButton button;
 		int idx { -1 }; // only used for _type == ControllerBtn
 	};
-	std::variant<std::monostate, KeyCode, MouseButton, ControllerDef> _button { KeyCode::None };
+	// the types listed correspond to 'ActionType'
+	std::variant<std::monostate, KeyCode, MouseButton, ControllerDef> _button;
 };
 
 // ----------------------------------------------------------------------------
@@ -93,10 +108,10 @@ class AxisBind1d : public AxisBind
 {
 public:
 	AxisBind1d();
-	AxisBind1d(MouseAxis1d axis, uint_fast16_t rangeMax, float threshold=std::numeric_limits<float>::quiet_NaN(), ThresholdDirection dir=ThresholdDirection::Greater);
+	AxisBind1d(MouseAxis1d axis, float threshold=std::numeric_limits<float>::quiet_NaN(), ThresholdDirection dir=ThresholdDirection::Greater);
 	AxisBind1d(int controllerIdx, ControllerAxis1d axis, float threshold=std::numeric_limits<float>::quiet_NaN(), ThresholdDirection dir=ThresholdDirection::Greater);
 
-	void bind(MouseAxis1d axis, uint_fast16_t rangeMax, float threshold=std::numeric_limits<float>::quiet_NaN(), ThresholdDirection dir=ThresholdDirection::Greater);
+	void bind(MouseAxis1d axis, float threshold=std::numeric_limits<float>::quiet_NaN(), ThresholdDirection dir=ThresholdDirection::Greater);
 	void bind(int controllerIdx, ControllerAxis1d axis, float threshold=std::numeric_limits<float>::quiet_NaN(), ThresholdDirection dir=ThresholdDirection::Greater);
 
 	[[nodiscard]] std::string description() const override;
@@ -149,10 +164,10 @@ class AxisBind2d : public AxisBind
 {
 public:
 	AxisBind2d();
-	AxisBind2d(MouseAxis2d axis, glm::uvec2 rangeMax, glm::vec2 threshold={ std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::quiet_NaN() }, ThresholdDirection dir=ThresholdDirection::Greater);
+	AxisBind2d(MouseAxis2d axis, glm::vec2 threshold={ std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::quiet_NaN() }, ThresholdDirection dir=ThresholdDirection::Greater);
 	AxisBind2d(int controllerIdx, ControllerAxis2d axis, glm::vec2 threshold={ std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::quiet_NaN() }, ThresholdDirection dir=ThresholdDirection::Greater);
 
-	void bind(MouseAxis2d axis, glm::uvec2 rangeMax, glm::vec2 threshold={ std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::quiet_NaN() }, ThresholdDirection dir=ThresholdDirection::Greater);
+	void bind(MouseAxis2d axis, glm::vec2 threshold={ std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::quiet_NaN() }, ThresholdDirection dir=ThresholdDirection::Greater);
 	void bind(int controllerIdx, ControllerAxis2d axis, glm::vec2 threshold={ std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::quiet_NaN() }, ThresholdDirection dir=ThresholdDirection::Greater);
 
 	[[nodiscard]] std::string description() const override;
@@ -171,6 +186,7 @@ public:
 	[[nodiscard]] std::tuple<glm::vec2, ThresholdDirection> threshold() const { return { _threshold, _thresholdDirection }; };
 
 	bool set_infinite(bool enabled);
+	bool is_infinite() const { return _infinite.enabled; };
 	void set_scaler(glm::vec2 scaler);
 	void set_limits_x(float min, float max, LimitMode mode);
 	void set_limits_y(float min, float max, LimitMode mode);

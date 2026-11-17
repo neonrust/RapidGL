@@ -8,6 +8,7 @@
 #include "component/transform.h"
 #include "frustum.h"
 #include "input.h"
+#include "input_bind.h"
 
 
 namespace RGL
@@ -105,21 +106,25 @@ private:
 	float m_sensitivity;
 	float m_move_speed;
 
-	MouseButton m_unlock_mouse_button;
-	KeyCode m_forward_key;
-	KeyCode m_backward_key;
-	KeyCode m_left_key;
-	KeyCode m_right_key;
-	KeyCode m_up_key;
-	KeyCode m_down_key;
+	ActionBind _move_slow_bind;
+	ActionBind _move_fast_bind1;
+	ActionBind _move_fast_bind2;
+	ActionBind _forward_bind;
+	ActionBind _backward_bind;
+	ActionBind _left_bind;
+	ActionBind _right_bind;
+	ActionBind _up_bind;
+	ActionBind _down_bind;
+	ActionBind _freelook_bind;
+	AxisBind2d _freelook_axis;
 
 private:
 	void updateView();
 	void updateDirection();
 	void updateFrustum();
 	void move(const glm::vec3 & position, const glm::vec3& dir, float amount);
-	void addYaw(float angle);
-	void addPitch(float angle);
+	void setYaw(float angle);
+	void setPitch(float angle);
 
 private:
 	float _yaw;
@@ -141,9 +146,7 @@ private:
 	float _bottom;
 	float _fovy; // in degrees
 
-	glm::ivec2 _mouse_pressed_position;
-	bool       _is_dirty;
-	bool       _is_mouse_move;
+	bool  _is_dirty;
 };
 
 } // RGL
