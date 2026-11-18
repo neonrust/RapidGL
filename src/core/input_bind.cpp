@@ -435,13 +435,14 @@ bool AxisBind1d::set_infinite(bool enabled)
 		return true;
 
 	if(not Input::setMouseInfiniteMode(enabled))
-		return false; // unsupported or already in infinite mode
+		return false; // unsupported or already in infinite mode (by another bind)
 
 	_infinite.enabled = enabled;
 	if(enabled)
 	{
 		_infinite.value = 0.f;
 		Input::setMouseCursorVisible(false); // optional?
+		Input::enableRawMouseMotion(true);
 		const auto pos = Input::mousePosition();
 		_infinite.grab_pos = pos;
 
@@ -455,6 +456,7 @@ bool AxisBind1d::set_infinite(bool enabled)
 	else
 	{
 		Input::setMouseCursorVisible(true);
+		Input::enableRawMouseMotion(false);
 		Input::setMousePosition(_infinite.grab_pos);
 	}
 
@@ -473,9 +475,9 @@ bool AxisBind1d::set_infinite(bool enabled, float min, float max, LimitMode mode
 
 // ----------------------------------------------------------------------------
 
-void AxisBind1d::set_scaler(float scaler)
+void AxisBind1d::set_scaler(float scaler) // pre(scaler > 0)
 {
-	assert(scaler != 0);
+	assert(scaler > 0);
 	// TODO: support negative scaler
 	_infinite.scaler = scaler;
 }
@@ -533,18 +535,18 @@ std::string AxisBind2d::description() const
 	switch(_axis.index())
 	{
 	case 0:
-		return std::format("<axis2d>");
+		return std::format("<axis d=\"2\">");
 	case 1:
 		// TODO: better string representation for the axis
-		return std::format("<axis2d mouse=\"{}\">"sv, int(std::get<MouseDef>(_axis).axis));
+		return std::format("<axis d=\"2\" mouse=\"{}\">"sv, int(std::get<MouseDef>(_axis).axis));
 	case 2:
 	{
 		// TODO: better string representation for the axis
 		const auto &def = std::get<ControllerDef>(_axis);
-		return std::format("<axis2d controller=\"{}\" axis=\"{}\">"sv, def.idx, int(def.axis));
+		return std::format("<axis d=\"2\" controller=\"{}\" axis=\"{}\">"sv, def.idx, int(def.axis));
 	}
 	}
-	return "<axis2d invalid>";
+	return "<axis d=\"2\" invalid>";
 }
 
 
@@ -588,8 +590,9 @@ glm::vec2 AxisBind2d::value() const
 			};
 		}
 
-		Input::setMousePosition({ def.max.x/2, def.max.y/2 });
-		_infinite.value += _infinite.scaler * glm::vec2(glm::ivec2(pos) - glm::ivec2(def.max)/2) / glm::vec2(def.max);
+		const auto center = def.max/2u;
+		Input::setMousePosition(center);
+		_infinite.value += _infinite.scaler * (glm::vec2(glm::ivec2(pos) - glm::ivec2(center))) / glm::vec2(def.max);
 
 		auto apply_limits = [](float &value, const auto limits, auto limit_mode) {
 			if(value <= limits.min)
@@ -671,7 +674,7 @@ bool AxisBind2d::set_infinite(bool enabled)
 		return true;
 
 	if(not Input::setMouseInfiniteMode(enabled))
-		return false; // unsupported or already in infinite mode
+		return false; // unsupported or already in infinite mode (by another bind)
 
 	_infinite.enabled = enabled;
 	if(enabled)
@@ -680,13 +683,14 @@ bool AxisBind2d::set_infinite(bool enabled)
 
 		_infinite.value = { 0.f, 0.f };
 		Input::setMouseCursorVisible(false);
-		const auto pos = Input::mousePosition();
-		_infinite.grab_pos = pos;
-		Input::setMousePosition({ def.max.x/2, def.max.x/2 });
+		Input::enableRawMouseMotion(true);
+		_infinite.grab_pos = Input::mousePosition();
+		Input::setMousePosition(def.max/2u);
 	}
 	else
 	{
 		Input::setMouseCursorVisible(true);
+		Input::enableRawMouseMotion(false);
 		Input::setMousePosition(_infinite.grab_pos);
 	}
 
@@ -695,22 +699,23 @@ bool AxisBind2d::set_infinite(bool enabled)
 
 // ----------------------------------------------------------------------------
 
-void AxisBind2d::set_scaler(glm::vec2 scaler)
+void AxisBind2d::set_scaler(glm::vec2 scaler) //pre(scaler.x > 0 and scaler.y > 0)
 {
-	assert(scaler.x != 0 and scaler.y != 0);
+	assert(scaler.x > 0 and scaler.y > 0);
 	// TODO: support negative scaler
 	_infinite.scaler = scaler;
 }
 
-void AxisBind2d::set_limits_x(float min, float max, LimitMode mode)
+void AxisBind2d::set_limits_x(float min, float max, LimitMode mode) // pre(min < max)
 {
+	assert(min < max);
 	_infinite.limits_x = { min, max };
 	_infinite.limit_mode_x = mode;
 }
 
 // ----------------------------------------------------------------------------
 
-void AxisBind2d::set_limits_y(float min, float max, LimitMode mode)
+void AxisBind2d::set_limits_y(float min, float max, LimitMode mode) // pre(min < max)
 {
 	assert(min < max);
 	if(max < min)
