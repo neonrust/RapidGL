@@ -23,6 +23,7 @@ struct Tonemapping : public PostProcess
 	void setGamma(float gamma);
 	void setSaturation(float saturation);
 	void setLumaRange(float darkest, float brightest);
+	inline glm::vec2 lumaRange() const { return _luma_range; }
 	void setAdaptationRate(float units_per_second_to_brighter,float units_per_second_to_darker);
 
 	void render(const RGL::RenderTarget::Texture2d &in, RGL::RenderTarget::Texture2d &out) override;
@@ -38,9 +39,9 @@ private:
 	uint32_t _filter_lod;
 	RGL::buffer::Storage<float> _exposure_regulation_ssbo;
 	RGL::Shader _tmo_shader;
+	glm::vec2 _luma_range { -20.f, 0.f };
 
 	GLuint _dummy_vao_id;
-
 };
 
 } // RGL::PP

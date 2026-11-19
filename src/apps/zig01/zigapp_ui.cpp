@@ -280,11 +280,24 @@ COL(1); ImGui::Text("%4ld µs", (time).count())
 		if (ImGui::CollapsingHeader("Tonemapper"))
 		{
 			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.5f);
-			static float brighrness = m_camera.brightness();
+			float brighrness = m_camera.brightness();
 			if(ImGui::SliderFloat("Lightocity",        &brighrness,             -5.f, 5.f, "%.1f"))
 				m_camera.setBrightness(brighrness);
+			auto lumaRange = m_tmo_pp.lumaRange();
+			if(ImGui::SliderFloat("Luma range (dark)", &lumaRange.x,            -20.f, 5.f))
+			{
+				if(lumaRange.x > lumaRange.y)
+					lumaRange.y = lumaRange.x + 0.1f;
+				m_tmo_pp.setLumaRange(lumaRange.x, lumaRange.y);
+			}
+			if(ImGui::SliderFloat("Luma range (bright)", &lumaRange.y,          0.f, 20.f))
+			{
+				if(lumaRange.y < lumaRange.x)
+					lumaRange.x = lumaRange.y - 0.1f;
+				m_tmo_pp.setLumaRange(lumaRange.x, lumaRange.y);
+			}
 			ImGui::SliderFloat("Gamma",                &m_gamma,                0.f, 10.f, "%.1f");
-			static float saturation { 1.f };
+			float saturation { 1.f };
 			if(ImGui::SliderFloat("Saturation",        &saturation,             0.f, 5.0f, "%.1f"))
 				m_tmo_pp.setSaturation(saturation);
 			ImGui::PopItemWidth();

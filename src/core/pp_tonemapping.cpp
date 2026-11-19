@@ -41,7 +41,6 @@ void Tonemapping::create(uint32_t width, uint32_t height)
 	_calc_exposure.setPreBarrier(Shader::Barrier::SSBO | Shader::Barrier::Texture);
 	_calc_exposure.setPostBarrier(Shader::Barrier::SSBO);
 	_calc_exposure.setUniform("u_weights"sv, generateWeights(eval_grid_size));
-	_calc_exposure.setUniform("u_luma_range"sv, glm::vec2(-5.f, 5.f));
 	_calc_exposure.setUniform("u_adaptation_rate"sv, glm::vec2(5.f, 2.f)); // { up, down }
 
 
@@ -115,6 +114,7 @@ void Tonemapping::setSaturation(float saturation)
 
 void Tonemapping::setLumaRange(float darkest, float brightest)
 {
+	_luma_range = { darkest, brightest };
 	_calc_exposure.setUniform("u_luma_range"sv, glm::vec2(darkest, brightest));
 }
 

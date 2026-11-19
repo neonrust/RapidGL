@@ -50,6 +50,7 @@ Camera::Camera(bool is_ortho)
 	_freelook_axis.bind(MouseAxis2d::Position);
 	_freelook_axis.set_limits_x(-180, 180, AxisBind::LimitMode::Wrap);
 	_freelook_axis.set_limits_y(-90, 90, AxisBind::LimitMode::Clamp);
+	_freelook_axis.set_scaler({ 200.f, 200.f });
 }
 
 void Camera::setSize(size_t width, size_t height)
