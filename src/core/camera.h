@@ -117,14 +117,15 @@ private:
 	ActionBind _down_bind;
 	ActionBind _freelook_bind;
 	AxisBind2d _freelook_axis;
+	glm::vec2 _freelook_prev_pos;
 
 private:
 	void updateView();
 	void updateDirection();
 	void updateFrustum();
 	void move(const glm::vec3 & position, const glm::vec3& dir, float amount);
-	void setYaw(float angle);
-	void setPitch(float angle);
+	void addYaw(float angle);
+	void addPitch(float angle);
 
 private:
 	float _yaw;

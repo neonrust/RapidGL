@@ -8,6 +8,8 @@
 #include "hash_mat4.h"   // IWYU pragma: keep
 #include "hash_quat.h"   // IWYU pragma: keep
 
+#include "formatters_glm.h"
+
 #include <chrono>
 using namespace std::chrono;
 
@@ -50,7 +52,7 @@ Camera::Camera(bool is_ortho)
 	_freelook_axis.bind(MouseAxis2d::Position);
 	_freelook_axis.set_limits_x(-180, 180, AxisBind::LimitMode::Wrap);
 	_freelook_axis.set_limits_y(-90, 90, AxisBind::LimitMode::Clamp);
-	_freelook_axis.set_scaler({ 200.f, 200.f });
+	_freelook_axis.set_scaler({ 400.f, 400.f });
 }
 
 void Camera::setSize(size_t width, size_t height)
@@ -176,6 +178,7 @@ void Camera::update(std::chrono::nanoseconds dt)
 			// //   also: https://www.glfw.org/docs/3.1/input.html#input_cursor_mode
 			// Input::setMouseCursorVisible(false);
 			// Input::setMousePosition({ _width/2, _height/2 });
+			_freelook_prev_pos = _freelook_axis.value();
 		}
 	}
 	else if(_freelook_axis.is_infinite())
@@ -184,9 +187,11 @@ void Camera::update(std::chrono::nanoseconds dt)
 	if(_freelook_axis.is_infinite())
 	{
 		const auto look_pos = _freelook_axis.value();
+		const auto diff = look_pos - _freelook_prev_pos;
+		_freelook_prev_pos = look_pos;
 
-		setYaw(look_pos.x);
-		setPitch(look_pos.y);
+		addYaw(glm::radians(diff.x));
+		addPitch(glm::radians(diff.y));
 	}
 
 	if(_is_dirty)
@@ -229,12 +234,9 @@ void Camera::setOrientationEuler(const glm::vec3 &euler)
 
 	_yaw = glm::radians(euler.y);
 	_pitch = glm::radians(euler.x);
-	// to apply limits
-	setYaw(_yaw);
-	setPitch(_pitch);
 
 	updateDirection();
-	_is_dirty  = true;
+	_is_dirty = true;
 }
 
 void Camera::setOrientation(const glm::vec3 &direction)
@@ -281,21 +283,16 @@ void Camera::move(const glm::vec3& position, const glm::vec3& dir, float amount)
 	setPosition(position + (dir * amount));
 }
 
-void Camera::setYaw(float yaw)
+void Camera::addYaw(float yaw)
 {
-	_is_dirty = yaw != _yaw;
+	_is_dirty |= yaw != 0;
 	_yaw += yaw;
-
-	if(_yaw > std::numbers::pi_v<float>)
-		_yaw -= std::numbers::pi_v<float>*2;
-	else if(_yaw < -std::numbers::pi_v<float>)
-		_yaw += std::numbers::pi_v<float>*2;
 }
 
-void Camera::setPitch(float pitch)
+void Camera::addPitch(float pitch)
 {
-	_is_dirty = pitch != _pitch;
-	_pitch = glm::clamp(pitch, -std::numbers::pi_v<float>/2, std::numbers::pi_v<float>/2);
+	_is_dirty |= pitch != 0;
+	_pitch += pitch;
 }
 
 void Camera::setFov(float fov)
@@ -317,13 +314,13 @@ float Camera::horizontalFov() const
 
 void RGL::Camera::setFarPlane(float f)
 {
-	_is_dirty = f != _far;
+	_is_dirty |= f != _far;
 	_far = f;
 }
 
 void Camera::setNearPlane(float n)
 {
-	_is_dirty = n != _near;
+	_is_dirty |= n != _near;
 	_near = n;
 }
 

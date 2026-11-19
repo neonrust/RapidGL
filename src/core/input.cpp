@@ -248,15 +248,15 @@ glm::uvec2 Input::mouseRange()
 	return s_windowSize;
 }
 
-glm::uvec2 Input::mousePosition()
+glm::vec2 Input::mousePosition()
 {
 	double x_pos, y_pos;
 	glfwGetCursorPos(s_window, &x_pos, &y_pos);
 
-	return glm::uvec2(x_pos, y_pos);
+	return glm::vec2(x_pos, y_pos);
 }
 
-void Input::setMousePosition(const glm::uvec2 & pos)
+void Input::setMousePosition(const glm::vec2 &pos)
 {
 	glfwSetCursorPos(s_window, pos.x, pos.y);
 }

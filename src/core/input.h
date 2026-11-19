@@ -222,9 +222,9 @@ protected:
 	static bool wasMouseReleased(MouseButton button); // changed since last frame
 	static bool mouseToggledState(MouseButton button, bool toggleOnPress=true);
 
-	static glm::uvec2 mouseRange();
-	static glm::uvec2 mousePosition();
-	static void setMousePosition(const glm::uvec2 &pos);
+	static glm::uvec2 mouseRange();  // i.e. window size
+	static glm::vec2 mousePosition();
+	static void setMousePosition(const glm::vec2 &pos);
 	static bool enableRawMouseMotion(bool enabled);
 	static bool isRawMouseMotionEnabled();
 	static void setMouseCursorVisible(bool visible);

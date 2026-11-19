@@ -590,7 +590,7 @@ glm::vec2 AxisBind2d::value() const
 			};
 		}
 
-		const auto center = def.max/2u;
+		const auto center = glm::vec2(def.max/2u);
 		Input::setMousePosition(center);
 		_infinite.value += _infinite.scaler * (glm::vec2(glm::ivec2(pos) - glm::ivec2(center))) / glm::vec2(def.max);
 
