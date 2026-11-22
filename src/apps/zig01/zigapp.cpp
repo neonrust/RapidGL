@@ -142,6 +142,12 @@ ZigApp::~ZigApp()
 	}
 }
 
+void ZigApp::parse_arguments(const std::vector<std::string_view> args)
+{
+	if(not args.empty())
+		_sceneFile = args[0];
+}
+
 void opengl_message_callback(GLenum /*source*/, GLenum type, GLuint /*id*/, GLenum severity, GLsizei /*len*/, const GLchar *message, const void *handler)
 {
 	if(severity == GL_DEBUG_SEVERITY_NOTIFICATION)
@@ -459,7 +465,7 @@ void ZigApp::init_app()
 		Log::info("Loaded {} light geometries", _lightModels.size());
 	}
 
-	loadScene("Z1R020");
+	loadScene(_sceneFile);
 }
 
 void ZigApp::calculateShadingClusterGrid()
@@ -2011,6 +2017,8 @@ void ZigApp::debug_message(GLenum type, std::string_view severity, std::string_v
 
 void ZigApp::loadScene([[maybe_unused]] std::string_view name)
 {
+	Log::info("Loading scene: {}", name);
+
 	// auto mesh_ = assets().staticMesh("shadowtest.gltf");
 	// assert(mesh_);
 	// if(mesh_)
@@ -2021,9 +2029,6 @@ void ZigApp::loadScene([[maybe_unused]] std::string_view name)
 
 	SceneLoader loader(assets(), _animSystem);
 	loader.load(name, _scene);
-
-	for(const auto &name: _animSystem.names())
-		Log::debug("  animation: {}", name);
 
 	entities().compact();
 }

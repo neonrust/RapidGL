@@ -19,6 +19,8 @@ namespace RGL
 		CoreApp(const CoreApp&)              = delete;
 		CoreApp& operator = (const CoreApp&) = delete;
 
+		virtual void parse_arguments(const std::vector<std::string_view> args) {}
+
         virtual void init(unsigned int width, unsigned int height, const std::string & title, double framerate = 60.0) final;
 
         virtual void init_app()                = 0;

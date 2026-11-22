@@ -48,6 +48,8 @@ public:
 	ZigApp();
 	~ZigApp();
 
+	void parse_arguments(const std::vector<std::string_view> args) override;
+
     void init_app()                override;
     void input()                   override;
 	void update(std::chrono::nanoseconds frame_time) override;
@@ -289,6 +291,8 @@ private:
 
 	RGL::Texture2DArray _light_icons;
 	bool _debug_ui_enabled { false };
+
+	std::string _sceneFile { "Z1R020" };
 };
 
 namespace color
