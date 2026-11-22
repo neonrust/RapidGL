@@ -18,6 +18,11 @@ struct Tonemapping : public PostProcess
 
 	operator bool() const override;
 
+	bool automaticExposureEnabled() const { return _exposure_enabled; }
+	void setAutomaticExposureEnabled(bool enabled) { _exposure_enabled = enabled; }
+	void setManualExposure(float exposure) { _manual_exposure = exposure; }
+	float manualExposure() const { return _manual_exposure; }
+
 	void setBrightness(float brighrness);
 	void setFrameTime(float frame_time);
 	void setGamma(float gamma);
@@ -39,7 +44,10 @@ private:
 	uint32_t _filter_lod;
 	RGL::buffer::Storage<float> _exposure_regulation_ssbo;
 	RGL::Shader _tmo_shader;
-	glm::vec2 _luma_range { -20.f, 0.f };
+
+	bool _exposure_enabled { true };
+	float _manual_exposure { 1.f };
+	glm::vec2 _luma_range { -.1f, 2.1f };
 
 	GLuint _dummy_vao_id;
 };

@@ -73,14 +73,20 @@ void Tonemapping::render(const RGL::RenderTarget::Texture2d &in, RGL::RenderTarg
 	in.copyTo(_filter_rt);
 	_filter_rt.color_texture().GenerateMipMaps();
 
-	_calc_exposure.bind();
-	_filter_rt.color_texture().BindImage(1, ImageAccess::Read, _filter_lod);
-	_calc_exposure.invoke();
-	// {
-	// 	// auto er = _exposure_regulation_ssbo.download();
-	// 	auto &er = _exposure_regulation_ssbo;
-	// 	Log::debug("  {:.1f} -> {:.1f} exposure: {:.2f}", er[1], er[3], er[0]);
-	// }
+	if(_exposure_enabled)
+	{
+		_calc_exposure.bind();
+		_filter_rt.color_texture().BindImage(1, ImageAccess::Read, _filter_lod);
+		_calc_exposure.invoke();
+
+		// {
+		// 	// auto er = _exposure_regulation_ssbo.download();
+		// 	auto &er = _exposure_regulation_ssbo;
+		// 	Log::debug("  {:.1f} -> {:.1f} exposure: {:.2f}", er[1], er[3], er[0]);
+		// }
+	}
+	else
+		_exposure_regulation_ssbo.set(0, _manual_exposure);  // first flote is 'exposure' used by the tmo.frag
 
 	out.bindRenderTarget();
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
