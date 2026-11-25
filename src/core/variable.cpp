@@ -1,12 +1,12 @@
 #include "variable.h"
+#include "log.h"
 #include "variable_master.h"
 
 #include <format>
-#include <print>
 
 
-using namespace RGL;
-
+namespace RGL
+{
 
 // create Integer variable
 Variable::Variable(std::string_view name, int_t value, BitMask32 flags) :
@@ -18,10 +18,10 @@ Variable::Variable(std::string_view name, int_t value, BitMask32 flags) :
 	_current = value;
 	_default = value;
 
-	if((_flags & User) == 0 && (_flags & ReadOnly) == 0)
+	if((_flags & User) == 0 and (_flags & ReadOnly) == 0)
 		_flags |= Archive;
 	
-	VariableMaster::the()->registerVariable(this);
+	VariableMaster::the().register_variable(this);
 }
 
 // create Float variable
@@ -34,10 +34,10 @@ Variable::Variable(std::string_view name, real_t value, BitMask32 flags) :
 	_current = value;
 	_default = value;
 
-	if((_flags & User) == 0 && (_flags & ReadOnly) == 0)
+	if((_flags & User) == 0 and (_flags & ReadOnly) == 0)
 		_flags |= Archive;
 
-	VariableMaster::the()->registerVariable(this);
+	VariableMaster::the().register_variable(this);
 }
 
 // create String variable
@@ -50,15 +50,14 @@ Variable::Variable(std::string_view name, std::string_view value, BitMask32 flag
 	_current = std::string(value);
 	_default = std::string(value);
 	
-	if((_flags & User) == 0 && (_flags & ReadOnly) == 0)
+	if((_flags & User) == 0 and (_flags & ReadOnly) == 0)
 		_flags |= Archive;
 
-	VariableMaster::the()->registerVariable(this);
+	VariableMaster::the().register_variable(this);
 }
 
-// create String variable
-Variable::Variable(std::string_view name, const ColorRgba &value, BitMask32 flags) :
-	_type(RGB),
+Variable::Variable(std::string_view name, const glm::vec3 &value, BitMask32 flags) :
+	_type(VEC3),
 	_flags(flags)
 {
 	set_name(name);
@@ -66,20 +65,51 @@ Variable::Variable(std::string_view name, const ColorRgba &value, BitMask32 flag
 	_current = value;
 	_default = value;
 
-	if((_flags & User) == 0 && (_flags & ReadOnly) == 0)
+	if((_flags & User) == 0 and (_flags & ReadOnly) == 0)
 		_flags |= Archive;
 
-	VariableMaster::the()->registerVariable(this);
+	VariableMaster::the().register_variable(this);
+}
+
+Variable::Variable(std::string_view name, const glm::vec4 &value, BitMask32 flags) :
+	_type(VEC4),
+	_flags(flags)
+{
+	set_name(name);
+
+	_current = value;
+	_default = value;
+
+	if((_flags & User) == 0 and (_flags & ReadOnly) == 0)
+		_flags |= Archive;
+
+	VariableMaster::the().register_variable(this);
+}
+
+Variable::Variable(std::string_view name, const glm::mat4 &value, BitMask32 flags) :
+	_type(MAT4),
+	_flags(flags)
+{
+	set_name(name);
+
+	_current = value;
+	_default = value;
+
+	if((_flags & User) == 0 and (_flags & ReadOnly) == 0)
+		_flags |= Archive;
+
+	VariableMaster::the().register_variable(this);
 }
 
 Variable::~Variable()
 {
-	VariableMaster::the()->deregisterVariable(this);
+	VariableMaster::the().deregister_variable(this);
 }
 
 void Variable::value2string(const value_t &value, std::string &s) const
 {
 	s.clear();
+
 	switch(_type)
 	{
 	case INTEGER:
@@ -91,53 +121,68 @@ void Variable::value2string(const value_t &value, std::string &s) const
 		std::format_to(std::back_inserter(s), "{}", std::get<real_t>(value));
 		break;
 	case STRING:
-		s.reserve(std::get<std::string>(value).size());
 		s = std::get<std::string>(value);
 		break;
-	case RGB:
-	{
-		const auto &c = std::get<ColorRgb>(value);
-		s.reserve(32);
-		std::format_to(std::back_inserter(s), "({:.2f}, {:.2f}, {:.2f})", c.r, c.g, c.b);
-	}
-	break;
-	case RGBA:
-	{
-		const auto &c = std::get<ColorRgba>(value);
-		s.reserve(32);
-		std::format_to(std::back_inserter(s), "({:.2f}, {:.2f}, {:.2f}, {:.2f})", c.r, c.g, c.b, c.a);
-	}
-	break;
 	case VEC3:
+	{
+		const auto &v = std::get<glm::vec3>(value);
+		s.reserve(32);
+		std::format_to(std::back_inserter(s), "({}, {}, {})", v.x, v.y, v.z);
 		break;
+	}
 	case VEC4:
+	{
+		const auto &v = std::get<glm::vec4>(value);
+		s.reserve(32);
+		std::format_to(std::back_inserter(s), "({}, {}, {}, {})", v.x, v.y, v.z, v.w);
 		break;
+	}
 	case MAT4:
+	{
+		const auto &m = std::get<glm::mat4>(value);
+		s.reserve(64);
+		std::format_to(std::back_inserter(s), "( ({}, {}, {}, {}), ({}, {}, {}, {}), ({}, {}, {}, {}), ({}, {}, {}, {}) )",
+					   m[0].x, m[0].y, m[0].z, m[0].w,
+					   m[1].x, m[1].y, m[1].z, m[1].w,
+					   m[2].x, m[2].y, m[2].z, m[2].w,
+					   m[3].x, m[3].y, m[3].z, m[3].w);
 		break;
+	}
+	case _StorageType_count:
+		assert(false);
+	}
+}
 
+void Variable::notify_subscribers()
+{
+	if(not _subscribers.empty())
+	{
+		Log::debug("Variable '{}'; notifying {} subscribers", _name, _subscribers.size());
+
+		VariableMaster::the().notify_subscribers(this);
 	}
 }
 
 // return the variable's value in string representation
-std::string_view Variable::toString() const
+std::string_view Variable::to_string() const
 {
-	if(_stringDirty)
+	if(_string_dirty)
 	{
-		value2string(_current, _asString);
-		if(not _asString.empty())
-			_stringDirty=false;
+		value2string(_current, _as_string);
+		if(not _as_string.empty())
+			_string_dirty=false;
 	}
-	return _asString;
+	return _as_string;
 }
 
-std::string_view Variable::defaultAsString() const
+std::string_view Variable::default_string() const
 {
-	if(_defaultAsString.empty())
-		value2string(_default, _defaultAsString);
-	return _defaultAsString;
+	if(_default_as_string.empty())
+		value2string(_default, _default_as_string);
+	return _default_as_string;
 }
 
-std::string Variable::flagsString() const
+std::string Variable::flag_string() const
 {
 	std::string s;
 	s.resize(5);
@@ -151,9 +196,9 @@ std::string Variable::flagsString() const
 	return s;
 }
 
-std::pair<std::string_view, std::string_view> Variable::name_split(std::string_view name)
+static std::pair<std::string_view, std::string_view> name_split(std::string_view name)
 {
-	if(auto dot = name.find('.'); dot > 0)
+	if(auto dot = name.find('.'); dot != std::string_view::npos)
 	{
 		return {
 			name.substr(0, dot),
@@ -165,207 +210,178 @@ std::pair<std::string_view, std::string_view> Variable::name_split(std::string_v
 
 void Variable::set_name(std::string_view name)
 {
-	assert(not name.empty());
+	assert(not name.empty() and not name.contains('\t') and not name.contains('\n'));
 
-	const auto &[g, n] = name_split(name);
+	_name = name;
+	_group = {};
+	_leaf_name = {};
 
-	if(not g.empty())
+	const auto [grp, leaf] = name_split(name);
+
+	if(not grp.empty())
 	{
-		_group = std::string(g);
-		_name = std::string(n);
-		assert(not _name.empty());
+		_group = grp;
+		_leaf_name = leaf;
+		assert(not _leaf_name.empty());
 	}
 	else
-	{
-		_name = std::string(n);
-		if(_group.capacity() > 0)
-		{
-			// deallocate '_group'
-			std::string empty;
-			_group.swap(empty);
-		}
-	}
-}
-
-
-// bool Variable::operator == (int comp)
-// {
-// 	if(_type==INTEGER)
-// 		return _current.intValue==comp;
-// 	return false;
-// }
-
-// bool Variable::operator == (float comp)
-// {
-// 	if(_type==FLOAT)
-// 		return _current.floatValue==comp;
-// 	return false;
-// }
-	
-// bool Variable::operator == (const char *comp)
-// {
-// 	if(_type==STRING)
-// 		return strcmp(_current.stringValue, comp)==0;
-// 	return false;
-// }
-
-// bool Variable::operator == (const Color &comp)
-// {
-// 	if(_type==RGB)
-// 		return _current.colorValue->operator==(comp);
-// 	return false;
-// }
-
-Variable::operator int_t ()
-{
-	switch(_type)
-	{
-	case INTEGER:
-		return std::get<int_t>(_current);
-	case REAL:
-		return int64_t(std::get<real_t>(_current));
-	case STRING:
-	case RGB:
-	case RGBA:
-	case VEC3:
-	case VEC4:
-	case MAT4:
-		return 0;   // not really useful
-	}
-	return 0;
-}
-
-Variable::operator std::string_view ()
-{
-	if(_type == STRING)
-		return std::get<std::string>(_current);
-	else
-		return toString();
-}
-
-Variable::operator real_t ()
-{
-	if(_type == REAL)
-		return std::get<real_t>(_current);
-	else if(_type == INTEGER)
-		return real_t(std::get<int_t>(_current));
-	return real_t{0};
-}
-
-Variable::operator ColorRgba ()
-{
-	if(_type == RGBA)
-		return std::get<ColorRgba>(_current);
-	else if(_type == RGB)
-	{
-		const auto &c = std::get<ColorRgb>(_current);
-		return ColorRgba{c.r, c.g, c.b, 0.f};
-	}
-	return ColorRgba{0, 0, 0, 0};
-}
-
-void Variable::reset()
-{
-	_current = _default;
-	_stringDirty = true; // string representation is now dirty
+		_leaf_name = _name;
 }
 
 bool Variable::set(int_t value, bool notify)
 {
+	assert(_type == INTEGER);
 	if(_type != INTEGER)
 	{
-		std::println("Variable '{}' is not of integer type: 'set' ignored", _name);
+		Log::warning("Variable '{}': not integer type: 'set' ignored", _name);
 		return false;
 	}
 
 	if(_flags & ReadOnly)
 	{
-		std::println("Variable '{}' is read only: 'set' ignored.", _name);
+		Log::warning("Variable '{}': read only: 'set' ignored.", _name);
 		return false;
 	}
 
 	_current = value;
-	_stringDirty = true;
-
-	// TRACE_VAR2("set '{}' = {}\n", _name, value);
+	_string_dirty = true;
 
 	if(notify)
-		VariableMaster::the()->variableChanged(this);
+		notify_subscribers();
 
 	return true;
 }
 
 bool Variable::set(real_t value, bool notify)
 {
+	assert(_type == REAL);
 	if(_type != REAL)
 	{
-		std::println("Variable '{}' is not of real type: 'set' ignored.", _name);
+		Log::warning("Variable '{}': not real type: 'set' ignored.", _name);
 		return false;
 	}
 
 	if(_flags & ReadOnly)
 	{
-		std::println("Variable '{}' is read only: 'set' ignored.", _name);
+		Log::warning("Variable '{}': read only: 'set' ignored.", _name);
 		return false;
 	}
 
 	_current = value;
-	_stringDirty = false;
-
-	// TRACE_VAR2("set '{}' = {}\n", _name, value);
+	_string_dirty = true;
 
 	if(notify)
-		VariableMaster::the()->variableChanged(this);
+		notify_subscribers();
 
 	return true;
 }
 
 bool Variable::set(std::string_view value, bool notify)
 {
+	assert(_type == STRING);
+
 	if(_type != STRING)
 	{
-		std::println("Variable '{}' is not of string type: 'set' ignored.", _name);
+		Log::warning("Variable '{}': not string type: 'set' ignored.", _name);
 		return false;
 	}
 
 	if(_flags & ReadOnly)
 	{
-		std::println("Variable '{}' is read only: 'set' ignored.", _name);
+		Log::warning("Variable '{}': read only: 'set' ignored.", _name);
 		return false;
 	}
 
 	_current = std::string(value);
-	_stringDirty = false;
-
-	// TRACE_VAR2("set '{}' = '{}'\n", _name, value);
+	_string_dirty = true;
 
 	if(notify)
-		VariableMaster::the()->variableChanged(this);
+		notify_subscribers();
 
 	return true;
 }
 
-bool Variable::set(const ColorRgba &value, bool notify)
+bool Variable::set(const glm::vec3 &value, bool notify)
 {
-	if(_type != RGBA)
+	assert(_type == VEC3);
+
+	if(_type != VEC3)
 	{
-		std::println("Variable '{}' is not of RGBA type: 'set' ignored.", _name);
+		Log::warning("Variable '{}': not vec3 type: 'set' ignored.", _name);
 		return false;
 	}
 
 	if(_flags & ReadOnly)
 	{
-		std::println("Variable '{}' is read only: 'set' ignored.", _name);
+		Log::warning("Variable '{}': read only: 'set' ignored.", _name);
 		return false;
 	}
 
 	_current = value;
-	_stringDirty = false;
-
-	// TRACE_VAR2("set '{}' = {}\n", _name, toString());
+	_string_dirty = true;
 
 	if(notify)
-		VariableMaster::the()->variableChanged(this);
+		notify_subscribers();
 
 	return true;
 }
+
+bool Variable::set(const glm::vec4 &value, bool notify)
+{
+	assert(_type == VEC4);
+
+	if(_type != VEC4)
+	{
+		Log::warning("Variable '{}': not vec4 type: 'set' ignored.", _name);
+		return false;
+	}
+
+	if(_flags & ReadOnly)
+	{
+		Log::warning("Variable '{}': read only: 'set' ignored.", _name);
+		return false;
+	}
+
+	_current = value;
+	_string_dirty = true;
+
+	if(notify)
+		notify_subscribers();
+
+	return true;
+}
+
+bool Variable::set(const glm::mat4 &value, bool notify)
+{
+	assert(_type == MAT4);
+
+	if(_type != MAT4)
+	{
+		Log::warning("Variable '{}': not mat4 type: 'set' ignored.", _name);
+		return false;
+	}
+
+	if(_flags & ReadOnly)
+	{
+		Log::warning("Variable '{}': read only: 'set' ignored.", _name);
+		return false;
+	}
+
+	_current = value;
+	_string_dirty = true;
+
+	if(notify)
+		notify_subscribers();
+
+	return true;
+}
+
+void Variable::reset()
+{
+	_current = _default;
+	_string_dirty = true; // string representation is now dirty
+
+	notify_subscribers();
+}
+
+} // RGL

@@ -7,6 +7,7 @@ set(TEST_SOURCE_FILES
 	test_core_main.cpp
 	test_spatial_allocator.cpp
 	test_ringbuffer.cpp
+	test_variable.cpp
 )
 
 add_executable(core_tests ${TEST_SOURCE_FILES})
