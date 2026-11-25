@@ -4,7 +4,6 @@
 #include "rendertarget_2d.h"
 #include "shader.h"
 #include "ssbo.h"
-#include "texture.h"
 
 namespace RGL::PP
 {
