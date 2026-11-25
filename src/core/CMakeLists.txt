@@ -209,6 +209,7 @@ target_link_libraries(${CORE_LIB_NAME}
 	assimp
 	glfw
 	imgui
+	implot
 	imguizmo
 	glm::glm
 	tinyddsloader

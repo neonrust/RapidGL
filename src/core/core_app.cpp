@@ -1,6 +1,8 @@
 #include "core_app.h"
 
 #include <vector>
+#include <array>
+#include <algorithm>
 #include <chrono>
 using namespace std::chrono;
 
@@ -14,13 +16,14 @@ using namespace std::chrono;
 #include "log.h"
 
 #include "gui/gui.h"  // IWYU pragma: keep
+#include <implot.h>
 
 namespace RGL
 {
 CoreApp::CoreApp():
 	m_frame_time(0.0),
-	m_fps       (0),
-	m_is_running(false)
+	_fps       (0),
+	_is_running(false)
 {
 #if defined(_DEBUG)
 	Log::set_level(Log::DEBUG);
@@ -55,6 +58,30 @@ void CoreApp::render_gui()
 	{
 		ImGui::Text("%.1f FPS (%.3f ms/frame)",	ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
 		ImGui::Text("r-time: %ld µs (~%ld FPS)", _render_time.average().count(), 1'000'000 / (_render_time.average().count() + 1)); // +1 to just avoid DBZ
+
+		// recent render times (ms), oldest to the left
+		if(ImPlot::BeginPlot("##render_time", ImVec2(-1, 60), ImPlotFlags_CanvasOnly | ImPlotFlags_NoInputs | ImPlotFlags_NoFrame))
+		{
+			// y-axis: the smallest of these ranges that fits the highest sample (higher samples are clipped)
+			static constexpr std::array y_ranges { 5.0, 10.0, 20.0, 50.0 };
+			const auto max_ms = double(_render_time.max().count()) / 1000.0;
+			const auto fits = std::ranges::find_if(y_ranges, [max_ms](double range) { return max_ms <= range; });
+			const auto y_max = fits != y_ranges.end() ? *fits : y_ranges.back();
+
+			ImPlot::SetupAxis(ImAxis_X1, nullptr, ImPlotAxisFlags_NoDecorations | ImPlotAxisFlags_AutoFit);
+			ImPlot::SetupAxis(ImAxis_Y1, nullptr);
+			ImPlot::SetupAxisLimits(ImAxis_Y1, 0, y_max, ImPlotCond_Always);
+			ImPlot::SetupAxisTicks(ImAxis_Y1, 0, y_max, 3);  // bottom, middle & top
+			ImPlot::SetupAxisFormat(ImAxis_Y1, "%g ms");
+
+			const auto sample = [](int index, void *data) -> ImPlotPoint {
+				const auto &render_time = *static_cast<const decltype(_render_time) *>(data);
+				return { double(index), double(render_time[size_t(index)].count()) / 1000.0 };
+			};
+			ImPlot::PlotLineG("r-time", sample, &_render_time, int(_render_time.num_samples()));
+
+			ImPlot::EndPlot();
+		}
 	}
 	ImGui::End();
 	/* Overlay end */
@@ -62,12 +89,12 @@ void CoreApp::render_gui()
 
 unsigned int CoreApp::get_fps() const
 {
-	return m_fps;
+	return _fps;
 }
 
 int CoreApp::run()
 {
-	if (m_is_running)
+	if (_is_running)
 		return 0;
 
 	return run_app();
@@ -75,12 +102,12 @@ int CoreApp::run()
 
 void CoreApp::stop()
 {
-	if (!m_is_running)
+	if (!_is_running)
 	{
 		return;
 	}
 
-	m_is_running = false;
+	_is_running = false;
 }
 
 bool CoreApp::take_screenshot(const std::string & filename)
@@ -110,7 +137,7 @@ bool CoreApp::take_screenshot(const std::string & filename)
 
 int CoreApp::run_app()
 {
-	m_is_running = true;
+	_is_running = true;
 
 	int frames = 0;
 	double frame_counter = 0.0;
@@ -125,7 +152,7 @@ int CoreApp::run_app()
 
 	steady_clock::time_point last_frame_time = steady_clock::now();
 
-	while (m_is_running)
+	while (_is_running)
 	{
 		should_render = false;
 
@@ -144,10 +171,10 @@ int CoreApp::run_app()
 
 			unprocessed_time -= m_frame_time;
 
-			if (Window::isCloseRequested())
-				m_is_running = false;
+			if(Window::isCloseRequested())
+				_is_running = false;
 
-			/* Update input, game entities, etc. */
+			// update input, game entities, etc.
 			input();
 
 			const auto now = steady_clock::now();
@@ -155,20 +182,20 @@ int CoreApp::run_app()
 			last_frame_time = now;
 			update(duration_cast<nanoseconds>(frame_duration));
 
+			// isn't multiple calls to this pointless, until next Windo::endFrame() ?
 			Input::update();
 
 			if (frame_counter >= 1.0)
 			{
-				m_fps = uint32_t(1000.0 / double(frames));
+				_fps = uint32_t(1000.0 / double(frames));
 
 				frames = 0;
 				frame_counter = 0;
 			}
 		}
 
-		if(should_render and m_is_running)
+		if(should_render and _is_running)
 		{
-			/* Render */
 			const auto T0 = steady_clock::now();
 			render();
 			_render_time.add(duration_cast<microseconds>(steady_clock::now() - T0));

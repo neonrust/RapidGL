@@ -4,6 +4,7 @@
 #include <glm/vec2.hpp>
 #include <glm/common.hpp>
 #include <imgui_internal.h>
+#include <implot.h>
 #include <sstream>
 
 namespace RGL
@@ -14,6 +15,7 @@ namespace RGL
     {
         ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplGlfw_Shutdown();
+        ImPlot::DestroyContext();
         ImGui::DestroyContext();
     }
 
@@ -21,6 +23,7 @@ namespace RGL
     {
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
+        ImPlot::CreateContext();
 		auto &io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;

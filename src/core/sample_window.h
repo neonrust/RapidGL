@@ -23,6 +23,8 @@ public:
 
 	[[nodiscard]] inline bool empty() const noexcept { return _samples.empty(); }
 	[[nodiscard]] inline size_t num_samples() const noexcept { return _samples.size(); }
+	// 'index' 0 is the oldest sample, num_samples() - 1 the newest
+	[[nodiscard]] inline const T &operator [] (size_t index) const noexcept { return _samples[index]; }
 
 private:
 	RingBuffer<T, size> _samples;
@@ -59,7 +61,7 @@ inline T SampleWindow<T, size>::min(T def) const noexcept
 {
 	if(empty())
 		return def;
-	return std::min_element(_samples.begin(), _samples.end());
+	return *std::min_element(_samples.begin(), _samples.end());
 }
 
 template<typename T, size_t size> requires (size > 0)
@@ -67,7 +69,7 @@ inline T SampleWindow<T, size>::max(T def) const noexcept
 {
 	if(empty())
 		return def;
-	return std::max_element(_samples.begin(), _samples.end());
+	return *std::max_element(_samples.begin(), _samples.end());
 }
 
 template<typename T, size_t size> requires (size > 0)

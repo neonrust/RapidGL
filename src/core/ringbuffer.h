@@ -338,6 +338,7 @@ public:
 		_position = that._position;
 		_index = that._index;
 		_buffer = that._buffer;
+		return *this;
 	}
 
 	RingBuffer_std_iterator &operator ++ ();

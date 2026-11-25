@@ -49,8 +49,8 @@ namespace RGL
 
 	private:
 		entt::registry _entities;
-		uint32_t m_fps;
-        bool     m_is_running;
+		uint32_t _fps;
+        bool     _is_running;
 		SampleWindow<std::chrono::microseconds, 30> _render_time;
 	};
 }

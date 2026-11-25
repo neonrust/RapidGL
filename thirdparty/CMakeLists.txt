@@ -90,22 +90,23 @@ if(ImGuizmo_ADDED)
     target_link_libraries(imguizmo PUBLIC imgui)
 endif()
 
-# CPMAddPackage(
-#   NAME implot
-#   GITHUB_REPOSITORY epezent/implot
-#   GIT_TAG v0.16
-#   DOWNLOAD_ONLY TRUE
-# )
-# if(implot_ADDED)
-#   add_library(implot
-#     STATIC
-#     ${implot_SOURCE_DIR}/implot.cpp
-#     ${implot_SOURCE_DIR}/implot_items.cpp)
-#   target_include_directories(implot PUBLIC ${implot_SOURCE_DIR})
+# v1.0+ needed for ImGui 1.92.x
+CPMAddPackage(
+    NAME implot
+    GITHUB_REPOSITORY epezent/implot
+    GIT_TAG v1.1
+    DOWNLOAD_ONLY TRUE
+)
+if(implot_ADDED)
+    add_library(implot
+        STATIC
+        ${implot_SOURCE_DIR}/implot.cpp
+        ${implot_SOURCE_DIR}/implot_items.cpp)
+    target_include_directories(implot PUBLIC ${implot_SOURCE_DIR})
 
-#   # ImPlot needs ImGui, so link that too
-#   target_link_libraries(implot PUBLIC imgui)
-# endif()
+    # ImPlot needs ImGui, so link that too
+    target_link_libraries(implot PUBLIC imgui)
+endif()
 
 set_target_properties(glad
                       stb_image 
@@ -113,7 +114,7 @@ set_target_properties(glad
                       glfw 
                       glm 
                       imgui 
-                      # implot
+                      implot
                       imguizmo
 					  unordered_dense
 					  svector
