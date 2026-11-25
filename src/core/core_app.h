@@ -51,6 +51,6 @@ namespace RGL
 		entt::registry _entities;
 		uint32_t _fps;
         bool     _is_running;
-		SampleWindow<std::chrono::microseconds, 30> _render_time;
+		SampleWindow<std::chrono::microseconds, 150> _render_time;
 	};
 }
