@@ -40,12 +40,6 @@ using TriggerShapeSphere = RGL::bounds::Sphere;
 using TriggerShapeCylinder = RGL::bounds::Cylinder;
 // using TriggerShapeHalfSpace = RGL::Plane;
 
-struct VariableSetting
-{
-	std::string name;
-	VariableValue value;
-};
-
-using VariablePack = std::vector<VariableSetting>;
+using VariablePack = string_map<VariableValue>;
 
 } // RGL::component
