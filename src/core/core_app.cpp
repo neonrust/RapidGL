@@ -42,7 +42,6 @@ void CoreApp::init(unsigned int width, unsigned int height, const std::string & 
 
 void CoreApp::render_gui()
 {
-	/* Overlay start */
 	const float DISTANCE = 10.0f;
 	static int corner = 0;
 	ImVec2 window_pos = ImVec2((corner & 1) ? ImGui::GetIO().DisplaySize.x - DISTANCE : DISTANCE, (corner & 2) ? ImGui::GetIO().DisplaySize.y - DISTANCE : DISTANCE);
@@ -53,13 +52,14 @@ void CoreApp::render_gui()
 		ImGui::SetNextWindowSize({ 250, 0 });
 	}
 
-	ImGui::SetNextWindowBgAlpha(0.3f); // Transparent background
+	ImGui::SetNextWindowBgAlpha(0.3f);
+
 	if (ImGui::Begin("Perf info", 0, (corner != -1 ? ImGuiWindowFlags_NoMove : 0) | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
 	{
 		ImGui::Text("%.1f FPS (%.3f ms/frame)",	ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
 		ImGui::Text("r-time: %ld µs (~%ld FPS)", _render_time.average().count(), 1'000'000 / (_render_time.average().count() + 1)); // +1 to just avoid DBZ
 
-		// recent render times (ms), oldest to the left
+		// recent render times, oldest to the left
 		if(ImPlot::BeginPlot("##render_time", ImVec2(-1, 60), ImPlotFlags_CanvasOnly | ImPlotFlags_NoInputs | ImPlotFlags_NoFrame))
 		{
 			// y-axis: the smallest of these ranges that fits the highest sample (higher samples are clipped)
@@ -84,7 +84,6 @@ void CoreApp::render_gui()
 		}
 	}
 	ImGui::End();
-	/* Overlay end */
 }
 
 unsigned int CoreApp::get_fps() const
